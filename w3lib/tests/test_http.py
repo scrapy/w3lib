@@ -1,7 +1,7 @@
 import unittest
 from w3lib.http import basic_auth_header
 
-__doctests__ = ['w3lib.http']
+__doctests__ = ['w3lib.http'] # for trial support
 
 class HttpTests(unittest.TestCase):
 

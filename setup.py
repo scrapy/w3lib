@@ -1,6 +1,4 @@
-from distutils.core import setup
-
-setup(
+args=dict(
     name='w3lib',
     version='1.0',
     license='BSD',
@@ -21,3 +19,11 @@ setup(
         'Topic :: Internet :: WWW/HTTP',
     ]
 )
+
+try:
+    from setuptools import setup
+    args['test_suite'] = 'w3lib.tests.suite'
+except ImportError:
+    from distutils.core import setup
+
+setup(**args)
