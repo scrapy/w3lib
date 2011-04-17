@@ -43,6 +43,11 @@ Documentation
 For more information, see the code and tests. The functions are all documented
 with docstrings.
 
+License
+=======
+
+The w3lib library is licensed under the BSD license.
+
 History
 =======
 
