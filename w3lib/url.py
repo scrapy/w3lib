@@ -9,6 +9,7 @@ import urlparse
 import urllib
 import posixpath
 import cgi
+import warnings
 
 from w3lib.util import unicode_to_str
 
@@ -19,6 +20,8 @@ def urljoin_rfc(base, ref, encoding='utf-8'):
 
     Always returns a str.
     """
+    warnings.warn("w3lib.url.urljoin_rfc is deprecated, use urlparse.urljoin instead",
+        DeprecationWarning)
     return urlparse.urljoin(unicode_to_str(base, encoding), \
         unicode_to_str(ref, encoding))
 
