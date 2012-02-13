@@ -12,13 +12,12 @@ class RequestEncodingTests(unittest.TestCase):
         utf32be = '\x00\x00\xfe\xff\x00\x00\x6c\x34'
         utf32le = '\xff\xfe\x00\x00\x34\x6c\x00\x00'
         for string in (utf16be, utf16le, utf32be, utf32le):
-            bom_encoding, data = read_bom(string)
-            decoded = data.decode(bom_encoding)
+            bom_encoding, bom = read_bom(string)
+            decoded = string[len(bom):].decode(bom_encoding)
             self.assertEqual(water_unicode, decoded)
-        # text is left untouched and None is returned as encoding if no BOM
-        enc, text = read_bom("foo")
+        enc, bom = read_bom("foo")
         self.assertEqual(enc, None)
-        self.assertEqual(text, "foo")
+        self.assertEqual(bom, None)
 
     def test_http_encoding_header(self):
         header_value = "Content-Type: text/html; charset=ISO-8859-4"
@@ -126,7 +125,7 @@ class HtmlConversionTests(unittest.TestCase):
         self._assert_encoding('utf-8', bom_utf8_str, 'utf-8', u"hi")
         self._assert_encoding(None, bom_utf8_str, 'utf-8', u"hi")
     
-    def test_utf16(self):
+    def test_utf16_32(self):
         # tools.ietf.org/html/rfc2781 section 4.3
         
         # USE BOM and strip it
@@ -138,9 +137,19 @@ class HtmlConversionTests(unittest.TestCase):
         self._assert_encoding('utf-16', bom_le_str, 'utf-16-le', u"hi")
         self._assert_encoding(None, bom_le_str, 'utf-16-le', u"hi")
 
-        # if there is no BOM, but the data is known to be utf-16, 
-        # big endian should be chosen
+        bom_be_str = codecs.BOM_UTF32_BE + u"hi".encode('utf-32-be')
+        self._assert_encoding('utf-32', bom_be_str, 'utf-32-be', u"hi")
+        self._assert_encoding(None, bom_be_str, 'utf-32-be', u"hi")
+        
+        bom_le_str = codecs.BOM_UTF32_LE + u"hi".encode('utf-32-le')
+        self._assert_encoding('utf-32', bom_le_str, 'utf-32-le', u"hi")
+        self._assert_encoding(None, bom_le_str, 'utf-32-le', u"hi")
+
+        # if there is no BOM,  big endian should be chosen
         self._assert_encoding('utf-16', u"hi".encode('utf-16-be'), 'utf-16-be', u"hi")
+        self._assert_encoding('utf-32', u"hi".encode('utf-32-be'), 'utf-32-be', u"hi")
+        
+
     
     def test_html_encoding(self):
         # extracting the encoding from raw html is tested elsewhere

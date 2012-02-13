@@ -92,14 +92,16 @@ _FIRST_CHARS = set(c[0] for (c, _) in _BOM_TABLE)
 
 def read_bom(data):
     """Read the byte order mark in the text, if present, and 
-    return the encoding represented by BOM and the remainder of the text.
+    return the encoding represented by the BOM and the BOM.
+
+    If no BOM can be detected, (None, None) is returned.
     """
     # common case is no BOM, so this is fast
     if data[0] in _FIRST_CHARS:
         for bom, encoding in _BOM_TABLE:
             if data.startswith(bom):
-                return encoding, data[len(bom):]
-    return None, data
+                return encoding, bom
+    return None, None
 
 # Python decoder doesn't follow unicode standard when handling
 # bad utf-8 encoded strings. see http://bugs.python.org/issue8271
@@ -161,22 +163,22 @@ def html_to_unicode(content_type_header, html_body_str,
     returns a tuple of (encoding used, unicode)
     """
     enc = http_content_type_encoding(content_type_header)
-    bom_enc, rest_of_data = read_bom(html_body_str)
+    bom_enc, bom = read_bom(html_body_str)
     if enc is not None:
             # remove BOM if it agrees with the encoding
         if enc == bom_enc:
-            html_body_str = rest_of_data
-        elif enc == 'utf-16':
+            html_body_str = html_body_str[len(bom):]
+        elif enc == 'utf-16' or enc == 'utf-32':
             # read endianness from BOM, or default to big endian 
             # tools.ietf.org/html/rfc2781 section 4.3
-            if bom_enc is not None and bom_enc.startswith('utf-16'):
+            if bom_enc is not None and bom_enc.startswith(enc):
                 enc = bom_enc
-                html_body_str = rest_of_data
+                html_body_str = html_body_str[len(bom):]
             else:
-                enc = 'utf-16-be'
+                enc += '-be'
         return _enc_unicode(html_body_str, enc)
     if bom_enc is not None:
-        return _enc_unicode(rest_of_data, bom_enc)
+        return _enc_unicode(html_body_str[len(bom):], bom_enc)
     enc = html_body_declared_encoding(html_body_str)
     if enc is None and (auto_detect_fun is not None):
         enc = auto_detect_fun(html_body_str)
