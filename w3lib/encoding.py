@@ -34,7 +34,8 @@ def html_body_declared_encoding(html_body_str):
     if match:
         encoding = match.group('charset') or match.group('charset2') \
                 or match.group('xmlcharset')
-        return resolve_encoding(encoding)
+        if encoding:
+            return resolve_encoding(encoding)
 
 # Default encoding translation
 # this maps cannonicalized encodings to target encodings

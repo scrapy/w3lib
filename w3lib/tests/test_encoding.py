@@ -38,6 +38,11 @@ class RequestEncodingTests(unittest.TestCase):
             encoding = html_body_declared_encoding(fragment)
             self.assertEqual(encoding, 'utf-8')
         self.assertEqual(None, html_body_declared_encoding("something else"))
+        self.assertEqual(None, html_body_declared_encoding("""
+            <head></head><body>
+            this isn't searched
+            <meta charset="utf-8">
+        """))
 
 class CodecsEncodingTestCase(unittest.TestCase):
     def test_resolve_encoding(self):
