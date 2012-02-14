@@ -13,6 +13,7 @@ This is a Python library of web-related functions, such as:
 * encoding mulitpart/form-data
 * convert raw HTTP headers to dicts and vice-versa
 * construct HTTP auth header
+* converting HTML pages to unicode
 * RFC-compliant url joining
 * sanitize urls (like browsers do)
 * extract arguments from urls
@@ -25,6 +26,7 @@ The w3lib package consists of four modules:
 * ``w3lib.url`` - functions for working with URLs
 * ``w3lib.html`` - functions for working with HTML
 * ``w3lib.http`` - functions for working with HTTP
+* ``w3lib.encoding`` - functions for working with character encoding
 * ``w3lib.form`` - functions for working with web forms
 
 Requirements
