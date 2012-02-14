@@ -154,9 +154,9 @@ def html_to_unicode(content_type_header, html_body_str,
     If the locale of the website or user language preference is known, then a
     better default encoding can be supplied.
 
-    If the content type header is not present, None can be passed instead and 
-    it will be ignored.
-    
+    If the content type header is not present, None can be passed signifying
+    that the header was not present.
+
     This method will not fail, if characters cannot be converted to unicode, 
     '\ufffd' (the unicode replacement character) will be inserted instead.
 
