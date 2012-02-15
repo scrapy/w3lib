@@ -39,6 +39,11 @@ Install
 
 ``pip install w3lib``
 
+Release notes
+=============
+
+See the `NEWS file`_.
+
 Documentation
 =============
 
@@ -65,3 +70,4 @@ useful library of web functions without depending on Scrapy.
 
 .. _Scrapy framework: http://scrapy.org
 .. _nose: http://readthedocs.org/docs/nose/en/latest/
+.. _NEWS file: https://github.com/scrapy/w3lib/blob/master/NEWS
