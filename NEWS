@@ -1,0 +1,15 @@
+w3lib release notes
+===================
+
+Version 1.1
+------------
+(release date to be announced)
+
+- Added w3lib.encoding module, containing functions for working with character
+  encoding, like encoding autodetection from HTML pages.
+
+Version 1.0
+-----------
+(released on April 17th, 2011)
+
+First release of w3lib.
