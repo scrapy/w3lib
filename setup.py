@@ -1,6 +1,6 @@
 args=dict(
     name='w3lib',
-    version='1.0',
+    version='1.1',
     license='BSD',
     description='Library of web-related functions',
     author='Scrapy project',
