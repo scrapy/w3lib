@@ -45,6 +45,12 @@ Documentation
 For more information, see the code and tests. The functions are all documented
 with docstrings.
 
+Tests
+=====
+
+`nose`_ is the preferred way to run tests. Just run: ``nosetests`` from the
+root directory.
+
 License
 =======
 
@@ -58,3 +64,4 @@ stripped out of Scrapy, with the aim of make it more reusable and to provide a
 useful library of web functions without depending on Scrapy.
 
 .. _Scrapy framework: http://scrapy.org
+.. _nose: http://readthedocs.org/docs/nose/en/latest/
