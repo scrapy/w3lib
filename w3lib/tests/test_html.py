@@ -62,6 +62,7 @@ class HtmlTests(unittest.TestCase):
         # text with comments
         self.assertEqual(remove_comments(u'<!--text with comments-->'), u'')
         self.assertEqual(remove_comments(u'Hello<!--World-->'), u'Hello')
+        self.assertEqual(remove_comments(u'Hello<!--My\nWorld-->'), u'Hello')
 
     def test_remove_tags(self):
         # make sure it always return unicode
