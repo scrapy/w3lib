@@ -43,23 +43,23 @@ def html_body_declared_encoding(html_body_str):
 # in addition, gb18030 supercedes gb2312 & gbk
 # the keys are converted using _c18n_encoding and in sorted order
 DEFAULT_ENCODING_TRANSLATION = {
-        'ascii': 'cp1252',
-        'euc_kr': 'cp949',
-        'gb2312': 'gb18030',
-        'gbk': 'gb18030',
-        'iso8859_11': 'cp874',
-        'iso8859_9': 'cp1254',
-        'latin_1': 'cp1252',
-        'macintosh': 'mac_roman',
-        'shift_jis': 'cp932',
-        'tis_620': 'cp874',
-        'win_1251': 'cp1251',
-        'windows_31j': 'cp932',
-        'win_31j': 'cp932',
-        'windows_874': 'cp874',
-        'win_874': 'cp874',
-        'x_sjis': 'cp932',
-        'zh_cn': 'gb18030'
+    'ascii': 'cp1252',
+    'euc_kr': 'cp949',
+    'gb2312': 'gb18030',
+    'gbk': 'gb18030',
+    'iso8859_11': 'cp874',
+    'iso8859_9': 'cp1254',
+    'latin_1': 'cp1252',
+    'macintosh': 'mac_roman',
+    'shift_jis': 'cp932',
+    'tis_620': 'cp874',
+    'win_1251': 'cp1251',
+    'windows_31j': 'cp932',
+    'win_31j': 'cp932',
+    'windows_874': 'cp874',
+    'win_874': 'cp874',
+    'x_sjis': 'cp932',
+    'zh_cn': 'gb18030'
 }
 
 def _c18n_encoding(encoding):
