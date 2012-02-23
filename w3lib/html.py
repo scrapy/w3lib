@@ -3,10 +3,11 @@ Functions for dealing with markup text
 """
 
 import re
+from urlparse import urljoin
 from htmlentitydefs import name2codepoint
 
 from w3lib.util import str_to_unicode, unicode_to_str
-from w3lib.url import urljoin_rfc, safe_url_string
+from w3lib.url import safe_url_string
 
 _ent_re = re.compile(r'&(#?(x?))([^&;\s]+);')
 _tag_re = re.compile(r'<[a-zA-Z\/!].*?>', re.DOTALL)
@@ -177,7 +178,7 @@ def get_base_url(text, baseurl='', encoding='utf-8'):
     baseurl = unicode_to_str(baseurl, encoding)
     m = _baseurl_re.search(text)
     if m:
-        baseurl = urljoin_rfc(baseurl, m.group(1).encode(encoding))
+        baseurl = urljoin(baseurl, m.group(1).encode(encoding))
     return safe_url_string(baseurl)
 
 def get_meta_refresh(text, baseurl='', encoding='utf-8'):
@@ -199,7 +200,7 @@ def get_meta_refresh(text, baseurl='', encoding='utf-8'):
     if m:
         interval = float(m.group('int'))
         url = safe_url_string(m.group('url').strip(' "\''))
-        url = urljoin_rfc(baseurl, url)
+        url = urljoin(baseurl, url)
         return interval, url
     else:
         return None, None
