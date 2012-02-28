@@ -98,7 +98,7 @@ def read_bom(data):
     If no BOM can be detected, (None, None) is returned.
     """
     # common case is no BOM, so this is fast
-    if data[0] in _FIRST_CHARS:
+    if data and data[0] in _FIRST_CHARS:
         for bom, encoding in _BOM_TABLE:
             if data.startswith(bom):
                 return encoding, bom
@@ -114,15 +114,7 @@ def to_unicode(data_str, encoding):
     Characters that cannot be converted will be converted to '\ufffd' (the
     unicode replacement character).
     """
-    data_str.decode(encoding, 'w3lib_replace')
-
-def _enc_unicode(data_str, encoding):
-    """convert the data_str to unicode inserting the unicode replacement
-    character where necessary. 
-    
-    returns (encoding, unicode)
-    """
-    return encoding, data_str.decode(encoding, 'w3lib_replace')
+    return data_str.decode(encoding, 'w3lib_replace')
 
 def html_to_unicode(content_type_header, html_body_str, 
         default_encoding='utf8', auto_detect_fun=None):
@@ -177,12 +169,12 @@ def html_to_unicode(content_type_header, html_body_str,
                 html_body_str = html_body_str[len(bom):]
             else:
                 enc += '-be'
-        return _enc_unicode(html_body_str, enc)
+        return enc, to_unicode(html_body_str, enc)
     if bom_enc is not None:
-        return _enc_unicode(html_body_str[len(bom):], bom_enc)
+        return bom_enc, to_unicode(html_body_str[len(bom):], bom_enc)
     enc = html_body_declared_encoding(html_body_str)
     if enc is None and (auto_detect_fun is not None):
         enc = auto_detect_fun(html_body_str)
     if enc is None:
         enc = default_encoding
-    return _enc_unicode(html_body_str, enc)
+    return enc, to_unicode(html_body_str, enc)
