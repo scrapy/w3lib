@@ -98,7 +98,7 @@ def read_bom(data):
     If no BOM can be detected, (None, None) is returned.
     """
     # common case is no BOM, so this is fast
-    if data[0] in _FIRST_CHARS:
+    if data and data[0] in _FIRST_CHARS:
         for bom, encoding in _BOM_TABLE:
             if data.startswith(bom):
                 return encoding, bom
