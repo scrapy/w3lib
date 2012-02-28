@@ -1,5 +1,5 @@
 import unittest, codecs
-from w3lib.encoding import (html_body_declared_encoding, read_bom,
+from w3lib.encoding import (html_body_declared_encoding, read_bom, to_unicode,
         http_content_type_encoding, resolve_encoding, html_to_unicode)
 
 class RequestEncodingTests(unittest.TestCase):
@@ -15,7 +15,12 @@ class RequestEncodingTests(unittest.TestCase):
             bom_encoding, bom = read_bom(string)
             decoded = string[len(bom):].decode(bom_encoding)
             self.assertEqual(water_unicode, decoded)
+        # Body without BOM
         enc, bom = read_bom("foo")
+        self.assertEqual(enc, None)
+        self.assertEqual(bom, None)
+        # Empty body
+        enc, bom = read_bom("")
         self.assertEqual(enc, None)
         self.assertEqual(bom, None)
 
@@ -49,6 +54,16 @@ class CodecsEncodingTestCase(unittest.TestCase):
         self.assertEqual(resolve_encoding('latin1'), 'cp1252')
         self.assertEqual(resolve_encoding(' Latin-1'), 'cp1252')
         self.assertEqual(resolve_encoding('unknown encoding'), None)
+
+
+class UnicodeDecodingTestCase(unittest.TestCase):
+
+    def test_utf8(self):
+        self.assertEqual(to_unicode('\xc2\xa3', 'utf-8'), u'\xa3')
+
+    def test_invalid_utf8(self):
+        self.assertEqual(to_unicode('\xc2\xc2\xa3', 'utf-8'), u'\ufffd\xa3')
+
 
 def ct(charset):
     return "Content-Type: text/html; charset=" + charset if charset else None
@@ -154,8 +169,6 @@ class HtmlConversionTests(unittest.TestCase):
         self._assert_encoding('utf-16', u"hi".encode('utf-16-be'), 'utf-16-be', u"hi")
         self._assert_encoding('utf-32', u"hi".encode('utf-32-be'), 'utf-32-be', u"hi")
         
-
-    
     def test_html_encoding(self):
         # extracting the encoding from raw html is tested elsewhere
         body = """blah blah < meta   http-equiv="Content-Type" 
@@ -183,3 +196,7 @@ class HtmlConversionTests(unittest.TestCase):
         # this can be overridden
         self._assert_encoding_detected(None, 'ascii', "no encoding info", 
                 default_encoding='ascii')
+
+    def test_empty_body(self):
+        # if no other method available, the default encoding of utf-8 is used
+        self._assert_encoding_detected(None, 'utf-8', "")
