@@ -1,5 +1,5 @@
 import unittest, codecs
-from w3lib.encoding import (html_body_declared_encoding, read_bom,
+from w3lib.encoding import (html_body_declared_encoding, read_bom, to_unicode,
         http_content_type_encoding, resolve_encoding, html_to_unicode)
 
 class RequestEncodingTests(unittest.TestCase):
@@ -54,6 +54,16 @@ class CodecsEncodingTestCase(unittest.TestCase):
         self.assertEqual(resolve_encoding('latin1'), 'cp1252')
         self.assertEqual(resolve_encoding(' Latin-1'), 'cp1252')
         self.assertEqual(resolve_encoding('unknown encoding'), None)
+
+
+class UnicodeDecodingTestCase(unittest.TestCase):
+
+    def test_utf8(self):
+        self.assertEqual(to_unicode('\xc2\xa3', 'utf-8'), u'\xa3')
+
+    def test_invalid_utf8(self):
+        self.assertEqual(to_unicode('\xc2\xc2\xa3', 'utf-8'), u'\ufffd\xa3')
+
 
 def ct(charset):
     return "Content-Type: text/html; charset=" + charset if charset else None
