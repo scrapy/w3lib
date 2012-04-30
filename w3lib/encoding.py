@@ -21,7 +21,7 @@ _XML_ENCODING_RE = _TEMPLATE % ('encoding', r'(?P<xmlcharset>[\w-]+)')
 
 # check for meta tags, or xml decl. and stop search if a body tag is encountered
 _BODY_ENCODING_RE = re.compile(
-    r'<\s*(?:meta\s+(?:%s\s+%s|%s)|\?xml\s[^>]+%s|body)' % \
+    r'<\s*(?:meta(?:(?:\s+%s|\s+%s){2}|\s+%s)|\?xml\s[^>]+%s|body)' % \
         (_HTTPEQUIV_RE, _CONTENT_RE, _CONTENT2_RE, _XML_ENCODING_RE), re.I)
 
 def html_body_declared_encoding(html_body_str):

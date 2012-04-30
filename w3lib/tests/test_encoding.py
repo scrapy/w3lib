@@ -31,23 +31,28 @@ class RequestEncodingTests(unittest.TestCase):
         self.assertEqual(None, http_content_type_encoding("something else"))
 
     def test_html_body_declared_encoding(self):
-        format1 = """
-            <meta http-equiv="Content-Type"
-                content="text/html; charset=utf-8">
-        """
-        format2 = """<meta charset="utf-8">"""
-        format3 = """<?xml version="1.0" encoding="utf-8"?>"""
-        format4 = """ bad html still supported < meta http-equiv='Content-Type'
-            content="text/html; charset=utf-8">"""
-        for fragment in (format1, format2, format3, format4):
+        fragments = [
+            # Content-Type as meta http-equiv
+            """<meta http-equiv="content-type" content="text/html;charset=UTF-8" />""",
+            """\n<meta http-equiv="Content-Type"\ncontent="text/html; charset=utf-8">""",
+            """<meta content="text/html; charset=utf-8"\n http-equiv='Content-Type'>""",
+            """ bad html still supported < meta http-equiv='Content-Type'\n content="text/html; charset=utf-8">""",
+            # html5 meta charset
+            """<meta charset="utf-8">""",
+            # xml encoding
+            """<?xml version="1.0" encoding="utf-8"?>""",
+        ]
+        for fragment in fragments:
             encoding = html_body_declared_encoding(fragment)
-            self.assertEqual(encoding, 'utf-8')
+            self.assertEqual(encoding, 'utf-8', fragment)
         self.assertEqual(None, html_body_declared_encoding("something else"))
         self.assertEqual(None, html_body_declared_encoding("""
             <head></head><body>
             this isn't searched
             <meta charset="utf-8">
         """))
+        self.assertEqual(None, html_body_declared_encoding(
+            """<meta http-equiv="Fake-Content-Type-Header" content="text/html; charset=utf-8">"""))
 
 class CodecsEncodingTestCase(unittest.TestCase):
     def test_resolve_encoding(self):
