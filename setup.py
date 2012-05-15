@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='w3lib',
-    version='1.2',
+    version='1.3',
     license='BSD',
     description='Library of web-related functions',
     author='Scrapy project',
