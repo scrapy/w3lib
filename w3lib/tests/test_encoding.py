@@ -58,6 +58,7 @@ class CodecsEncodingTestCase(unittest.TestCase):
     def test_resolve_encoding(self):
         self.assertEqual(resolve_encoding('latin1'), 'cp1252')
         self.assertEqual(resolve_encoding(' Latin-1'), 'cp1252')
+        self.assertEqual(resolve_encoding('gb_2312-80'), 'gb18030')
         self.assertEqual(resolve_encoding('unknown encoding'), None)
 
 

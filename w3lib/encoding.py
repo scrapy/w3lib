@@ -46,6 +46,7 @@ DEFAULT_ENCODING_TRANSLATION = {
     'ascii': 'cp1252',
     'euc_kr': 'cp949',
     'gb2312': 'gb18030',
+    'gb_2312_80': 'gb18030',
     'gbk': 'gb18030',
     'iso8859_11': 'cp874',
     'iso8859_9': 'cp1254',
