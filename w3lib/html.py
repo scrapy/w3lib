@@ -16,7 +16,8 @@ _meta_refresh_re = re.compile(ur'<meta[^>]*http-equiv[^>]*refresh[^>]*content\s*
 _cdata_re = re.compile(r'((?P<cdata_s><!\[CDATA\[)(?P<cdata_d>.*?)(?P<cdata_e>\]\]>))', re.DOTALL)
 
 def remove_entities(text, keep=(), remove_illegal=True, encoding='utf-8'):
-    """Remove entities from the given text.
+    """Remove entities from the given text by converting them to 
+    corresponding unicode character.
 
     'text' can be a unicode string or a regular string encoded in the given
     `encoding` (which defaults to 'utf-8').
