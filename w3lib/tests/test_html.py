@@ -219,19 +219,14 @@ although this is inside a cdata! &amp; &quot;</node1><node2>blah&blahblahblahbla
         body = """<meta http-equiv="refresh" content="3; url=other.html">"""
         self.assertEqual(get_meta_refresh(body, baseurl), (3, 'http://example.com/page/other.html'))
 
-        # non-standard encodings (utf-16)
-        baseurl = 'http://example.com'
-        body = """<meta http-equiv="refresh" content="3; url=http://example.com/redirect">"""
-        body = body.decode('ascii').encode('utf-16')
-        self.assertEqual(get_meta_refresh(body, baseurl, 'utf-16'), (3, 'http://example.com/redirect'))
-
         # non-ascii chars in the url (utf8 - default)
+        baseurl = 'http://example.com'
         body = """<meta http-equiv="refresh" content="3; url=http://example.com/to\xc2\xa3">"""
         self.assertEqual(get_meta_refresh(body, baseurl), (3, 'http://example.com/to%C2%A3'))
 
         # non-ascii chars in the url (latin1)
         body = """<meta http-equiv="refresh" content="3; url=http://example.com/to\xa3">"""
-        self.assertEqual(get_meta_refresh(body, baseurl, 'latin1'), (3, 'http://example.com/to%C2%A3'))
+        self.assertEqual(get_meta_refresh(body, baseurl, 'latin1'), (3, 'http://example.com/to%A3'))
 
         # html commented meta refresh header must not directed
         body = """<!--<meta http-equiv="refresh" content="3; url=http://example.com/">-->"""
