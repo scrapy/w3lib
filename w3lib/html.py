@@ -200,7 +200,7 @@ def get_meta_refresh(text, baseurl='', encoding='utf-8'):
     m = _meta_refresh_re.search(text)
     if m:
         interval = float(m.group('int'))
-        url = safe_url_string(m.group('url').strip(' "\''))
+        url = safe_url_string(m.group('url').strip(' "\''), encoding)
         url = urljoin(baseurl, url)
         return interval, url
     else:
