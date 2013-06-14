@@ -106,6 +106,9 @@ class UrlTests(unittest.TestCase):
         url = 'http://rmc-offers.co.uk/productlist.asp?BCat=2,60&CatID=60'
         self.assertEqual(add_or_replace_parameter(url, 'BCat', 'newvalue'),
                          'http://rmc-offers.co.uk/productlist.asp?BCat=newvalue&CatID=60')
+        url = 'http://rmc-offers.co.uk/productlist.asp?'
+        self.assertEqual(add_or_replace_parameter(url, 'BCat', 'newvalue'),
+                         'http://rmc-offers.co.uk/productlist.asp?BCat=newvalue')
 
     def test_url_query_cleaner(self):
         self.assertEqual('product.html?id=200',
