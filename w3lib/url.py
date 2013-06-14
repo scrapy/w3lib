@@ -103,7 +103,7 @@ def add_or_replace_parameter(url, name, new_value, sep='&', url_is_quoted=False)
     """Add or remove a parameter to a given url"""
     def has_querystring(url):
         _, _, _, query, _ = urlparse.urlsplit(url)
-        return bool(query)
+        return bool(query) or url.strip().endswith('?')
 
     parameter = url_query_parameter(url, name, keep_blank_values=1)
     if url_is_quoted:
