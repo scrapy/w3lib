@@ -7,7 +7,7 @@ setup(
     description='Library of web-related functions',
     author='Scrapy project',
     author_email='info@scrapy.org',
-    url='http://github.com/scrapy/w3lib',
+    url='https://github.com/scrapy/w3lib',
     packages=['w3lib'],
     platforms = ['Any'],
     classifiers = [
