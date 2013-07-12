@@ -1,8 +1,9 @@
+from __future__ import absolute_import
 import os
 import unittest
-from w3lib.url import safe_url_string, safe_download_url, \
-    url_query_parameter, add_or_replace_parameter, url_query_cleaner, \
-    file_uri_to_path, path_to_file_uri, any_to_uri
+from w3lib.url import (safe_url_string, safe_download_url,
+    url_query_parameter, add_or_replace_parameter, url_query_cleaner,
+    file_uri_to_path, path_to_file_uri, any_to_uri)
 
 class UrlTests(unittest.TestCase):
 
