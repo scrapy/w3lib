@@ -2,6 +2,9 @@
 w3lib
 =====
 
+.. image:: https://secure.travis-ci.org/scrapy/w3lib.png?branch=master
+   :target: http://travis-ci.org/scrapy/w3lib
+
 Overview
 ========
 
