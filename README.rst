@@ -32,7 +32,7 @@ The w3lib package consists of four modules:
 Requirements
 ============
 
-* Python 2.5, 2.6 or 2.7
+* Python 2.6 or 2.7
 
 Install
 =======
@@ -54,7 +54,13 @@ Tests
 =====
 
 `nose`_ is the preferred way to run tests. Just run: ``nosetests`` from the
-root directory.
+root directory to execute tests using the default Python interpreter.
+
+`tox`_ could be used to run tests for all supported Python versions.
+Install it (using 'pip install tox') and then run ``tox`` from
+the root directory - tests will be executed for all available
+Python interpreters.
+
 
 License
 =======
@@ -71,3 +77,4 @@ useful library of web functions without depending on Scrapy.
 .. _Scrapy framework: http://scrapy.org
 .. _nose: http://readthedocs.org/docs/nose/en/latest/
 .. _NEWS file: https://github.com/scrapy/w3lib/blob/master/NEWS
+.. _tox: http://tox.testrun.org
