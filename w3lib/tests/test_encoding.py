@@ -93,7 +93,14 @@ class HtmlConversionTests(unittest.TestCase):
         self.assertTrue(isinstance(body_unicode, unicode))
         self.assertEqual(norm_encoding(encoding),
                 norm_encoding(expected_encoding))
-        self.assertEqual(body_unicode, expected_unicode)
+
+        if isinstance(expected_unicode, basestring):
+            self.assertEqual(body_unicode, expected_unicode)
+        else:
+            self.assertTrue(
+                body_unicode in expected_unicode,
+                "%s is not in %s" % (body_unicode, expected_unicode)
+            )
 
     def test_content_type_and_conversion(self):
         """Test content type header is interpreted and text converted as
@@ -111,10 +118,22 @@ class HtmlConversionTests(unittest.TestCase):
 
     def test_invalid_utf8_encoded_body_with_valid_utf8_BOM(self):
         # unlike scrapy, the BOM is stripped
+        self._assert_encoding('utf-8', "\xef\xbb\xbfWORD\xe3\xabWORD2",
+                'utf-8',u'WORD\ufffd\ufffdWORD2')
+        self._assert_encoding(None, "\xef\xbb\xbfWORD\xe3\xabWORD2",
+                'utf-8',u'WORD\ufffd\ufffdWORD2')
+
+    def test_utf8_unexpected_end_of_data_with_valid_utf8_BOM(self):
+        # Python implementations handle unexpected end of UTF8 data
+        # differently (see https://bugs.pypy.org/issue1536).
+        # It is hard to fix this for PyPy in w3lib, so the test
+        # is permissive.
+
+        # unlike scrapy, the BOM is stripped
         self._assert_encoding('utf-8', "\xef\xbb\xbfWORD\xe3\xab",
-                'utf-8',u'WORD\ufffd\ufffd')
+                'utf-8', [u'WORD\ufffd\ufffd', u'WORD\ufffd'])
         self._assert_encoding(None, "\xef\xbb\xbfWORD\xe3\xab",
-                'utf-8',u'WORD\ufffd\ufffd')
+                'utf-8', [u'WORD\ufffd\ufffd', u'WORD\ufffd'])
 
     def test_replace_wrong_encoding(self):
         """Test invalid chars are replaced properly"""
