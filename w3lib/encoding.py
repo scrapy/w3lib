@@ -25,7 +25,7 @@ _BODY_ENCODING_RE = re.compile(
         (_HTTPEQUIV_RE, _CONTENT_RE, _CONTENT2_RE, _XML_ENCODING_RE), re.I)
 
 def html_body_declared_encoding(html_body_str):
-    """encoding specified in meta tags in the html body, or None if no 
+    """encoding specified in meta tags in the html body, or None if no
     suitable encoding was found
     """
     # html5 suggests the first 1024 bytes are sufficient, we allow for more
@@ -66,7 +66,7 @@ DEFAULT_ENCODING_TRANSLATION = {
 def _c18n_encoding(encoding):
     """Cannonicalize an encoding name
 
-    This performs normalization and translates aliases using python's 
+    This performs normalization and translates aliases using python's
     encoding aliases
     """
     normed = encodings.normalize_encoding(encoding).lower()
@@ -93,7 +93,7 @@ _BOM_TABLE = [
 _FIRST_CHARS = set(c[0] for (c, _) in _BOM_TABLE)
 
 def read_bom(data):
-    """Read the byte order mark in the text, if present, and 
+    """Read the byte order mark in the text, if present, and
     return the encoding represented by the BOM and the BOM.
 
     If no BOM can be detected, (None, None) is returned.
@@ -117,12 +117,12 @@ def to_unicode(data_str, encoding):
     """
     return data_str.decode(encoding, 'w3lib_replace')
 
-def html_to_unicode(content_type_header, html_body_str, 
+def html_to_unicode(content_type_header, html_body_str,
         default_encoding='utf8', auto_detect_fun=None):
     """Convert raw html bytes to unicode
-    
+
     This attempts to make a reasonable guess at the content encoding of the
-    html body, following a similar process as a web browser. 
+    html body, following a similar process as a web browser.
 
     It will try in order:
     * http content type header
@@ -130,13 +130,13 @@ def html_to_unicode(content_type_header, html_body_str,
     * meta or xml tag declarations
     * auto-detection, if the `auto_detect_fun` keyword argument is not None
     * default encoding in keyword arg (which defaults to utf8)
-    
+
     If an encoding other than the auto-detected or default encoding is used,
     overrides will be applied, converting some character encodings to more
     suitable alternatives.
-    
+
     If a BOM is found matching the encoding, it will be stripped.
-    
+
     The `auto_detect_fun` argument can be used to pass a function that will
     sniff the encoding of the text. This function must take the raw text as an
     argument and return the name of an encoding that python can process, or
@@ -151,7 +151,7 @@ def html_to_unicode(content_type_header, html_body_str,
     If the content type header is not present, None can be passed signifying
     that the header was not present.
 
-    This method will not fail, if characters cannot be converted to unicode, 
+    This method will not fail, if characters cannot be converted to unicode,
     '\ufffd' (the unicode replacement character) will be inserted instead.
 
     returns a tuple of (encoding used, unicode)
@@ -159,11 +159,11 @@ def html_to_unicode(content_type_header, html_body_str,
     enc = http_content_type_encoding(content_type_header)
     bom_enc, bom = read_bom(html_body_str)
     if enc is not None:
-            # remove BOM if it agrees with the encoding
+        # remove BOM if it agrees with the encoding
         if enc == bom_enc:
             html_body_str = html_body_str[len(bom):]
         elif enc == 'utf-16' or enc == 'utf-32':
-            # read endianness from BOM, or default to big endian 
+            # read endianness from BOM, or default to big endian
             # tools.ietf.org/html/rfc2781 section 4.3
             if bom_enc is not None and bom_enc.startswith(enc):
                 enc = bom_enc
