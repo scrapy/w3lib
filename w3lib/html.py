@@ -139,9 +139,10 @@ def replace_escape_chars(text, which_ones=('\n', '\t', '\r'), replace_by=u'', \
         replace_by -- text to replace the escape chars for.
                       It defaults to '', so the escape chars are removed.
     """
+    text = str_to_unicode(text, encoding)
     for ec in which_ones:
         text = text.replace(ec, str_to_unicode(replace_by, encoding))
-    return str_to_unicode(text, encoding)
+    return text
 
 def unquote_markup(text, keep=(), remove_illegal=True, encoding=None):
     """
