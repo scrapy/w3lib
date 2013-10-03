@@ -63,5 +63,5 @@ def basic_auth_header(username, password):
         # XXX: RFC 2617 doesn't define encoding, but ISO-8859-1
         # seems to be the most widely used encoding here. See also:
         # http://greenbytes.de/tech/webdav/draft-ietf-httpauth-basicauth-enc-latest.html
-        auth_bytes = auth.encode('ISO-8859-1')
-    return 'Basic ' + urlsafe_b64encode(auth_bytes).decode('ascii')
+        auth = auth.encode('ISO-8859-1')
+    return 'Basic ' + urlsafe_b64encode(auth).decode('ascii')
