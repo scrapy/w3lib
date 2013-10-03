@@ -50,7 +50,7 @@ def safe_url_string(url, encoding='utf8'):
     Always returns a str.
     """
     s = unicode_to_str(url, encoding)
-    return urllib.parse.quote(s,  _safe_chars)
+    return urllib.parse.quote(s, _safe_chars)
 
 
 _parent_dirs = re.compile(r'/?(\.\./)+')
@@ -71,7 +71,7 @@ def safe_download_url(url):
             path += '/'
     else:
         path = '/'
-    return six.moves.urllib.parse.urlunsplit((scheme, netloc, path, query, ''))
+    return urllib.parse.urlunsplit((scheme, netloc, path, query, ''))
 
 def is_url(text):
     return text.partition("://")[0] in ('file', 'http', 'https')
