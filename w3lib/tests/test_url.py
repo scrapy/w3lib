@@ -1,8 +1,9 @@
+from __future__ import absolute_import
 import os
 import unittest
-from w3lib.url import safe_url_string, safe_download_url, \
-    url_query_parameter, add_or_replace_parameter, url_query_cleaner, \
-    file_uri_to_path, path_to_file_uri, any_to_uri
+from w3lib.url import (safe_url_string, safe_download_url,
+    url_query_parameter, add_or_replace_parameter, url_query_cleaner,
+    file_uri_to_path, path_to_file_uri, any_to_uri)
 
 class UrlTests(unittest.TestCase):
 
@@ -31,12 +32,14 @@ class UrlTests(unittest.TestCase):
                                          "http://www.example.com/Brochures_&_Paint_Cards&PageSize=200")
 
         safeurl = safe_url_string(u"http://www.example.com/\xa3", encoding='latin-1')
-        self.assert_(isinstance(safeurl, str))
+        self.assertTrue(isinstance(safeurl, str))
         self.assertEqual(safeurl, "http://www.example.com/%A3")
 
         safeurl = safe_url_string(u"http://www.example.com/\xa3", encoding='utf-8')
-        self.assert_(isinstance(safeurl, str))
+        self.assertTrue(isinstance(safeurl, str))
         self.assertEqual(safeurl, "http://www.example.com/%C2%A3")
+
+        self.assertTrue(isinstance(safe_url_string(b'http://example.com/'), str))
 
     def test_safe_download_url(self):
         self.assertEqual(safe_download_url('http://www.example.org/../'),

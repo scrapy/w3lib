@@ -3,23 +3,24 @@ Functions for dealing with markup text
 """
 
 import re
-from urlparse import urljoin
-from htmlentitydefs import name2codepoint
+import six
+from six.moves import urllib
+from six.moves import html_entities
 
 from w3lib.util import str_to_unicode, unicode_to_str
 from w3lib.url import safe_url_string
 
 _ent_re = re.compile(r'&(#?(x?))([^&;\s]+);')
 _tag_re = re.compile(r'<[a-zA-Z\/!].*?>', re.DOTALL)
-_baseurl_re = re.compile(ur'<base\s+href\s*=\s*[\"\']\s*([^\"\'\s]+)\s*[\"\']', re.I)
-_meta_refresh_re = re.compile(ur'<meta[^>]*http-equiv[^>]*refresh[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=(?P<url>.*?)(?P=quote)', re.DOTALL | re.IGNORECASE)
+_baseurl_re = re.compile(six.u(r'<base\s+href\s*=\s*[\"\']\s*([^\"\'\s]+)\s*[\"\']'), re.I)
+_meta_refresh_re = re.compile(six.u(r'<meta[^>]*http-equiv[^>]*refresh[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=(?P<url>.*?)(?P=quote)'), re.DOTALL | re.IGNORECASE)
 _cdata_re = re.compile(r'((?P<cdata_s><!\[CDATA\[)(?P<cdata_d>.*?)(?P<cdata_e>\]\]>))', re.DOTALL)
 
 def remove_entities(text, keep=(), remove_illegal=True, encoding='utf-8'):
-    """Remove entities from the given text by converting them to 
+    """Remove entities from the given text by converting them to
     corresponding unicode character.
 
-    'text' can be a unicode string or a regular string encoded in the given
+    'text' can be a unicode string or a byte string encoded in the given
     `encoding` (which defaults to 'utf-8').
 
     If 'keep' is passed (with a list of entity names) those entities will
@@ -48,17 +49,17 @@ def remove_entities(text, keep=(), remove_illegal=True, encoding='utf-8'):
                 # to bytes 80-9F in the Windows-1252 encoding. For more info
                 # see: http://en.wikipedia.org/wiki/Character_encodings_in_HTML
                 if 0x80 <= number <= 0x9f:
-                    return chr(number).decode('cp1252')
+                    return six.int2byte(number).decode('cp1252')
             except ValueError:
                 number = None
         else:
             if entity_body in keep:
                 return m.group(0)
             else:
-                number = name2codepoint.get(entity_body)
+                number = html_entities.name2codepoint.get(entity_body)
         if number is not None:
             try:
-                return unichr(number)
+                return six.unichr(number)
             except ValueError:
                 pass
 
@@ -87,7 +88,7 @@ def remove_comments(text, encoding=None):
     return _REMOVECOMMENTS_RE.sub(u'', text)
 
 def remove_tags(text, which_ones=(), keep=(), encoding=None):
-    """ Remove HTML Tags only. 
+    """ Remove HTML Tags only.
 
         which_ones and keep are both tuples, there are four cases:
 
@@ -117,7 +118,7 @@ def remove_tags(text, which_ones=(), keep=(), encoding=None):
 
 def remove_tags_with_content(text, which_ones=(), encoding=None):
     """ Remove tags and its content.
-        
+
         which_ones -- is a tuple of which tags with its content we want to remove.
                       if is empty do nothing.
     """
@@ -127,7 +128,7 @@ def remove_tags_with_content(text, which_ones=(), encoding=None):
         retags = re.compile(tags, re.DOTALL | re.IGNORECASE)
         text = retags.sub(u'', text)
     return text
-    
+
 
 def replace_escape_chars(text, which_ones=('\n', '\t', '\r'), replace_by=u'', \
         encoding=None):
@@ -139,9 +140,10 @@ def replace_escape_chars(text, which_ones=('\n', '\t', '\r'), replace_by=u'', \
         replace_by -- text to replace the escape chars for.
                       It defaults to '', so the escape chars are removed.
     """
+    text = str_to_unicode(text, encoding)
     for ec in which_ones:
         text = text.replace(ec, str_to_unicode(replace_by, encoding))
-    return str_to_unicode(text, encoding)
+    return text
 
 def unquote_markup(text, keep=(), remove_illegal=True, encoding=None):
     """
@@ -163,7 +165,7 @@ def unquote_markup(text, keep=(), remove_illegal=True, encoding=None):
     text = str_to_unicode(text, encoding)
     ret_text = u''
     for fragment in _get_fragments(text, _cdata_re):
-        if isinstance(fragment, basestring):
+        if isinstance(fragment, six.string_types):
             # it's not a CDATA (so we try to remove its entities)
             ret_text += remove_entities(fragment, keep=keep, remove_illegal=remove_illegal)
         else:
@@ -179,7 +181,7 @@ def get_base_url(text, baseurl='', encoding='utf-8'):
     baseurl = unicode_to_str(baseurl, encoding)
     m = _baseurl_re.search(text)
     if m:
-        baseurl = urljoin(baseurl, m.group(1).encode(encoding))
+        baseurl = urllib.parse.urljoin(baseurl, m.group(1).encode(encoding))
     return safe_url_string(baseurl)
 
 def get_meta_refresh(text, baseurl='', encoding='utf-8'):
@@ -190,18 +192,19 @@ def get_meta_refresh(text, baseurl='', encoding='utf-8'):
 
     If no meta redirect is found, (None, None) is returned.
     """
-    baseurl = unicode_to_str(baseurl, encoding)
+    if six.PY2:
+        baseurl = unicode_to_str(baseurl, encoding)
     try:
         text = str_to_unicode(text, encoding)
     except UnicodeDecodeError:
-        print text
+        print(text)
         raise
     text = remove_comments(remove_entities(text))
     m = _meta_refresh_re.search(text)
     if m:
         interval = float(m.group('int'))
         url = safe_url_string(m.group('url').strip(' "\''), encoding)
-        url = urljoin(baseurl, url)
+        url = urllib.parse.urljoin(baseurl, url)
         return interval, url
     else:
         return None, None
