@@ -20,9 +20,10 @@ _CONTENT2_RE = _TEMPLATE % ('charset', r'(?P<charset2>[\w-]+)')
 _XML_ENCODING_RE = _TEMPLATE % ('encoding', r'(?P<xmlcharset>[\w-]+)')
 
 # check for meta tags, or xml decl. and stop search if a body tag is encountered
-_BODY_ENCODING_RE = re.compile(
-    r'<\s*(?:meta(?:(?:\s+%s|\s+%s){2}|\s+%s)|\?xml\s[^>]+%s|body)' % \
-        (_HTTPEQUIV_RE, _CONTENT_RE, _CONTENT2_RE, _XML_ENCODING_RE), re.I)
+_BODY_ENCODING_PATTERN = r'<\s*(?:meta(?:(?:\s+%s|\s+%s){2}|\s+%s)|\?xml\s[^>]+%s|body)' % \
+                        (_HTTPEQUIV_RE, _CONTENT_RE, _CONTENT2_RE, _XML_ENCODING_RE)
+_BODY_ENCODING_STR_RE = re.compile(_BODY_ENCODING_PATTERN, re.I)
+_BODY_ENCODING_BYTES_RE = re.compile(_BODY_ENCODING_PATTERN.encode('ascii'), re.I)
 
 def html_body_declared_encoding(html_body_str):
     """encoding specified in meta tags in the html body, or None if no
@@ -30,7 +31,11 @@ def html_body_declared_encoding(html_body_str):
     """
     # html5 suggests the first 1024 bytes are sufficient, we allow for more
     chunk = html_body_str[:4096]
-    match = _BODY_ENCODING_RE.search(chunk)
+    if isinstance(chunk, bytes):
+        match = _BODY_ENCODING_BYTES_RE.search(chunk)
+    else:
+        match = _BODY_ENCODING_STR_RE.search(chunk)
+
     if match:
         encoding = match.group('charset') or match.group('charset2') \
                 or match.group('xmlcharset')
