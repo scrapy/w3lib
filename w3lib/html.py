@@ -4,8 +4,7 @@ Functions for dealing with markup text
 
 import re
 import six
-from six.moves import urllib
-from six.moves import html_entities
+from six import moves
 
 from w3lib.util import str_to_unicode, unicode_to_str
 from w3lib.url import safe_url_string
@@ -56,7 +55,7 @@ def remove_entities(text, keep=(), remove_illegal=True, encoding='utf-8'):
             if entity_body in keep:
                 return m.group(0)
             else:
-                number = html_entities.name2codepoint.get(entity_body)
+                number = moves.html_entities.name2codepoint.get(entity_body)
         if number is not None:
             try:
                 return six.unichr(number)
@@ -181,7 +180,7 @@ def get_base_url(text, baseurl='', encoding='utf-8'):
     baseurl = unicode_to_str(baseurl, encoding)
     m = _baseurl_re.search(text)
     if m:
-        baseurl = urllib.parse.urljoin(baseurl, m.group(1).encode(encoding))
+        baseurl = moves.urllib.parse.urljoin(baseurl, m.group(1).encode(encoding))
     return safe_url_string(baseurl)
 
 def get_meta_refresh(text, baseurl='', encoding='utf-8'):
@@ -204,7 +203,7 @@ def get_meta_refresh(text, baseurl='', encoding='utf-8'):
     if m:
         interval = float(m.group('int'))
         url = safe_url_string(m.group('url').strip(' "\''), encoding)
-        url = urllib.parse.urljoin(baseurl, url)
+        url = moves.urllib.parse.urljoin(baseurl, url)
         return interval, url
     else:
         return None, None
