@@ -1,6 +1,6 @@
-from setuptools import setup
+#!/usr/bin/env python
 
-setup(
+setup_args = dict(
     name='w3lib',
     version='1.5',
     license='BSD',
@@ -23,5 +23,15 @@ setup(
         'Programming Language :: Python :: Implementation :: PyPy',
         'Topic :: Internet :: WWW/HTTP',
     ],
-    install_requires=['six >= 1.4.1'],
+    requires=['six (>= 1.4.1)'],
 )
+
+try:
+    from setuptools import setup
+except ImportError:
+    from distutils.core import setup
+else:
+    setup_args['install_requires'] = ['six >= 1.4.1']
+
+setup(**setup_args)
+
