@@ -1,3 +1,4 @@
+import warnings
 import six
 if six.PY2:
     from cStringIO import StringIO as BytesIO
@@ -16,6 +17,13 @@ def encode_multipart(data):
     Return (body, boundary) tuple where ``body`` is binary body value,
     and ``boundary`` is the boundary used (as native string).
     """
+    warnings.warn(
+        "`w3lib.form.encode_multipart` function is deprecated and "
+        "will be removed in future releases. Please use "
+        "`urllib3.filepost.encode_multipart_formdata` instead.",
+        DeprecationWarning
+    )
+
     # Build up the MIME payload for the POST data
     boundary = '--------------GHSKFJDLGDS7543FJKLFHRE75642756743254'
     sep_boundary = b'\r\n--' + boundary.encode('ascii')

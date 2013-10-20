@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+import warnings
 import unittest
 try:
     from collections import OrderedDict
@@ -12,7 +13,8 @@ class EncodeMultipartTest(unittest.TestCase):
 
     def test_encode_multipart(self):
         data = {'key': 'value'}
-        body, boundary = encode_multipart(data)
+        with warnings.catch_warnings(record=True):
+            body, boundary = encode_multipart(data)
         expected_body = (
             '\r\n--{boundary}'
             '\r\nContent-Disposition: form-data; name="key"\r\n'
@@ -27,7 +29,8 @@ class EncodeMultipartTest(unittest.TestCase):
             (u'ключ1', u'значение1'.encode('utf8')),
             (u'ключ2', u'значение2'),
         ])
-        body, boundary = encode_multipart(data)
+        with warnings.catch_warnings(record=True):
+            body, boundary = encode_multipart(data)
         expected_body = (
             u'\r\n--{boundary}'
             u'\r\nContent-Disposition: form-data; name="ключ1"\r\n'
@@ -43,7 +46,8 @@ class EncodeMultipartTest(unittest.TestCase):
     def test_encode_multipart_file(self):
         # this data is not decodable using utf8
         data = {'key': ('file/name', b'\xa1\xa2\xa3\xa4\r\n\r')}
-        body, boundary = encode_multipart(data)
+        with warnings.catch_warnings(record=True):
+            body, boundary = encode_multipart(data)
         body_lines = [
             b'\r\n--' + boundary.encode('ascii'),
             b'\r\nContent-Disposition: form-data; name="key"; filename="file/name"\r\n',
