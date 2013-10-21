@@ -8,7 +8,14 @@ from w3lib.util import unicode_to_str
 
 
 def encode_multipart(data):
-    """Encode the given data to be used in a multipart HTTP POST. Data is a
+    """
+
+    .. warning::
+
+        This function is deprecated and will be removed in future.
+        Please use ``urllib3.filepost.encode_multipart_formdata`` instead.
+
+    Encode the given data to be used in a multipart HTTP POST. Data is a
     where keys are the field name, and values are either strings or tuples
     (filename, content) for file uploads.
 
