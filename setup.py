@@ -28,10 +28,9 @@ setup_args = dict(
 
 try:
     from setuptools import setup
+    setup_args['install_requires'] = ['six >= 1.4.1']
 except ImportError:
     from distutils.core import setup
-else:
-    setup_args['install_requires'] = ['six >= 1.4.1']
 
 setup(**setup_args)
 
