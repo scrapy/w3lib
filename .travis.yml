@@ -1,13 +1,19 @@
 language: python
-python:
-  - "2.7"
-  - "2.6"
-  - "3.3"
-  - "pypy"
+python: 2.7
+env:
+    - TOXENV=py27
+    - TOXENV=pypy
+    - TOXENV=py33
 
 install:
-  - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then pip install ordereddict; fi
-  - pip install .
+    - ./.travis-workarounds.sh
+    - pip install -M tox
 
-# command to run tests, e.g. python setup.py test
-script: nosetests
+script: tox
+
+notifications:
+    irc:
+        channels:
+            - "irc.freenode.org#scrapy"
+        use_notice: true
+        skip_join: true
