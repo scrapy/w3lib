@@ -3,19 +3,24 @@ from base64 import urlsafe_b64encode
 def headers_raw_to_dict(headers_raw):
     """
     Convert raw headers (single multi-line string)
-    to the dictionary.
+    to a dictionary.
 
     For example:
+
     >>> headers_raw_to_dict("Content-type: text/html\\n\\rAccept: gzip\\n\\n")
     {'Content-type': ['text/html'], 'Accept': ['gzip']}
 
     Incorrect input:
+
     >>> headers_raw_to_dict("Content-typt gzip\\n\\n")
     {}
 
-    Argument is None:
+    Argument is ``None`` (return ``None``):
+
     >>> headers_raw_to_dict(None)
+
     """
+
     if headers_raw is None:
         return None
     return dict([
@@ -33,17 +38,21 @@ def headers_dict_to_raw(headers_dict):
     Returns a raw HTTP headers representation of headers
 
     For example:
+
     >>> headers_dict_to_raw({'Content-type': 'text/html', 'Accept': 'gzip'})
     'Content-type: text/html\\r\\nAccept: gzip'
+
     >>> from twisted.python.util import InsensitiveDict
     >>> td = InsensitiveDict({'Content-type': ['text/html'], 'Accept': ['gzip']})
     >>> headers_dict_to_raw(td)
     'Content-type: text/html\\r\\nAccept: gzip'
 
-    Argument is None:
+    Argument is ``None`` (returns ``None``):
+
     >>> headers_dict_to_raw(None)
 
     """
+
     if headers_dict is None:
         return None
     raw_lines = []
@@ -57,7 +66,17 @@ def headers_dict_to_raw(headers_dict):
 
 
 def basic_auth_header(username, password):
-    """Return `Authorization` header for HTTP Basic Access Authentication (RFC 2617)"""
+    """
+    Return an `Authorization` header field value for `HTTP Basic Access Authentication (RFC 2617)`_
+
+    >>> import w3lib.http
+    >>> w3lib.http.basic_auth_header('someuser', 'somepass')
+    u'Basic c29tZXVzZXI6c29tZXBhc3M='
+
+    .. _HTTP Basic Access Authentication (RFC 2617): http://www.ietf.org/rfc/rfc2617.txt
+
+    """
+
     auth = "%s:%s" % (username, password)
     if not isinstance(auth, bytes):
         # XXX: RFC 2617 doesn't define encoding, but ISO-8859-1

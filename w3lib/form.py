@@ -8,7 +8,7 @@ from w3lib.util import unicode_to_str
 
 
 def encode_multipart(data):
-    """
+    """Encode the given data to be used in a multipart HTTP POST.
 
     .. warning::
 
@@ -19,11 +19,26 @@ def encode_multipart(data):
     where keys are the field name, and values are either strings or tuples
     (filename, content) for file uploads.
 
-    This code is based on distutils.command.upload.
+    `data` is a dictionary where keys are the field name, and values are
+    either strings or tuples as `(filename, content)` for file uploads.
 
-    Return (body, boundary) tuple where ``body`` is binary body value,
-    and ``boundary`` is the boundary used (as native string).
+    This code is based on :class:`distutils.command.upload`.
+
+    Returns a `(body, boundary)` tuple where `body` is binary body value,
+    and `boundary` is the boundary used (as native string).
+
+    >>> import w3lib.form
+    >>> w3lib.form.encode_multipart({'key': 'value'})
+    ('\\r\\n----------------GHSKFJDLGDS7543FJKLFHRE75642756743254\\r\\nContent-Disposition: form-data; name="key"\\r\\n\\r\\nvalue\\r\\n----------------GHSKFJDLGDS7543FJKLFHRE75642756743254--\\r\\n', '--------------GHSKFJDLGDS7543FJKLFHRE75642756743254')
+
+    >>> w3lib.form.encode_multipart({'key1': 'value1', 'key2': 'value2'})
+    ('\\r\\n----------------GHSKFJDLGDS7543FJKLFHRE75642756743254\\r\\nContent-Disposition: form-data; name="key2"\\r\\n\\r\\nvalue2\\r\\n----------------GHSKFJDLGDS7543FJKLFHRE75642756743254\\r\\nContent-Disposition: form-data; name="key1"\\r\\n\\r\\nvalue1\\r\\n----------------GHSKFJDLGDS7543FJKLFHRE75642756743254--\\r\\n', '--------------GHSKFJDLGDS7543FJKLFHRE75642756743254')
+
+    >>> w3lib.form.encode_multipart({'somekey': ('path/to/filename', b'\\xa1\\xa2\\xa3\\xa4\\r\\n\\r')})
+    ('\\r\\n----------------GHSKFJDLGDS7543FJKLFHRE75642756743254\\r\\nContent-Disposition: form-data; name="somekey"; filename="path/to/filename"\\r\\n\\r\\n\\xa1\\xa2\\xa3\\xa4\\r\\n\\r\\r\\n----------------GHSKFJDLGDS7543FJKLFHRE75642756743254--\\r\\n', '--------------GHSKFJDLGDS7543FJKLFHRE75642756743254')
+
     """
+
     warnings.warn(
         "`w3lib.form.encode_multipart` function is deprecated and "
         "will be removed in future releases. Please use "

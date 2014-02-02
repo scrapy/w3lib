@@ -6,7 +6,14 @@ import re, codecs, encodings
 _HEADER_ENCODING_RE = re.compile(r'charset=([\w-]+)', re.I)
 
 def http_content_type_encoding(content_type):
-    """Extract the encoding in the content-type header"""
+    """Extract the encoding in the content-type header
+
+    >>> import w3lib.encoding
+    >>> w3lib.encoding.http_content_type_encoding("Content-Type: text/html; charset=ISO-8859-4")
+    'iso8859-4'
+
+    """
+
     if content_type:
         match = _HEADER_ENCODING_RE.search(content_type)
         if match:
@@ -26,9 +33,26 @@ _BODY_ENCODING_STR_RE = re.compile(_BODY_ENCODING_PATTERN, re.I)
 _BODY_ENCODING_BYTES_RE = re.compile(_BODY_ENCODING_PATTERN.encode('ascii'), re.I)
 
 def html_body_declared_encoding(html_body_str):
-    """encoding specified in meta tags in the html body, or None if no
-    suitable encoding was found
-    """
+    '''Return the encoding specified in meta tags in the html body,
+    or ``None`` if no suitable encoding was found
+
+    >>> import w3lib.encoding
+    >>> w3lib.encoding.html_body_declared_encoding(
+    """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+             "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+        <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+        <head>
+            <title>Some title</title>
+            <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+        </head>
+        <body>
+        ...
+        </body>
+        </html>""")
+    'utf-8'
+
+    '''
+
     # html5 suggests the first 1024 bytes are sufficient, we allow for more
     chunk = html_body_str[:4096]
     if isinstance(chunk, bytes):
@@ -78,8 +102,14 @@ def _c18n_encoding(encoding):
     return encodings.aliases.aliases.get(normed, normed)
 
 def resolve_encoding(encoding_alias):
-    """Return the encoding the given encoding alias maps to, or None if the
-    encoding cannot be interpreted
+    """Return the encoding that `encoding_alias` maps to, or ``None``
+    if the encoding cannot be interpreted
+
+    >>> w3lib.encoding.resolve_encoding('latin1')
+    'cp1252'
+    >>> w3lib.encoding.resolve_encoding('gb_2312-80')
+    'gb18030'
+
     """
     c18n_encoding = _c18n_encoding(encoding_alias)
     translated = DEFAULT_ENCODING_TRANSLATION.get(c18n_encoding, c18n_encoding)
@@ -102,7 +132,20 @@ def read_bom(data):
     return the encoding represented by the BOM and the BOM.
 
     If no BOM can be detected, (None, None) is returned.
+
+    >>> w3lib.encoding.read_bom(b'\\xfe\\xff\\x6c\\x34')
+    ('utf-16-be', '\\xfe\\xff')
+    >>> w3lib.encoding.read_bom(b'\\xff\\xfe\\x34\\x6c')
+    ('utf-16-le', '\\xff\\xfe')
+    >>> w3lib.encoding.read_bom(b'\\x00\\x00\\xfe\\xff\\x00\\x00\\x6c\\x34')
+    ('utf-32-be', '\\x00\\x00\\xfe\\xff')
+    >>> w3lib.encoding.read_bom(b'\\xff\\xfe\\x00\\x00\\x34\\x6c\\x00\\x00')
+    ('utf-32-le', '\\xff\\xfe\\x00\\x00')
+    >>> w3lib.encoding.read_bom(b'\\x01\\x02\\x03\\x04')
+    (None, None)
+
     """
+
     # common case is no BOM, so this is fast
     if data and data[0] in _FIRST_CHARS:
         for bom, encoding in _BOM_TABLE:
@@ -117,7 +160,7 @@ codecs.register_error('w3lib_replace', lambda exc: (u'\ufffd', exc.start+1))
 def to_unicode(data_str, encoding):
     """Convert a str object to unicode using the encoding given
 
-    Characters that cannot be converted will be converted to '\ufffd' (the
+    Characters that cannot be converted will be converted to ``\\ufffd`` (the
     unicode replacement character).
     """
     return data_str.decode(encoding, 'w3lib_replace')
@@ -127,13 +170,14 @@ def html_to_unicode(content_type_header, html_body_str,
     """Convert raw html bytes to unicode
 
     This attempts to make a reasonable guess at the content encoding of the
-    html body, following a similar process as a web browser.
+    html body, following a similar process to a web browser.
 
     It will try in order:
+
     * http content type header
     * BOM (byte-order mark)
     * meta or xml tag declarations
-    * auto-detection, if the `auto_detect_fun` keyword argument is not None
+    * auto-detection, if the `auto_detect_fun` keyword argument is not ``None``
     * default encoding in keyword arg (which defaults to utf8)
 
     If an encoding other than the auto-detected or default encoding is used,
@@ -145,21 +189,42 @@ def html_to_unicode(content_type_header, html_body_str,
     The `auto_detect_fun` argument can be used to pass a function that will
     sniff the encoding of the text. This function must take the raw text as an
     argument and return the name of an encoding that python can process, or
-    None.  To use chardet, for example, you can define the function as:
+    None.  To use chardet, for example, you can define the function as::
+
         auto_detect_fun=lambda x: chardet.detect(x).get('encoding')
-    or to use UnicodeDammit (shipped with the BeautifulSoup library):
+
+    or to use UnicodeDammit (shipped with the BeautifulSoup library)::
+
         auto_detect_fun=lambda x: UnicodeDammit(x).originalEncoding
 
     If the locale of the website or user language preference is known, then a
     better default encoding can be supplied.
 
-    If the content type header is not present, None can be passed signifying
+    If `content_type_header` is not present, ``None`` can be passed signifying
     that the header was not present.
 
     This method will not fail, if characters cannot be converted to unicode,
-    '\ufffd' (the unicode replacement character) will be inserted instead.
+    ``\\ufffd`` (the unicode replacement character) will be inserted instead.
 
-    returns a tuple of (encoding used, unicode)
+    Returns a tuple of ``(<encoding used>, <unicode_string>)``
+
+    Examples:
+
+    >>> doc = '''<!DOCTYPE html>
+    <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Creative Commons France</title>
+    <link rel=\'canonical\' href=\'http://creativecommons.fr/\' />
+    <body>
+    <p>Creative Commons est une organisation \\xc3\\xa0 but non lucratif
+    qui a pour dessein de faciliter la diffusion et le partage des oeuvres
+    tout en accompagnant les nouvelles pratiques de cr\\xc3\\xa9ation \\xc3\\xa0 l\\xe2\\x80\\x99\\xc3\\xa8re numerique.</p>
+    </body>
+    </html>'''
+    >>> w3lib.encoding.html_to_unicode(None, doc)
+    ('utf-8', u'<!DOCTYPE html>\\n<head>\\n<meta charset="UTF-8" />\\n<meta name="viewport" content="width=device-width" />\\n<title>Creative Commons France</title>\\n<link rel=\'canonical\' href=\'http://creativecommons.fr/\' />\\n<body>\\n<p>Creative Commons est une organisation \xe0 but non lucratif\\nqui a pour dessein de faciliter la diffusion et le partage des oeuvres \\ntout en accompagnant les nouvelles pratiques de cr\xe9ation \xe0 l\u2019\xe8re numerique.</p>\\n</body>\\n</html>')
+
     """
     enc = http_content_type_encoding(content_type_header)
     bom_enc, bom = read_bom(html_body_str)
