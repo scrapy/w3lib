@@ -17,7 +17,7 @@ _meta_refresh_re = re.compile(six.u(r'<meta[^>]*http-equiv[^>]*refresh[^>]*conte
 _cdata_re = re.compile(r'((?P<cdata_s><!\[CDATA\[)(?P<cdata_d>.*?)(?P<cdata_e>\]\]>))', re.DOTALL)
 
 def remove_entities(text, keep=(), remove_illegal=True, encoding='utf-8'):
-    """Remove entities from the given `text` by converting them to their
+    u"""Remove entities from the given `text` by converting them to their
     corresponding unicode character.
 
     `text` can be a unicode string or a byte string encoded in the given
@@ -37,9 +37,10 @@ def remove_entities(text, keep=(), remove_illegal=True, encoding='utf-8'):
 
     >>> import w3lib.html
     >>> w3lib.html.remove_entities(b'Price: &pound;100')
-    u'Price: \\xa3100!'
-    >>> print w3lib.html.remove_entities(b'Price: &pound;100!')
-    Price: £100!
+    u'Price: \\xa3100'
+    >>> print w3lib.html.remove_entities(b'Price: &pound;100')
+    Price: £100
+    >>>
 
     """
 
@@ -93,6 +94,7 @@ def replace_tags(text, token='', encoding=None):
     u'This text contains some tag'
     >>> w3lib.html.replace_tags('<p>Je ne parle pas <b>fran\\xe7ais</b></p>', ' -- ', 'latin-1')
     u' -- Je ne parle pas  -- fran\\xe7ais --  -- '
+    >>>
 
     """
 
@@ -103,8 +105,10 @@ _REMOVECOMMENTS_RE = re.compile(u'<!--.*?-->', re.DOTALL)
 def remove_comments(text, encoding=None):
     """ Remove HTML Comments.
 
+    >>> import w3lib.html
     >>> w3lib.html.remove_comments(b"test <!--textcoment--> whatever")
     u'test  whatever'
+    >>>
 
     """
 
@@ -128,19 +132,23 @@ def remove_tags(text, which_ones=(), keep=(), encoding=None):
 
     Remove all tags:
 
+    >>> import w3lib.html
     >>> doc = '<div><p><b>This is a link:</b> <a href="http://www.example.com">example</a></p></div>'
     >>> w3lib.html.remove_tags(doc)
     u'This is a link: example'
+    >>>
 
     Keep only some tags:
 
     >>> w3lib.html.remove_tags(doc, keep=('div',))
     u'<div>This is a link: example</div>'
+    >>>
 
     Remove only specific tags:
 
     >>> w3lib.html.remove_tags(doc, which_ones=('a','b'))
     u'<div><p>This is a link: example</p></div>'
+    >>>
 
     You can't remove some and keep some:
 
@@ -150,6 +158,7 @@ def remove_tags(text, which_ones=(), keep=(), encoding=None):
       File "/usr/local/lib/python2.7/dist-packages/w3lib/html.py", line 101, in remove_tags
         assert not (which_ones and keep), 'which_ones and keep can not be given at the same time'
     AssertionError: which_ones and keep can not be given at the same time
+    >>>
 
     """
 
@@ -176,9 +185,11 @@ def remove_tags_with_content(text, which_ones=(), encoding=None):
     `which_ones` is a tuple of which tags to remove including their content.
     If is empty, returns the string unmodified.
 
+    >>> import w3lib.html
     >>> doc = '<div><p><b>This is a link:</b> <a href="http://www.example.com">example</a></p></div>'
     >>> w3lib.html.remove_tags_with_content(doc, which_ones=('b',))
     u'<div><p> <a href="http://www.example.com">example</a></p></div>'
+    >>>
 
     """
 

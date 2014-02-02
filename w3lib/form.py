@@ -8,16 +8,14 @@ from w3lib.util import unicode_to_str
 
 
 def encode_multipart(data):
-    """Encode the given data to be used in a multipart HTTP POST.
+    r"""
 
     .. warning::
 
         This function is deprecated and will be removed in future.
         Please use ``urllib3.filepost.encode_multipart_formdata`` instead.
 
-    Encode the given data to be used in a multipart HTTP POST. Data is a
-    where keys are the field name, and values are either strings or tuples
-    (filename, content) for file uploads.
+    Encode the given data to be used in a multipart HTTP POST.
 
     `data` is a dictionary where keys are the field name, and values are
     either strings or tuples as `(filename, content)` for file uploads.
@@ -29,13 +27,12 @@ def encode_multipart(data):
 
     >>> import w3lib.form
     >>> w3lib.form.encode_multipart({'key': 'value'})
-    ('\\r\\n----------------GHSKFJDLGDS7543FJKLFHRE75642756743254\\r\\nContent-Disposition: form-data; name="key"\\r\\n\\r\\nvalue\\r\\n----------------GHSKFJDLGDS7543FJKLFHRE75642756743254--\\r\\n', '--------------GHSKFJDLGDS7543FJKLFHRE75642756743254')
-
-    >>> w3lib.form.encode_multipart({'key1': 'value1', 'key2': 'value2'})
-    ('\\r\\n----------------GHSKFJDLGDS7543FJKLFHRE75642756743254\\r\\nContent-Disposition: form-data; name="key2"\\r\\n\\r\\nvalue2\\r\\n----------------GHSKFJDLGDS7543FJKLFHRE75642756743254\\r\\nContent-Disposition: form-data; name="key1"\\r\\n\\r\\nvalue1\\r\\n----------------GHSKFJDLGDS7543FJKLFHRE75642756743254--\\r\\n', '--------------GHSKFJDLGDS7543FJKLFHRE75642756743254')
-
-    >>> w3lib.form.encode_multipart({'somekey': ('path/to/filename', b'\\xa1\\xa2\\xa3\\xa4\\r\\n\\r')})
-    ('\\r\\n----------------GHSKFJDLGDS7543FJKLFHRE75642756743254\\r\\nContent-Disposition: form-data; name="somekey"; filename="path/to/filename"\\r\\n\\r\\n\\xa1\\xa2\\xa3\\xa4\\r\\n\\r\\r\\n----------------GHSKFJDLGDS7543FJKLFHRE75642756743254--\\r\\n', '--------------GHSKFJDLGDS7543FJKLFHRE75642756743254')
+    ('\r\n----------------GHSKFJDLGDS7543FJKLFHRE75642756743254\r\nContent-Disposition: form-data; name="key"\r\n\r\nvalue\r\n----------------GHSKFJDLGDS7543FJKLFHRE75642756743254--\r\n', '--------------GHSKFJDLGDS7543FJKLFHRE75642756743254')
+    >>> w3lib.form.encode_multipart({'key1': 'value1', 'key2': 'value2'})   # doctest: +SKIP
+    ('\r\n----------------GHSKFJDLGDS7543FJKLFHRE75642756743254\r\nContent-Disposition: form-data; name="key2"\r\n\r\nvalue2\r\n----------------GHSKFJDLGDS7543FJKLFHRE75642756743254\r\nContent-Disposition: form-data; name="key1"\r\n\r\nvalue1\r\n----------------GHSKFJDLGDS7543FJKLFHRE75642756743254--\r\n', '--------------GHSKFJDLGDS7543FJKLFHRE75642756743254')
+    >>> w3lib.form.encode_multipart({'somekey': ('path/to/filename', b'\xa1\xa2\xa3\xa4\r\n\r')})
+    ('\r\n----------------GHSKFJDLGDS7543FJKLFHRE75642756743254\r\nContent-Disposition: form-data; name="somekey"; filename="path/to/filename"\r\n\r\n\xa1\xa2\xa3\xa4\r\n\r\r\n----------------GHSKFJDLGDS7543FJKLFHRE75642756743254--\r\n', '--------------GHSKFJDLGDS7543FJKLFHRE75642756743254')
+    >>>
 
     """
 

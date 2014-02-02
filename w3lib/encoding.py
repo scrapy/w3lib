@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Functions for handling encoding of web pages
 """
@@ -38,18 +39,19 @@ def html_body_declared_encoding(html_body_str):
 
     >>> import w3lib.encoding
     >>> w3lib.encoding.html_body_declared_encoding(
-    """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-             "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-        <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
-        <head>
-            <title>Some title</title>
-            <meta http-equiv="content-type" content="text/html;charset=utf-8" />
-        </head>
-        <body>
-        ...
-        </body>
-        </html>""")
+    ... """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    ...      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+    ... <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+    ... <head>
+    ...     <title>Some title</title>
+    ...     <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+    ... </head>
+    ... <body>
+    ... ...
+    ... </body>
+    ... </html>""")
     'utf-8'
+    >>>
 
     '''
 
@@ -105,10 +107,12 @@ def resolve_encoding(encoding_alias):
     """Return the encoding that `encoding_alias` maps to, or ``None``
     if the encoding cannot be interpreted
 
+    >>> import w3lib.encoding
     >>> w3lib.encoding.resolve_encoding('latin1')
     'cp1252'
     >>> w3lib.encoding.resolve_encoding('gb_2312-80')
     'gb18030'
+    >>>
 
     """
     c18n_encoding = _c18n_encoding(encoding_alias)
@@ -128,21 +132,23 @@ _BOM_TABLE = [
 _FIRST_CHARS = set(c[0] for (c, _) in _BOM_TABLE)
 
 def read_bom(data):
-    """Read the byte order mark in the text, if present, and
+    r"""Read the byte order mark in the text, if present, and
     return the encoding represented by the BOM and the BOM.
 
-    If no BOM can be detected, (None, None) is returned.
+    If no BOM can be detected, ``(None, None)`` is returned.
 
-    >>> w3lib.encoding.read_bom(b'\\xfe\\xff\\x6c\\x34')
-    ('utf-16-be', '\\xfe\\xff')
-    >>> w3lib.encoding.read_bom(b'\\xff\\xfe\\x34\\x6c')
-    ('utf-16-le', '\\xff\\xfe')
-    >>> w3lib.encoding.read_bom(b'\\x00\\x00\\xfe\\xff\\x00\\x00\\x6c\\x34')
-    ('utf-32-be', '\\x00\\x00\\xfe\\xff')
-    >>> w3lib.encoding.read_bom(b'\\xff\\xfe\\x00\\x00\\x34\\x6c\\x00\\x00')
-    ('utf-32-le', '\\xff\\xfe\\x00\\x00')
-    >>> w3lib.encoding.read_bom(b'\\x01\\x02\\x03\\x04')
+    >>> import w3lib.encoding
+    >>> w3lib.encoding.read_bom(b'\xfe\xff\x6c\x34')
+    ('utf-16-be', '\xfe\xff')
+    >>> w3lib.encoding.read_bom(b'\xff\xfe\x34\x6c')
+    ('utf-16-le', '\xff\xfe')
+    >>> w3lib.encoding.read_bom(b'\x00\x00\xfe\xff\x00\x00\x6c\x34')
+    ('utf-32-be', '\x00\x00\xfe\xff')
+    >>> w3lib.encoding.read_bom(b'\xff\xfe\x00\x00\x34\x6c\x00\x00')
+    ('utf-32-le', '\xff\xfe\x00\x00')
+    >>> w3lib.encoding.read_bom(b'\x01\x02\x03\x04')
     (None, None)
+    >>>
 
     """
 
@@ -167,7 +173,7 @@ def to_unicode(data_str, encoding):
 
 def html_to_unicode(content_type_header, html_body_str,
         default_encoding='utf8', auto_detect_fun=None):
-    """Convert raw html bytes to unicode
+    r'''Convert raw html bytes to unicode
 
     This attempts to make a reasonable guess at the content encoding of the
     html body, following a similar process to a web browser.
@@ -210,22 +216,25 @@ def html_to_unicode(content_type_header, html_body_str,
 
     Examples:
 
-    >>> doc = '''<!DOCTYPE html>
-    <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width" />
-    <title>Creative Commons France</title>
-    <link rel=\'canonical\' href=\'http://creativecommons.fr/\' />
-    <body>
-    <p>Creative Commons est une organisation \\xc3\\xa0 but non lucratif
-    qui a pour dessein de faciliter la diffusion et le partage des oeuvres
-    tout en accompagnant les nouvelles pratiques de cr\\xc3\\xa9ation \\xc3\\xa0 l\\xe2\\x80\\x99\\xc3\\xa8re numerique.</p>
-    </body>
-    </html>'''
-    >>> w3lib.encoding.html_to_unicode(None, doc)
-    ('utf-8', u'<!DOCTYPE html>\\n<head>\\n<meta charset="UTF-8" />\\n<meta name="viewport" content="width=device-width" />\\n<title>Creative Commons France</title>\\n<link rel=\'canonical\' href=\'http://creativecommons.fr/\' />\\n<body>\\n<p>Creative Commons est une organisation \xe0 but non lucratif\\nqui a pour dessein de faciliter la diffusion et le partage des oeuvres \\ntout en accompagnant les nouvelles pratiques de cr\xe9ation \xe0 l\u2019\xe8re numerique.</p>\\n</body>\\n</html>')
+    >>> import w3lib.encoding
+    >>> w3lib.encoding.html_to_unicode(None,
+    ... """<!DOCTYPE html>
+    ... <head>
+    ... <meta charset="UTF-8" />
+    ... <meta name="viewport" content="width=device-width" />
+    ... <title>Creative Commons France</title>
+    ... <link rel='canonical' href='http://creativecommons.fr/' />
+    ... <body>
+    ... <p>Creative Commons est une organisation \xc3\xa0 but non lucratif
+    ... qui a pour dessein de faciliter la diffusion et le partage des oeuvres
+    ... tout en accompagnant les nouvelles pratiques de cr\xc3\xa9ation \xc3\xa0 l\xe2\x80\x99\xc3\xa8re numerique.</p>
+    ... </body>
+    ... </html>""")
+    ('utf-8', u'<!DOCTYPE html>\n<head>\n<meta charset="UTF-8" />\n<meta name="viewport" content="width=device-width" />\n<title>Creative Commons France</title>\n<link rel=\'canonical\' href=\'http://creativecommons.fr/\' />\n<body>\n<p>Creative Commons est une organisation \xe0 but non lucratif\nqui a pour dessein de faciliter la diffusion et le partage des oeuvres\ntout en accompagnant les nouvelles pratiques de cr\xe9ation \xe0 l\u2019\xe8re numerique.</p>\n</body>\n</html>')
+    >>>
 
-    """
+    '''
+
     enc = http_content_type_encoding(content_type_header)
     bom_enc, bom = read_bom(html_body_str)
     if enc is not None:

@@ -7,17 +7,20 @@ def headers_raw_to_dict(headers_raw):
 
     For example:
 
-    >>> headers_raw_to_dict("Content-type: text/html\\n\\rAccept: gzip\\n\\n")
+    >>> import w3lib.http
+    >>> w3lib.http.headers_raw_to_dict("Content-type: text/html\\n\\rAccept: gzip\\n\\n")   # doctest: +SKIP
     {'Content-type': ['text/html'], 'Accept': ['gzip']}
 
     Incorrect input:
 
-    >>> headers_raw_to_dict("Content-typt gzip\\n\\n")
+    >>> w3lib.http.headers_raw_to_dict("Content-typt gzip\\n\\n")
     {}
+    >>>
 
     Argument is ``None`` (return ``None``):
 
-    >>> headers_raw_to_dict(None)
+    >>> w3lib.http.headers_raw_to_dict(None)
+    >>>
 
     """
 
@@ -39,17 +42,15 @@ def headers_dict_to_raw(headers_dict):
 
     For example:
 
-    >>> headers_dict_to_raw({'Content-type': 'text/html', 'Accept': 'gzip'})
+    >>> import w3lib.http
+    >>> w3lib.http.headers_dict_to_raw({'Content-type': 'text/html', 'Accept': 'gzip'}) # doctest: +SKIP
     'Content-type: text/html\\r\\nAccept: gzip'
-
-    >>> from twisted.python.util import InsensitiveDict
-    >>> td = InsensitiveDict({'Content-type': ['text/html'], 'Accept': ['gzip']})
-    >>> headers_dict_to_raw(td)
-    'Content-type: text/html\\r\\nAccept: gzip'
+    >>>
 
     Argument is ``None`` (returns ``None``):
 
-    >>> headers_dict_to_raw(None)
+    >>> w3lib.http.headers_dict_to_raw(None)
+    >>>
 
     """
 
