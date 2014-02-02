@@ -1,3 +1,4 @@
+import warnings
 import six
 if six.PY2:
     from cStringIO import StringIO as BytesIO
@@ -8,6 +9,15 @@ from w3lib.util import unicode_to_str
 
 def encode_multipart(data):
     """Encode the given data to be used in a multipart HTTP POST.
+
+    .. warning::
+
+        This function is deprecated and will be removed in future.
+        Please use ``urllib3.filepost.encode_multipart_formdata`` instead.
+
+    Encode the given data to be used in a multipart HTTP POST. Data is a
+    where keys are the field name, and values are either strings or tuples
+    (filename, content) for file uploads.
 
     `data` is a dictionary where keys are the field name, and values are
     either strings or tuples as `(filename, content)` for file uploads.
@@ -27,8 +37,14 @@ def encode_multipart(data):
     >>> w3lib.form.encode_multipart({'somekey': ('path/to/filename', b'\\xa1\\xa2\\xa3\\xa4\\r\\n\\r')})
     ('\\r\\n----------------GHSKFJDLGDS7543FJKLFHRE75642756743254\\r\\nContent-Disposition: form-data; name="somekey"; filename="path/to/filename"\\r\\n\\r\\n\\xa1\\xa2\\xa3\\xa4\\r\\n\\r\\r\\n----------------GHSKFJDLGDS7543FJKLFHRE75642756743254--\\r\\n', '--------------GHSKFJDLGDS7543FJKLFHRE75642756743254')
 
-
     """
+
+    warnings.warn(
+        "`w3lib.form.encode_multipart` function is deprecated and "
+        "will be removed in future releases. Please use "
+        "`urllib3.filepost.encode_multipart_formdata` instead.",
+        DeprecationWarning
+    )
 
     # Build up the MIME payload for the POST data
     boundary = '--------------GHSKFJDLGDS7543FJKLFHRE75642756743254'

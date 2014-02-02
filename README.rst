@@ -13,7 +13,6 @@ This is a Python library of web-related functions, such as:
 * remove comments, or tags from HTML snippets
 * extract base url from HTML snippets
 * translate entites on HTML strings
-* encoding mulitpart/form-data
 * convert raw HTTP headers to dicts and vice-versa
 * construct HTTP auth header
 * converting HTML pages to unicode
@@ -30,7 +29,6 @@ The w3lib package consists of four modules:
 * ``w3lib.html`` - functions for working with HTML
 * ``w3lib.http`` - functions for working with HTTP
 * ``w3lib.encoding`` - functions for working with character encoding
-* ``w3lib.form`` - functions for working with web forms
 
 Requirements
 ============
