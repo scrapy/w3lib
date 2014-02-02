@@ -102,7 +102,7 @@ def _c18n_encoding(encoding):
     return encodings.aliases.aliases.get(normed, normed)
 
 def resolve_encoding(encoding_alias):
-    """Return the encoding that ``encoding_alias`` maps to, or ``None``
+    """Return the encoding that `encoding_alias` maps to, or ``None``
     if the encoding cannot be interpreted
 
     >>> w3lib.encoding.resolve_encoding('latin1')
@@ -177,7 +177,7 @@ def html_to_unicode(content_type_header, html_body_str,
     * http content type header
     * BOM (byte-order mark)
     * meta or xml tag declarations
-    * auto-detection, if the `auto_detect_fun` keyword argument is not None
+    * auto-detection, if the `auto_detect_fun` keyword argument is not ``None``
     * default encoding in keyword arg (which defaults to utf8)
 
     If an encoding other than the auto-detected or default encoding is used,
@@ -186,7 +186,7 @@ def html_to_unicode(content_type_header, html_body_str,
 
     If a BOM is found matching the encoding, it will be stripped.
 
-    The ``auto_detect_fun`` argument can be used to pass a function that will
+    The `auto_detect_fun` argument can be used to pass a function that will
     sniff the encoding of the text. This function must take the raw text as an
     argument and return the name of an encoding that python can process, or
     None.  To use chardet, for example, you can define the function as::
@@ -200,7 +200,7 @@ def html_to_unicode(content_type_header, html_body_str,
     If the locale of the website or user language preference is known, then a
     better default encoding can be supplied.
 
-    If ``content_type_header`` is not present, ``None`` can be passed signifying
+    If `content_type_header` is not present, ``None`` can be passed signifying
     that the header was not present.
 
     This method will not fail, if characters cannot be converted to unicode,
