@@ -6,12 +6,12 @@
 Welcome to w3lib's documentation!
 =================================
 
-Contents:
-
 .. toctree::
    :maxdepth: 4
 
    modules
+
+.. include:: ../README.rst
 
 
 Indices and tables

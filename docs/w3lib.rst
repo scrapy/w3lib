@@ -33,10 +33,3 @@ w3lib Package
 
 .. automodule:: w3lib.url
     :members:
-
-:mod:`util` Module
-------------------
-
-.. automodule:: w3lib.util
-    :members:
-
