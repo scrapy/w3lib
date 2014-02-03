@@ -17,17 +17,20 @@ _ALWAYS_SAFE_BYTES = (b'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
 
 def urljoin_rfc(base, ref, encoding='utf-8'):
-    """Same as urlparse.urljoin but supports unicode values in base and ref
+    r"""Same as urlparse.urljoin but supports unicode values in base and ref
     parameters (in which case they will be converted to str using the given
     encoding).
 
     Always returns a str.
 
+    >>> import w3lib.url
     >>> w3lib.url.urljoin_rfc('http://www.example.com/path/index.html', u'/otherpath/index2.html')
     'http://www.example.com/otherpath/index2.html'
+    >>>
 
     >>> w3lib.url.urljoin_rfc('http://www.example.com/path/index.html', u'fran\u00e7ais/d\u00e9part.htm')
     'http://www.example.com/path/fran\xc3\xa7ais/d\xc3\xa9part.htm'
+    >>>
 
 
     """
@@ -89,22 +92,27 @@ def url_query_parameter(url, parameter, default=None, keep_blank_values=0):
 
     General case:
 
+    >>> import w3lib.url
     >>> w3lib.url.url_query_parameter("product.html?id=200&foo=bar", "id")
     '200'
+    >>>
 
     Return a default value if the parameter is not found:
 
     >>> w3lib.url.url_query_parameter("product.html?id=200&foo=bar", "notthere", "mydefault")
     'mydefault'
+    >>>
 
     Returns None if `keep_blank_values` not set or 0 (default):
 
     >>> w3lib.url.url_query_parameter("product.html?id=", "id")
+    >>>
 
     Returns an empty string if `keep_blank_values` set to 1:
 
     >>> w3lib.url.url_query_parameter("product.html?id=", "id", keep_blank_values=1)
     ''
+    >>>
 
     """
 
@@ -117,15 +125,18 @@ def url_query_parameter(url, parameter, default=None, keep_blank_values=0):
 def url_query_cleaner(url, parameterlist=(), sep='&', kvsep='=', remove=False, unique=True):
     """Clean URL arguments leaving only those passed in the parameterlist keeping order
 
+    >>> import w3lib.url
     >>> w3lib.url.url_query_cleaner("product.html?id=200&foo=bar&name=wired", ('id',))
     'product.html?id=200'
     >>> w3lib.url.url_query_cleaner("product.html?id=200&foo=bar&name=wired", ['id', 'name'])
     'product.html?id=200&name=wired'
+    >>>
 
     If `unique` is ``False``, do not remove duplicated keys
 
     >>> w3lib.url.url_query_cleaner("product.html?d=1&e=b&d=2&d=3&other=other", ['d'], unique=False)
     'product.html?d=1&d=2&d=3'
+    >>>
 
     If `remove` is ``True``, leave only those **not in parameterlist**.
 
@@ -133,6 +144,7 @@ def url_query_cleaner(url, parameterlist=(), sep='&', kvsep='=', remove=False, u
     'product.html?foo=bar&name=wired'
     >>> w3lib.url.url_query_cleaner("product.html?id=2&foo=bar&name=wired", ['id', 'foo'], remove=True)
     'product.html?name=wired'
+    >>>
 
     """
 
@@ -156,12 +168,14 @@ def url_query_cleaner(url, parameterlist=(), sep='&', kvsep='=', remove=False, u
 def add_or_replace_parameter(url, name, new_value, sep='&', url_is_quoted=False):
     """Add or remove a parameter to a given url
 
+    >>> import w3lib.url
     >>> w3lib.url.add_or_replace_parameter('http://www.example.com/index.php', 'arg', 'v')
     'http://www.example.com/index.php?arg=v'
     >>> w3lib.url.add_or_replace_parameter('http://www.example.com/index.php?arg1=v1&arg2=v2&arg3=v3', 'arg4', 'v4')
     'http://www.example.com/index.php?arg1=v1&arg2=v2&arg3=v3&arg4=v4'
     >>> w3lib.url.add_or_replace_parameter('http://www.example.com/index.php?arg1=v1&arg2=v2&arg3=v3', 'arg3', 'v3new')
     'http://www.example.com/index.php?arg1=v1&arg2=v2&arg3=v3new'
+    >>>
 
     """
 
