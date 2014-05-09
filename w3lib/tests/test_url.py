@@ -98,13 +98,15 @@ class UrlTests(unittest.TestCase):
                          'http://domain/test?arg1=v1&arg2=v2&arg3=v3&arg4=v4')
         self.assertEqual(add_or_replace_parameter(url, 'arg3', 'nv3'),
                          'http://domain/test?arg1=v1&arg2=v2&arg3=nv3')
-        url = 'http://domain/test?arg1=v1'
-        self.assertEqual(add_or_replace_parameter(url, 'arg2', 'v2', sep=';'),
-                         'http://domain/test?arg1=v1;arg2=v2')
+
+        url = 'http://domain/test?arg1=v1;arg2=v2'
+        self.assertEqual(add_or_replace_parameter(url, 'arg1', 'v3'),
+                         'http://domain/test?arg1=v3&arg2=v2')
+
         self.assertEqual(add_or_replace_parameter("http://domain/moreInfo.asp?prodID=", 'prodID', '20'),
                          'http://domain/moreInfo.asp?prodID=20')
         url = 'http://rmc-offers.co.uk/productlist.asp?BCat=2%2C60&CatID=60'
-        self.assertEqual(add_or_replace_parameter(url, 'BCat', 'newvalue', url_is_quoted=True),
+        self.assertEqual(add_or_replace_parameter(url, 'BCat', 'newvalue'),
                          'http://rmc-offers.co.uk/productlist.asp?BCat=newvalue&CatID=60')
         url = 'http://rmc-offers.co.uk/productlist.asp?BCat=2,60&CatID=60'
         self.assertEqual(add_or_replace_parameter(url, 'BCat', 'newvalue'),
@@ -112,6 +114,12 @@ class UrlTests(unittest.TestCase):
         url = 'http://rmc-offers.co.uk/productlist.asp?'
         self.assertEqual(add_or_replace_parameter(url, 'BCat', 'newvalue'),
                          'http://rmc-offers.co.uk/productlist.asp?BCat=newvalue')
+
+        url = "http://example.com/?version=1&pageurl=http%3A%2F%2Fwww.example.com%2Ftest%2F%23fragment%3Dy&param2=value2"
+        self.assertEqual(add_or_replace_parameter(url, 'version', '2'),
+                         'http://example.com/?version=2&pageurl=http%3A%2F%2Fwww.example.com%2Ftest%2F%23fragment%3Dy&param2=value2')
+        self.assertEqual(add_or_replace_parameter(url, 'pageurl', 'test'),
+                         'http://example.com/?version=1&pageurl=test&param2=value2')
 
     def test_url_query_cleaner(self):
         self.assertEqual('product.html?id=200',

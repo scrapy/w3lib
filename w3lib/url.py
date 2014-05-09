@@ -165,7 +165,7 @@ def url_query_cleaner(url, parameterlist=(), sep='&', kvsep='=', remove=False, u
             seen.add(k)
     return '?'.join([base, sep.join(querylist)]) if querylist else base
 
-def add_or_replace_parameter(url, name, new_value, sep='&', url_is_quoted=False):
+def add_or_replace_parameter(url, name, new_value):
     """Add or remove a parameter to a given url
 
     >>> import w3lib.url
@@ -178,23 +178,24 @@ def add_or_replace_parameter(url, name, new_value, sep='&', url_is_quoted=False)
     >>>
 
     """
+    parsed = moves.urllib.parse.urlsplit(url)
+    args = moves.urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
 
-    def has_querystring(url):
-        _, _, _, query, _ = moves.urllib.parse.urlsplit(url)
-        return bool(query)
-
-    parameter = url_query_parameter(url, name, keep_blank_values=1)
-    if url_is_quoted:
-        parameter = moves.urllib.parse.quote(parameter)
-    if parameter is None:
-        if has_querystring(url):
-            next_url = url + sep + name + '=' + new_value
+    new_args = []
+    found = False
+    for name_, value_ in args:
+        if name_ == name:
+            new_args.append((name_, new_value))
+            found = True
         else:
-            next_url = url.rstrip('?') + '?' + name + '=' + new_value
-    else:
-        next_url = url.replace(name+'='+parameter,
-                               name+'='+new_value)
-    return next_url
+            new_args.append((name_, value_))
+
+    if not found:
+        new_args.append((name, new_value))
+
+    query = moves.urllib.parse.urlencode(new_args)
+    return moves.urllib.parse.urlunsplit(parsed._replace(query=query))
+
 
 def path_to_file_uri(path):
     """Convert local filesystem path to legal File URIs as described in:
