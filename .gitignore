@@ -5,3 +5,4 @@ MANIFEST
 venv
 build
 dist
+docs/_build

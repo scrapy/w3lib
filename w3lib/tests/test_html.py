@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import unittest
 import six
-from w3lib.html import (remove_entities, replace_tags, remove_comments,
+from w3lib.html import (replace_entities, replace_tags, remove_comments,
     remove_tags_with_content, replace_escape_chars, remove_tags, unquote_markup,
     get_base_url, get_meta_refresh)
 
@@ -9,40 +9,40 @@ from w3lib.html import (remove_entities, replace_tags, remove_comments,
 class RemoveEntitiesTest(unittest.TestCase):
     def test_returns_unicode(self):
         # make sure it always return uncode
-        assert isinstance(remove_entities(b'no entities'), six.text_type)
-        assert isinstance(remove_entities(b'Price: &pound;100!'),  six.text_type)
-        assert isinstance(remove_entities(u'no entities'), six.text_type)
-        assert isinstance(remove_entities(u'Price: &pound;100!'),  six.text_type)
+        assert isinstance(replace_entities(b'no entities'), six.text_type)
+        assert isinstance(replace_entities(b'Price: &pound;100!'),  six.text_type)
+        assert isinstance(replace_entities(u'no entities'), six.text_type)
+        assert isinstance(replace_entities(u'Price: &pound;100!'),  six.text_type)
 
     def test_regular(self):
         # regular conversions
-        self.assertEqual(remove_entities(u'As low as &#163;100!'),
+        self.assertEqual(replace_entities(u'As low as &#163;100!'),
                          u'As low as \xa3100!')
-        self.assertEqual(remove_entities(b'As low as &pound;100!'),
+        self.assertEqual(replace_entities(b'As low as &pound;100!'),
                          u'As low as \xa3100!')
-        self.assertEqual(remove_entities('redirectTo=search&searchtext=MR0221Y&aff=buyat&affsrc=d_data&cm_mmc=buyat-_-ELECTRICAL & SEASONAL-_-MR0221Y-_-9-carat gold &frac12;oz solid crucifix pendant'),
+        self.assertEqual(replace_entities('redirectTo=search&searchtext=MR0221Y&aff=buyat&affsrc=d_data&cm_mmc=buyat-_-ELECTRICAL & SEASONAL-_-MR0221Y-_-9-carat gold &frac12;oz solid crucifix pendant'),
                          u'redirectTo=search&searchtext=MR0221Y&aff=buyat&affsrc=d_data&cm_mmc=buyat-_-ELECTRICAL & SEASONAL-_-MR0221Y-_-9-carat gold \xbdoz solid crucifix pendant')
 
     def test_keep_entities(self):
         # keep some entities
-        self.assertEqual(remove_entities(b'<b>Low &lt; High &amp; Medium &pound; six</b>', keep=['lt', 'amp']),
+        self.assertEqual(replace_entities(b'<b>Low &lt; High &amp; Medium &pound; six</b>', keep=['lt', 'amp']),
                          u'<b>Low &lt; High &amp; Medium \xa3 six</b>')
-        self.assertEqual(remove_entities(u'<b>Low &lt; High &amp; Medium &pound; six</b>', keep=[u'lt', u'amp']),
+        self.assertEqual(replace_entities(u'<b>Low &lt; High &amp; Medium &pound; six</b>', keep=[u'lt', u'amp']),
                          u'<b>Low &lt; High &amp; Medium \xa3 six</b>')
 
     def test_illegal_entities(self):
-        self.assertEqual(remove_entities('a &lt; b &illegal; c &#12345678; six', remove_illegal=False),
+        self.assertEqual(replace_entities('a &lt; b &illegal; c &#12345678; six', remove_illegal=False),
                          u'a < b &illegal; c &#12345678; six')
-        self.assertEqual(remove_entities('a &lt; b &illegal; c &#12345678; six', remove_illegal=True),
+        self.assertEqual(replace_entities('a &lt; b &illegal; c &#12345678; six', remove_illegal=True),
                          u'a < b  c  six')
-        self.assertEqual(remove_entities('x&#x2264;y'), u'x\u2264y')
+        self.assertEqual(replace_entities('x&#x2264;y'), u'x\u2264y')
 
     def test_browser_hack(self):
         # check browser hack for numeric character references in the 80-9F range
-        self.assertEqual(remove_entities('x&#153;y', encoding='cp1252'), u'x\u2122y')
+        self.assertEqual(replace_entities('x&#153;y', encoding='cp1252'), u'x\u2122y')
 
     def test_encoding(self):
-        self.assertEqual(remove_entities(b'x\x99&#153;&#8482;y', encoding='cp1252'), \
+        self.assertEqual(replace_entities(b'x\x99&#153;&#8482;y', encoding='cp1252'), \
                          u'x\u2122\u2122\u2122y')
 
 
