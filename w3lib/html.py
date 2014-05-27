@@ -3,6 +3,7 @@
 Functions for dealing with markup text
 """
 
+import warnings
 import re
 import six
 from six import moves
@@ -17,6 +18,24 @@ _meta_refresh_re = re.compile(six.u(r'<meta[^>]*http-equiv[^>]*refresh[^>]*conte
 _cdata_re = re.compile(r'((?P<cdata_s><!\[CDATA\[)(?P<cdata_d>.*?)(?P<cdata_e>\]\]>))', re.DOTALL)
 
 def remove_entities(text, keep=(), remove_illegal=True, encoding='utf-8'):
+    r"""
+
+    .. warning::
+
+        This function is deprecated and will be removed in future.
+        Please use :func:`replace_entities` instead.
+    """
+
+    warnings.warn(
+        "`w3lib.html.remove_entities` function is deprecated and "
+        "will be removed in future releases. Please use "
+        "`w3lib.html.replace_entities` instead.",
+        DeprecationWarning
+    )
+
+    return replace_entities(text, keep, remove_illegal, encoding)
+
+def replace_entities(text, keep=(), remove_illegal=True, encoding='utf-8'):
     u"""Remove entities from the given `text` by converting them to their
     corresponding unicode character.
 
