@@ -1,19 +1,20 @@
 from base64 import urlsafe_b64encode
 
+
 def headers_raw_to_dict(headers_raw):
-    """
-    Convert raw headers (single multi-line string)
+    r"""
+    Convert raw headers (single multi-line bytestring)
     to a dictionary.
 
     For example:
 
     >>> import w3lib.http
-    >>> w3lib.http.headers_raw_to_dict("Content-type: text/html\\n\\rAccept: gzip\\n\\n")   # doctest: +SKIP
+    >>> w3lib.http.headers_raw_to_dict(b"Content-type: text/html\n\rAccept: gzip\n\n")   # doctest: +SKIP
     {'Content-type': ['text/html'], 'Accept': ['gzip']}
 
     Incorrect input:
 
-    >>> w3lib.http.headers_raw_to_dict("Content-typt gzip\\n\\n")
+    >>> w3lib.http.headers_raw_to_dict(b"Content-typt gzip\n\n")
     {}
     >>>
 
@@ -26,26 +27,27 @@ def headers_raw_to_dict(headers_raw):
 
     if headers_raw is None:
         return None
+    headers = headers_raw.splitlines()
+    headers_tuples = [header.split(b':', 1) for header in headers]
     return dict([
         (header_item[0].strip(), [header_item[1].strip()])
-        for header_item
-        in [
-            header.split(':', 1)
-            for header
-            in headers_raw.splitlines()]
-        if len(header_item) == 2])
+        for header_item in headers_tuples
+        if len(header_item) == 2
+    ])
 
 
 def headers_dict_to_raw(headers_dict):
-    """
+    r"""
     Returns a raw HTTP headers representation of headers
 
     For example:
 
     >>> import w3lib.http
-    >>> w3lib.http.headers_dict_to_raw({'Content-type': 'text/html', 'Accept': 'gzip'}) # doctest: +SKIP
+    >>> w3lib.http.headers_dict_to_raw({b'Content-type': b'text/html', b'Accept': b'gzip'}) # doctest: +SKIP
     'Content-type: text/html\\r\\nAccept: gzip'
     >>>
+
+    Note that keys and values must be bytes.
 
     Argument is ``None`` (returns ``None``):
 
@@ -58,12 +60,12 @@ def headers_dict_to_raw(headers_dict):
         return None
     raw_lines = []
     for key, value in headers_dict.items():
-        if isinstance(value, (str, unicode)):
-            raw_lines.append("%s: %s" % (key, value))
+        if isinstance(value, bytes):
+            raw_lines.append(b": ".join([key, value]))
         elif isinstance(value, (list, tuple)):
             for v in value:
-                raw_lines.append("%s: %s" % (key, v))
-    return '\r\n'.join(raw_lines)
+                raw_lines.append(b": ".join([key, v]))
+    return b'\r\n'.join(raw_lines)
 
 
 def basic_auth_header(username, password):
