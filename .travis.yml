@@ -7,7 +7,7 @@ env:
 
 install:
     - ./.travis-workarounds.sh
-    - pip install -M tox
+    - pip install tox
 
 script: tox
 
