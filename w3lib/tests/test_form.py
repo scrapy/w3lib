@@ -2,10 +2,7 @@
 from __future__ import absolute_import
 import warnings
 import unittest
-try:
-    from collections import OrderedDict
-except ImportError:
-    from ordereddict import OrderedDict
+from collections import OrderedDict
 from w3lib.form import encode_multipart
 
 
