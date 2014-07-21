@@ -55,9 +55,9 @@ def replace_entities(text, keep=(), remove_illegal=True, encoding='utf-8'):
     Always returns a unicode string (with the entities removed).
 
     >>> import w3lib.html
-    >>> w3lib.html.remove_entities(b'Price: &pound;100')
+    >>> w3lib.html.replace_entities(b'Price: &pound;100')
     u'Price: \\xa3100'
-    >>> print w3lib.html.remove_entities(b'Price: &pound;100')
+    >>> print(w3lib.html.replace_entities(b'Price: &pound;100'))
     Price: £100
     >>>
 
@@ -263,7 +263,7 @@ def unquote_markup(text, keep=(), remove_illegal=True, encoding=None):
     for fragment in _get_fragments(text, _cdata_re):
         if isinstance(fragment, six.string_types):
             # it's not a CDATA (so we try to remove its entities)
-            ret_text += remove_entities(fragment, keep=keep, remove_illegal=remove_illegal)
+            ret_text += replace_entities(fragment, keep=keep, remove_illegal=remove_illegal)
         else:
             # it's a CDATA (so we just extract its content)
             ret_text += fragment.group('cdata_d')
@@ -301,7 +301,7 @@ def get_meta_refresh(text, baseurl='', encoding='utf-8'):
     except UnicodeDecodeError:
         print(text)
         raise
-    text = remove_comments(remove_entities(text))
+    text = remove_comments(replace_entities(text))
     m = _meta_refresh_re.search(text)
     if m:
         interval = float(m.group('int'))
