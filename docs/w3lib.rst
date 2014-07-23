@@ -8,13 +8,6 @@ w3lib Package
     :members:
 
 
-:mod:`form` Module
-------------------
-
-.. automodule:: w3lib.form
-    :members:
-
-
 :mod:`html` Module
 ------------------
 

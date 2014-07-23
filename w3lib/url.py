@@ -17,7 +17,13 @@ _ALWAYS_SAFE_BYTES = (b'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
 
 def urljoin_rfc(base, ref, encoding='utf-8'):
-    r"""Same as urlparse.urljoin but supports unicode values in base and ref
+    r"""
+    .. warning::
+
+        This function is deprecated and will be removed in future.
+        Please use ``urlparse.urljoin`` instead.
+
+    Same as urlparse.urljoin but supports unicode values in base and ref
     parameters (in which case they will be converted to str using the given
     encoding).
 
