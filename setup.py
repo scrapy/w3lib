@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='w3lib',
-    version='1.6',
+    version='1.6.0',
     license='BSD',
     description='Library of web-related functions',
     author='Scrapy project',
