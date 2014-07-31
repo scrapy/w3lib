@@ -75,6 +75,7 @@ def html_body_declared_encoding(html_body_str):
 # the keys are converted using _c18n_encoding and in sorted order
 DEFAULT_ENCODING_TRANSLATION = {
     'ascii': 'cp1252',
+    'big5': 'big5hkscs',
     'euc_kr': 'cp949',
     'gb2312': 'gb18030',
     'gb_2312_80': 'gb18030',

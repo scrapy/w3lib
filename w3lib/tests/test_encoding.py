@@ -135,6 +135,7 @@ class HtmlConversionTests(unittest.TestCase):
         self._assert_encoding('none', b"\xc2\xa3", 'utf-8', u"\xa3")
         self._assert_encoding('gb2312', b"\xa8D", 'gb18030', u"\u2015")
         self._assert_encoding('gbk', b"\xa8D", 'gb18030', u"\u2015")
+        self._assert_encoding('big5', b"\xf9\xda", 'big5hkscs', u"\u6052")
 
     def test_invalid_utf8_encoded_body_with_valid_utf8_BOM(self):
         # unlike scrapy, the BOM is stripped
