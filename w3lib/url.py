@@ -56,21 +56,21 @@ def safe_url_string(url, encoding='utf8'):
     """Convert the given url into a legal URL by escaping unsafe characters
     according to RFC-3986.
 
-    If a unicode url is given, it is first converted to str using the given
+    If a unicode url is given, it is first converted to bytes using the given
     encoding (which defaults to 'utf-8'). When passing a encoding, you should
     use the encoding of the original page (the page from which the url was
     extracted from).
 
-    Calling this function on an already "safe" url will return the url
-    unmodified.
+    Calling this function on an already "safe" url won't change url contents
+    (but will encode it to bytes if it was unicode).
 
-    Always returns a str.
+    Always returns bytes.
     """
     s = unicode_to_str(url, encoding)
-    return moves.urllib.parse.quote(s, _safe_chars)
+    return moves.urllib.parse.quote(s, _safe_chars).encode('ascii')
 
 
-_parent_dirs = re.compile(r'/?(\.\./)+')
+_parent_dirs = re.compile(br'/?(\.\./)+')
 
 def safe_download_url(url):
     """ Make a url for download. This will call safe_url_string
@@ -83,15 +83,18 @@ def safe_download_url(url):
     safe_url = safe_url_string(url)
     scheme, netloc, path, query, _ = moves.urllib.parse.urlsplit(safe_url)
     if path:
-        path = _parent_dirs.sub('', posixpath.normpath(path))
-        if url.endswith('/') and not path.endswith('/'):
-            path += '/'
+        path = _parent_dirs.sub(b'', posixpath.normpath(path))
+        if safe_url and safe_url[-1:] == b'/' and path[-1:] != b'/':
+            path += b'/'
     else:
-        path = '/'
-    return moves.urllib.parse.urlunsplit((scheme, netloc, path, query, ''))
+        path = b'/'
+    return moves.urllib.parse.urlunsplit((scheme, netloc, path, query, b''))
+
 
 def is_url(text):
-    return text.partition("://")[0] in ('file', 'http', 'https')
+    text = unicode_to_str(text)
+    return text.partition(b"://")[0] in {b'file', b'http', b'https'}
+
 
 def url_query_parameter(url, parameter, default=None, keep_blank_values=0):
     """Return the value of a url parameter, given the url and parameter name

@@ -11,43 +11,43 @@ class UrlTests(unittest.TestCase):
         # Motoko Kusanagi (Cyborg from Ghost in the Shell)
         motoko = u'\u8349\u8599 \u7d20\u5b50'
         self.assertEqual(safe_url_string(motoko),  # note the %20 for space
-                        '%E8%8D%89%E8%96%99%20%E7%B4%A0%E5%AD%90')
+                         b'%E8%8D%89%E8%96%99%20%E7%B4%A0%E5%AD%90')
         self.assertEqual(safe_url_string(motoko),
                          safe_url_string(safe_url_string(motoko)))
         self.assertEqual(safe_url_string(u'\xa9'), # copyright symbol
-                         '%C2%A9')
+                         b'%C2%A9')
         self.assertEqual(safe_url_string(u'\xa9', 'iso-8859-1'),
-                         '%A9')
+                         b'%A9')
         self.assertEqual(safe_url_string("http://www.example.org/"),
-                        'http://www.example.org/')
+                         b'http://www.example.org/')
 
         alessi = u'/ecommerce/oggetto/Te \xf2/tea-strainer/1273'
 
         self.assertEqual(safe_url_string(alessi),
-                         '/ecommerce/oggetto/Te%20%C3%B2/tea-strainer/1273')
+                         b'/ecommerce/oggetto/Te%20%C3%B2/tea-strainer/1273')
 
         self.assertEqual(safe_url_string("http://www.example.com/test?p(29)url(http://www.another.net/page)"),
-                                         "http://www.example.com/test?p(29)url(http://www.another.net/page)")
+                                         b"http://www.example.com/test?p(29)url(http://www.another.net/page)")
         self.assertEqual(safe_url_string("http://www.example.com/Brochures_&_Paint_Cards&PageSize=200"),
-                                         "http://www.example.com/Brochures_&_Paint_Cards&PageSize=200")
+                                         b"http://www.example.com/Brochures_&_Paint_Cards&PageSize=200")
 
         safeurl = safe_url_string(u"http://www.example.com/\xa3", encoding='latin-1')
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/%A3")
+        self.assertIsInstance(safeurl, bytes)
+        self.assertEqual(safeurl, b"http://www.example.com/%A3")
 
         safeurl = safe_url_string(u"http://www.example.com/\xa3", encoding='utf-8')
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/%C2%A3")
+        self.assertIsInstance(safeurl, bytes)
+        self.assertEqual(safeurl, b"http://www.example.com/%C2%A3")
 
-        self.assertTrue(isinstance(safe_url_string(b'http://example.com/'), str))
+        self.assertIsInstance(safe_url_string(b'http://example.com/'), bytes)
 
     def test_safe_download_url(self):
         self.assertEqual(safe_download_url('http://www.example.org/../'),
-                         'http://www.example.org/')
+                         b'http://www.example.org/')
         self.assertEqual(safe_download_url('http://www.example.org/../../images/../image'),
-                         'http://www.example.org/image')
+                         b'http://www.example.org/image')
         self.assertEqual(safe_download_url('http://www.example.org/dir/'),
-                         'http://www.example.org/dir/')
+                         b'http://www.example.org/dir/')
 
     def test_url_query_parameter(self):
         self.assertEqual(url_query_parameter("product.html?id=200&foo=bar", "id"),
