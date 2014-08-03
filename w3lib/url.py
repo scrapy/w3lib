@@ -8,8 +8,9 @@ import os
 import re
 import posixpath
 import warnings
-import six
+import string
 from collections import namedtuple
+import six
 from six.moves.urllib.parse import (urljoin, urlsplit, urlunsplit,
                                     urldefrag, urlencode, urlparse,
                                     quote, parse_qs, parse_qsl,
@@ -24,12 +25,11 @@ def _quote_byte(error):
 
 codecs.register_error('percentencode', _quote_byte)
 
-
-# Python 2.x urllib.always_safe become private in Python 3.x;
-# its content is copied here
-_ALWAYS_SAFE_BYTES = (b'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-                      b'abcdefghijklmnopqrstuvwxyz'
-                      b'0123456789' b'_.-')
+# constants from RFC 3986, Section 2.2 and 2.3
+RFC3986_GEN_DELIMS = b':/?#[]@'
+RFC3986_SUB_DELIMS = b"!$&'()*+,;="
+RFC3986_RESERVED = RFC3986_GEN_DELIMS + RFC3986_SUB_DELIMS
+RFC3986_UNRESERVED = (string.ascii_letters + string.digits + "-._~").encode('ascii')
 
 
 def urljoin_rfc(base, ref, encoding='utf-8'):
@@ -66,9 +66,8 @@ def urljoin_rfc(base, ref, encoding='utf-8'):
     str_ref = to_bytes(ref, encoding)
     return urljoin(str_base, str_ref)
 
-_reserved = b';/?:@&=+$|,#' # RFC 3986 (Generic Syntax)
-_unreserved_marks = b"-_.!~*'()" # RFC 3986 sec 2.3
-_safe_chars = _ALWAYS_SAFE_BYTES + b'%' + _reserved + _unreserved_marks
+
+_safe_chars = RFC3986_RESERVED + RFC3986_UNRESERVED + b'%'
 
 def safe_url_string(url, encoding='utf8', path_encoding='utf8'):
     """Convert the given URL into a legal URL by escaping unsafe characters
