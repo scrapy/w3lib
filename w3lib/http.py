@@ -64,7 +64,7 @@ def headers_dict_to_raw(headers_dict):
             raw_lines.append(b": ".join([key, value]))
         elif isinstance(value, (list, tuple)):
             for v in value:
-                raw_lines.append(b": ".join([key, v]))
+                raw_lines.append(b": ".join([key, str(v)]))
     return b'\r\n'.join(raw_lines)
 
 
