@@ -29,3 +29,14 @@ class HttpTests(unittest.TestCase):
             b'Content-type: text/html\r\nAccept: gzip'
         )
 
+        #Integer value found in a FTP response
+        int_dct = OrderedDict([
+            (b'Size', [12345]),
+            (b'Accept', b'gzip')
+        ])
+
+        self.assertEqual(
+            headers_dict_to_raw(int_dct),
+            b'Size: 12345\r\nAccept: gzip'
+        )
+
