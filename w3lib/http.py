@@ -74,7 +74,7 @@ def basic_auth_header(username, password):
 
     >>> import w3lib.http
     >>> w3lib.http.basic_auth_header('someuser', 'somepass')
-    u'Basic c29tZXVzZXI6c29tZXBhc3M='
+    'Basic c29tZXVzZXI6c29tZXBhc3M='
 
     .. _HTTP Basic Access Authentication (RFC 2617): http://www.ietf.org/rfc/rfc2617.txt
 
@@ -86,4 +86,4 @@ def basic_auth_header(username, password):
         # seems to be the most widely used encoding here. See also:
         # http://greenbytes.de/tech/webdav/draft-ietf-httpauth-basicauth-enc-latest.html
         auth = auth.encode('ISO-8859-1')
-    return 'Basic ' + urlsafe_b64encode(auth).decode('ascii')
+    return b'Basic ' + urlsafe_b64encode(auth)
