@@ -59,6 +59,18 @@ class UrlTests(unittest.TestCase):
                          None)
         self.assertEqual(url_query_parameter("product.html?id=", "id", keep_blank_values=1),
                          '')
+        self.assertEqual(
+            url_query_parameter(
+                u'path.html?a=2&poundsign=%C2%A3&eurosign=%E2%82%AC',
+                u'eurosign'),
+            u'\u20ac',
+        )
+        self.assertEqual(
+            url_query_parameter(
+                b'path.html?a=2&poundsign=%C2%A3&eurosign=%E2%82%AC',
+                b'eurosign'),
+            b'\xe2\x82\xac',
+        )
 
     def test_url_query_parameter_2(self):
         """
@@ -141,26 +153,49 @@ class UrlTests(unittest.TestCase):
         )
 
     def test_url_query_cleaner(self):
-        self.assertEqual('product.html?id=200',
-                url_query_cleaner("product.html?id=200&foo=bar&name=wired", ['id']))
-        self.assertEqual('product.html?id=200',
-                url_query_cleaner("product.html?&id=200&&foo=bar&name=wired", ['id']))
-        self.assertEqual('product.html',
-                url_query_cleaner("product.html?foo=bar&name=wired", ['id']))
-        self.assertEqual('product.html?id=200&name=wired',
-                url_query_cleaner("product.html?id=200&foo=bar&name=wired", ['id', 'name']))
-        self.assertEqual('product.html?id',
-                url_query_cleaner("product.html?id&other=3&novalue=", ['id']))
-        self.assertEqual('product.html?d=1&d=2&d=3',
-                url_query_cleaner("product.html?d=1&e=b&d=2&d=3&other=other", ['d'], unique=False))
-        self.assertEqual('product.html?id=200&foo=bar',
-                url_query_cleaner("product.html?id=200&foo=bar&name=wired#id20", ['id', 'foo']))
-        self.assertEqual('product.html?foo=bar&name=wired',
-                url_query_cleaner("product.html?id=200&foo=bar&name=wired", ['id'], remove=True))
-        self.assertEqual('product.html?name=wired',
-                url_query_cleaner("product.html?id=2&foo=bar&name=wired", ['id', 'foo'], remove=True))
-        self.assertEqual('product.html?foo=bar&name=wired',
-                url_query_cleaner("product.html?id=2&foo=bar&name=wired", ['id', 'footo'], remove=True))
+        self.assertEqual(
+            b'product.html?id=200',
+            url_query_cleaner(b"product.html?id=200&foo=bar&name=wired", [b'id']),
+        )
+        self.assertEqual(
+            b'product.html?id=200',
+            url_query_cleaner(b"product.html?&id=200&&foo=bar&name=wired", [b'id']),
+        )
+        self.assertEqual(
+            b'product.html',
+            url_query_cleaner(b"product.html?foo=bar&name=wired", [b'id']),
+        )
+        self.assertEqual(
+            b'product.html?id=200&name=wired',
+            url_query_cleaner(b"product.html?id=200&foo=bar&name=wired", [b'id', b'name']))
+        self.assertEqual(
+            b'product.html?id',
+            url_query_cleaner(b"product.html?id&other=3&novalue=", [b'id']),
+        )
+        self.assertEqual(
+            b'product.html?d=1&d=2&d=3',
+            url_query_cleaner(b"product.html?d=1&e=b&d=2&d=3&other=other", [b'd'], unique=False),
+        )
+        self.assertEqual(
+            b'product.html?id=200&foo=bar',
+            url_query_cleaner(b"product.html?id=200&foo=bar&name=wired#id20", [b'id', b'foo']),
+        )
+        self.assertEqual(
+            b'product.html?foo=bar&name=wired',
+            url_query_cleaner(b"product.html?id=200&foo=bar&name=wired", [b'id'], remove=True),
+        )
+        self.assertEqual(
+            b'product.html?name=wired',
+            url_query_cleaner(b"product.html?id=2&foo=bar&name=wired", [b'id', b'foo'], remove=True),
+        )
+        self.assertEqual(
+            b'product.html?foo=bar&name=wired',
+            url_query_cleaner(b"product.html?id=2&foo=bar&name=wired", [b'id', b'footo'], remove=True),
+        )
+        self.assertEqual(
+            b'product.html?price+in+%C2%A3=%C2%A3+1000',
+            url_query_cleaner(b'product.html?price+in+%C2%A3=%C2%A3+1000&other=1', [b'other'], remove=True)
+        )
 
     def test_path_to_file_uri(self):
         if os.name == 'nt':

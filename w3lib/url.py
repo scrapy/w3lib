@@ -7,6 +7,7 @@ import re
 import posixpath
 import warnings
 from six import moves
+import w3lib.parse
 from w3lib.util import unicode_to_str
 
 # Python 2.x urllib.always_safe become private in Python 3.x;
@@ -125,13 +126,12 @@ def url_query_parameter(url, parameter, default=None, keep_blank_values=0):
 
     """
 
-    queryparams = moves.urllib.parse.parse_qs(
-        moves.urllib.parse.urlsplit(str(url))[3],
-        keep_blank_values=keep_blank_values
-    )
-    return queryparams.get(parameter, [default])[0]
+    query = moves.urllib.parse.urlsplit(url).query
+    params = w3lib.parse.parse_qs(query, keep_blank_values=keep_blank_values)
+    return params.get(parameter, [default])[0]
 
-def url_query_cleaner(url, parameterlist=(), sep='&', kvsep='=', remove=False, unique=True):
+
+def url_query_cleaner(url, parameterlist=(), sep=b'&', kvsep=b'=', remove=False, unique=True):
     """Clean URL arguments leaving only those passed in the parameterlist keeping order
 
     >>> import w3lib.url
@@ -158,7 +158,7 @@ def url_query_cleaner(url, parameterlist=(), sep='&', kvsep='=', remove=False, u
     """
 
     url = moves.urllib.parse.urldefrag(url)[0]
-    base, _, query = url.partition('?')
+    base, _, query = url.partition(b'?')
     seen = set()
     querylist = []
     for ksv in query.split(sep):
@@ -172,7 +172,7 @@ def url_query_cleaner(url, parameterlist=(), sep='&', kvsep='=', remove=False, u
         else:
             querylist.append(ksv)
             seen.add(k)
-    return '?'.join([base, sep.join(querylist)]) if querylist else base
+    return b'?'.join([base, sep.join(querylist)]) if querylist else base
 
 
 def add_or_replace_parameter(url, name, new_value):
@@ -189,7 +189,7 @@ def add_or_replace_parameter(url, name, new_value):
 
     """
     parsed = moves.urllib.parse.urlsplit(url)
-    args = moves.urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+    args = w3lib.parse.parse_qsl(parsed.query, keep_blank_values=True)
 
     new_args = []
     found = False
