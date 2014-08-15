@@ -5,6 +5,7 @@ from w3lib.url import (safe_url_string, safe_download_url,
     url_query_parameter, add_or_replace_parameter, url_query_cleaner,
     file_uri_to_path, path_to_file_uri, any_to_uri)
 
+
 class UrlTests(unittest.TestCase):
 
     def test_safe_url_string(self):
@@ -121,6 +122,24 @@ class UrlTests(unittest.TestCase):
         self.assertEqual(add_or_replace_parameter(url, 'pageurl', 'test'),
                          'http://example.com/?version=1&pageurl=test&param2=value2')
 
+        # Test the input type is respected
+        self.assertEqual(
+            add_or_replace_parameter(
+                b'http://example.com/ajax.html',
+                b'_escaped_fragment_',
+                b'key=value'
+            ),
+            b'http://example.com/ajax.html?_escaped_fragment_=key%3Dvalue'
+        )
+        self.assertEqual(
+            add_or_replace_parameter(
+                u'http://example.com/ajax.html',
+                u'_escaped_fragment_',
+                u'key=value'
+            ),
+            u'http://example.com/ajax.html?_escaped_fragment_=key%3Dvalue'
+        )
+
     def test_url_query_cleaner(self):
         self.assertEqual('product.html?id=200',
                 url_query_cleaner("product.html?id=200&foo=bar&name=wired", ['id']))
@@ -186,8 +205,3 @@ class UrlTests(unittest.TestCase):
                          "file:///some/path.txt")
         self.assertEqual(any_to_uri("http://www.example.com/some/path.txt"),
                          "http://www.example.com/some/path.txt")
-
-
-if __name__ == "__main__":
-    unittest.main()
-

@@ -174,6 +174,7 @@ def url_query_cleaner(url, parameterlist=(), sep='&', kvsep='=', remove=False, u
             seen.add(k)
     return '?'.join([base, sep.join(querylist)]) if querylist else base
 
+
 def add_or_replace_parameter(url, name, new_value):
     """Add or remove a parameter to a given url
 
@@ -203,6 +204,10 @@ def add_or_replace_parameter(url, name, new_value):
         new_args.append((name, new_value))
 
     query = moves.urllib.parse.urlencode(new_args)
+    # We want to return the same type used for url argument, but
+    # urlencode always returns bytes on py2 and str on py3,
+    if isinstance(url, bytes):
+        query = unicode_to_str(query)
     return moves.urllib.parse.urlunsplit(parsed._replace(query=query))
 
 
