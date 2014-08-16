@@ -5,49 +5,50 @@ from w3lib.url import (safe_url_string, safe_download_url,
     url_query_parameter, add_or_replace_parameter, url_query_cleaner,
     file_uri_to_path, path_to_file_uri, any_to_uri)
 
+
 class UrlTests(unittest.TestCase):
 
     def test_safe_url_string(self):
         # Motoko Kusanagi (Cyborg from Ghost in the Shell)
         motoko = u'\u8349\u8599 \u7d20\u5b50'
         self.assertEqual(safe_url_string(motoko),  # note the %20 for space
-                        '%E8%8D%89%E8%96%99%20%E7%B4%A0%E5%AD%90')
+                         b'%E8%8D%89%E8%96%99%20%E7%B4%A0%E5%AD%90')
         self.assertEqual(safe_url_string(motoko),
                          safe_url_string(safe_url_string(motoko)))
         self.assertEqual(safe_url_string(u'\xa9'), # copyright symbol
-                         '%C2%A9')
+                         b'%C2%A9')
         self.assertEqual(safe_url_string(u'\xa9', 'iso-8859-1'),
-                         '%A9')
+                         b'%A9')
         self.assertEqual(safe_url_string("http://www.example.org/"),
-                        'http://www.example.org/')
+                         b'http://www.example.org/')
 
         alessi = u'/ecommerce/oggetto/Te \xf2/tea-strainer/1273'
 
         self.assertEqual(safe_url_string(alessi),
-                         '/ecommerce/oggetto/Te%20%C3%B2/tea-strainer/1273')
+                         b'/ecommerce/oggetto/Te%20%C3%B2/tea-strainer/1273')
 
         self.assertEqual(safe_url_string("http://www.example.com/test?p(29)url(http://www.another.net/page)"),
-                                         "http://www.example.com/test?p(29)url(http://www.another.net/page)")
+                                         b"http://www.example.com/test?p(29)url(http://www.another.net/page)")
         self.assertEqual(safe_url_string("http://www.example.com/Brochures_&_Paint_Cards&PageSize=200"),
-                                         "http://www.example.com/Brochures_&_Paint_Cards&PageSize=200")
+                                         b"http://www.example.com/Brochures_&_Paint_Cards&PageSize=200")
 
         safeurl = safe_url_string(u"http://www.example.com/\xa3", encoding='latin-1')
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/%A3")
+        self.assertIsInstance(safeurl, bytes)
+        self.assertEqual(safeurl, b"http://www.example.com/%A3")
 
         safeurl = safe_url_string(u"http://www.example.com/\xa3", encoding='utf-8')
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/%C2%A3")
+        self.assertIsInstance(safeurl, bytes)
+        self.assertEqual(safeurl, b"http://www.example.com/%C2%A3")
 
-        self.assertTrue(isinstance(safe_url_string(b'http://example.com/'), str))
+        self.assertIsInstance(safe_url_string(b'http://example.com/'), bytes)
 
     def test_safe_download_url(self):
         self.assertEqual(safe_download_url('http://www.example.org/../'),
-                         'http://www.example.org/')
+                         b'http://www.example.org/')
         self.assertEqual(safe_download_url('http://www.example.org/../../images/../image'),
-                         'http://www.example.org/image')
+                         b'http://www.example.org/image')
         self.assertEqual(safe_download_url('http://www.example.org/dir/'),
-                         'http://www.example.org/dir/')
+                         b'http://www.example.org/dir/')
 
     def test_url_query_parameter(self):
         self.assertEqual(url_query_parameter("product.html?id=200&foo=bar", "id"),
@@ -58,6 +59,18 @@ class UrlTests(unittest.TestCase):
                          None)
         self.assertEqual(url_query_parameter("product.html?id=", "id", keep_blank_values=1),
                          '')
+        self.assertEqual(
+            url_query_parameter(
+                u'path.html?a=2&poundsign=%C2%A3&eurosign=%E2%82%AC',
+                u'eurosign'),
+            u'\u20ac',
+        )
+        self.assertEqual(
+            url_query_parameter(
+                b'path.html?a=2&poundsign=%C2%A3&eurosign=%E2%82%AC',
+                b'eurosign'),
+            b'\xe2\x82\xac',
+        )
 
     def test_url_query_parameter_2(self):
         """
@@ -121,27 +134,68 @@ class UrlTests(unittest.TestCase):
         self.assertEqual(add_or_replace_parameter(url, 'pageurl', 'test'),
                          'http://example.com/?version=1&pageurl=test&param2=value2')
 
+        # Test the input type is respected
+        self.assertEqual(
+            add_or_replace_parameter(
+                b'http://example.com/ajax.html',
+                b'_escaped_fragment_',
+                b'key=value'
+            ),
+            b'http://example.com/ajax.html?_escaped_fragment_=key%3Dvalue'
+        )
+        self.assertEqual(
+            add_or_replace_parameter(
+                u'http://example.com/ajax.html',
+                u'_escaped_fragment_',
+                u'key=value'
+            ),
+            u'http://example.com/ajax.html?_escaped_fragment_=key%3Dvalue'
+        )
+
     def test_url_query_cleaner(self):
-        self.assertEqual('product.html?id=200',
-                url_query_cleaner("product.html?id=200&foo=bar&name=wired", ['id']))
-        self.assertEqual('product.html?id=200',
-                url_query_cleaner("product.html?&id=200&&foo=bar&name=wired", ['id']))
-        self.assertEqual('product.html',
-                url_query_cleaner("product.html?foo=bar&name=wired", ['id']))
-        self.assertEqual('product.html?id=200&name=wired',
-                url_query_cleaner("product.html?id=200&foo=bar&name=wired", ['id', 'name']))
-        self.assertEqual('product.html?id',
-                url_query_cleaner("product.html?id&other=3&novalue=", ['id']))
-        self.assertEqual('product.html?d=1&d=2&d=3',
-                url_query_cleaner("product.html?d=1&e=b&d=2&d=3&other=other", ['d'], unique=False))
-        self.assertEqual('product.html?id=200&foo=bar',
-                url_query_cleaner("product.html?id=200&foo=bar&name=wired#id20", ['id', 'foo']))
-        self.assertEqual('product.html?foo=bar&name=wired',
-                url_query_cleaner("product.html?id=200&foo=bar&name=wired", ['id'], remove=True))
-        self.assertEqual('product.html?name=wired',
-                url_query_cleaner("product.html?id=2&foo=bar&name=wired", ['id', 'foo'], remove=True))
-        self.assertEqual('product.html?foo=bar&name=wired',
-                url_query_cleaner("product.html?id=2&foo=bar&name=wired", ['id', 'footo'], remove=True))
+        self.assertEqual(
+            b'product.html?id=200',
+            url_query_cleaner(b"product.html?id=200&foo=bar&name=wired", [b'id']),
+        )
+        self.assertEqual(
+            b'product.html?id=200',
+            url_query_cleaner(b"product.html?&id=200&&foo=bar&name=wired", [b'id']),
+        )
+        self.assertEqual(
+            b'product.html',
+            url_query_cleaner(b"product.html?foo=bar&name=wired", [b'id']),
+        )
+        self.assertEqual(
+            b'product.html?id=200&name=wired',
+            url_query_cleaner(b"product.html?id=200&foo=bar&name=wired", [b'id', b'name']))
+        self.assertEqual(
+            b'product.html?id',
+            url_query_cleaner(b"product.html?id&other=3&novalue=", [b'id']),
+        )
+        self.assertEqual(
+            b'product.html?d=1&d=2&d=3',
+            url_query_cleaner(b"product.html?d=1&e=b&d=2&d=3&other=other", [b'd'], unique=False),
+        )
+        self.assertEqual(
+            b'product.html?id=200&foo=bar',
+            url_query_cleaner(b"product.html?id=200&foo=bar&name=wired#id20", [b'id', b'foo']),
+        )
+        self.assertEqual(
+            b'product.html?foo=bar&name=wired',
+            url_query_cleaner(b"product.html?id=200&foo=bar&name=wired", [b'id'], remove=True),
+        )
+        self.assertEqual(
+            b'product.html?name=wired',
+            url_query_cleaner(b"product.html?id=2&foo=bar&name=wired", [b'id', b'foo'], remove=True),
+        )
+        self.assertEqual(
+            b'product.html?foo=bar&name=wired',
+            url_query_cleaner(b"product.html?id=2&foo=bar&name=wired", [b'id', b'footo'], remove=True),
+        )
+        self.assertEqual(
+            b'product.html?price+in+%C2%A3=%C2%A3+1000',
+            url_query_cleaner(b'product.html?price+in+%C2%A3=%C2%A3+1000&other=1', [b'other'], remove=True)
+        )
 
     def test_path_to_file_uri(self):
         if os.name == 'nt':
@@ -186,8 +240,3 @@ class UrlTests(unittest.TestCase):
                          "file:///some/path.txt")
         self.assertEqual(any_to_uri("http://www.example.com/some/path.txt"),
                          "http://www.example.com/some/path.txt")
-
-
-if __name__ == "__main__":
-    unittest.main()
-
