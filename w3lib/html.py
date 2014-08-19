@@ -293,7 +293,9 @@ def get_meta_refresh(text, baseurl='', encoding='utf-8'):
     If no meta redirect is found, ``(None, None)`` is returned.
 
     """
-    baseurl = unicode_to_str(baseurl, encoding)
+
+    if six.PY2:
+        baseurl = unicode_to_str(baseurl, encoding)
     try:
         text = str_to_unicode(text, encoding)
     except UnicodeDecodeError:

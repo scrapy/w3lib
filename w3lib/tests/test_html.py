@@ -218,8 +218,8 @@ class GetBaseUrlTest(unittest.TestCase):
             <head><title>Dummy</title><base href='http://example.org/something' /></head>\
             <body>blahablsdfsal&amp;</body>\
             </html>"""
-        self.assertEqual(get_base_url(text, baseurl), b'http://example.org/something')
-        self.assertEqual(get_base_url(text, baseurl.encode('ascii')), b'http://example.org/something')
+        self.assertEqual(get_base_url(text, baseurl), 'http://example.org/something')
+        self.assertEqual(get_base_url(text, baseurl.encode('ascii')), 'http://example.org/something')
 
 
     def test_relative_url_with_absolute_path(self):
@@ -229,7 +229,7 @@ class GetBaseUrlTest(unittest.TestCase):
             <head><title>Dummy</title><base href='/absolutepath' /></head>\
             <body>blahablsdfsal&amp;</body>\
             </html>"""
-        self.assertEqual(get_base_url(text, baseurl), b'https://example.org/absolutepath')
+        self.assertEqual(get_base_url(text, baseurl), 'https://example.org/absolutepath')
 
     def test_no_scheme_url(self):
         baseurl = 'https://example.org'
@@ -238,7 +238,7 @@ class GetBaseUrlTest(unittest.TestCase):
             <head><title>Dummy</title><base href='//noscheme.com/path' /></head>\
             <body>blahablsdfsal&amp;</body>\
             </html>"""
-        self.assertEqual(get_base_url(text, baseurl), b'https://noscheme.com/path')
+        self.assertEqual(get_base_url(text, baseurl), 'https://noscheme.com/path')
 
 
 class GetMetaRefreshTest(unittest.TestCase):
@@ -249,7 +249,7 @@ class GetMetaRefreshTest(unittest.TestCase):
             <head><title>Dummy</title><meta http-equiv="refresh" content="5;url=http://example.org/newpage" /></head>
             <body>blahablsdfsal&amp;</body>
             </html>"""
-        self.assertEqual(get_meta_refresh(body, baseurl), (5, b'http://example.org/newpage'))
+        self.assertEqual(get_meta_refresh(body, baseurl), (5, 'http://example.org/newpage'))
 
     def test_without_url(self):
         # refresh without url should return (None, None)
@@ -259,7 +259,7 @@ class GetMetaRefreshTest(unittest.TestCase):
 
         body = """<meta http-equiv="refresh" content="5;
             url=http://example.org/newpage" /></head>"""
-        self.assertEqual(get_meta_refresh(body, baseurl), (5, b'http://example.org/newpage'))
+        self.assertEqual(get_meta_refresh(body, baseurl), (5, 'http://example.org/newpage'))
 
     def test_multiline(self):
         # meta refresh in multiple lines
@@ -268,31 +268,31 @@ class GetMetaRefreshTest(unittest.TestCase):
                <META
                HTTP-EQUIV="Refresh"
                CONTENT="1; URL=http://example.org/newpage">"""
-        self.assertEqual(get_meta_refresh(body, baseurl), (1, b'http://example.org/newpage'))
+        self.assertEqual(get_meta_refresh(body, baseurl), (1, 'http://example.org/newpage'))
 
     def test_entities_in_redirect_url(self):
         # entities in the redirect url
         baseurl = 'http://example.org'
         body = """<meta http-equiv="refresh" content="3; url=&#39;http://www.example.com/other&#39;">"""
-        self.assertEqual(get_meta_refresh(body, baseurl), (3, b'http://www.example.com/other'))
+        self.assertEqual(get_meta_refresh(body, baseurl), (3, 'http://www.example.com/other'))
 
     def test_relative_redirects(self):
         # relative redirects
         baseurl = 'http://example.com/page/this.html'
         body = """<meta http-equiv="refresh" content="3; url=other.html">"""
-        self.assertEqual(get_meta_refresh(body, baseurl), (3, b'http://example.com/page/other.html'))
+        self.assertEqual(get_meta_refresh(body, baseurl), (3, 'http://example.com/page/other.html'))
 
     def test_nonascii_url_utf8(self):
         # non-ascii chars in the url (utf8 - default)
         baseurl = 'http://example.com'
         body = b"""<meta http-equiv="refresh" content="3; url=http://example.com/to\xc2\xa3">"""
-        self.assertEqual(get_meta_refresh(body, baseurl), (3, b'http://example.com/to%C2%A3'))
+        self.assertEqual(get_meta_refresh(body, baseurl), (3, 'http://example.com/to%C2%A3'))
 
     def test_nonascii_url_latin1(self):
         # non-ascii chars in the url (latin1)
         baseurl = 'http://example.com'
         body = b"""<meta http-equiv="refresh" content="3; url=http://example.com/to\xa3">"""
-        self.assertEqual(get_meta_refresh(body, baseurl, 'latin1'), (3, b'http://example.com/to%A3'))
+        self.assertEqual(get_meta_refresh(body, baseurl, 'latin1'), (3, 'http://example.com/to%A3'))
 
     def test_commented_meta_refresh(self):
         # html commented meta refresh header must not directed
@@ -304,13 +304,13 @@ class GetMetaRefreshTest(unittest.TestCase):
         # html comments must not interfere with uncommented meta refresh header
         baseurl = 'http://example.com'
         body = """<!-- commented --><meta http-equiv="refresh" content="3; url=http://example.com/">-->"""
-        self.assertEqual(get_meta_refresh(body, baseurl), (3, b'http://example.com/'))
+        self.assertEqual(get_meta_refresh(body, baseurl), (3, 'http://example.com/'))
 
     def test_float_refresh_intervals(self):
         # float refresh intervals
         baseurl = 'http://example.com'
         body = """<meta http-equiv="refresh" content=".1;URL=index.html" />"""
-        self.assertEqual(get_meta_refresh(body, baseurl), (0.1, b'http://example.com/index.html'))
+        self.assertEqual(get_meta_refresh(body, baseurl), (0.1, 'http://example.com/index.html'))
 
         body = """<meta http-equiv="refresh" content="3.1;URL=index.html" />"""
-        self.assertEqual(get_meta_refresh(body, baseurl), (3.1, b'http://example.com/index.html'))
+        self.assertEqual(get_meta_refresh(body, baseurl), (3.1, 'http://example.com/index.html'))

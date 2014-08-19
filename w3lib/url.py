@@ -7,7 +7,6 @@ import re
 import posixpath
 import warnings
 from six import moves
-import w3lib.parse
 from w3lib.util import unicode_to_str
 
 # Python 2.x urllib.always_safe become private in Python 3.x;
@@ -57,21 +56,21 @@ def safe_url_string(url, encoding='utf8'):
     """Convert the given url into a legal URL by escaping unsafe characters
     according to RFC-3986.
 
-    If a unicode url is given, it is first converted to bytes using the given
+    If a unicode url is given, it is first converted to str using the given
     encoding (which defaults to 'utf-8'). When passing a encoding, you should
     use the encoding of the original page (the page from which the url was
     extracted from).
 
-    Calling this function on an already "safe" url won't change url contents
-    (but will encode it to bytes if it was unicode).
+    Calling this function on an already "safe" url will return the url
+    unmodified.
 
-    Always returns bytes.
+    Always returns a str.
     """
     s = unicode_to_str(url, encoding)
-    return moves.urllib.parse.quote(s, _safe_chars).encode('ascii')
+    return moves.urllib.parse.quote(s, _safe_chars)
 
 
-_parent_dirs = re.compile(br'/?(\.\./)+')
+_parent_dirs = re.compile(r'/?(\.\./)+')
 
 def safe_download_url(url):
     """ Make a url for download. This will call safe_url_string
@@ -84,18 +83,15 @@ def safe_download_url(url):
     safe_url = safe_url_string(url)
     scheme, netloc, path, query, _ = moves.urllib.parse.urlsplit(safe_url)
     if path:
-        path = _parent_dirs.sub(b'', posixpath.normpath(path))
-        if safe_url and safe_url[-1:] == b'/' and path[-1:] != b'/':
-            path += b'/'
+        path = _parent_dirs.sub('', posixpath.normpath(path))
+        if url.endswith('/') and not path.endswith('/'):
+            path += '/'
     else:
-        path = b'/'
-    return moves.urllib.parse.urlunsplit((scheme, netloc, path, query, b''))
-
+        path = '/'
+    return moves.urllib.parse.urlunsplit((scheme, netloc, path, query, ''))
 
 def is_url(text):
-    text = unicode_to_str(text)
-    return text.partition(b"://")[0] in {b'file', b'http', b'https'}
-
+    return text.partition("://")[0] in ('file', 'http', 'https')
 
 def url_query_parameter(url, parameter, default=None, keep_blank_values=0):
     """Return the value of a url parameter, given the url and parameter name
@@ -126,12 +122,13 @@ def url_query_parameter(url, parameter, default=None, keep_blank_values=0):
 
     """
 
-    query = moves.urllib.parse.urlsplit(url).query
-    params = w3lib.parse.parse_qs(query, keep_blank_values=keep_blank_values)
-    return params.get(parameter, [default])[0]
+    queryparams = moves.urllib.parse.parse_qs(
+        moves.urllib.parse.urlsplit(str(url))[3],
+        keep_blank_values=keep_blank_values
+    )
+    return queryparams.get(parameter, [default])[0]
 
-
-def url_query_cleaner(url, parameterlist=(), sep=b'&', kvsep=b'=', remove=False, unique=True):
+def url_query_cleaner(url, parameterlist=(), sep='&', kvsep='=', remove=False, unique=True):
     """Clean URL arguments leaving only those passed in the parameterlist keeping order
 
     >>> import w3lib.url
@@ -158,7 +155,7 @@ def url_query_cleaner(url, parameterlist=(), sep=b'&', kvsep=b'=', remove=False,
     """
 
     url = moves.urllib.parse.urldefrag(url)[0]
-    base, _, query = url.partition(b'?')
+    base, _, query = url.partition('?')
     seen = set()
     querylist = []
     for ksv in query.split(sep):
@@ -172,8 +169,7 @@ def url_query_cleaner(url, parameterlist=(), sep=b'&', kvsep=b'=', remove=False,
         else:
             querylist.append(ksv)
             seen.add(k)
-    return b'?'.join([base, sep.join(querylist)]) if querylist else base
-
+    return '?'.join([base, sep.join(querylist)]) if querylist else base
 
 def add_or_replace_parameter(url, name, new_value):
     """Add or remove a parameter to a given url
@@ -189,7 +185,7 @@ def add_or_replace_parameter(url, name, new_value):
 
     """
     parsed = moves.urllib.parse.urlsplit(url)
-    args = w3lib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+    args = moves.urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
 
     new_args = []
     found = False
@@ -204,10 +200,6 @@ def add_or_replace_parameter(url, name, new_value):
         new_args.append((name, new_value))
 
     query = moves.urllib.parse.urlencode(new_args)
-    # We want to return the same type used for url argument, but
-    # urlencode always returns bytes on py2 and str on py3,
-    if isinstance(url, bytes):
-        query = unicode_to_str(query)
     return moves.urllib.parse.urlunsplit(parsed._replace(query=query))
 
 
