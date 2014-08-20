@@ -1,4 +1,5 @@
-from setuptools import setup
+from setuptools import setup, find_packages
+
 
 setup(
     name='w3lib',
@@ -8,7 +9,9 @@ setup(
     author='Scrapy project',
     author_email='info@scrapy.org',
     url='https://github.com/scrapy/w3lib',
-    packages=['w3lib'],
+    packages=find_packages(include=('w3lib', 'w3lib.*')),
+    include_package_data=True,
+    zip_zafe=False,
     platforms=['Any'],
     classifiers=[
         'Development Status :: 5 - Production/Stable',
