@@ -142,6 +142,10 @@ class UrlTests(unittest.TestCase):
                 url_query_cleaner("product.html?id=2&foo=bar&name=wired", ['id', 'foo'], remove=True))
         self.assertEqual('product.html?foo=bar&name=wired',
                 url_query_cleaner("product.html?id=2&foo=bar&name=wired", ['id', 'footo'], remove=True))
+        self.assertEqual('product.html?foo=bar',
+                url_query_cleaner("product.html?foo=bar&name=wired", 'foo'))
+        self.assertEqual('product.html?foobar=wired',
+                url_query_cleaner("product.html?foo=bar&foobar=wired", 'foobar'))
 
     def test_path_to_file_uri(self):
         if os.name == 'nt':

@@ -154,6 +154,8 @@ def url_query_cleaner(url, parameterlist=(), sep='&', kvsep='=', remove=False, u
 
     """
 
+    if isinstance(parameterlist, basestring):
+        parameterlist = [parameterlist]
     url = moves.urllib.parse.urldefrag(url)[0]
     base, _, query = url.partition('?')
     seen = set()
