@@ -6,6 +6,7 @@ import os
 import re
 import posixpath
 import warnings
+import six
 from six import moves
 from w3lib.util import unicode_to_str
 
@@ -154,6 +155,8 @@ def url_query_cleaner(url, parameterlist=(), sep='&', kvsep='=', remove=False, u
 
     """
 
+    if isinstance(parameterlist, (six.text_type, bytes)):
+        parameterlist = [parameterlist]
     url = moves.urllib.parse.urldefrag(url)[0]
     base, _, query = url.partition('?')
     seen = set()
