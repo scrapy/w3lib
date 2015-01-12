@@ -240,6 +240,16 @@ class GetBaseUrlTest(unittest.TestCase):
             </html>"""
         self.assertEqual(get_base_url(text, baseurl), 'https://noscheme.com/path')
 
+    def test_attributes_before_href(self):
+        baseurl = u'https://example.org'
+
+        text = u"""\
+            <html>\
+            <head><title>Dummy</title><base id='my_base_tag' href='http://example.org/something' /></head>\
+            <body>blahablsdfsal&amp;</body>\
+            </html>"""
+        self.assertEqual(get_base_url(text, baseurl), 'http://example.org/something')
+
 
 class GetMetaRefreshTest(unittest.TestCase):
     def test_get_meta_refresh(self):
