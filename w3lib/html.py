@@ -13,8 +13,8 @@ from w3lib.url import safe_url_string
 
 _ent_re = re.compile(r'&(#?(x?))([^&;\s]+);')
 _tag_re = re.compile(r'<[a-zA-Z\/!].*?>', re.DOTALL)
-_baseurl_re = re.compile(six.u(r'<base\s+href\s*=\s*[\"\']\s*([^\"\'\s]+)\s*[\"\']'), re.I)
-_meta_refresh_re = re.compile(six.u(r'<meta[^>]*http-equiv[^>]*refresh[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=(?P<url>.*?)(?P=quote)'), re.DOTALL | re.IGNORECASE)
+_baseurl_re = re.compile(six.u(r'<base\s[^>]*href\s*=\s*[\"\']\s*([^\"\'\s]+)\s*[\"\']'), re.I)
+_meta_refresh_re = re.compile(six.u(r'<meta\s[^>]*http-equiv[^>]*refresh[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=(?P<url>.*?)(?P=quote)'), re.DOTALL | re.IGNORECASE)
 _cdata_re = re.compile(r'((?P<cdata_s><!\[CDATA\[)(?P<cdata_d>.*?)(?P<cdata_e>\]\]>))', re.DOTALL)
 
 def remove_entities(text, keep=(), remove_illegal=True, encoding='utf-8'):

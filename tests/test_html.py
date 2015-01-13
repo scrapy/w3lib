@@ -240,6 +240,26 @@ class GetBaseUrlTest(unittest.TestCase):
             </html>"""
         self.assertEqual(get_base_url(text, baseurl), 'https://noscheme.com/path')
 
+    def test_attributes_before_href(self):
+        baseurl = u'https://example.org'
+
+        text = u"""\
+            <html>\
+            <head><title>Dummy</title><base id='my_base_tag' href='http://example.org/something' /></head>\
+            <body>blahablsdfsal&amp;</body>\
+            </html>"""
+        self.assertEqual(get_base_url(text, baseurl), 'http://example.org/something')
+
+    def test_tag_name(self):
+        baseurl = u'https://example.org'
+
+        text = u"""\
+            <html>\
+            <head><title>Dummy</title><basefoo href='http://example.org/something' /></head>\
+            <body>blahablsdfsal&amp;</body>\
+            </html>"""
+        self.assertEqual(get_base_url(text, baseurl), 'https://example.org')
+
 
 class GetMetaRefreshTest(unittest.TestCase):
     def test_get_meta_refresh(self):
@@ -314,3 +334,13 @@ class GetMetaRefreshTest(unittest.TestCase):
 
         body = """<meta http-equiv="refresh" content="3.1;URL=index.html" />"""
         self.assertEqual(get_meta_refresh(body, baseurl), (3.1, 'http://example.com/index.html'))
+
+    def test_tag_name(self):
+        baseurl = 'http://example.org'
+        body = """
+            <html>
+            <head><title>Dummy</title><metafoo http-equiv="refresh" content="5;url=http://example.org/newpage" /></head>
+            <body>blahablsdfsal&amp;</body>
+            </html>"""
+        self.assertEqual(get_meta_refresh(body, baseurl), (None, None))
+
