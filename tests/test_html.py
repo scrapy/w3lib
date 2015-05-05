@@ -344,3 +344,12 @@ class GetMetaRefreshTest(unittest.TestCase):
             </html>"""
         self.assertEqual(get_meta_refresh(body, baseurl), (None, None))
 
+    def test_leading_newline_in_url(self):
+        baseurl = 'http://example.org'
+        body = """
+        <html>
+        <head><title>Dummy</title><meta http-equiv="refresh" content="0; URL=
+http://www.example.org/index.php" />
+        </head>
+        </html>"""
+        self.assertEqual(get_meta_refresh(body, baseurl), (0.0, 'http://www.example.org/index.php'))
