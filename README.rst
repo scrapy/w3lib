@@ -5,6 +5,11 @@ w3lib
 .. image:: https://secure.travis-ci.org/scrapy/w3lib.png?branch=master
    :target: http://travis-ci.org/scrapy/w3lib
 
+.. image:: https://img.shields.io/codecov/c/github/scrapy/w3lib/master.svg
+   :target: http://codecov.io/github/scrapy/w3lib?branch=master
+   :alt: Coverage report
+
+
 Overview
 ========
 
