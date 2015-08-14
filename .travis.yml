@@ -1,13 +1,13 @@
 language: python
 python: 2.7
+sudo: false
 env:
-- TOXENV=py27
-- TOXENV=pypy
-- TOXENV=py33
-- TOXENV=py34
+  - TOXENV=py27
+  - TOXENV=pypy
+  - TOXENV=py33
+  - TOXENV=py34
 install:
-- "./.travis-workarounds.sh"
-- pip install -U tox twine wheel codecov
+  - pip install -U tox twine wheel codecov
 script: tox
 after_success:
   - codecov
