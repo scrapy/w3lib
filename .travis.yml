@@ -7,14 +7,18 @@ env:
 - TOXENV=py34
 install:
 - "./.travis-workarounds.sh"
-- pip install tox
+- pip install -U tox twine wheel codecov
 script: tox
+after_success:
+  - codecov
+
 notifications:
   irc:
     use_notice: true
     skip_join: true
     channels:
-    - irc.freenode.org#scrapy
+      - irc.freenode.org#scrapy
+
 deploy:
   provider: pypi
   distributions: sdist bdist_wheel
