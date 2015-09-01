@@ -128,6 +128,10 @@ class RemoveTagsTest(unittest.TestCase):
         self.assertEqual(remove_tags(u'<p>a<br />b<br/>c</p>', keep=('p',)), u'<p>abc</p>')
         self.assertEqual(remove_tags(u'<p>a<br />b<br/>c</p>', keep=('p', 'br', 'div')), u'<p>a<br />b<br/>c</p>')
 
+    def test_uppercase_tags(self):
+        self.assertEqual(remove_tags(u'<foo></foo><bar></bar><baz/>', which_ones=('Foo', 'BAR', 'baZ')), u'')
+        self.assertEqual(remove_tags(u'<FOO></foO><BaR></bAr><BAZ/>', which_ones=('foo', 'bar', 'baz')), u'')
+
 
 class RemoveTagsWithContentTest(unittest.TestCase):
     def test_returns_unicode(self):
