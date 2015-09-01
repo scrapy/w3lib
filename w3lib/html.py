@@ -11,7 +11,7 @@ from six import moves
 from w3lib.util import str_to_unicode, unicode_to_str
 from w3lib.url import safe_url_string
 
-_ent_re = re.compile(r'&(#?(x?))([^&;\s]+);')
+_ent_re = re.compile(r'&((?P<named>[a-z\d]+)|#(?P<dec>\d+)|#x(?P<hex>[a-f\d]+))(?P<semicolon>;?)', re.IGNORECASE)
 _tag_re = re.compile(r'<[a-zA-Z\/!].*?>', re.DOTALL)
 _baseurl_re = re.compile(six.u(r'<base\s[^>]*href\s*=\s*[\"\']\s*([^\"\'\s]+)\s*[\"\']'), re.I)
 _meta_refresh_re = re.compile(six.u(r'<meta\s[^>]*http-equiv[^>]*refresh[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)'), re.DOTALL | re.IGNORECASE)
@@ -64,33 +64,32 @@ def replace_entities(text, keep=(), remove_illegal=True, encoding='utf-8'):
     """
 
     def convert_entity(m):
-        entity_body = m.group(3)
-        if m.group(1):
-            try:
-                if m.group(2):
-                    number = int(entity_body, 16)
-                else:
-                    number = int(entity_body, 10)
-                # Numeric character references in the 80-9F range are typically
-                # interpreted by browsers as representing the characters mapped
-                # to bytes 80-9F in the Windows-1252 encoding. For more info
-                # see: http://en.wikipedia.org/wiki/Character_encodings_in_HTML
-                if 0x80 <= number <= 0x9f:
-                    return six.int2byte(number).decode('cp1252')
-            except ValueError:
-                number = None
-        else:
-            if entity_body in keep:
+        groups = m.groupdict()
+        if groups.get('dec'):
+            number = int(groups['dec'], 10)
+        elif groups.get('hex'):
+            number = int(groups['hex'], 16)
+        elif groups.get('named'):
+            entity_name = groups['named']
+            if entity_name.lower() in keep:
                 return m.group(0)
             else:
-                number = moves.html_entities.name2codepoint.get(entity_body)
+                number = (moves.html_entities.name2codepoint.get(entity_name) or
+                    moves.html_entities.name2codepoint.get(entity_name.lower()))
         if number is not None:
+            # Numeric character references in the 80-9F range are typically
+            # interpreted by browsers as representing the characters mapped
+            # to bytes 80-9F in the Windows-1252 encoding. For more info
+            # see: http://en.wikipedia.org/wiki/Character_encodings_in_HTML
+            if 0x80 <= number <= 0x9f:
+                return six.int2byte(number).decode('cp1252')
+
             try:
                 return six.unichr(number)
             except ValueError:
                 pass
 
-        return u'' if remove_illegal else m.group(0)
+        return u'' if remove_illegal and groups.get('semicolon') else m.group(0)
 
     return _ent_re.sub(convert_entity, str_to_unicode(text, encoding))
 
@@ -183,7 +182,11 @@ def remove_tags(text, which_ones=(), keep=(), encoding=None):
 
     assert not (which_ones and keep), 'which_ones and keep can not be given at the same time'
 
+    which_ones = set(tag.lower() for tag in which_ones)
+    keep = set(tag.lower() for tag in keep)
+
     def will_remove(tag):
+        tag = tag.lower()
         if which_ones:
             return tag in which_ones
         else:
@@ -301,6 +304,7 @@ def get_meta_refresh(text, baseurl='', encoding='utf-8'):
     except UnicodeDecodeError:
         print(text)
         raise
+    text = remove_tags_with_content(text, ('script', 'noscript'))
     text = remove_comments(replace_entities(text))
     m = _meta_refresh_re.search(text)
     if m:

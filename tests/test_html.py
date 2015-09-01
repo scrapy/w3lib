@@ -40,6 +40,26 @@ class RemoveEntitiesTest(unittest.TestCase):
     def test_browser_hack(self):
         # check browser hack for numeric character references in the 80-9F range
         self.assertEqual(replace_entities('x&#153;y', encoding='cp1252'), u'x\u2122y')
+        self.assertEqual(replace_entities('x&#x99;y', encoding='cp1252'), u'x\u2122y')
+
+    def test_missing_semicolon(self):
+        for entity, result in (
+                ('&lt&lt!', '<<!',),
+                ('&LT!', '<!',),
+                ('&#X41 ', 'A ',),
+                ('&#x41!', 'A!',),
+                ('&#x41h', 'Ah',),
+                ('&#65!', 'A!',),
+                ('&#65x', 'Ax',),
+                ('&sup3!', u'\u00B3!',),
+                ('&Aacute!', u'\u00C1!',),
+                ('&#9731!', u'\u2603!',),
+                ('&#153', u'\u2122',),
+                ('&#x99', u'\u2122',),
+                ):
+            self.assertEqual(replace_entities(entity, encoding='cp1252'), result)
+            self.assertEqual(replace_entities('x%sy' % entity, encoding='cp1252'), u'x%sy' % result)
+
 
     def test_encoding(self):
         self.assertEqual(replace_entities(b'x\x99&#153;&#8482;y', encoding='cp1252'), \
@@ -127,6 +147,10 @@ class RemoveTagsTest(unittest.TestCase):
         self.assertEqual(remove_tags(u'<p>a<br />b<br/>c</p>', keep=('br',)), u'a<br />b<br/>c')
         self.assertEqual(remove_tags(u'<p>a<br />b<br/>c</p>', keep=('p',)), u'<p>abc</p>')
         self.assertEqual(remove_tags(u'<p>a<br />b<br/>c</p>', keep=('p', 'br', 'div')), u'<p>a<br />b<br/>c</p>')
+
+    def test_uppercase_tags(self):
+        self.assertEqual(remove_tags(u'<foo></foo><bar></bar><baz/>', which_ones=('Foo', 'BAR', 'baZ')), u'')
+        self.assertEqual(remove_tags(u'<FOO></foO><BaR></bAr><BAZ/>', which_ones=('foo', 'bar', 'baz')), u'')
 
 
 class RemoveTagsWithContentTest(unittest.TestCase):
@@ -353,3 +377,19 @@ http://www.example.org/index.php" />
         </head>
         </html>"""
         self.assertEqual(get_meta_refresh(body, baseurl), (0.0, 'http://www.example.org/index.php'))
+
+    def test_inside_noscript(self):
+        baseurl = 'http://example.org'
+        body = """
+            <html>
+            <head><noscript><meta http-equiv="refresh" content="0;url=http://example.org/javascript_required" /></noscript></head>
+            </html>"""
+        self.assertEqual(get_meta_refresh(body, baseurl), (None, None))
+
+    def test_inside_script(self):
+        baseurl = 'http://example.org'
+        body = """
+            <html>
+            <head><script>if(!foobar()){ $('<meta http-equiv="refresh" content="0;url=http://example.org/foobar_required" />').appendTo('body'); }</script></head>
+            </html>"""
+        self.assertEqual(get_meta_refresh(body, baseurl), (None, None))
