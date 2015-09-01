@@ -305,6 +305,7 @@ def get_meta_refresh(text, baseurl='', encoding='utf-8'):
     except UnicodeDecodeError:
         print(text)
         raise
+    text = remove_tags_with_content(text, ('script', 'noscript'))
     text = remove_comments(replace_entities(text))
     m = _meta_refresh_re.search(text)
     if m:
