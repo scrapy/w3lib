@@ -361,6 +361,7 @@ http://www.example.org/index.php" />
             <head><noscript><meta http-equiv="refresh" content="0;url=http://example.org/javascript_required" /></noscript></head>
             </html>"""
         self.assertEqual(get_meta_refresh(body, baseurl), (None, None))
+        self.assertEqual(get_meta_refresh(body, baseurl, ignore_tags=()), (0.0, "http://example.org/javascript_required"))
 
     def test_inside_script(self):
         baseurl = 'http://example.org'
@@ -369,3 +370,4 @@ http://www.example.org/index.php" />
             <head><script>if(!foobar()){ $('<meta http-equiv="refresh" content="0;url=http://example.org/foobar_required" />').appendTo('body'); }</script></head>
             </html>"""
         self.assertEqual(get_meta_refresh(body, baseurl), (None, None))
+        self.assertEqual(get_meta_refresh(body, baseurl, ignore_tags=()), (0.0, "http://example.org/foobar_required"))

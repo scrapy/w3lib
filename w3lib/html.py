@@ -284,7 +284,7 @@ def get_base_url(text, baseurl='', encoding='utf-8'):
         baseurl = moves.urllib.parse.urljoin(baseurl, m.group(1).encode(encoding))
     return safe_url_string(baseurl)
 
-def get_meta_refresh(text, baseurl='', encoding='utf-8'):
+def get_meta_refresh(text, baseurl='', encoding='utf-8', ignore_tags=('script', 'noscript')):
     """Return  the http-equiv parameter of the HTML meta element from the given
     HTML text and return a tuple ``(interval, url)`` where interval is an integer
     containing the delay in seconds (or zero if not present) and url is a
@@ -301,7 +301,7 @@ def get_meta_refresh(text, baseurl='', encoding='utf-8'):
     except UnicodeDecodeError:
         print(text)
         raise
-    text = remove_tags_with_content(text, ('script', 'noscript'))
+    text = remove_tags_with_content(text, ignore_tags)
     text = remove_comments(replace_entities(text))
     m = _meta_refresh_re.search(text)
     if m:
