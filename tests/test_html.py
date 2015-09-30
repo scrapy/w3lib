@@ -40,6 +40,26 @@ class RemoveEntitiesTest(unittest.TestCase):
     def test_browser_hack(self):
         # check browser hack for numeric character references in the 80-9F range
         self.assertEqual(replace_entities('x&#153;y', encoding='cp1252'), u'x\u2122y')
+        self.assertEqual(replace_entities('x&#x99;y', encoding='cp1252'), u'x\u2122y')
+
+    def test_missing_semicolon(self):
+        for entity, result in (
+                ('&lt&lt!', '<<!',),
+                ('&LT!', '<!',),
+                ('&#X41 ', 'A ',),
+                ('&#x41!', 'A!',),
+                ('&#x41h', 'Ah',),
+                ('&#65!', 'A!',),
+                ('&#65x', 'Ax',),
+                ('&sup3!', u'\u00B3!',),
+                ('&Aacute!', u'\u00C1!',),
+                ('&#9731!', u'\u2603!',),
+                ('&#153', u'\u2122',),
+                ('&#x99', u'\u2122',),
+                ):
+            self.assertEqual(replace_entities(entity, encoding='cp1252'), result)
+            self.assertEqual(replace_entities('x%sy' % entity, encoding='cp1252'), u'x%sy' % result)
+
 
     def test_encoding(self):
         self.assertEqual(replace_entities(b'x\x99&#153;&#8482;y', encoding='cp1252'), \
