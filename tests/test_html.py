@@ -36,6 +36,8 @@ class RemoveEntitiesTest(unittest.TestCase):
         self.assertEqual(replace_entities('a &lt; b &illegal; c &#12345678; six', remove_illegal=True),
                          u'a < b  c  six')
         self.assertEqual(replace_entities('x&#x2264;y'), u'x\u2264y')
+        self.assertEqual(replace_entities('x&#157;y'), u'xy')
+        self.assertEqual(replace_entities('x&#157;y', remove_illegal=False), u'x&#157;y')
 
     def test_browser_hack(self):
         # check browser hack for numeric character references in the 80-9F range

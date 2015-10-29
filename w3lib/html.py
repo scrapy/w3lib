@@ -81,11 +81,11 @@ def replace_entities(text, keep=(), remove_illegal=True, encoding='utf-8'):
             # interpreted by browsers as representing the characters mapped
             # to bytes 80-9F in the Windows-1252 encoding. For more info
             # see: http://en.wikipedia.org/wiki/Character_encodings_in_HTML
-            if 0x80 <= number <= 0x9f:
-                return six.int2byte(number).decode('cp1252')
-
             try:
-                return six.unichr(number)
+                if 0x80 <= number <= 0x9f:
+                    return six.int2byte(number).decode('cp1252')
+                else:
+                    return six.unichr(number)
             except ValueError:
                 pass
 
