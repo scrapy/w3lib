@@ -182,7 +182,11 @@ def remove_tags(text, which_ones=(), keep=(), encoding=None):
 
     assert not (which_ones and keep), 'which_ones and keep can not be given at the same time'
 
+    which_ones = {tag.lower() for tag in which_ones}
+    keep = {tag.lower() for tag in keep}
+
     def will_remove(tag):
+        tag = tag.lower()
         if which_ones:
             return tag in which_ones
         else:
