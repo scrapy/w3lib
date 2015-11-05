@@ -1,15 +1,98 @@
 w3lib release notes
 ===================
 
-Version 1.1
-------------
-(release date to be announced)
+1.13.0 (2015-11-05)
+-------------------
 
+- remove_tags removes uppercase tags as well;
+- ignore meta-redirects inside script or noscript tags by default,
+  but add an option to not ignore them;
+- replace_entities now handles entities without trailing semicolon;
+- fixed uncaught UnicodeDecodeError when decoding entities.
+
+1.12.0 (2015-06-29)
+-------------------
+
+- meta_refresh regex now handles leading newlines and whitespaces in the url;
+- include tests folder in source distribution.
+
+1.11.0 (2015-01-13)
+-------------------
+
+- url_query_cleaner now supports str or list parameters;
+- add support for resolving base URLs in <base> tags with attributes
+  before href.
+
+1.10.0 (2014-08-20)
+-------------------
+
+- reverted all 1.9.0 changes.
+
+1.9.0 (2014-08-16)
+------------------
+
+- all url-related functions accept bytes and unicode and now return bytes.
+
+1.8.1 (2014-08-14)
+------------------
+
+- w3lib.http.basic_auth_header now returns bytes
+
+1.8.0 (2014-07-31)
+------------------
+
+- add support for big5-hkscs encoding.
+
+1.7.1 (2014-07-26)
+------------------
+
+- PY3 fixed headers_raw_to_dict and headers_dict_to_raw;
+- documentation improvements;
+- provide wheels.
+
+1.6 (2014-06-03)
+----------------
+
+- w3lib.form.encode_multipart is deprecated;
+- docstrings and docs are improved;
+- w3lib.url.add_or_replace_parameter is re-implemented on top of
+  stdlib functions;
+- remove_entities is renamed to replace_entities.
+
+1.5 (2013-11-09)
+----------------
+
+- Python 2.6 support is dropped.
+
+1.4 (2013-10-18)
+----------------
+
+- Python 3 support;
+- get_meta_refresh encoding handling is fixed;
+- check for '?' in add_or_replace_parameter;
+- ISO-8859-1 is used for HTTP Basic Auth;
+- fixed unicode handling in replace_escape_chars;
+
+1.3 (2012-05-13)
+----------------
+
+- support non-standard gb_2312_80 encoding;
+- drop Python 2.5 support.
+
+1.2 (2012-05-02)
+----------------
+
+- Detect encoding for content attr before http-equiv in meta tag.
+
+1.1 (2012-04-18)
+----------------
+
+- w3lib.html.remove_comments handles multiline comments;
 - Added w3lib.encoding module, containing functions for working with character
   encoding, like encoding autodetection from HTML pages.
+- w3lib.url.urljoin_rfc is deprecated.
 
-Version 1.0
------------
-(released on April 17th, 2011)
+1.0 (2011-04-17)
+----------------
 
 First release of w3lib.
