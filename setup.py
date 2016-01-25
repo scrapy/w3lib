@@ -11,7 +11,7 @@ setup(
     url='https://github.com/scrapy/w3lib',
     packages=find_packages(exclude=('tests', 'tests.*')),
     include_package_data=True,
-    zip_zafe=False,
+    zip_safe=False,
     platforms=['Any'],
     classifiers=[
         'Development Status :: 5 - Production/Stable',
