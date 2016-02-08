@@ -8,6 +8,7 @@ class RequestEncodingTests(unittest.TestCase):
         # Content-Type as meta http-equiv
         b"""<meta http-equiv="content-type" content="text/html;charset=UTF-8" />""",
         b"""\n<meta http-equiv="Content-Type"\ncontent="text/html; charset=utf-8">""",
+        b"""<meta http-equiv="Content-Type" content="text/html" charset="utf-8">""",
         b"""<meta content="text/html; charset=utf-8"\n http-equiv='Content-Type'>""",
         b""" bad html still supported < meta http-equiv='Content-Type'\n content="text/html; charset=utf-8">""",
         # html5 meta charset
