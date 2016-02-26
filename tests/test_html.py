@@ -286,6 +286,28 @@ class GetBaseUrlTest(unittest.TestCase):
             </html>"""
         self.assertEqual(get_base_url(text, baseurl), 'https://example.org')
 
+    def test_get_base_url_utf8(self):
+        baseurl = u'https://example.org'
+
+        text = u"""
+            <html>
+            <head><title>Dummy</title><base href='http://example.org/snowman\u2368' /></head>
+            <body>blahablsdfsal&amp;</body>
+            </html>"""
+        self.assertEqual(get_base_url(text, baseurl),
+                         'http://example.org/snowman%E2%8D%A8')
+
+    def test_get_base_url_latin1(self):
+        baseurl = u'https://example.org'
+
+        text = u"""
+            <html>
+            <head><title>Dummy</title><base href='http://example.org/sterling\u00a3' /></head>
+            <body>blahablsdfsal&amp;</body>
+            </html>"""
+        self.assertEqual(get_base_url(text, baseurl, encoding='latin-1'),
+                         'http://example.org/sterling%A3')
+
 
 class GetMetaRefreshTest(unittest.TestCase):
     def test_get_meta_refresh(self):
