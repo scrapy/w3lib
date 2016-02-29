@@ -281,11 +281,11 @@ def get_base_url(text, baseurl='', encoding='utf-8'):
     """
 
     text = str_to_unicode(text, encoding)
-    baseurl = unicode_to_str(baseurl, encoding)
     m = _baseurl_re.search(text)
     if m:
-        baseurl = moves.urllib.parse.urljoin(baseurl, m.group(1).encode(encoding))
-    return safe_url_string(baseurl)
+        baseurl = str_to_unicode(baseurl, encoding)
+        baseurl = moves.urllib.parse.urljoin(baseurl, m.group(1))
+    return safe_url_string(unicode_to_str(baseurl, encoding))
 
 def get_meta_refresh(text, baseurl='', encoding='utf-8', ignore_tags=('script', 'noscript')):
     """Return  the http-equiv parameter of the HTML meta element from the given
