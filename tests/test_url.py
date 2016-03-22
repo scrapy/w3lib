@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import os
 import unittest
@@ -14,9 +15,13 @@ class UrlTests(unittest.TestCase):
                         '%E8%8D%89%E8%96%99%20%E7%B4%A0%E5%AD%90')
         self.assertEqual(safe_url_string(motoko),
                          safe_url_string(safe_url_string(motoko)))
-        self.assertEqual(safe_url_string(u'\xa9'), # copyright symbol
+        self.assertEqual(safe_url_string(u'©'), # copyright symbol
                          '%C2%A9')
-        self.assertEqual(safe_url_string(u'\xa9', 'iso-8859-1'),
+        # page-encoding does not affect URL path
+        self.assertEqual(safe_url_string(u'©', 'iso-8859-1'),
+                         '%C2%A9')
+        # path_encoding does
+        self.assertEqual(safe_url_string(u'©', path_encoding='iso-8859-1'),
                          '%A9')
         self.assertEqual(safe_url_string("http://www.example.org/"),
                         'http://www.example.org/')
@@ -31,15 +36,75 @@ class UrlTests(unittest.TestCase):
         self.assertEqual(safe_url_string("http://www.example.com/Brochures_&_Paint_Cards&PageSize=200"),
                                          "http://www.example.com/Brochures_&_Paint_Cards&PageSize=200")
 
-        safeurl = safe_url_string(u"http://www.example.com/\xa3", encoding='latin-1')
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/%A3")
-
-        safeurl = safe_url_string(u"http://www.example.com/\xa3", encoding='utf-8')
+        # page-encoding does not affect URL path
+        # we still end up UTF-8 encoding characters before percent-escaping
+        safeurl = safe_url_string(u"http://www.example.com/£")
         self.assertTrue(isinstance(safeurl, str))
         self.assertEqual(safeurl, "http://www.example.com/%C2%A3")
 
+        safeurl = safe_url_string(u"http://www.example.com/£", encoding='utf-8')
+        self.assertTrue(isinstance(safeurl, str))
+        self.assertEqual(safeurl, "http://www.example.com/%C2%A3")
+
+        safeurl = safe_url_string(u"http://www.example.com/£", encoding='latin-1')
+        self.assertTrue(isinstance(safeurl, str))
+        self.assertEqual(safeurl, "http://www.example.com/%C2%A3")
+
+        safeurl = safe_url_string(u"http://www.example.com/£", path_encoding='latin-1')
+        self.assertTrue(isinstance(safeurl, str))
+        self.assertEqual(safeurl, "http://www.example.com/%A3")
+
         self.assertTrue(isinstance(safe_url_string(b'http://example.com/'), str))
+
+    def test_safe_url_string_with_query(self):
+        safeurl = safe_url_string(u"http://www.example.com/£?unit=µ")
+        self.assertTrue(isinstance(safeurl, str))
+        self.assertEqual(safeurl, "http://www.example.com/%C2%A3?unit=%C2%B5")
+
+        safeurl = safe_url_string(u"http://www.example.com/£?unit=µ", encoding='utf-8')
+        self.assertTrue(isinstance(safeurl, str))
+        self.assertEqual(safeurl, "http://www.example.com/%C2%A3?unit=%C2%B5")
+
+        safeurl = safe_url_string(u"http://www.example.com/£?unit=µ", encoding='latin-1')
+        self.assertTrue(isinstance(safeurl, str))
+        self.assertEqual(safeurl, "http://www.example.com/%C2%A3?unit=%B5")
+
+        safeurl = safe_url_string(u"http://www.example.com/£?unit=µ", path_encoding='latin-1')
+        self.assertTrue(isinstance(safeurl, str))
+        self.assertEqual(safeurl, "http://www.example.com/%A3?unit=%C2%B5")
+
+        safeurl = safe_url_string(u"http://www.example.com/£?unit=µ", encoding='latin-1', path_encoding='latin-1')
+        self.assertTrue(isinstance(safeurl, str))
+        self.assertEqual(safeurl, "http://www.example.com/%A3?unit=%B5")
+
+    def test_safe_url_string_misc(self):
+        # mixing Unicode and percent-escaped sequences
+        safeurl = safe_url_string(u"http://www.example.com/£?unit=%C2%B5")
+        self.assertTrue(isinstance(safeurl, str))
+        self.assertEqual(safeurl, "http://www.example.com/%C2%A3?unit=%C2%B5")
+
+        safeurl = safe_url_string(u"http://www.example.com/%C2%A3?unit=µ")
+        self.assertTrue(isinstance(safeurl, str))
+        self.assertEqual(safeurl, "http://www.example.com/%C2%A3?unit=%C2%B5")
+
+    def test_safe_url_string_bytes_input(self):
+        safeurl = safe_url_string(b"http://www.example.com/")
+        self.assertTrue(isinstance(safeurl, str))
+        self.assertEqual(safeurl, "http://www.example.com/")
+
+        # bytes input is assumed to be UTF-8
+        safeurl = safe_url_string(b"http://www.example.com/\xc2\xb5")
+        self.assertTrue(isinstance(safeurl, str))
+        self.assertEqual(safeurl, "http://www.example.com/%C2%B5")
+
+        # page-encoding encoded bytes still end up as UTF-8 sequences in path
+        safeurl = safe_url_string(b"http://www.example.com/\xb5", encoding='latin1')
+        self.assertTrue(isinstance(safeurl, str))
+        self.assertEqual(safeurl, "http://www.example.com/%C2%B5")
+
+        safeurl = safe_url_string(b"http://www.example.com/\xa3?unit=\xb5", encoding='latin1')
+        self.assertTrue(isinstance(safeurl, str))
+        self.assertEqual(safeurl, "http://www.example.com/%C2%A3?unit=%B5")
 
     def test_safe_download_url(self):
         self.assertEqual(safe_download_url('http://www.example.org/../'),

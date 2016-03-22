@@ -7,8 +7,11 @@ import re
 import posixpath
 import warnings
 import six
-from six import moves
-from w3lib.util import unicode_to_str
+from six.moves.urllib.parse import (urljoin, urlsplit, urlunsplit,
+                                    urldefrag, urlencode, urlparse,
+                                    quote, parse_qs, parse_qsl)
+from six.moves.urllib.request import pathname2url, url2pathname
+from w3lib.util import to_bytes, to_native_str, to_unicode
 
 # Python 2.x urllib.always_safe become private in Python 3.x;
 # its content is copied here
@@ -47,13 +50,13 @@ def urljoin_rfc(base, ref, encoding='utf-8'):
 
     str_base = unicode_to_str(base, encoding)
     str_ref = unicode_to_str(ref, encoding)
-    return moves.urllib.parse.urljoin(str_base, str_ref)
+    return urljoin(str_base, str_ref)
 
 _reserved = b';/?:@&=+$|,#' # RFC 3986 (Generic Syntax)
 _unreserved_marks = b"-_.!~*'()" # RFC 3986 sec 2.3
 _safe_chars = _ALWAYS_SAFE_BYTES + b'%' + _reserved + _unreserved_marks
 
-def safe_url_string(url, encoding='utf8'):
+def safe_url_string(url, encoding='utf8', path_encoding='utf8'):
     """Convert the given url into a legal URL by escaping unsafe characters
     according to RFC-3986.
 
@@ -67,9 +70,31 @@ def safe_url_string(url, encoding='utf8'):
 
     Always returns a str.
     """
-    s = unicode_to_str(url, encoding)
-    return moves.urllib.parse.quote(s, _safe_chars)
+    # Python3's urlsplit() chokes on bytes input with non-ASCII chars,
+    # so let's decode (to Unicode) using page encoding.
+    #
+    # it is assumed that a raw bytes input comes from the page
+    # corresponding to the encoding
+    #
+    # Note: if this assumption is wrong, this will fail;
+    #       in the general case, users are required to use Unicode
+    #       or safe ASCII bytes input
+    parts = urlsplit(to_unicode(url, encoding=encoding))
 
+    # quote() in Python2 return type follows input type;
+    # quote() in Python3 always returns Unicode (native str)
+    return urlunsplit((
+        to_native_str(parts.scheme),
+        to_native_str(parts.netloc),
+
+        # default encoding for path component SHOULD be UTF-8
+        quote(to_bytes(parts.path, path_encoding), _safe_chars),
+
+        # encoding of query and fragment follows page encoding
+        # or form-charset (if known and passed)
+        quote(to_bytes(parts.query, encoding), _safe_chars),
+        quote(to_bytes(parts.fragment, encoding), _safe_chars),
+    ))
 
 _parent_dirs = re.compile(r'/?(\.\./)+')
 
@@ -82,14 +107,14 @@ def safe_download_url(url):
     to be within the document root.
     """
     safe_url = safe_url_string(url)
-    scheme, netloc, path, query, _ = moves.urllib.parse.urlsplit(safe_url)
+    scheme, netloc, path, query, _ = urlsplit(safe_url)
     if path:
         path = _parent_dirs.sub('', posixpath.normpath(path))
         if url.endswith('/') and not path.endswith('/'):
             path += '/'
     else:
         path = '/'
-    return moves.urllib.parse.urlunsplit((scheme, netloc, path, query, ''))
+    return urlunsplit((scheme, netloc, path, query, ''))
 
 def is_url(text):
     return text.partition("://")[0] in ('file', 'http', 'https')
@@ -123,8 +148,8 @@ def url_query_parameter(url, parameter, default=None, keep_blank_values=0):
 
     """
 
-    queryparams = moves.urllib.parse.parse_qs(
-        moves.urllib.parse.urlsplit(str(url))[3],
+    queryparams = parse_qs(
+        urlsplit(str(url))[3],
         keep_blank_values=keep_blank_values
     )
     return queryparams.get(parameter, [default])[0]
@@ -157,7 +182,7 @@ def url_query_cleaner(url, parameterlist=(), sep='&', kvsep='=', remove=False, u
 
     if isinstance(parameterlist, (six.text_type, bytes)):
         parameterlist = [parameterlist]
-    url = moves.urllib.parse.urldefrag(url)[0]
+    url = urldefrag(url)[0]
     base, _, query = url.partition('?')
     seen = set()
     querylist = []
@@ -187,8 +212,8 @@ def add_or_replace_parameter(url, name, new_value):
     >>>
 
     """
-    parsed = moves.urllib.parse.urlsplit(url)
-    args = moves.urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+    parsed = urlsplit(url)
+    args = parse_qsl(parsed.query, keep_blank_values=True)
 
     new_args = []
     found = False
@@ -202,15 +227,15 @@ def add_or_replace_parameter(url, name, new_value):
     if not found:
         new_args.append((name, new_value))
 
-    query = moves.urllib.parse.urlencode(new_args)
-    return moves.urllib.parse.urlunsplit(parsed._replace(query=query))
+    query = urlencode(new_args)
+    return urlunsplit(parsed._replace(query=query))
 
 
 def path_to_file_uri(path):
     """Convert local filesystem path to legal File URIs as described in:
     http://en.wikipedia.org/wiki/File_URI_scheme
     """
-    x = moves.urllib.request.pathname2url(os.path.abspath(path))
+    x = pathname2url(os.path.abspath(path))
     if os.name == 'nt':
         x = x.replace('|', ':') # http://bugs.python.org/issue5861
     return 'file:///%s' % x.lstrip('/')
@@ -219,8 +244,8 @@ def file_uri_to_path(uri):
     """Convert File URI to local filesystem path according to:
     http://en.wikipedia.org/wiki/File_URI_scheme
     """
-    uri_path = moves.urllib.parse.urlparse(uri).path
-    return moves.urllib.request.url2pathname(uri_path)
+    uri_path = urlparse(uri).path
+    return url2pathname(uri_path)
 
 def any_to_uri(uri_or_path):
     """If given a path name, return its File URI, otherwise return it
@@ -228,5 +253,5 @@ def any_to_uri(uri_or_path):
     """
     if os.path.splitdrive(uri_or_path)[0]:
         return path_to_file_uri(uri_or_path)
-    u = moves.urllib.parse.urlparse(uri_or_path)
+    u = urlparse(uri_or_path)
     return uri_or_path if u.scheme else path_to_file_uri(uri_or_path)
