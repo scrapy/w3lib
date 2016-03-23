@@ -57,18 +57,20 @@ _unreserved_marks = b"-_.!~*'()" # RFC 3986 sec 2.3
 _safe_chars = _ALWAYS_SAFE_BYTES + b'%' + _reserved + _unreserved_marks
 
 def safe_url_string(url, encoding='utf8', path_encoding='utf8'):
-    """Convert the given url into a legal URL by escaping unsafe characters
+    """Convert the given URL into a legal URL by escaping unsafe characters
     according to RFC-3986.
 
-    If a unicode url is given, it is first converted to str using the given
-    encoding (which defaults to 'utf-8'). When passing a encoding, you should
-    use the encoding of the original page (the page from which the url was
-    extracted from).
+    If a bytes URL is given, it is first converted to `str` using the given
+    encoding (which defaults to 'utf-8'). 'utf-8' encoding is used for
+    URL path component (unless overriden by path_encoding), and given
+    encoding is used for query string or form data.
+    When passing a encoding, you should use the encoding of the
+    original page (the page from which the url was extracted from).
 
-    Calling this function on an already "safe" url will return the url
+    Calling this function on an already "safe" URL will return the URL
     unmodified.
 
-    Always returns a str.
+    Always returns a native `str` (bytes in Python2, unicode in Python3).
     """
     # Python3's urlsplit() chokes on bytes input with non-ASCII chars,
     # so let's decode (to Unicode) using page encoding.
