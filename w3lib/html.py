@@ -8,7 +8,7 @@ import re
 import six
 from six import moves
 
-from w3lib.util import str_to_unicode, unicode_to_str
+from w3lib.util import to_bytes, to_unicode
 from w3lib.url import safe_url_string
 
 _ent_re = re.compile(r'&((?P<named>[a-z\d]+)|#(?P<dec>\d+)|#x(?P<hex>[a-f\d]+))(?P<semicolon>;?)', re.IGNORECASE)
@@ -91,10 +91,10 @@ def replace_entities(text, keep=(), remove_illegal=True, encoding='utf-8'):
 
         return u'' if remove_illegal and groups.get('semicolon') else m.group(0)
 
-    return _ent_re.sub(convert_entity, str_to_unicode(text, encoding))
+    return _ent_re.sub(convert_entity, to_unicode(text, encoding))
 
 def has_entities(text, encoding=None):
-    return bool(_ent_re.search(str_to_unicode(text, encoding)))
+    return bool(_ent_re.search(to_unicode(text, encoding)))
 
 def replace_tags(text, token='', encoding=None):
     """Replace all markup tags found in the given `text` by the given token.
@@ -116,7 +116,7 @@ def replace_tags(text, token='', encoding=None):
 
     """
 
-    return _tag_re.sub(token, str_to_unicode(text, encoding))
+    return _tag_re.sub(token, to_unicode(text, encoding))
 
 
 _REMOVECOMMENTS_RE = re.compile(u'<!--.*?-->', re.DOTALL)
@@ -130,7 +130,7 @@ def remove_comments(text, encoding=None):
 
     """
 
-    text = str_to_unicode(text, encoding)
+    text = to_unicode(text, encoding)
     return _REMOVECOMMENTS_RE.sub(u'', text)
 
 def remove_tags(text, which_ones=(), keep=(), encoding=None):
@@ -199,7 +199,7 @@ def remove_tags(text, which_ones=(), keep=(), encoding=None):
     regex = '</?([^ >/]+).*?>'
     retags = re.compile(regex, re.DOTALL | re.IGNORECASE)
 
-    return retags.sub(remove_tag, str_to_unicode(text, encoding))
+    return retags.sub(remove_tag, to_unicode(text, encoding))
 
 def remove_tags_with_content(text, which_ones=(), encoding=None):
     """Remove tags and their content.
@@ -215,7 +215,7 @@ def remove_tags_with_content(text, which_ones=(), encoding=None):
 
     """
 
-    text = str_to_unicode(text, encoding)
+    text = to_unicode(text, encoding)
     if which_ones:
         tags = '|'.join([r'<%s.*?</%s>|<%s\s*/>' % (tag, tag, tag) for tag in which_ones])
         retags = re.compile(tags, re.DOTALL | re.IGNORECASE)
@@ -235,9 +235,9 @@ def replace_escape_chars(text, which_ones=('\n', '\t', '\r'), replace_by=u'', \
 
     """
 
-    text = str_to_unicode(text, encoding)
+    text = to_unicode(text, encoding)
     for ec in which_ones:
-        text = text.replace(ec, str_to_unicode(replace_by, encoding))
+        text = text.replace(ec, to_unicode(replace_by, encoding))
     return text
 
 def unquote_markup(text, keep=(), remove_illegal=True, encoding=None):
@@ -261,7 +261,7 @@ def unquote_markup(text, keep=(), remove_illegal=True, encoding=None):
             offset = match_e
         yield txt[offset:]
 
-    text = str_to_unicode(text, encoding)
+    text = to_unicode(text, encoding)
     ret_text = u''
     for fragment in _get_fragments(text, _cdata_re):
         if isinstance(fragment, six.string_types):
@@ -280,12 +280,15 @@ def get_base_url(text, baseurl='', encoding='utf-8'):
 
     """
 
-    text = str_to_unicode(text, encoding)
-    baseurl = unicode_to_str(baseurl, encoding)
+    text = to_unicode(text, encoding)
     m = _baseurl_re.search(text)
     if m:
-        baseurl = moves.urllib.parse.urljoin(baseurl, m.group(1).encode(encoding))
-    return safe_url_string(baseurl)
+        return moves.urllib.parse.urljoin(
+            safe_url_string(baseurl),
+            safe_url_string(m.group(1), encoding=encoding)
+        )
+    else:
+        return safe_url_string(baseurl)
 
 def get_meta_refresh(text, baseurl='', encoding='utf-8', ignore_tags=('script', 'noscript')):
     """Return  the http-equiv parameter of the HTML meta element from the given
@@ -298,9 +301,9 @@ def get_meta_refresh(text, baseurl='', encoding='utf-8', ignore_tags=('script', 
     """
 
     if six.PY2:
-        baseurl = unicode_to_str(baseurl, encoding)
+        baseurl = to_bytes(baseurl, encoding)
     try:
-        text = str_to_unicode(text, encoding)
+        text = to_unicode(text, encoding)
     except UnicodeDecodeError:
         print(text)
         raise

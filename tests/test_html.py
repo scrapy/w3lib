@@ -236,6 +236,7 @@ although this is inside a cdata! &amp; &quot;</node1><node2>blah&blahblahblahbla
 
 
 class GetBaseUrlTest(unittest.TestCase):
+
     def test_get_base_url(self):
         baseurl = u'https://example.org'
 
@@ -286,6 +287,42 @@ class GetBaseUrlTest(unittest.TestCase):
             </html>"""
         self.assertEqual(get_base_url(text, baseurl), 'https://example.org')
 
+    def test_get_base_url_utf8(self):
+        baseurl = u'https://example.org'
+
+        text = u"""
+            <html>
+            <head><title>Dummy</title><base href='http://example.org/snowman\u2368' /></head>
+            <body>blahablsdfsal&amp;</body>
+            </html>"""
+        self.assertEqual(get_base_url(text, baseurl),
+                         'http://example.org/snowman%E2%8D%A8')
+
+    def test_get_base_url_latin1(self):
+        # page encoding does not affect URL path encoding before percent-escaping
+        # we should still use UTF-8 by default
+        baseurl = u'https://example.org'
+
+        text = u"""
+            <html>
+            <head><title>Dummy</title><base href='http://example.org/sterling\u00a3' /></head>
+            <body>blahablsdfsal&amp;</body>
+            </html>"""
+        self.assertEqual(get_base_url(text, baseurl, encoding='latin-1'),
+                         'http://example.org/sterling%C2%A3')
+
+    def test_get_base_url_latin1_percent(self):
+        # non-UTF-8 percent-encoded characters sequence are left untouched
+        baseurl = u'https://example.org'
+
+        text = u"""
+            <html>
+            <head><title>Dummy</title><base href='http://example.org/sterling%a3' /></head>
+            <body>blahablsdfsal&amp;</body>
+            </html>"""
+        self.assertEqual(get_base_url(text, baseurl),
+                         'http://example.org/sterling%a3')
+
 
 class GetMetaRefreshTest(unittest.TestCase):
     def test_get_meta_refresh(self):
@@ -335,10 +372,18 @@ class GetMetaRefreshTest(unittest.TestCase):
         self.assertEqual(get_meta_refresh(body, baseurl), (3, 'http://example.com/to%C2%A3'))
 
     def test_nonascii_url_latin1(self):
-        # non-ascii chars in the url (latin1)
+        # non-ascii chars in the url path (latin1)
+        # should end up UTF-8 encoded anyway
         baseurl = 'http://example.com'
         body = b"""<meta http-equiv="refresh" content="3; url=http://example.com/to\xa3">"""
-        self.assertEqual(get_meta_refresh(body, baseurl, 'latin1'), (3, 'http://example.com/to%A3'))
+        self.assertEqual(get_meta_refresh(body, baseurl, 'latin1'), (3, 'http://example.com/to%C2%A3'))
+
+    def test_nonascii_url_latin1_query(self):
+        # non-ascii chars in the url path and query (latin1)
+        # only query part should be kept latin1 encoded before percent escaping
+        baseurl = 'http://example.com'
+        body = b"""<meta http-equiv="refresh" content="3; url=http://example.com/to\xa3?unit=\xb5">"""
+        self.assertEqual(get_meta_refresh(body, baseurl, 'latin1'), (3, 'http://example.com/to%C2%A3?unit=%B5'))
 
     def test_commented_meta_refresh(self):
         # html commented meta refresh header must not directed
