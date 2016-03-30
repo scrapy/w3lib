@@ -7,7 +7,7 @@ import re
 import posixpath
 import warnings
 import six
-from six.moves.urllib.parse import (urlsplit, urlunsplit,
+from six.moves.urllib.parse import (urljoin, urlsplit, urlunsplit,
                                     urldefrag, urlencode, urlparse,
                                     quote, parse_qs, parse_qsl)
 from six.moves.urllib.request import pathname2url, url2pathname
@@ -18,6 +18,40 @@ from w3lib.util import to_bytes, to_native_str, to_unicode
 _ALWAYS_SAFE_BYTES = (b'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
                       b'abcdefghijklmnopqrstuvwxyz'
                       b'0123456789' b'_.-')
+
+
+def urljoin_rfc(base, ref, encoding='utf-8'):
+    r"""
+    .. warning::
+
+        This function is deprecated and will be removed in future.
+        Please use ``urlparse.urljoin`` instead.
+
+    Same as urlparse.urljoin but supports unicode values in base and ref
+    parameters (in which case they will be converted to str using the given
+    encoding).
+
+    Always returns a str.
+
+    >>> import w3lib.url
+    >>> w3lib.url.urljoin_rfc('http://www.example.com/path/index.html', u'/otherpath/index2.html')
+    'http://www.example.com/otherpath/index2.html'
+    >>>
+
+    >>> w3lib.url.urljoin_rfc('http://www.example.com/path/index.html', u'fran\u00e7ais/d\u00e9part.htm')
+    'http://www.example.com/path/fran\xc3\xa7ais/d\xc3\xa9part.htm'
+    >>>
+
+
+    """
+
+    warnings.warn("w3lib.url.urljoin_rfc is deprecated, use urlparse.urljoin instead",
+        DeprecationWarning)
+
+    str_base = unicode_to_str(base, encoding)
+    str_ref = unicode_to_str(ref, encoding)
+    return urljoin(str_base, str_ref)
+
 _reserved = b';/?:@&=+$|,#' # RFC 3986 (Generic Syntax)
 _unreserved_marks = b"-_.!~*'()" # RFC 3986 sec 2.3
 _safe_chars = _ALWAYS_SAFE_BYTES + b'%' + _reserved + _unreserved_marks
