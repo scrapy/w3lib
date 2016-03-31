@@ -1,6 +1,16 @@
 w3lib release notes
 ===================
 
+1.14.0 (2016-03-31)
+-------------------
+
+Changes to safe_url_string:
+
+- proper handling of non-ASCII characters in Python2 and Python3
+- support IDNs
+- new `path_encoding` to override default UTF-8 when serializing non-ASCII
+  characters before percent-encoding
+
 1.13.0 (2015-11-05)
 -------------------
 
