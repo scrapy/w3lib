@@ -13,6 +13,9 @@ Changes to safe_url_string:
 
 Package is now properly marked as ``zip_safe``.
 
+html_body_declared_encoding also detects encoding
+when not sole attribute in <meta>
+
 1.13.0 (2015-11-05)
 -------------------
 
