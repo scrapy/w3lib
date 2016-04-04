@@ -1,8 +1,8 @@
 w3lib release notes
 ===================
 
-1.14.0 (2016-03-31)
--------------------
+TBD (TBA)
+---------
 
 Changes to safe_url_string:
 
@@ -10,6 +10,8 @@ Changes to safe_url_string:
 - support IDNs
 - new `path_encoding` to override default UTF-8 when serializing non-ASCII
   characters before percent-encoding
+
+Package is now properly marked as ``zip_safe``.
 
 1.13.0 (2015-11-05)
 -------------------
