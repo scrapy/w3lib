@@ -1,8 +1,8 @@
 w3lib release notes
 ===================
 
-TBD (TBA)
----------
+1.14.0 (2016-04-06)
+-------------------
 
 Changes to safe_url_string:
 
@@ -11,10 +11,9 @@ Changes to safe_url_string:
 - new `path_encoding` to override default UTF-8 when serializing non-ASCII
   characters before percent-encoding
 
-Package is now properly marked as ``zip_safe``.
+html_body_declared_encoding also detects encoding when not sole attribute in <meta>.
 
-html_body_declared_encoding also detects encoding
-when not sole attribute in <meta>
+Package is now properly marked as ``zip_safe``.
 
 1.13.0 (2015-11-05)
 -------------------
