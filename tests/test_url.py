@@ -106,6 +106,19 @@ class UrlTests(unittest.TestCase):
         self.assertTrue(isinstance(safeurl, str))
         self.assertEqual(safeurl, "http://www.example.com/%C2%A3?unit=%B5")
 
+    def test_safe_url_string_bytes_input_nonutf8(self):
+        # latin1
+        safeurl = safe_url_string(b"http://www.example.com/\xa3?unit=\xb5")
+        self.assertTrue(isinstance(safeurl, str))
+        self.assertEqual(safeurl, "http://www.example.com/%A3?unit=%B5")
+
+        # cp1251
+        # >>> u'Россия'.encode('cp1251')
+        # '\xd0\xee\xf1\xf1\xe8\xff'
+        safeurl = safe_url_string(b"http://www.example.com/country/\xd0\xee\xf1\xf1\xe8\xff")
+        self.assertTrue(isinstance(safeurl, str))
+        self.assertEqual(safeurl, "http://www.example.com/country/%D0%EE%F1%F1%E8%FF")
+
     def test_safe_url_idna(self):
         # adapted from:
         # https://ssl.icu-project.org/icu-bin/idnbrowser

@@ -2,6 +2,7 @@
 This module contains general purpose URL functions not found in the standard
 library.
 """
+import codecs
 import os
 import re
 import posixpath
@@ -12,6 +13,14 @@ from six.moves.urllib.parse import (urljoin, urlsplit, urlunsplit,
                                     quote, parse_qs, parse_qsl)
 from six.moves.urllib.request import pathname2url, url2pathname
 from w3lib.util import to_bytes, to_native_str, to_unicode
+
+
+# error handling function for bytes-to-Unicode decoding errors with URLs
+def _quote_byte(error):
+    return (to_unicode(quote(error.object[error.start:error.end])), error.end)
+
+codecs.register_error('percentencode', _quote_byte)
+
 
 # Python 2.x urllib.always_safe become private in Python 3.x;
 # its content is copied here
@@ -64,8 +73,8 @@ def safe_url_string(url, encoding='utf8', path_encoding='utf8'):
     encoding (which defaults to 'utf-8'). 'utf-8' encoding is used for
     URL path component (unless overriden by path_encoding), and given
     encoding is used for query string or form data.
-    When passing a encoding, you should use the encoding of the
-    original page (the page from which the url was extracted from).
+    When passing an encoding, you should use the encoding of the
+    original page (the page from which the URL was extracted from).
 
     Calling this function on an already "safe" URL will return the URL
     unmodified.
@@ -73,15 +82,13 @@ def safe_url_string(url, encoding='utf8', path_encoding='utf8'):
     Always returns a native `str` (bytes in Python2, unicode in Python3).
     """
     # Python3's urlsplit() chokes on bytes input with non-ASCII chars,
-    # so let's decode (to Unicode) using page encoding.
-    #
-    # it is assumed that a raw bytes input comes from the page
-    # corresponding to the encoding
-    #
-    # Note: if this assumption is wrong, this will fail;
-    #       in the general case, users are required to use Unicode
-    #       or safe ASCII bytes input
-    parts = urlsplit(to_unicode(url, encoding=encoding))
+    # so let's decode (to Unicode) using page encoding:
+    #   - it is assumed that a raw bytes input comes from a document
+    #     encoded with the supplied encoding (or UTF8 by default)
+    #   - if the supplied (or default) encoding chokes,
+    #     percent-encode offending bytes
+    parts = urlsplit(to_unicode(url, encoding=encoding,
+                                errors='percentencode'))
 
     # quote() in Python2 return type follows input type;
     # quote() in Python3 always returns Unicode (native str)
