@@ -11,7 +11,8 @@ Changes to safe_url_string:
 - new `path_encoding` to override default UTF-8 when serializing non-ASCII
   characters before percent-encoding
 
-html_body_declared_encoding also detects encoding when not sole attribute in <meta>.
+html_body_declared_encoding also detects encoding when not sole attribute
+in ``<meta>``.
 
 Package is now properly marked as ``zip_safe``.
 
