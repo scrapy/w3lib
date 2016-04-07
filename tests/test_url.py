@@ -4,7 +4,7 @@ import os
 import unittest
 from w3lib.url import (safe_url_string, safe_download_url,
     url_query_parameter, add_or_replace_parameter, url_query_cleaner,
-    file_uri_to_path, path_to_file_uri, any_to_uri)
+    file_uri_to_path, path_to_file_uri, any_to_uri, urljoin_rfc)
 
 class UrlTests(unittest.TestCase):
 
@@ -314,6 +314,10 @@ class UrlTests(unittest.TestCase):
                          "file:///some/path.txt")
         self.assertEqual(any_to_uri("http://www.example.com/some/path.txt"),
                          "http://www.example.com/some/path.txt")
+
+    def test_urljoin_rfc_deprecated(self):
+        jurl = urljoin_rfc("http://www.example.com/", "/test")
+        self.assertEqual(jurl, b"http://www.example.com/test")
 
 
 if __name__ == "__main__":
