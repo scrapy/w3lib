@@ -57,8 +57,8 @@ def urljoin_rfc(base, ref, encoding='utf-8'):
     warnings.warn("w3lib.url.urljoin_rfc is deprecated, use urlparse.urljoin instead",
         DeprecationWarning)
 
-    str_base = unicode_to_str(base, encoding)
-    str_ref = unicode_to_str(ref, encoding)
+    str_base = to_bytes(base, encoding)
+    str_ref = to_bytes(ref, encoding)
     return urljoin(str_base, str_ref)
 
 _reserved = b';/?:@&=+$|,#' # RFC 3986 (Generic Syntax)
