@@ -1,6 +1,15 @@
 w3lib release notes
 ===================
 
+1.14.2 (2016-04-11)
+-------------------
+
+Bugfix release:
+
+- fix function import for (deprecated) ``urljoin_rfc`` (issue #51)
+- only expose wanted functions from ``w3lib.url``, via ``__all__``
+  (see issue #54, https://github.com/scrapy/scrapy/issues/1917)
+
 1.14.1 (2016-04-07)
 -------------------
 
