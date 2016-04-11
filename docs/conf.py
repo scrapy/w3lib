@@ -53,7 +53,7 @@ copyright = u'2014, w3lib developers'
 # built documents.
 #
 # The full version, including alpha/beta/rc tags.
-release = '1.14.1'
+release = '1.14.2'
 # The short X.Y version.
 version = '.'.join(release.split('.')[:2])
 
