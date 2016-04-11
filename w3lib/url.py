@@ -267,5 +267,8 @@ def any_to_uri(uri_or_path):
 
 
 __all__ = ["add_or_replace_parameter", "any_to_uri", "file_uri_to_path",
-           "path_to_file_uri", "safe_download_url", "safe_url_string",
-           "url_query_cleaner"]
+           "is_url", "path_to_file_uri", "safe_download_url",
+           "safe_url_string", "url_query_cleaner", "url_query_parameter",
+
+           # this last one is deprecated ; include it to be on the safe side
+           "urljoin_rfc"]
