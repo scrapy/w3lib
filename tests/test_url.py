@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 import os
 import unittest
-from w3lib.url import (safe_url_string, safe_download_url,
+from w3lib.url import (is_url, safe_url_string, safe_download_url,
     url_query_parameter, add_or_replace_parameter, url_query_cleaner,
     file_uri_to_path, path_to_file_uri, any_to_uri, urljoin_rfc)
 
@@ -166,12 +166,21 @@ class UrlTests(unittest.TestCase):
             self.assertEqual(safeurl, safe_result)
 
     def test_safe_download_url(self):
+        self.assertEqual(safe_download_url('http://www.example.org'),
+                         'http://www.example.org/')
         self.assertEqual(safe_download_url('http://www.example.org/../'),
                          'http://www.example.org/')
         self.assertEqual(safe_download_url('http://www.example.org/../../images/../image'),
                          'http://www.example.org/image')
         self.assertEqual(safe_download_url('http://www.example.org/dir/'),
                          'http://www.example.org/dir/')
+
+    def test_is_url(self):
+        self.assertTrue(is_url('http://www.example.org'))
+        self.assertTrue(is_url('https://www.example.org'))
+        self.assertTrue(is_url('file:///some/path'))
+        self.assertFalse(is_url('foo://bar'))
+        self.assertFalse(is_url('foo--bar'))
 
     def test_url_query_parameter(self):
         self.assertEqual(url_query_parameter("product.html?id=200&foo=bar", "id"),
@@ -256,6 +265,10 @@ class UrlTests(unittest.TestCase):
                 url_query_cleaner("product.html?id=200&foo=bar&name=wired", ['id', 'name']))
         self.assertEqual('product.html?id',
                 url_query_cleaner("product.html?id&other=3&novalue=", ['id']))
+        # default is to remove duplicate keys
+        self.assertEqual('product.html?d=1',
+                url_query_cleaner("product.html?d=1&e=b&d=2&d=3&other=other", ['d']))
+        # unique=False disables duplicate keys filtering
         self.assertEqual('product.html?d=1&d=2&d=3',
                 url_query_cleaner("product.html?d=1&e=b&d=2&d=3&other=other", ['d'], unique=False))
         self.assertEqual('product.html?id=200&foo=bar',
