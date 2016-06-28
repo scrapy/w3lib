@@ -14,6 +14,10 @@ class HttpTests(unittest.TestCase):
         self.assertEqual(b'Basic c29tZXVzZXI6QDx5dTk-Jm8_UQ==',
             basic_auth_header('someuser', '@<yu9>&o?Q'))
 
+    def test_headers_raw_dict_none(self):
+        self.assertIsNone(headers_raw_to_dict(None))
+        self.assertIsNone(headers_dict_to_raw(None))
+
     def test_headers_raw_to_dict(self):
         raw = b"Content-type: text/html\n\rAccept: gzip\n\n"
         dct = {b'Content-type': [b'text/html'], b'Accept': [b'gzip']}
@@ -29,3 +33,57 @@ class HttpTests(unittest.TestCase):
             b'Content-type: text/html\r\nAccept: gzip'
         )
 
+    def test_headers_dict_to_raw_listtuple(self):
+        dct = OrderedDict([
+            (b'Content-type', [b'text/html']),
+            (b'Accept', [b'gzip'])
+        ])
+        self.assertEqual(
+            headers_dict_to_raw(dct),
+            b'Content-type: text/html\r\nAccept: gzip'
+        )
+
+        dct = OrderedDict([
+            (b'Content-type', (b'text/html',)),
+            (b'Accept', (b'gzip',))
+        ])
+        self.assertEqual(
+            headers_dict_to_raw(dct),
+            b'Content-type: text/html\r\nAccept: gzip'
+        )
+
+        dct = OrderedDict([
+            (b'Cookie', (b'val001', b'val002')),
+            (b'Accept', b'gzip')
+        ])
+        self.assertEqual(
+            headers_dict_to_raw(dct),
+            b'Cookie: val001\r\nCookie: val002\r\nAccept: gzip'
+        )
+
+        dct = OrderedDict([
+            (b'Cookie', [b'val001', b'val002']),
+            (b'Accept', b'gzip')
+        ])
+        self.assertEqual(
+            headers_dict_to_raw(dct),
+            b'Cookie: val001\r\nCookie: val002\r\nAccept: gzip'
+        )
+
+    def test_headers_dict_to_raw_wrong_values(self):
+        dct = OrderedDict([
+            (b'Content-type', 0),
+        ])
+        self.assertEqual(
+            headers_dict_to_raw(dct),
+            b''
+        )
+
+        dct = OrderedDict([
+            (b'Content-type', 1),
+            (b'Accept', [b'gzip'])
+        ])
+        self.assertEqual(
+            headers_dict_to_raw(dct),
+            b'Accept: gzip'
+        )
