@@ -3,6 +3,7 @@ import six
 from w3lib.encoding import (html_body_declared_encoding, read_bom, to_unicode,
         http_content_type_encoding, resolve_encoding, html_to_unicode)
 
+
 class RequestEncodingTests(unittest.TestCase):
     utf8_fragments = [
         # Content-Type as meta http-equiv
@@ -51,6 +52,7 @@ class RequestEncodingTests(unittest.TestCase):
         for fragment in self.utf8_fragments:
             encoding = html_body_declared_encoding(fragment)
             self.assertEqual(encoding, 'utf-8', fragment)
+
         self.assertEqual(None, html_body_declared_encoding(b"something else"))
         self.assertEqual(None, html_body_declared_encoding(b"""
             <head></head><body>
@@ -76,6 +78,11 @@ class RequestEncodingTests(unittest.TestCase):
         self.assertEqual(None, html_body_declared_encoding(
             u"""<meta http-equiv="Fake-Content-Type-Header" content="text/html; charset=utf-8">"""))
 
+    def test_html_body_declared_encoding_aliases(self):
+        fragment = b"""<meta http-equiv="content-type" content="text/html;charset=win-1251"/>"""
+        self.assertEqual("cp1251", html_body_declared_encoding(fragment))
+        self.assertEqual("cp1251", html_body_declared_encoding(fragment.decode('utf8')))
+
 
 class CodecsEncodingTestCase(unittest.TestCase):
     def test_resolve_encoding(self):
@@ -97,8 +104,10 @@ class UnicodeDecodingTestCase(unittest.TestCase):
 def ct(charset):
     return "Content-Type: text/html; charset=" + charset if charset else None
 
+
 def norm_encoding(enc):
     return codecs.lookup(enc).name
+
 
 class HtmlConversionTests(unittest.TestCase):
 

@@ -7,6 +7,8 @@ env:
   - TOXENV=py33
   - TOXENV=py34
   - TOXENV=py35
+  - TOXENV=mypy2
+  - TOXENV=mypy3
 
 install:
   - pip install -U tox twine wheel codecov

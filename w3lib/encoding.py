@@ -2,11 +2,21 @@
 """
 Functions for handling encoding of web pages
 """
-import re, codecs, encodings
+import re
+import codecs
+import encodings  # type: ignore
+from typing import Optional, Union, AnyStr, Tuple, Callable
+import six
+
+from .util import to_native_str
+from ._types import String
+
 
 _HEADER_ENCODING_RE = re.compile(r'charset=([\w-]+)', re.I)
 
+
 def http_content_type_encoding(content_type):
+    # type: (str) -> Optional[str]
     """Extract the encoding in the content-type header
 
     >>> import w3lib.encoding
@@ -19,6 +29,7 @@ def http_content_type_encoding(content_type):
         match = _HEADER_ENCODING_RE.search(content_type)
         if match:
             return resolve_encoding(match.group(1))
+
 
 # regexp for parsing HTTP meta tags
 _TEMPLATE = r'''%s\s*=\s*["']?\s*%s\s*["']?'''
@@ -39,12 +50,14 @@ _CONTENT2_RE = _TEMPLATE % ('charset', r'(?P<charset2>[\w-]+)')
 _XML_ENCODING_RE = _TEMPLATE % ('encoding', r'(?P<xmlcharset>[\w-]+)')
 
 # check for meta tags, or xml decl. and stop search if a body tag is encountered
-_BODY_ENCODING_PATTERN = r'<\s*(?:meta%s(?:(?:\s+%s|\s+%s){2}|\s+%s)|\?xml\s[^>]+%s|body)' % (
+_BODY_ENCODING_PATTERN = six.u(r'<\s*(?:meta%s(?:(?:\s+%s|\s+%s){2}|\s+%s)|\?xml\s[^>]+%s|body)') % (
     _SKIP_ATTRS, _HTTPEQUIV_RE, _CONTENT_RE, _CONTENT2_RE, _XML_ENCODING_RE)
 _BODY_ENCODING_STR_RE = re.compile(_BODY_ENCODING_PATTERN, re.I)
 _BODY_ENCODING_BYTES_RE = re.compile(_BODY_ENCODING_PATTERN.encode('ascii'), re.I)
 
+
 def html_body_declared_encoding(html_body_str):
+    # type: (AnyStr) -> Optional[str]
     '''Return the encoding specified in meta tags in the html body,
     or ``None`` if no suitable encoding was found
 
@@ -77,7 +90,8 @@ def html_body_declared_encoding(html_body_str):
         encoding = match.group('charset') or match.group('charset2') \
                 or match.group('xmlcharset')
         if encoding:
-            return resolve_encoding(encoding)
+            return resolve_encoding(to_native_str(encoding))
+
 
 # Default encoding translation
 # this maps cannonicalized encodings to target encodings
@@ -107,6 +121,7 @@ DEFAULT_ENCODING_TRANSLATION = {
 }
 
 def _c18n_encoding(encoding):
+    # type: (AnyStr) -> str
     """Cannonicalize an encoding name
 
     This performs normalization and translates aliases using python's
@@ -115,7 +130,9 @@ def _c18n_encoding(encoding):
     normed = encodings.normalize_encoding(encoding).lower()
     return encodings.aliases.aliases.get(normed, normed)
 
+
 def resolve_encoding(encoding_alias):
+    # type: (AnyStr) -> Optional[str]
     """Return the encoding that `encoding_alias` maps to, or ``None``
     if the encoding cannot be interpreted
 
@@ -134,6 +151,7 @@ def resolve_encoding(encoding_alias):
     except LookupError:
         return None
 
+
 _BOM_TABLE = [
     (codecs.BOM_UTF32_BE, 'utf-32-be'),
     (codecs.BOM_UTF32_LE, 'utf-32-le'),
@@ -143,7 +161,9 @@ _BOM_TABLE = [
 ]
 _FIRST_CHARS = set(c[0] for (c, _) in _BOM_TABLE)
 
+
 def read_bom(data):
+    # type: (bytes) -> Tuple[str, bytes]
     r"""Read the byte order mark in the text, if present, and
     return the encoding represented by the BOM and the BOM.
 
@@ -151,13 +171,13 @@ def read_bom(data):
 
     >>> import w3lib.encoding
     >>> w3lib.encoding.read_bom(b'\xfe\xff\x6c\x34')
-    ('utf-16-be', '\xfe\xff')
+    ('utf-16-be', b'\xfe\xff')
     >>> w3lib.encoding.read_bom(b'\xff\xfe\x34\x6c')
-    ('utf-16-le', '\xff\xfe')
+    ('utf-16-le', b'\xff\xfe')
     >>> w3lib.encoding.read_bom(b'\x00\x00\xfe\xff\x00\x00\x6c\x34')
-    ('utf-32-be', '\x00\x00\xfe\xff')
+    ('utf-32-be', b'\x00\x00\xfe\xff')
     >>> w3lib.encoding.read_bom(b'\xff\xfe\x00\x00\x34\x6c\x00\x00')
-    ('utf-32-le', '\xff\xfe\x00\x00')
+    ('utf-32-le', b'\xff\xfe\x00\x00')
     >>> w3lib.encoding.read_bom(b'\x01\x02\x03\x04')
     (None, None)
     >>>
@@ -173,9 +193,11 @@ def read_bom(data):
 
 # Python decoder doesn't follow unicode standard when handling
 # bad utf-8 encoded strings. see http://bugs.python.org/issue8271
-codecs.register_error('w3lib_replace', lambda exc: (u'\ufffd', exc.start+1))
+codecs.register_error('w3lib_replace', lambda exc: (u'\ufffd', exc.start+1))  # type: ignore
+
 
 def to_unicode(data_str, encoding):
+    # type: (bytes, str) -> six.text_type
     """Convert a str object to unicode using the encoding given
 
     Characters that cannot be converted will be converted to ``\\ufffd`` (the
@@ -183,8 +205,10 @@ def to_unicode(data_str, encoding):
     """
     return data_str.decode(encoding, 'w3lib_replace')
 
+
 def html_to_unicode(content_type_header, html_body_str,
         default_encoding='utf8', auto_detect_fun=None):
+    # type: (Optional[str], bytes, str, Optional[Callable[[bytes], str]]) -> Tuple[str, six.text_type]
     r'''Convert raw html bytes to unicode
 
     This attempts to make a reasonable guess at the content encoding of the
@@ -230,7 +254,7 @@ def html_to_unicode(content_type_header, html_body_str,
 
     >>> import w3lib.encoding
     >>> w3lib.encoding.html_to_unicode(None,
-    ... """<!DOCTYPE html>
+    ... b"""<!DOCTYPE html>
     ... <head>
     ... <meta charset="UTF-8" />
     ... <meta name="viewport" content="width=device-width" />

@@ -1,7 +1,12 @@
+from __future__ import absolute_import
 from base64 import urlsafe_b64encode
+from typing import Dict, List, Tuple, Optional, Union, AnyStr, Any
+
+from ._types import String
 
 
 def headers_raw_to_dict(headers_raw):
+    # type: (Optional[bytes]) -> Optional[Dict[bytes, List[bytes]]]
     r"""
     Convert raw headers (single multi-line bytestring)
     to a dictionary.
@@ -10,7 +15,7 @@ def headers_raw_to_dict(headers_raw):
 
     >>> import w3lib.http
     >>> w3lib.http.headers_raw_to_dict(b"Content-type: text/html\n\rAccept: gzip\n\n")   # doctest: +SKIP
-    {'Content-type': ['text/html'], 'Accept': ['gzip']}
+    {b'Content-type': [b'text/html'], b'Accept': [b'gzip']}
 
     Incorrect input:
 
@@ -37,6 +42,7 @@ def headers_raw_to_dict(headers_raw):
 
 
 def headers_dict_to_raw(headers_dict):
+    # type: (Optional[Dict[bytes, Union[bytes, List[bytes]]]]) -> Optional[bytes]
     r"""
     Returns a raw HTTP headers representation of headers
 
@@ -69,6 +75,7 @@ def headers_dict_to_raw(headers_dict):
 
 
 def basic_auth_header(username, password):
+    # type: (String, String) -> bytes
     """
     Return an `Authorization` header field value for `HTTP Basic Access Authentication (RFC 2617)`_
 
@@ -79,8 +86,7 @@ def basic_auth_header(username, password):
     .. _HTTP Basic Access Authentication (RFC 2617): http://www.ietf.org/rfc/rfc2617.txt
 
     """
-
-    auth = "%s:%s" % (username, password)
+    auth = "%s:%s" % (username, password)  # type: Any
     if not isinstance(auth, bytes):
         # XXX: RFC 2617 doesn't define encoding, but ISO-8859-1
         # seems to be the most widely used encoding here. See also:

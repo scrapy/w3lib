@@ -11,13 +11,18 @@ import six
 from six.moves.urllib.parse import (urljoin, urlsplit, urlunsplit,
                                     urldefrag, urlencode, urlparse,
                                     quote, parse_qs, parse_qsl)
-from six.moves.urllib.request import pathname2url, url2pathname
+from six.moves.urllib.request import pathname2url, url2pathname  # type: ignore
+from typing import AnyStr, Tuple, Union, Set, Sequence, TypeVar
+
 from w3lib.util import to_bytes, to_native_str, to_unicode
+from w3lib._types import String
+
+T = TypeVar('T')
 
 
 # error handling function for bytes-to-Unicode decoding errors with URLs
 def _quote_byte(error):
-    return (to_unicode(quote(error.object[error.start:error.end])), error.end)
+    return to_unicode(quote(error.object[error.start:error.end])), error.end
 
 codecs.register_error('percentencode', _quote_byte)
 
@@ -61,11 +66,13 @@ def urljoin_rfc(base, ref, encoding='utf-8'):
     str_ref = to_bytes(ref, encoding)
     return urljoin(str_base, str_ref)
 
-_reserved = b';/?:@&=+$|,#' # RFC 3986 (Generic Syntax)
-_unreserved_marks = b"-_.!~*'()" # RFC 3986 sec 2.3
+_reserved = b';/?:@&=+$|,#'  # RFC 3986 (Generic Syntax)
+_unreserved_marks = b"-_.!~*'()"  # RFC 3986 sec 2.3
 _safe_chars = _ALWAYS_SAFE_BYTES + b'%' + _reserved + _unreserved_marks
 
+
 def safe_url_string(url, encoding='utf8', path_encoding='utf8'):
+    # type: (AnyStr, String, String) -> str
     """Convert the given URL into a legal URL by escaping unsafe characters
     according to RFC-3986.
 
@@ -107,7 +114,9 @@ def safe_url_string(url, encoding='utf8', path_encoding='utf8'):
 
 _parent_dirs = re.compile(r'/?(\.\./)+')
 
+
 def safe_download_url(url):
+    # type: (str) -> str
     """ Make a url for download. This will call safe_url_string
     and then strip the fragment, if one exists. The path will
     be normalised.
@@ -125,10 +134,14 @@ def safe_download_url(url):
         path = '/'
     return urlunsplit((scheme, netloc, path, query, ''))
 
+
 def is_url(text):
+    # type: (String) -> bool
     return text.partition("://")[0] in ('file', 'http', 'https')
 
-def url_query_parameter(url, parameter, default=None, keep_blank_values=0):
+
+def url_query_parameter(url, parameter, default=None, keep_blank_values=False):
+    # type: (str, String, T, bool) -> Union[str, T]
     """Return the value of a url parameter, given the url and parameter name
 
     General case:
@@ -144,14 +157,14 @@ def url_query_parameter(url, parameter, default=None, keep_blank_values=0):
     'mydefault'
     >>>
 
-    Returns None if `keep_blank_values` not set or 0 (default):
+    Returns None if `keep_blank_values` not set or False (default):
 
     >>> w3lib.url.url_query_parameter("product.html?id=", "id")
     >>>
 
-    Returns an empty string if `keep_blank_values` set to 1:
+    Returns an empty string if `keep_blank_values` set to True:
 
-    >>> w3lib.url.url_query_parameter("product.html?id=", "id", keep_blank_values=1)
+    >>> w3lib.url.url_query_parameter("product.html?id=", "id", keep_blank_values=True)
     ''
     >>>
 
@@ -161,9 +174,13 @@ def url_query_parameter(url, parameter, default=None, keep_blank_values=0):
         urlsplit(str(url))[3],
         keep_blank_values=keep_blank_values
     )
-    return queryparams.get(parameter, [default])[0]
+    # mypy shows 'List item 0 has incompatible type "_T"' error
+    values = queryparams.get(parameter, [default])  # type: ignore
+    return values[0]
+
 
 def url_query_cleaner(url, parameterlist=(), sep='&', kvsep='=', remove=False, unique=True):
+    # type: (str, Union[str, Sequence[str]], str, str, bool, bool) -> str
     """Clean URL arguments leaving only those passed in the parameterlist keeping order
 
     >>> import w3lib.url
@@ -193,7 +210,7 @@ def url_query_cleaner(url, parameterlist=(), sep='&', kvsep='=', remove=False, u
         parameterlist = [parameterlist]
     url = urldefrag(url)[0]
     base, _, query = url.partition('?')
-    seen = set()
+    seen = set()  # type: Set[str]
     querylist = []
     for ksv in query.split(sep):
         k, _, _ = ksv.partition(kvsep)
@@ -208,7 +225,9 @@ def url_query_cleaner(url, parameterlist=(), sep='&', kvsep='=', remove=False, u
             seen.add(k)
     return '?'.join([base, sep.join(querylist)]) if querylist else base
 
+
 def add_or_replace_parameter(url, name, new_value):
+    # type: (str, str, str) -> str
     """Add or remove a parameter to a given url
 
     >>> import w3lib.url
@@ -237,10 +256,13 @@ def add_or_replace_parameter(url, name, new_value):
         new_args.append((name, new_value))
 
     query = urlencode(new_args)
-    return urlunsplit(parsed._replace(query=query))
+
+    # "SplitResult" has no attribute "_replace" - looks like a bug in typeshed
+    return urlunsplit(parsed._replace(query=query))  # type: ignore
 
 
 def path_to_file_uri(path):
+    # type: (str) -> str
     """Convert local filesystem path to legal File URIs as described in:
     http://en.wikipedia.org/wiki/File_URI_scheme
     """
@@ -249,14 +271,18 @@ def path_to_file_uri(path):
         x = x.replace('|', ':') # http://bugs.python.org/issue5861
     return 'file:///%s' % x.lstrip('/')
 
+
 def file_uri_to_path(uri):
+    # type: (str) -> str
     """Convert File URI to local filesystem path according to:
     http://en.wikipedia.org/wiki/File_URI_scheme
     """
     uri_path = urlparse(uri).path
     return url2pathname(uri_path)
 
+
 def any_to_uri(uri_or_path):
+    # type: (str) -> str
     """If given a path name, return its File URI, otherwise return it
     unmodified
     """

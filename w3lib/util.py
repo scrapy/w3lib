@@ -1,4 +1,8 @@
 import six
+from typing import AnyStr, Optional
+
+from ._types import String
+
 
 def str_to_unicode(text, encoding=None, errors='strict'):
     if encoding is None:
@@ -7,6 +11,7 @@ def str_to_unicode(text, encoding=None, errors='strict'):
         return text.decode(encoding, errors)
     return text
 
+
 def unicode_to_str(text, encoding=None, errors='strict'):
     if encoding is None:
         encoding = 'utf-8'
@@ -14,19 +19,23 @@ def unicode_to_str(text, encoding=None, errors='strict'):
         return text.encode(encoding, errors)
     return text
 
+
 def to_unicode(text, encoding=None, errors='strict'):
+    # type: (AnyStr, Optional[String], String) -> six.text_type
     """Return the unicode representation of a bytes object `text`. If `text`
     is already an unicode object, return it as-is."""
     if isinstance(text, six.text_type):
         return text
-    if not isinstance(text, (bytes, six.text_type)):
+    if not isinstance(text, bytes):
         raise TypeError('to_unicode must receive a bytes, str or unicode '
                         'object, got %s' % type(text).__name__)
     if encoding is None:
         encoding = 'utf-8'
     return text.decode(encoding, errors)
 
+
 def to_bytes(text, encoding=None, errors='strict'):
+    # type: (AnyStr, Optional[String], String) -> bytes
     """Return the binary representation of `text`. If `text`
     is already a bytes object, return it as-is."""
     if isinstance(text, bytes):
@@ -38,7 +47,9 @@ def to_bytes(text, encoding=None, errors='strict'):
         encoding = 'utf-8'
     return text.encode(encoding, errors)
 
+
 def to_native_str(text, encoding=None, errors='strict'):
+    # type: (AnyStr, Optional[String], String) -> str
     """ Return str representation of `text`
     (bytes in Python 2.x and unicode in Python 3.x). """
     if six.PY2:
