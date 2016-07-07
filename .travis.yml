@@ -18,6 +18,10 @@ matrix:
       sudo: true
     - python: 3.5
       env: TOXENV=pypy3
+    - python: 3.6
+      env: TOXENV=mypy2
+    - python: 3.6
+      env: TOXENV=mypy3
 
 install:
   - |

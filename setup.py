@@ -29,5 +29,5 @@ setup(
         'Programming Language :: Python :: Implementation :: PyPy',
         'Topic :: Internet :: WWW/HTTP',
     ],
-    install_requires=['six >= 1.4.1'],
+    install_requires=['six >= 1.4.1', 'typing'],
 )

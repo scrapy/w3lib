@@ -7,12 +7,14 @@ import warnings
 import re
 import six
 from six import moves
+from typing import AnyStr, Optional, Iterable, Tuple, Union, Sequence
 
-from w3lib.util import to_bytes, to_unicode
+from w3lib.util import to_bytes, to_unicode, to_native_str
 from w3lib.url import safe_url_string
+from w3lib._types import String
 
-_ent_re = re.compile(r'&((?P<named>[a-z\d]+)|#(?P<dec>\d+)|#x(?P<hex>[a-f\d]+))(?P<semicolon>;?)', re.IGNORECASE)
-_tag_re = re.compile(r'<[a-zA-Z\/!].*?>', re.DOTALL)
+_ent_re = re.compile(six.u(r'&((?P<named>[a-z\d]+)|#(?P<dec>\d+)|#x(?P<hex>[a-f\d]+))(?P<semicolon>;?)'), re.IGNORECASE)
+_tag_re = re.compile(six.u(r'<[a-zA-Z\/!].*?>'), re.DOTALL)
 _baseurl_re = re.compile(six.u(r'<base\s[^>]*href\s*=\s*[\"\']\s*([^\"\'\s]+)\s*[\"\']'), re.I)
 _meta_refresh_re = re.compile(six.u(r'<meta\s[^>]*http-equiv[^>]*refresh[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)'), re.DOTALL | re.IGNORECASE)
 _cdata_re = re.compile(r'((?P<cdata_s><!\[CDATA\[)(?P<cdata_d>.*?)(?P<cdata_e>\]\]>))', re.DOTALL)
@@ -38,7 +40,9 @@ def remove_entities(text, keep=(), remove_illegal=True, encoding='utf-8'):
 
     return replace_entities(text, keep, remove_illegal, encoding)
 
+
 def replace_entities(text, keep=(), remove_illegal=True, encoding='utf-8'):
+    # type: (AnyStr, Sequence[String], bool, String) -> six.text_type
     u"""Remove entities from the given `text` by converting them to their
     corresponding unicode character.
 
@@ -96,14 +100,19 @@ def replace_entities(text, keep=(), remove_illegal=True, encoding='utf-8'):
 
     return _ent_re.sub(convert_entity, to_unicode(text, encoding))
 
+
 def has_entities(text, encoding=None):
+    # type: (AnyStr, Optional[String]) -> bool
     return bool(_ent_re.search(to_unicode(text, encoding)))
 
+
 def replace_tags(text, token='', encoding=None):
+    # type: (AnyStr, String, Optional[String]) -> six.text_type
+
     """Replace all markup tags found in the given `text` by the given token.
     By default `token` is an empty string so it just removes all tags.
 
-    `text` can be a unicode string or a regular string encoded as `encoding`
+    `text` can be a unicode string or a byte string encoded as `encoding`
     (or ``'utf-8'`` if `encoding` is not given.)
 
     Always returns a unicode string.
@@ -124,6 +133,7 @@ def replace_tags(text, token='', encoding=None):
 
 _REMOVECOMMENTS_RE = re.compile(u'<!--.*?-->', re.DOTALL)
 def remove_comments(text, encoding=None):
+    # type: (AnyStr, Optional[String]) -> six.text_type
     """ Remove HTML Comments.
 
     >>> import w3lib.html
@@ -133,10 +143,13 @@ def remove_comments(text, encoding=None):
 
     """
 
-    text = to_unicode(text, encoding)
-    return _REMOVECOMMENTS_RE.sub(u'', text)
+    text_unicode = to_unicode(text, encoding)
+    return _REMOVECOMMENTS_RE.sub(u'', text_unicode)
+
 
 def remove_tags(text, which_ones=(), keep=(), encoding=None):
+    # type: (AnyStr, Sequence[String], Sequence[String], Optional[String]) -> six.text_type
+
     """ Remove HTML Tags only.
 
     `which_ones` and `keep` are both tuples, there are four cases:
@@ -185,26 +198,28 @@ def remove_tags(text, which_ones=(), keep=(), encoding=None):
 
     assert not (which_ones and keep), 'which_ones and keep can not be given at the same time'
 
-    which_ones = {tag.lower() for tag in which_ones}
-    keep = {tag.lower() for tag in keep}
+    which_ones_ = {tag.lower() for tag in which_ones}
+    keep_ = {tag.lower() for tag in keep}
 
     def will_remove(tag):
         tag = tag.lower()
-        if which_ones:
-            return tag in which_ones
+        if which_ones_:
+            return tag in which_ones_
         else:
-            return tag not in keep
+            return tag not in keep_
 
     def remove_tag(m):
         tag = m.group(1)
         return u'' if will_remove(tag) else m.group(0)
 
-    regex = '</?([^ >/]+).*?>'
+    regex = u'</?([^ >/]+).*?>'
     retags = re.compile(regex, re.DOTALL | re.IGNORECASE)
 
     return retags.sub(remove_tag, to_unicode(text, encoding))
 
+
 def remove_tags_with_content(text, which_ones=(), encoding=None):
+    # type: (AnyStr, Sequence[String], Optional[String]) -> six.text_type
     """Remove tags and their content.
 
     `which_ones` is a tuple of which tags to remove including their content.
@@ -218,16 +233,18 @@ def remove_tags_with_content(text, which_ones=(), encoding=None):
 
     """
 
-    text = to_unicode(text, encoding)
+    text_unicode = to_unicode(text, encoding)
     if which_ones:
-        tags = '|'.join([r'<%s.*?</%s>|<%s\s*/>' % (tag, tag, tag) for tag in which_ones])
+        tags = u'|'.join([r'<%s.*?</%s>|<%s\s*/>' % (tag, tag, tag) for tag in which_ones])
         retags = re.compile(tags, re.DOTALL | re.IGNORECASE)
-        text = retags.sub(u'', text)
-    return text
+        text_unicode = retags.sub(u'', text_unicode)
+    return text_unicode
 
 
-def replace_escape_chars(text, which_ones=('\n', '\t', '\r'), replace_by=u'', \
-        encoding=None):
+def replace_escape_chars(text, which_ones=('\n', '\t', '\r'), replace_by='',
+                         encoding=None):
+    # type: (AnyStr, Sequence[String], String, Optional[String]) -> six.text_type
+
     """Remove escape characters.
 
     `which_ones` is a tuple of which escape characters we want to remove.
@@ -238,12 +255,15 @@ def replace_escape_chars(text, which_ones=('\n', '\t', '\r'), replace_by=u'', \
 
     """
 
-    text = to_unicode(text, encoding)
+    text_unicode = to_unicode(text, encoding)
     for ec in which_ones:
-        text = text.replace(ec, to_unicode(replace_by, encoding))
-    return text
+        text_unicode = text_unicode.replace(ec, to_unicode(replace_by, encoding))
+    return text_unicode
+
 
 def unquote_markup(text, keep=(), remove_illegal=True, encoding=None):
+    # type: (AnyStr, Sequence[String], bool, Optional[String]) -> six.text_type
+
     """
     This function receives markup as a text (always a unicode string or
     a UTF-8 encoded string) and does the following:
@@ -264,27 +284,29 @@ def unquote_markup(text, keep=(), remove_illegal=True, encoding=None):
             offset = match_e
         yield txt[offset:]
 
-    text = to_unicode(text, encoding)
+    text_unicode = to_unicode(text, encoding)
     ret_text = u''
-    for fragment in _get_fragments(text, _cdata_re):
+    for fragment in _get_fragments(text_unicode, _cdata_re):
         if isinstance(fragment, six.string_types):
             # it's not a CDATA (so we try to remove its entities)
-            ret_text += replace_entities(fragment, keep=keep, remove_illegal=remove_illegal)
+            # XXX: mypy has problems with six.string_types,
+            # had to ignore this type check
+            ret_text += replace_entities(fragment, keep=keep, remove_illegal=remove_illegal)  # type: ignore
         else:
             # it's a CDATA (so we just extract its content)
             ret_text += fragment.group('cdata_d')
     return ret_text
 
+
 def get_base_url(text, baseurl='', encoding='utf-8'):
+    # type: (AnyStr, str, String) -> str
     """Return the base url if declared in the given HTML `text`,
     relative to the given base url.
 
     If no base url is found, the given `baseurl` is returned.
-
     """
-
-    text = to_unicode(text, encoding)
-    m = _baseurl_re.search(text)
+    text_unicode = to_unicode(text, encoding)
+    m = _baseurl_re.search(text_unicode)
     if m:
         return moves.urllib.parse.urljoin(
             safe_url_string(baseurl),
@@ -293,30 +315,30 @@ def get_base_url(text, baseurl='', encoding='utf-8'):
     else:
         return safe_url_string(baseurl)
 
+
 def get_meta_refresh(text, baseurl='', encoding='utf-8', ignore_tags=('script', 'noscript')):
+    # type: (AnyStr, str, String, Sequence[String]) -> Tuple[Optional[float], Optional[str]]
     """Return  the http-equiv parameter of the HTML meta element from the given
-    HTML text and return a tuple ``(interval, url)`` where interval is an integer
+    HTML text and return a tuple ``(interval, url)`` where interval is a number
     containing the delay in seconds (or zero if not present) and url is a
     string with the absolute url to redirect.
 
     If no meta redirect is found, ``(None, None)`` is returned.
 
     """
-
-    if six.PY2:
-        baseurl = to_bytes(baseurl, encoding)
+    baseurl_str = to_native_str(baseurl)
     try:
-        text = to_unicode(text, encoding)
+        text_unicode = to_unicode(text, encoding)
     except UnicodeDecodeError:
         print(text)
         raise
-    text = remove_tags_with_content(text, ignore_tags)
-    text = remove_comments(replace_entities(text))
-    m = _meta_refresh_re.search(text)
+    text_unicode = remove_tags_with_content(text_unicode, ignore_tags)
+    text_unicode = remove_comments(replace_entities(text_unicode))
+    m = _meta_refresh_re.search(text_unicode)
     if m:
         interval = float(m.group('int'))
         url = safe_url_string(m.group('url').strip(' "\''), encoding)
-        url = moves.urllib.parse.urljoin(baseurl, url)
+        url = moves.urllib.parse.urljoin(baseurl_str, url)
         return interval, url
     else:
         return None, None
