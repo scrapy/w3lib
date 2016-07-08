@@ -6,7 +6,7 @@ import re
 import codecs
 import encodings  # type: ignore
 from sys import version_info
-from typing import Optional, AnyStr, Tuple, Callable
+from typing import Optional, AnyStr, Tuple, Callable, Union
 import six
 
 from .util import to_native_str
@@ -163,7 +163,7 @@ _FIRST_CHARS = set(c[0] for (c, _) in _BOM_TABLE)
 
 
 def read_bom(data):
-    # type: (bytes) -> Tuple[str, bytes]
+    # type: (bytes) -> Union[Tuple[str, bytes], Tuple[None, None]]
     r"""Read the byte order mark in the text, if present, and
     return the encoding represented by the BOM and the BOM.
 
@@ -271,7 +271,8 @@ def html_to_unicode(content_type_header, html_body_str,
     '''
 
     enc = http_content_type_encoding(content_type_header)
-    bom_enc, bom = read_bom(html_body_str)
+    # FIXME: remove type: ignore when mypy bug is fixed
+    bom_enc, bom = read_bom(html_body_str)  # type: ignore
     if enc is not None:
         # remove BOM if it agrees with the encoding
         if enc == bom_enc:
