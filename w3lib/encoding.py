@@ -5,11 +5,10 @@ Functions for handling encoding of web pages
 import re
 import codecs
 import encodings  # type: ignore
-from typing import Optional, Union, AnyStr, Tuple, Callable
+from typing import Optional, AnyStr, Tuple, Callable
 import six
 
 from .util import to_native_str
-from ._types import String
 
 
 _HEADER_ENCODING_RE = re.compile(r'charset=([\w-]+)', re.I)

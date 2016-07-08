@@ -12,7 +12,7 @@ from six.moves.urllib.parse import (urljoin, urlsplit, urlunsplit,
                                     urldefrag, urlencode, urlparse,
                                     quote, parse_qs, parse_qsl)
 from six.moves.urllib.request import pathname2url, url2pathname  # type: ignore
-from typing import AnyStr, Tuple, Union, Set, Sequence, TypeVar
+from typing import AnyStr, Union, Set, Sequence, TypeVar
 
 from w3lib.util import to_bytes, to_native_str, to_unicode
 from w3lib._types import String

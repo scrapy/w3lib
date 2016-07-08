@@ -7,9 +7,9 @@ import warnings
 import re
 import six
 from six import moves
-from typing import AnyStr, Optional, Iterable, Tuple, Union, Sequence
+from typing import AnyStr, Optional, Tuple, Sequence
 
-from w3lib.util import to_bytes, to_unicode, to_native_str
+from w3lib.util import to_unicode, to_native_str
 from w3lib.url import safe_url_string
 from w3lib._types import String
 
