@@ -7,7 +7,7 @@ import warnings
 import re
 import six
 from six import moves
-from typing import AnyStr, Optional, Tuple, Sequence
+from typing import AnyStr, Optional, Tuple, Sequence, Union
 
 from w3lib.util import to_unicode, to_native_str
 from w3lib.url import safe_url_string
@@ -315,7 +315,7 @@ def get_base_url(text, baseurl='', encoding='utf-8'):
 
 
 def get_meta_refresh(text, baseurl='', encoding='utf-8', ignore_tags=('script', 'noscript')):
-    # type: (AnyStr, str, String, Sequence[String]) -> Tuple[Optional[float], Optional[str]]
+    # type: (AnyStr, str, String, Sequence[String]) -> Union[Tuple[float, str], Tuple[None, None]]
     """Return  the http-equiv parameter of the HTML meta element from the given
     HTML text and return a tuple ``(interval, url)`` where interval is a number
     containing the delay in seconds (or zero if not present) and url is a
