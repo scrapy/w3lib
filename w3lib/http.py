@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 from base64 import urlsafe_b64encode
-from typing import Dict, List, Tuple, Optional, Union, AnyStr, Any
+from typing import Dict, List, Optional, Union, Any
 
 from ._types import String
 

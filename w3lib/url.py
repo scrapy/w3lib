@@ -16,7 +16,7 @@ from six.moves.urllib.parse import (urljoin, urlsplit, urlunsplit,
                                     quote, parse_qs, parse_qsl,
                                     ParseResult, unquote, urlunparse)
 from six.moves.urllib.request import pathname2url, url2pathname
-from typing import AnyStr, Tuple, Union, Set, Sequence, TypeVar
+from typing import AnyStr, Union, Set, Sequence, TypeVar
 from w3lib.util import to_bytes, to_native_str, to_unicode
 from w3lib._types import String
 
