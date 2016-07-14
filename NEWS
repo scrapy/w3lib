@@ -1,6 +1,13 @@
 w3lib release notes
 ===================
 
+1.14.3 (2016-07-14)
+-------------------
+
+Bugfix release:
+
+- Handle IDNA encoding failures in ``safe_url_string()`` (issue #62)
+
 1.14.2 (2016-04-11)
 -------------------
 
