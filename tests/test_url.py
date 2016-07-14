@@ -165,6 +165,20 @@ class UrlTests(unittest.TestCase):
             safeurl = safe_url_string(safe_result)
             self.assertEqual(safeurl, safe_result)
 
+    def test_safe_url_idna_encoding_failure(self):
+        # missing DNS label
+        self.assertEqual(
+            safe_url_string(u"http://.example.com/résumé?q=résumé"),
+            "http://.example.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9")
+
+        # DNS label too long
+        self.assertEqual(
+            safe_url_string(
+                u"http://www.{label}.com/résumé?q=résumé".format(
+                    label=u"example"*11)),
+            "http://www.{label}.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9".format(
+                    label=u"example"*11))
+
     def test_safe_download_url(self):
         self.assertEqual(safe_download_url('http://www.example.org'),
                          'http://www.example.org/')
