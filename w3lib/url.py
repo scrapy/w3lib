@@ -409,7 +409,7 @@ def parse_url(url, encoding=None):
 if not six.PY2:
     from urllib.parse import _coerce_args, unquote_to_bytes
 
-    def parse_qsl_to_bytes(qs, keep_blank_values=False, strict_parsing=False):
+    def parse_qsl_to_bytes(qs, keep_blank_values=False):
         """Parse a query given as a string argument.
 
         Data are returned as a list of name, value pairs as bytes.
@@ -424,10 +424,6 @@ if not six.PY2:
             strings.  The default false value indicates that blank values
             are to be ignored and treated as if they were  not included.
 
-        strict_parsing: flag indicating what to do with parsing errors. If
-            false (the default), errors are silently ignored. If true,
-            errors raise a ValueError exception.
-
         """
         # This code is the same as Python3's parse_qsl()
         # (at https://hg.python.org/cpython/rev/c38ac7ab8d9a)
@@ -437,12 +433,10 @@ if not six.PY2:
         pairs = [s2 for s1 in qs.split('&') for s2 in s1.split(';')]
         r = []
         for name_value in pairs:
-            if not name_value and not strict_parsing:
+            if not name_value:
                 continue
             nv = name_value.split('=', 1)
             if len(nv) != 2:
-                if strict_parsing:
-                    raise ValueError("bad query field: %r" % (name_value,))
                 # Handle case of a control-name with no equal sign
                 if keep_blank_values:
                     nv.append('')
