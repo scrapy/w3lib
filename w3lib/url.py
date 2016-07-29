@@ -274,9 +274,16 @@ def any_to_uri(uri_or_path):
     return uri_or_path if u.scheme else path_to_file_uri(uri_or_path)
 
 
-__all__ = ["add_or_replace_parameter", "any_to_uri", "file_uri_to_path",
-           "is_url", "path_to_file_uri", "safe_download_url",
-           "safe_url_string", "url_query_cleaner", "url_query_parameter",
+__all__ = ["add_or_replace_parameter",
+           "any_to_uri",
+           "canonicalize_url",
+           "file_uri_to_path",
+           "is_url",
+           "path_to_file_uri",
+           "safe_download_url",
+           "safe_url_string",
+           "url_query_cleaner",
+           "url_query_parameter",
 
            # this last one is deprecated ; include it to be on the safe side
            "urljoin_rfc"]
@@ -307,7 +314,7 @@ def _safe_ParseResult(parts, encoding='utf8', path_encoding='utf8'):
 
 def canonicalize_url(url, keep_blank_values=True, keep_fragments=False,
                      encoding=None):
-    """Canonicalize the given url by applying the following procedures:
+    r"""Canonicalize the given url by applying the following procedures:
 
     - sort query arguments, first by key, then by value
     - percent encode paths ; non-ASCII characters are percent-encoded
@@ -322,7 +329,18 @@ def canonicalize_url(url, keep_blank_values=True, keep_fragments=False,
     The url passed can be bytes or unicode, while the url returned is
     always a native str (bytes in Python 2, unicode in Python 3).
 
-    For examples see the tests in tests/test_utils_url.py
+    >>> import w3lib.url
+    >>>
+    >>> # sorting query arguments
+    >>> w3lib.url.canonicalize_url('http://www.example.com/do?c=3&b=5&b=2&a=50')
+    'http://www.example.com/do?a=50&b=2&b=5&c=3'
+    >>>
+    >>> # UTF-8 conversion + percent-encoding of non-ASCII characters
+    >>> w3lib.url.canonicalize_url(u'http://www.example.com/r\u00e9sum\u00e9')
+    'http://www.example.com/r%C3%A9sum%C3%A9'
+    >>>
+
+    For more examples, see the tests in `tests/test_url.py`.
     """
     # If supplied `encoding` is not compatible with all characters in `url`,
     # fallback to UTF-8 as safety net.
