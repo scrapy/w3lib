@@ -35,6 +35,7 @@ def urljoin_rfc(base, ref, encoding='utf-8'):
     .. warning::
 
         This function is deprecated and will be removed in future.
+        It is not supported with Python 3.
         Please use ``urlparse.urljoin`` instead.
 
     Same as urlparse.urljoin but supports unicode values in base and ref
@@ -48,7 +49,8 @@ def urljoin_rfc(base, ref, encoding='utf-8'):
     'http://www.example.com/otherpath/index2.html'
     >>>
 
-    >>> w3lib.url.urljoin_rfc('http://www.example.com/path/index.html', u'fran\u00e7ais/d\u00e9part.htm')
+    >>> # Note: the following does not work in Python 3
+    >>> w3lib.url.urljoin_rfc(b'http://www.example.com/path/index.html', u'fran\u00e7ais/d\u00e9part.htm') # doctest: +SKIP
     'http://www.example.com/path/fran\xc3\xa7ais/d\xc3\xa9part.htm'
     >>>
 

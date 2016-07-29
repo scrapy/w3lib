@@ -230,7 +230,7 @@ def html_to_unicode(content_type_header, html_body_str,
 
     >>> import w3lib.encoding
     >>> w3lib.encoding.html_to_unicode(None,
-    ... """<!DOCTYPE html>
+    ... b"""<!DOCTYPE html>
     ... <head>
     ... <meta charset="UTF-8" />
     ... <meta name="viewport" content="width=device-width" />
