@@ -52,13 +52,13 @@ def parse_data_uri(uri):
     if scheme != 'data':
         raise ValueError("not a data URI")
 
-    # RFC 3986 section 2.1 allows percent encoding to escape characters
-    # that would be interpreted as delimiters, implying that actual
-    # delimiters should not be percent-encoded.
-    # Decoding before parsing will allow malformed URIs with
-    # percent-encoded delimiters, but it makes parsing easier and should
-    # not affect well-formed URIs, as the delimiters used in this URI
-    # scheme are not allowed, percent-encoded or not, in tokens.
+    # RFC 3986 section 2.1 allows percent encoding to escape characters that
+    # would be interpreted as delimiters, implying that actual delimiters
+    # should not be percent-encoded.
+    # Decoding before parsing will allow malformed URIs with percent-encoded
+    # delimiters, but it makes parsing easier and should not affect
+    # well-formed URIs, as the delimiters used in this URI scheme are not
+    # allowed, percent-encoded or not, in tokens.
     uri = unquote(uri)
 
     media_type = "text/plain"
