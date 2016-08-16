@@ -580,7 +580,7 @@ class DataURITests(unittest.TestCase):
         type_, params, data = parse_data_uri('data:text/plain;'
                                              'foo=%22foo;bar%5C%22%22;'
                                              'charset=utf-8;'
-                                             'bar=%22foo;%5C%22 foo ;/,%22,'
+                                             'bar=%22foo;%5C%22%20foo;/,%22,'
                                              '%CE%8E%CE%A3%CE%8E')
 
         self.assertEqual(type_, "text/plain")
