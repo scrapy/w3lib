@@ -580,13 +580,13 @@ class DataURITests(unittest.TestCase):
         type_, params, data = parse_data_uri('data:text/plain;'
                                              'foo=%22foo;bar%5C%22%22;'
                                              'charset=utf-8;'
-                                             'bar=%22foo;%5C%22%20foo;/,%22,'
+                                             'bar=%22foo;%5C%22foo%20;/,%22,'
                                              '%CE%8E%CE%A3%CE%8E')
 
         self.assertEqual(type_, "text/plain")
         self.assertEqual(params, {"charset": "utf-8",
                                   "foo": 'foo;bar"',
-                                  "bar": 'foo;" foo ;/,'})
+                                  "bar": 'foo;"foo ;/,'})
         self.assertEqual(data, b"\xce\x8e\xce\xa3\xce\x8e")
 
     def test_base64(self):
