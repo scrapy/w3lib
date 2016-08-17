@@ -9,6 +9,7 @@ import re
 import posixpath
 import warnings
 import six
+from collections import namedtuple
 from six.moves.urllib.parse import (urljoin, urlsplit, urlunsplit,
                                     urldefrag, urlencode, urlparse,
                                     quote, parse_qs, parse_qsl,
@@ -307,6 +308,9 @@ _mediatype_parameter_pattern = re.compile(
                                                     ).encode()
 )
 
+_ParseDataURIResult = namedtuple("ParseDataURIResult",
+                                 "media_type media_type_parameters data")
+
 def parse_data_uri(uri):
     """
 
@@ -358,7 +362,7 @@ def parse_data_uri(uri):
             raise ValueError("invalid data URI")
         data = base64.b64decode(data)
 
-    return media_type, media_type_params, data
+    return _ParseDataURIResult(media_type, media_type_params, data)
 
 
 __all__ = ["add_or_replace_parameter",
