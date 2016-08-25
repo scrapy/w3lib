@@ -320,7 +320,7 @@ def parse_data_uri(uri):
     """
 
     if not isinstance(uri, bytes):
-        uri = uri.encode('ascii')
+        uri = safe_url_string(uri).encode('ascii')
 
     scheme, uri = uri.split(b':', 1)
     if scheme != b'data':

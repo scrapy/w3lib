@@ -569,9 +569,9 @@ class DataURITests(unittest.TestCase):
         result = parse_data_uri(b"data:,A%20brief%20note")
         self.assertEqual(result.data, b"A brief note")
 
-    def test_non_ascii_uri(self):
-        with self.assertRaises(UnicodeEncodeError):
-            parse_data_uri(u"data:,é")
+    def test_unicode_uri(self):
+        result = parse_data_uri(u"data:,é")
+        self.assertEqual(result.data, u"é".encode('utf-8'))
 
     def test_default_mediatype(self):
         result = parse_data_uri("data:;charset=iso-8859-7,%be%d3%be")
