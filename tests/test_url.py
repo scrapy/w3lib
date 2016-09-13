@@ -301,6 +301,12 @@ class UrlTests(unittest.TestCase):
         self.assertEqual('product.html?foobar=wired',
                 url_query_cleaner("product.html?foo=bar&foobar=wired", 'foobar'))
 
+    def test_url_query_cleaner_keep_fragments(self):
+        self.assertEqual('product.html?id=200#foo',
+                url_query_cleaner("product.html?id=200&foo=bar&name=wired#foo",
+                                  ['id'],
+                                  keep_fragments=True))
+
     def test_path_to_file_uri(self):
         if os.name == 'nt':
             self.assertEqual(path_to_file_uri("C:\\windows\clock.avi"),
