@@ -525,6 +525,29 @@ class CanonicalizeUrlTest(unittest.TestCase):
         self.assertEqual(canonicalize_url(parse_url("http://www.example.com/a%a3do?q=r%c3%a9sum%c3%a9")),
                                           "http://www.example.com/a%A3do?q=r%C3%A9sum%C3%A9")
 
+    def test_canonicalize_urlparse(self):
+        # urlparse is used in link extractors in some versions of Scrapy
+        self.assertEqual(canonicalize_url(urlparse(u"http://www.example.com/résumé?q=résumé")),
+                                          "http://www.example.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9")
+        self.assertEqual(canonicalize_url(urlparse(u'http://www.example.com/caf%e9-con-leche.htm')),
+                                          'http://www.example.com/caf%E9-con-leche.htm')
+        self.assertEqual(canonicalize_url(urlparse(u"http://www.example.com/a%a3do?q=r%c3%a9sum%c3%a9")),
+                                          "http://www.example.com/a%A3do?q=r%C3%A9sum%C3%A9")
+
+    def test_canonicalize_parse_url_bytes(self):
+        # parse_url() wraps urlparse and is used in link extractors
+        self.assertEqual(canonicalize_url(parse_url(u"http://résumé.example.com/résumé?q=résumé".encode('utf8'))),
+                                          "http://xn--rsum-bpad.example.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9")
+
+    def test_canonicalize_urlparse_native_str(self):
+        # urlparse is used in link extractors in some versions of Scrapy before canonicalization.
+        # This tests bytes URLs in Python 2 passed through urlparse() beforehand.
+        # Note: in Python 3, one cannot pass non-ASCII bytes to urlparse(),
+        # so the test URL below does not have the 'u' prefix,
+        # and should pass fine in Python 3, like in test_canonicalize_urlparse() above
+        self.assertEqual(canonicalize_url(urlparse("http://résumé.example.com/résumé?q=résumé")),
+                                          "http://xn--rsum-bpad.example.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9")
+
     def test_canonicalize_url_idempotence(self):
         for url, enc in [(u'http://www.bücher.de/résumé?q=résumé', 'utf8'),
                          (u'http://www.example.com/résumé?q=résumé', 'latin1'),

@@ -422,7 +422,9 @@ def parse_url(url, encoding=None):
     parsed url)
     """
     if isinstance(url, ParseResult):
-        return url
+        # we need to make sure we have unicode parts
+        # otherwise, things like IDNA encoding may fail on bytes
+        return ParseResult(*(to_unicode(part, encoding) for part in url))
     return urlparse(to_unicode(url, encoding))
 
 
