@@ -281,6 +281,7 @@ def get_base_url(text, baseurl='', encoding='utf-8'):
     """
 
     text = to_unicode(text, encoding)
+    text = remove_comments(text)
     m = _baseurl_re.search(text)
     if m:
         return moves.urllib.parse.urljoin(

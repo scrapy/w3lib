@@ -248,6 +248,8 @@ class GetBaseUrlTest(unittest.TestCase):
         self.assertEqual(get_base_url(text, baseurl), 'http://example.org/something')
         self.assertEqual(get_base_url(text, baseurl.encode('ascii')), 'http://example.org/something')
 
+    def test_base_url_in_comment(self):
+        self.assertEqual(get_base_url('''<!-- <base href="http://example.com/"/> -->'''), '')
 
     def test_relative_url_with_absolute_path(self):
         baseurl = 'https://example.org'
