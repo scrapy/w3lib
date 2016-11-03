@@ -173,7 +173,7 @@ def url_query_parameter(url, parameter, default=None, keep_blank_values=0):
     )
     return queryparams.get(parameter, [default])[0]
 
-def url_query_cleaner(url, parameterlist=(), sep='&', kvsep='=', remove=False, unique=True):
+def url_query_cleaner(url, parameterlist=(), sep='&', kvsep='=', remove=False, unique=True, keep_fragments=False):
     """Clean URL arguments leaving only those passed in the parameterlist keeping order
 
     >>> import w3lib.url
@@ -197,11 +197,17 @@ def url_query_cleaner(url, parameterlist=(), sep='&', kvsep='=', remove=False, u
     'product.html?name=wired'
     >>>
 
+    By default, URL fragments are removed. If you need to preserve fragments,
+    pass the ``keep_fragments`` argument as ``True``.
+
+    >>> w3lib.url.url_query_cleaner('http://domain.tld/?bla=123#123123', ['bla'], remove=True, keep_fragments=True)
+    'http://domain.tld/#123123'
+
     """
 
     if isinstance(parameterlist, (six.text_type, bytes)):
         parameterlist = [parameterlist]
-    url = urldefrag(url)[0]
+    url, fragment = urldefrag(url)
     base, _, query = url.partition('?')
     seen = set()
     querylist = []
@@ -216,7 +222,10 @@ def url_query_cleaner(url, parameterlist=(), sep='&', kvsep='=', remove=False, u
         else:
             querylist.append(ksv)
             seen.add(k)
-    return '?'.join([base, sep.join(querylist)]) if querylist else base
+    url = '?'.join([base, sep.join(querylist)]) if querylist else base
+    if keep_fragments:
+        url += '#' + fragment
+    return url
 
 def add_or_replace_parameter(url, name, new_value):
     """Add or remove a parameter to a given url
