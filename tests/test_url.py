@@ -182,6 +182,14 @@ class UrlTests(unittest.TestCase):
             "http://www.{label}.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9".format(
                     label=u"example"*11))
 
+    def test_safe_url_port_number(self):
+        self.assertEqual(
+            safe_url_string(u"http://www.example.com:80/résumé?q=résumé"),
+            "http://www.example.com:80/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9")
+        self.assertEqual(
+            safe_url_string(u"http://www.example.com:/résumé?q=résumé"),
+            "http://www.example.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9")
+
     def test_safe_download_url(self):
         self.assertEqual(safe_download_url('http://www.example.org'),
                          'http://www.example.org/')
@@ -372,6 +380,13 @@ class CanonicalizeUrlTest(unittest.TestCase):
                                           "http://www.example.com/do?a=3&b=2&c=1")
         self.assertEqual(canonicalize_url("http://www.example.com/do?&a=1"),
                                           "http://www.example.com/do?a=1")
+
+    def test_port_number(self):
+        self.assertEqual(canonicalize_url("http://www.example.com:8888/do?a=1&b=2&c=3"),
+                                          "http://www.example.com:8888/do?a=1&b=2&c=3")
+        # trailing empty ports are removed
+        self.assertEqual(canonicalize_url("http://www.example.com:/do?a=1&b=2&c=3"),
+                                          "http://www.example.com/do?a=1&b=2&c=3")
 
     def test_sorting(self):
         self.assertEqual(canonicalize_url("http://www.example.com/do?c=3&b=5&b=2&a=50"),
