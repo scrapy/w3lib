@@ -104,7 +104,7 @@ def safe_url_string(url, encoding='utf8', path_encoding='utf8'):
     # quote() in Python3 always returns Unicode (native str)
     return urlunsplit((
         to_native_str(parts.scheme),
-        to_native_str(netloc),
+        to_native_str(netloc).rstrip(':'),
 
         # default encoding for path component SHOULD be UTF-8
         quote(to_bytes(parts.path, path_encoding), _safe_chars),
@@ -406,7 +406,12 @@ def canonicalize_url(url, keep_blank_values=True, keep_fragments=False,
     fragment = '' if not keep_fragments else fragment
 
     # every part should be safe already
-    return urlunparse((scheme, netloc.lower(), path, params, query, fragment))
+    return urlunparse((scheme,
+                       netloc.lower().rstrip(':'),
+                       path,
+                       params,
+                       query,
+                       fragment))
 
 
 def _unquotepath(path):
