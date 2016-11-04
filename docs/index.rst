@@ -35,6 +35,7 @@ Install
 
 ``pip install w3lib``
 
+
 Tests
 =====
 
@@ -49,8 +50,15 @@ Python interpreters.
 .. _tox: http://tox.testrun.org
 .. _nose: http://readthedocs.org/docs/nose/en/latest/
 
+
+Changelog
+=========
+
+.. include:: ../NEWS
+    :start-line: 3
+
 History
-=======
+-------
 
 The code of w3lib was originally part of the `Scrapy framework`_ but was later
 stripped out of Scrapy, with the aim of make it more reusable and to provide a

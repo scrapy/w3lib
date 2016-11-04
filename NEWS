@@ -1,6 +1,17 @@
 w3lib release notes
 ===================
 
+1.16.0 (2016-MM-DD)
+-------------------
+
+- ``canonicalize_url()`` and ``safe_url_string()``:
+  strip ":" when no port is specified (as per `RFC 3986`_;
+  see also https://github.com/scrapy/scrapy/issues/2377)
+- ``url_query_cleaner()``: support new ``keep_fragments`` argument
+  (defaulting to ``False``)
+
+.. _RFC 3986: https://tools.ietf.org/html/rfc3986#section-3.2
+
 1.15.0 (2016-07-29)
 -------------------
 
