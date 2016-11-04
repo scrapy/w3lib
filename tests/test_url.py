@@ -607,6 +607,17 @@ class DataURITests(unittest.TestCase):
         self.assertEqual(result.media_type, "text/plain")
         self.assertEqual(result.data, b"Hello, world.")
 
+    def test_base64_spaces(self):
+        result = parse_data_uri("data:text/plain;base64,SGVsb%20G8sIH%0A%20%20"
+                                "dvcm%20%20%20xk%20Lg%3D%0A%3D")
+        self.assertEqual(result.media_type, "text/plain")
+        self.assertEqual(result.data, b"Hello, world.")
+
+        result = parse_data_uri("data:text/plain;base64,SGVsb G8sIH\n  "
+                                "dvcm   xk Lg%3D\n%3D")
+        self.assertEqual(result.media_type, "text/plain")
+        self.assertEqual(result.data, b"Hello, world.")
+
     def test_wrong_base64_param(self):
         with self.assertRaises(ValueError):
             parse_data_uri("data:text/plain;baes64,SGVsbG8sIHdvcmxkLg%3D%3D")
