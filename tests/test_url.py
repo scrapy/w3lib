@@ -626,6 +626,12 @@ class DataURITests(unittest.TestCase):
         with self.assertRaises(ValueError):
             parse_data_uri("http://example.com/")
 
+    def test_scheme_case_insensitive(self):
+        result = parse_data_uri("DATA:,A%20brief%20note")
+        self.assertEqual(result.data, b"A brief note")
+        result = parse_data_uri("DaTa:,A%20brief%20note")
+        self.assertEqual(result.data, b"A brief note")
+
 
 if __name__ == "__main__":
     unittest.main()

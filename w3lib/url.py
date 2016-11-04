@@ -323,7 +323,7 @@ def parse_data_uri(uri):
         uri = safe_url_string(uri).encode('ascii')
 
     scheme, uri = uri.split(b':', 1)
-    if scheme != b'data':
+    if scheme.lower() != b'data':
         raise ValueError("not a data URI")
 
     # RFC 3986 section 2.1 allows percent encoding to escape characters that
