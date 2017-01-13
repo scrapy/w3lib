@@ -622,6 +622,14 @@ class DataURITests(unittest.TestCase):
         with self.assertRaises(ValueError):
             parse_data_uri("data:text/plain;baes64,SGVsbG8sIHdvcmxkLg%3D%3D")
 
+    def test_missing_comma(self):
+        with self.assertRaises(ValueError):
+            parse_data_uri("data:A%20brief%20note")
+
+    def test_missing_scheme(self):
+        with self.assertRaises(ValueError):
+            parse_data_uri("text/plain,A%20brief%20note")
+
     def test_wrong_scheme(self):
         with self.assertRaises(ValueError):
             parse_data_uri("http://example.com/")
