@@ -322,7 +322,10 @@ def parse_data_uri(uri):
     if not isinstance(uri, bytes):
         uri = safe_url_string(uri).encode('ascii')
 
-    scheme, uri = uri.split(b':', 1)
+    try:
+        scheme, uri = uri.split(b':', 1)
+    except ValueError:
+        raise ValueError("invalid URI")
     if scheme.lower() != b'data':
         raise ValueError("not a data URI")
 
@@ -359,7 +362,10 @@ def parse_data_uri(uri):
         else:
             break
 
-    is_base64, data = uri.split(b',', 1)
+    try:
+        is_base64, data = uri.split(b',', 1)
+    except ValueError:
+        raise ValueError("invalid data URI")
     if is_base64:
         if is_base64 != b";base64":
             raise ValueError("invalid data URI")
