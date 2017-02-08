@@ -8,7 +8,10 @@ w3lib release notes
 - Add ``w3lib.url.parse_data_uri`` helper for parsing "data:" URIs
 - Add ``w3lib.html.strip_html5_whitespace`` function to strip leading and
   trailing whitespace as per W3C recommendations, e.g. for cleaning
-  "href" attribute values.
+  "href" attribute values
+- Fix ``w3lib.http.headers_raw_to_dict`` for multiple headers with same name
+- Do not distribute tests/test_*.pyc artifacts
+
 
 1.16.0 (2016-11-10)
 -------------------
