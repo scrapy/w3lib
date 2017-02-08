@@ -29,11 +29,21 @@ def headers_raw_to_dict(headers_raw):
         return None
     headers = headers_raw.splitlines()
     headers_tuples = [header.split(b':', 1) for header in headers]
-    return dict([
-        (header_item[0].strip(), [header_item[1].strip()])
-        for header_item in headers_tuples
-        if len(header_item) == 2
-    ])
+
+    result_dict = {}
+    for header_item in headers_tuples:
+        if not len(header_item) == 2:
+            continue
+
+        item_key = header_item[0].strip()
+        item_value = header_item[1].strip()
+
+        if item_key in result_dict:
+            result_dict[item_key].append(item_value)
+        else:
+            result_dict[item_key] = [item_value]
+
+    return result_dict
 
 
 def headers_dict_to_raw(headers_dict):

@@ -19,8 +19,10 @@ class HttpTests(unittest.TestCase):
         self.assertIsNone(headers_dict_to_raw(None))
 
     def test_headers_raw_to_dict(self):
-        raw = b"Content-type: text/html\n\rAccept: gzip\n\n"
-        dct = {b'Content-type': [b'text/html'], b'Accept': [b'gzip']}
+        raw = b"Content-type: text/html\n\rAccept: gzip\n\r\
+                Cache-Control: no-cache\n\rCache-Control: no-store\n\n"
+        dct = {b'Content-type': [b'text/html'], b'Accept': [b'gzip'], 
+               b'Cache-Control': [b'no-cache', b'no-store']}
         self.assertEqual(headers_raw_to_dict(raw), dct)
 
     def test_headers_dict_to_raw(self):
