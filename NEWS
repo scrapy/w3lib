@@ -1,6 +1,15 @@
 w3lib release notes
 ===================
 
+1.17.0 (2017-02-XX)
+-------------------
+
+- Add Python 3.5 and 3.6 support
+- Add ``w3lib.url.parse_data_uri`` helper for parsing "data:" URIs
+- Add ``w3lib.html.strip_html5_whitespace`` function to strip leading and
+  trailing whitespace as per W3C recommendations, e.g. for cleaning
+  "href" attribute values.
+
 1.16.0 (2016-11-10)
 -------------------
 
