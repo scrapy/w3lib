@@ -4,8 +4,8 @@ import os
 import unittest
 from w3lib.url import (is_url, safe_url_string, safe_download_url,
     url_query_parameter, add_or_replace_parameter, url_query_cleaner,
-    file_uri_to_path, path_to_file_uri, any_to_uri, urljoin_rfc,
-    canonicalize_url, parse_url)
+    file_uri_to_path, parse_data_uri, path_to_file_uri, any_to_uri,
+    urljoin_rfc, canonicalize_url, parse_url)
 from six.moves.urllib.parse import urlparse
 
 
@@ -572,6 +572,94 @@ class CanonicalizeUrlTest(unittest.TestCase):
                     label=u"example"*11)),
             "http://www.{label}.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9".format(
                     label=u"example"*11))
+
+
+class DataURITests(unittest.TestCase):
+
+    def test_default_mediatype_charset(self):
+        result = parse_data_uri("data:,A%20brief%20note")
+        self.assertEqual(result.media_type, "text/plain")
+        self.assertEqual(result.media_type_parameters, {"charset": "US-ASCII"})
+        self.assertEqual(result.data, b"A brief note")
+
+    def test_text_uri(self):
+        result = parse_data_uri(u"data:,A%20brief%20note")
+        self.assertEqual(result.data, b"A brief note")
+
+    def test_bytes_uri(self):
+        result = parse_data_uri(b"data:,A%20brief%20note")
+        self.assertEqual(result.data, b"A brief note")
+
+    def test_unicode_uri(self):
+        result = parse_data_uri(u"data:,é")
+        self.assertEqual(result.data, u"é".encode('utf-8'))
+
+    def test_default_mediatype(self):
+        result = parse_data_uri("data:;charset=iso-8859-7,%be%d3%be")
+        self.assertEqual(result.media_type, "text/plain")
+        self.assertEqual(result.media_type_parameters,
+                         {"charset": "iso-8859-7"})
+        self.assertEqual(result.data, b"\xbe\xd3\xbe")
+
+    def test_text_charset(self):
+        result = parse_data_uri("data:text/plain;charset=iso-8859-7,%be%d3%be")
+        self.assertEqual(result.media_type, "text/plain")
+        self.assertEqual(result.media_type_parameters,
+                         {"charset": "iso-8859-7"})
+        self.assertEqual(result.data, b"\xbe\xd3\xbe")
+
+    def test_mediatype_parameters(self):
+        result = parse_data_uri('data:text/plain;'
+                                'foo=%22foo;bar%5C%22%22;'
+                                'charset=utf-8;'
+                                'bar=%22foo;%5C%22foo%20;/%20,%22,'
+                                '%CE%8E%CE%A3%CE%8E')
+
+        self.assertEqual(result.media_type, "text/plain")
+        self.assertEqual(result.media_type_parameters,
+                         {"charset": "utf-8",
+                          "foo": 'foo;bar"',
+                          "bar": 'foo;"foo ;/ ,'})
+        self.assertEqual(result.data, b"\xce\x8e\xce\xa3\xce\x8e")
+
+    def test_base64(self):
+        result = parse_data_uri("data:text/plain;base64,"
+                                "SGVsbG8sIHdvcmxkLg%3D%3D")
+        self.assertEqual(result.media_type, "text/plain")
+        self.assertEqual(result.data, b"Hello, world.")
+
+    def test_base64_spaces(self):
+        result = parse_data_uri("data:text/plain;base64,SGVsb%20G8sIH%0A%20%20"
+                                "dvcm%20%20%20xk%20Lg%3D%0A%3D")
+        self.assertEqual(result.media_type, "text/plain")
+        self.assertEqual(result.data, b"Hello, world.")
+
+        result = parse_data_uri("data:text/plain;base64,SGVsb G8sIH\n  "
+                                "dvcm   xk Lg%3D\n%3D")
+        self.assertEqual(result.media_type, "text/plain")
+        self.assertEqual(result.data, b"Hello, world.")
+
+    def test_wrong_base64_param(self):
+        with self.assertRaises(ValueError):
+            parse_data_uri("data:text/plain;baes64,SGVsbG8sIHdvcmxkLg%3D%3D")
+
+    def test_missing_comma(self):
+        with self.assertRaises(ValueError):
+            parse_data_uri("data:A%20brief%20note")
+
+    def test_missing_scheme(self):
+        with self.assertRaises(ValueError):
+            parse_data_uri("text/plain,A%20brief%20note")
+
+    def test_wrong_scheme(self):
+        with self.assertRaises(ValueError):
+            parse_data_uri("http://example.com/")
+
+    def test_scheme_case_insensitive(self):
+        result = parse_data_uri("DATA:,A%20brief%20note")
+        self.assertEqual(result.data, b"A brief note")
+        result = parse_data_uri("DaTa:,A%20brief%20note")
+        self.assertEqual(result.data, b"A brief note")
 
 
 if __name__ == "__main__":
