@@ -17,6 +17,9 @@ _baseurl_re = re.compile(six.u(r'<base\s[^>]*href\s*=\s*[\"\']\s*([^\"\'\s]+)\s*
 _meta_refresh_re = re.compile(six.u(r'<meta\s[^>]*http-equiv[^>]*refresh[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)'), re.DOTALL | re.IGNORECASE)
 _cdata_re = re.compile(r'((?P<cdata_s><!\[CDATA\[)(?P<cdata_d>.*?)(?P<cdata_e>\]\]>))', re.DOTALL)
 
+HTML5_WHITESPACE = ' \t\n\r\x0c'
+
+
 def remove_entities(text, keep=(), remove_illegal=True, encoding='utf-8'):
     r"""
 
@@ -317,3 +320,19 @@ def get_meta_refresh(text, baseurl='', encoding='utf-8', ignore_tags=('script', 
         return interval, url
     else:
         return None, None
+
+
+def strip_html5_whitespace(text):
+    r"""
+    Strip all leading and trailing space characters (as defined in
+    https://www.w3.org/TR/html5/infrastructure.html#space-character).
+
+    Such stripping is useful e.g. for processing HTML element attributes which
+    contain URLs, like ``href``, ``src`` or form ``action`` - HTML5 standard
+    defines them as "valid URL potentially surrounded by spaces"
+    or "valid non-empty URL potentially surrounded by spaces".
+
+    >>> strip_html5_whitespace(' hello\n')
+    'hello'
+    """
+    return text.strip(HTML5_WHITESPACE)
