@@ -1,4 +1,4 @@
-"""
+﻿"""
 This module contains general purpose URL functions not found in the standard
 library.
 """
@@ -68,7 +68,10 @@ def urljoin_rfc(base, ref, encoding='utf-8'):
 
 _reserved = b';/?:@&=+$|,#' # RFC 3986 (Generic Syntax)
 _unreserved_marks = b"-_.!~*'()" # RFC 3986 sec 2.3
-_safe_chars = _ALWAYS_SAFE_BYTES + b'%' + _reserved + _unreserved_marks
+_safe_chars__url = _ALWAYS_SAFE_BYTES + b'%' + _reserved + _unreserved_marks
+_unsafe_chars__component = '#'
+_safe_chars__component = ''.join([i for i in _safe_chars__url if i not in _unsafe_chars__component])
+
 
 def safe_url_string(url, encoding='utf8', path_encoding='utf8'):
     """Convert the given URL into a legal URL by escaping unsafe characters
@@ -109,12 +112,12 @@ def safe_url_string(url, encoding='utf8', path_encoding='utf8'):
         to_native_str(netloc).rstrip(':'),
 
         # default encoding for path component SHOULD be UTF-8
-        quote(to_bytes(parts.path, path_encoding), _safe_chars),
+        quote(to_bytes(parts.path, path_encoding), _safe_chars__component),
 
         # encoding of query and fragment follows page encoding
         # or form-charset (if known and passed)
-        quote(to_bytes(parts.query, encoding), _safe_chars),
-        quote(to_bytes(parts.fragment, encoding), _safe_chars),
+        quote(to_bytes(parts.query, encoding), _safe_chars__component),
+        quote(to_bytes(parts.fragment, encoding), _safe_chars__component),
     ))
 
 _parent_dirs = re.compile(r'/?(\.\./)+')
@@ -412,13 +415,13 @@ def _safe_ParseResult(parts, encoding='utf8', path_encoding='utf8'):
         to_native_str(netloc),
 
         # default encoding for path component SHOULD be UTF-8
-        quote(to_bytes(parts.path, path_encoding), _safe_chars),
-        quote(to_bytes(parts.params, path_encoding), _safe_chars),
+        quote(to_bytes(parts.path, path_encoding), _safe_chars__component),
+        quote(to_bytes(parts.params, path_encoding), _safe_chars__component),
 
         # encoding of query and fragment follows page encoding
         # or form-charset (if known and passed)
-        quote(to_bytes(parts.query, encoding), _safe_chars),
-        quote(to_bytes(parts.fragment, encoding), _safe_chars)
+        quote(to_bytes(parts.query, encoding), _safe_chars__component),
+        quote(to_bytes(parts.fragment, encoding), _safe_chars__component)
     )
 
 
@@ -500,7 +503,7 @@ def canonicalize_url(url, keep_blank_values=True, keep_fragments=False,
     # 2. decode percent-encoded sequences in path as UTF-8 (or keep raw bytes)
     #    and percent-encode path again (this normalizes to upper-case %XX)
     uqp = _unquotepath(path)
-    path = quote(uqp, _safe_chars) or '/'
+    path = quote(uqp, _safe_chars__component) or '/'
 
     fragment = '' if not keep_fragments else fragment
 
