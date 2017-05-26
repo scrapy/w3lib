@@ -1,4 +1,4 @@
-"""
+﻿"""
 This module contains general purpose URL functions not found in the standard
 library.
 """
@@ -519,7 +519,7 @@ def _unquotepath(path):
 
     if six.PY2:
         # in Python 2, '%a3' becomes '\xa3', which is what we want
-        return unquote(path)
+        path = unquote(path)
     else:
         # in Python 3,
         # standard lib's unquote() does not work for non-UTF-8
@@ -527,7 +527,12 @@ def _unquotepath(path):
         # e.g., '%a3' becomes 'REPLACEMENT CHARACTER' (U+FFFD)
         #
         # unquote_to_bytes() returns raw bytes instead
-        return unquote_to_bytes(path)
+        path = unquote_to_bytes(path)
+
+    # unquote will remove all percent quoted elements, however a # is quoted and
+    # unquoting it will fundamentally change the path, creating a fragment
+    path = path.replace('#', '%23')
+    return path
 
 
 def parse_url(url, encoding=None):

@@ -490,6 +490,21 @@ class CanonicalizeUrlTest(unittest.TestCase):
         self.assertEqual(canonicalize_url(u"http://user:pass@www.example.com:81/do?now=1"),
                                           u"http://user:pass@www.example.com:81/do?now=1")
 
+    def test_preserve_nonfragments(self):
+        # don't decode `%23` to `#`
+        self.assertEqual(canonicalize_url("http://www.example.com/path/to/%23/foo/bar"),
+                                          "http://www.example.com/path/to/%23/foo/bar")
+        self.assertEqual(canonicalize_url("http://www.example.com/path/to/%23/foo/bar#frag"),
+                                          "http://www.example.com/path/to/%23/foo/bar")
+        self.assertEqual(canonicalize_url("http://www.example.com/path/to/%23/foo/bar#frag", keep_fragments=True),
+                                          "http://www.example.com/path/to/%23/foo/bar#frag")
+        self.assertEqual(canonicalize_url("http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2Fpath%2Fto%2F%23%2Fbar%2Ffoo"),
+                                          "http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2Fpath%2Fto%2F%23%2Fbar%2Ffoo")
+        self.assertEqual(canonicalize_url("http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2F%2Fpath%2Fto%2F%23%2Fbar%2Ffoo#frag"),
+                                          "http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2F%2Fpath%2Fto%2F%23%2Fbar%2Ffoo")
+        self.assertEqual(canonicalize_url("http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2F%2Fpath%2Fto%2F%23%2Fbar%2Ffoo#frag", keep_fragments=True),
+                                          "http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2F%2Fpath%2Fto%2F%23%2Fbar%2Ffoo#frag")
+
     def test_remove_fragments(self):
         self.assertEqual(canonicalize_url(u"http://user:pass@www.example.com/do?a=1#frag"),
                                           u"http://user:pass@www.example.com/do?a=1")
