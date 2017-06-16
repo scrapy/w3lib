@@ -59,6 +59,10 @@ class UrlTests(unittest.TestCase):
 
         self.assertTrue(isinstance(safe_url_string(b'http://example.com/'), str))
 
+    def test_safe_url_string_unsafe_chars(self):
+        safeurl = safe_url_string(r"http://localhost:8001/unwise{,},|,\,^,[,],`?|=[]&[]=|")
+        self.assertEqual(safeurl, r"http://localhost:8001/unwise%7B,%7D,|,%5C,%5E,[,],%60?|=[]&[]=|")
+
     def test_safe_url_string_with_query(self):
         safeurl = safe_url_string(u"http://www.example.com/£?unit=µ")
         self.assertTrue(isinstance(safeurl, str))

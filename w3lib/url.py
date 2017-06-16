@@ -30,9 +30,9 @@ RFC3986_GEN_DELIMS = b':/?#[]@'
 RFC3986_SUB_DELIMS = b"!$&'()*+,;="
 RFC3986_RESERVED = RFC3986_GEN_DELIMS + RFC3986_SUB_DELIMS
 RFC3986_UNRESERVED = (string.ascii_letters + string.digits + "-._~").encode('ascii')
+EXTRA_SAFE_CHARS = b'|'  # see https://github.com/scrapy/w3lib/pull/25
 
-
-_safe_chars = RFC3986_RESERVED + RFC3986_UNRESERVED + b'%'
+_safe_chars = RFC3986_RESERVED + RFC3986_UNRESERVED + EXTRA_SAFE_CHARS + b'%'
 
 def safe_url_string(url, encoding='utf8', path_encoding='utf8'):
     """Convert the given URL into a legal URL by escaping unsafe characters
