@@ -1,6 +1,15 @@
 w3lib release notes
 ===================
 
+1.18.0 (2017-08-03)
+-------------------
+
+- Include additional assets used for distribution packages in the source tarball
+- Consider ``[`` and ``]`` as safe characters in path and query components
+  of URLs, i.e. they are not escaped anymore
+- Disable codecov project coverage check
+
+
 1.17.0 (2017-02-08)
 -------------------
 
