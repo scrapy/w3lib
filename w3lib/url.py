@@ -374,7 +374,15 @@ def _safe_ParseResult(parts, encoding='utf8', path_encoding='utf8'):
     # IDNA encoding can fail for too long labels (>63 characters)
     # or missing labels (e.g. http://.example.com)
     try:
-        netloc = parts.netloc.encode('idna')
+        idx = parts.netloc.rfind(u':')
+        if idx != -1:
+            hostname = parts.netloc[:idx]
+            portpart = parts.netloc[idx:]
+        else:
+            hostname = parts.netloc
+            portpart = u''
+        hostname = to_unicode(hostname.encode('idna'))
+        netloc = hostname + portpart
     except UnicodeError:
         netloc = parts.netloc
 
