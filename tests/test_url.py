@@ -146,12 +146,14 @@ class UrlTests(unittest.TestCase):
 
             # Japanese
             (u'http://はじめよう.みんな/?query=サ&maxResults=5', 'http://xn--p8j9a0d9c9a.xn--q9jyb4c/?query=%E3%82%B5&maxResults=5'),
+            (u'http://はじめよう.みんな:80/?query=サ&maxResults=5', 'http://xn--p8j9a0d9c9a.xn--q9jyb4c:80/?query=%E3%82%B5&maxResults=5'),
 
             # Russian
             (u'http://кто.рф/', 'http://xn--j1ail.xn--p1ai/'),
             (u'http://кто.рф/index.php?domain=Что', 'http://xn--j1ail.xn--p1ai/index.php?domain=%D0%A7%D1%82%D0%BE'),
 
             # Korean
+            (u'http://내도메인.한국:80/', 'http://xn--220b31d95hq8o.xn--3e0b707e:80/'),
             (u'http://내도메인.한국/', 'http://xn--220b31d95hq8o.xn--3e0b707e/'),
             (u'http://맨체스터시티축구단.한국/', 'http://xn--2e0b17htvgtvj9haj53ccob62ni8d.xn--3e0b707e/'),
 
@@ -159,6 +161,8 @@ class UrlTests(unittest.TestCase):
             (u'http://nic.شبكة', 'http://nic.xn--ngbc5azd'),
 
             # Chinese
+            (u'http://您好.中国/', 'http://xn--5usr0o.xn--fiqs8s/'),
+            (u'http://您好.中国:80/', 'http://xn--5usr0o.xn--fiqs8s:80/'),
             (u'https://www.贷款.在线', 'https://www.xn--0kwr83e.xn--3ds443g'),
             (u'https://www2.xn--0kwr83e.在线', 'https://www2.xn--0kwr83e.xn--3ds443g'),
             (u'https://www3.贷款.xn--3ds443g', 'https://www3.xn--0kwr83e.xn--3ds443g'),
@@ -394,9 +398,14 @@ class CanonicalizeUrlTest(unittest.TestCase):
     def test_port_number(self):
         self.assertEqual(canonicalize_url("http://www.example.com:8888/do?a=1&b=2&c=3"),
                                           "http://www.example.com:8888/do?a=1&b=2&c=3")
+
+        self.assertEqual(canonicalize_url(u'http://您好.中国:80/'), 'http://xn--5usr0o.xn--fiqs8s:80/')
+
         # trailing empty ports are removed
         self.assertEqual(canonicalize_url("http://www.example.com:/do?a=1&b=2&c=3"),
                                           "http://www.example.com/do?a=1&b=2&c=3")
+
+        self.assertEqual(canonicalize_url(u'http://您好.中国:/'), 'http://xn--5usr0o.xn--fiqs8s/')
 
     def test_sorting(self):
         self.assertEqual(canonicalize_url("http://www.example.com/do?c=3&b=5&b=2&a=50"),
@@ -522,9 +531,16 @@ class CanonicalizeUrlTest(unittest.TestCase):
     def test_canonicalize_idns(self):
         self.assertEqual(canonicalize_url(u'http://www.bücher.de?q=bücher'),
                                            'http://www.xn--bcher-kva.de/?q=b%C3%BCcher')
+
+        self.assertEqual(canonicalize_url(u'http://www.bücher.de:80?q=bücher'),
+                                           'http://www.xn--bcher-kva.de:80/?q=b%C3%BCcher')
+
         # Japanese (+ reordering query parameters)
         self.assertEqual(canonicalize_url(u'http://はじめよう.みんな/?query=サ&maxResults=5'),
                                            'http://xn--p8j9a0d9c9a.xn--q9jyb4c/?maxResults=5&query=%E3%82%B5')
+
+        self.assertEqual(canonicalize_url(u'http://はじめよう.みんな:80/?query=サ&maxResults=5'),
+                                           'http://xn--p8j9a0d9c9a.xn--q9jyb4c:80/?maxResults=5&query=%E3%82%B5')
 
     def test_quoted_slash_and_question_sign(self):
         self.assertEqual(canonicalize_url("http://foo.com/AC%2FDC+rocks%3f/?yeah=1"),
