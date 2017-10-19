@@ -83,10 +83,7 @@ def safe_url_string(url, encoding='utf8', path_encoding='utf8'):
 
     # IDNA encoding can fail for too long labels (>63 characters)
     # or missing labels (e.g. http://.example.com)
-    try:
-        netloc = parts.netloc.encode('idna')
-    except UnicodeError:
-        netloc = parts.netloc
+    netloc = _encode_netloc(parts.netloc)
 
     # quote() in Python2 return type follows input type;
     # quote() in Python3 always returns Unicode (native str)
