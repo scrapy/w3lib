@@ -78,7 +78,7 @@ def headers_dict_to_raw(headers_dict):
     return b'\r\n'.join(raw_lines)
 
 
-def basic_auth_header(username, password):
+def basic_auth_header(username, password, encoding='ISO-8859-1'):
     """
     Return an `Authorization` header field value for `HTTP Basic Access Authentication (RFC 2617)`_
 
@@ -95,5 +95,5 @@ def basic_auth_header(username, password):
         # XXX: RFC 2617 doesn't define encoding, but ISO-8859-1
         # seems to be the most widely used encoding here. See also:
         # http://greenbytes.de/tech/webdav/draft-ietf-httpauth-basicauth-enc-latest.html
-        auth = auth.encode('ISO-8859-1')
+        auth = auth.encode(encoding)
     return b'Basic ' + urlsafe_b64encode(auth)
