@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import unittest
 from collections import OrderedDict
 from w3lib.http import (basic_auth_header,
@@ -13,6 +15,13 @@ class HttpTests(unittest.TestCase):
         # Check url unsafe encoded header
         self.assertEqual(b'Basic c29tZXVzZXI6QDx5dTk-Jm8_UQ==',
             basic_auth_header('someuser', '@<yu9>&o?Q'))
+
+    def test_basic_auth_header_encoding(self):
+        self.assertEqual(b'Basic c29tw6Z1c8Oocjpzw7htZXDDpHNz',
+                basic_auth_header(u'somæusèr', u'sømepäss', encoding='utf8'))
+        # default encoding (ISO-8859-1)
+        self.assertEqual(b'Basic c29t5nVz6HI6c_htZXDkc3M=',
+                basic_auth_header(u'somæusèr', u'sømepäss'))
 
     def test_headers_raw_dict_none(self):
         self.assertIsNone(headers_raw_to_dict(None))
