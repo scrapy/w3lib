@@ -3,6 +3,7 @@
 Functions for handling encoding of web pages
 """
 import re, codecs, encodings
+import six
 
 _HEADER_ENCODING_RE = re.compile(r'charset=([\w-]+)', re.I)
 
@@ -173,7 +174,7 @@ def read_bom(data):
 
 # Python decoder doesn't follow unicode standard when handling
 # bad utf-8 encoded strings. see http://bugs.python.org/issue8271
-codecs.register_error('w3lib_replace', lambda exc: (u'\ufffd', exc.start+1))
+codecs.register_error('w3lib_replace', lambda exc: (u'\ufffd', exc.end))
 
 def to_unicode(data_str, encoding):
     """Convert a str object to unicode using the encoding given

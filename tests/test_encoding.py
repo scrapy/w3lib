@@ -144,9 +144,9 @@ class HtmlConversionTests(unittest.TestCase):
     def test_invalid_utf8_encoded_body_with_valid_utf8_BOM(self):
         # unlike scrapy, the BOM is stripped
         self._assert_encoding('utf-8', b"\xef\xbb\xbfWORD\xe3\xabWORD2",
-                'utf-8', u'WORD\ufffd\ufffdWORD2')
+                'utf-8', u'WORD\ufffdWORD2')
         self._assert_encoding(None, b"\xef\xbb\xbfWORD\xe3\xabWORD2",
-                'utf-8', u'WORD\ufffd\ufffdWORD2')
+                'utf-8', u'WORD\ufffdWORD2')
 
     def test_utf8_unexpected_end_of_data_with_valid_utf8_BOM(self):
         # Python implementations handle unexpected end of UTF8 data
