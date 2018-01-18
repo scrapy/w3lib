@@ -220,6 +220,18 @@ class HtmlConversionTests(unittest.TestCase):
         self._assert_encoding('utf-16', u"hi".encode('utf-16-be'), 'utf-16-be', u"hi")
         self._assert_encoding('utf-32', u"hi".encode('utf-32-be'), 'utf-32-be', u"hi")
 
+    def test_python_crash(self):
+        import random
+        from io import BytesIO
+        random.seed(42)
+        buf = BytesIO()
+        for i in range(150000):
+            buf.write(bytes([random.randint(0, 255)]))
+        to_unicode(buf.getvalue(), 'utf-16-le')
+        to_unicode(buf.getvalue(), 'utf-16-be')
+        to_unicode(buf.getvalue(), 'utf-32-le')
+        to_unicode(buf.getvalue(), 'utf-32-be')
+
     def test_html_encoding(self):
         # extracting the encoding from raw html is tested elsewhere
         body = b"""blah blah < meta   http-equiv="Content-Type"
