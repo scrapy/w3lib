@@ -3,7 +3,7 @@
 Functions for handling encoding of web pages
 """
 import re, codecs, encodings
-import six
+from sys import version_info
 
 _HEADER_ENCODING_RE = re.compile(r'charset=([\w-]+)', re.I)
 
@@ -182,7 +182,7 @@ def to_unicode(data_str, encoding):
     Characters that cannot be converted will be converted to ``\\ufffd`` (the
     unicode replacement character).
     """
-    return data_str.decode(encoding, 'replace' if six.PY34 else 'w3lib_replace')
+    return data_str.decode(encoding, 'replace' if version_info[0:2] >= (3, 3) else 'w3lib_replace')
 
 def html_to_unicode(content_type_header, html_body_str,
         default_encoding='utf8', auto_detect_fun=None):
