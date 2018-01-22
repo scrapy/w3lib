@@ -144,9 +144,9 @@ class HtmlConversionTests(unittest.TestCase):
     def test_invalid_utf8_encoded_body_with_valid_utf8_BOM(self):
         # unlike scrapy, the BOM is stripped
         self._assert_encoding('utf-8', b"\xef\xbb\xbfWORD\xe3\xabWORD2",
-                'utf-8', u'WORD\ufffd\ufffdWORD2')
+                'utf-8', u'WORD\ufffdWORD2')
         self._assert_encoding(None, b"\xef\xbb\xbfWORD\xe3\xabWORD2",
-                'utf-8', u'WORD\ufffd\ufffdWORD2')
+                'utf-8', u'WORD\ufffdWORD2')
 
     def test_utf8_unexpected_end_of_data_with_valid_utf8_BOM(self):
         # Python implementations handle unexpected end of UTF8 data
@@ -219,6 +219,18 @@ class HtmlConversionTests(unittest.TestCase):
         # if there is no BOM,  big endian should be chosen
         self._assert_encoding('utf-16', u"hi".encode('utf-16-be'), 'utf-16-be', u"hi")
         self._assert_encoding('utf-32', u"hi".encode('utf-32-be'), 'utf-32-be', u"hi")
+
+    def test_python_crash(self):
+        import random
+        from io import BytesIO
+        random.seed(42)
+        buf = BytesIO()
+        for i in range(150000):
+            buf.write(bytes([random.randint(0, 255)]))
+        to_unicode(buf.getvalue(), 'utf-16-le')
+        to_unicode(buf.getvalue(), 'utf-16-be')
+        to_unicode(buf.getvalue(), 'utf-32-le')
+        to_unicode(buf.getvalue(), 'utf-32-be')
 
     def test_html_encoding(self):
         # extracting the encoding from raw html is tested elsewhere
