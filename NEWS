@@ -1,6 +1,18 @@
 w3lib release notes
 ===================
 
+1.19.0 (TBA)
+------------
+
+- Add a workaround for CPython segfault (https://bugs.python.org/issue32583)
+  which affect w3lib.encoding functions. This is technically **backwards
+  incompatible** because it changes the way non-decodable bytes are replaced
+  (in some cases instead of two ``\ufffd`` chars you can get one).
+  As a side effect, the fix speeds up decoding in Python 3.4+.
+- Add 'encoding' parameter for w3lib.http.basic_auth_header.
+- Fix pypy testing setup, add pypy3 to CI.
+
+
 1.18.0 (2017-08-03)
 -------------------
 
