@@ -1,8 +1,8 @@
 w3lib release notes
 ===================
 
-1.19.0 (TBA)
-------------
+1.19.0 (2018-01-25)
+-------------------
 
 - Add a workaround for CPython segfault (https://bugs.python.org/issue32583)
   which affect w3lib.encoding functions. This is technically **backwards
