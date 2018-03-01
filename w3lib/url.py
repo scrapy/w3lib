@@ -592,7 +592,7 @@ def urljoin_rfc(base, ref, encoding='utf-8'):
     return urljoin(str_base, str_ref)
 
 
-def invalid_url_py2(url):
+def to_absolute_url(url):
     """
     Handle the problem where urlparse on python2 failed to
     convert url to absolute path when there are ../ in relative path
