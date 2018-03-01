@@ -590,3 +590,18 @@ def urljoin_rfc(base, ref, encoding='utf-8'):
     str_base = to_bytes(base, encoding)
     str_ref = to_bytes(ref, encoding)
     return urljoin(str_base, str_ref)
+
+
+def invalid_url_py2(url):
+    """
+    Handle the problem where urlparse on python2 failed to
+    convert url to absolute path when there are ../ in relative path
+    """
+
+    scheme, hostname, path, query, fragment = urlsplit(url)
+    path = path[1:]
+
+    while path[:3] == '../':
+        path = path[3:]
+
+    return urlunsplit((scheme, hostname, path, query, fragment))
