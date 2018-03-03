@@ -590,3 +590,14 @@ def urljoin_rfc(base, ref, encoding='utf-8'):
     str_base = to_bytes(base, encoding)
     str_ref = to_bytes(ref, encoding)
     return urljoin(str_base, str_ref)
+
+
+def filter_tel_scheme(url):
+    """
+    This function aims to filter out the tel scheme from urls
+    """
+    scheme, hostname, path, query, fragment = urlsplit(url)
+    if path[:5].lower() == "/tel:":
+        path = '/'
+
+    return urlunsplit((scheme, hostname, path, query, fragment))
