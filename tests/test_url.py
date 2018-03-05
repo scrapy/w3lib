@@ -5,7 +5,7 @@ import unittest
 from w3lib.url import (is_url, safe_url_string, safe_download_url,
     url_query_parameter, add_or_replace_parameter, url_query_cleaner,
     file_uri_to_path, parse_data_uri, path_to_file_uri, any_to_uri,
-    urljoin_rfc, canonicalize_url, parse_url)
+    urljoin_rfc, canonicalize_url, parse_url, filter_tel_scheme)
 from six.moves.urllib.parse import urlparse
 
 
@@ -367,6 +367,19 @@ class UrlTests(unittest.TestCase):
         jurl = urljoin_rfc("http://www.example.com/", "/test")
         self.assertEqual(jurl, b"http://www.example.com/test")
 
+    def test_filter_tel_scheme(self):
+        url = 'http://example.com/tel:(123)-456-7890'
+        self.assertEqual(filter_tel_scheme(url), 'http://example.com/')
+
+        url = 'http://example.com/Tel:(123)-456-7890'
+        self.assertEqual(filter_tel_scheme(url), 'http://example.com/')
+
+        url = 'http://example.com/TEL:123-456-7890'
+        self.assertEqual(filter_tel_scheme(url), 'http://example.com/')
+
+        url = 'http://example.com/TEL123-456-7890'
+        self.assertEqual(filter_tel_scheme(url), 'http://example.com/TEL123-456-7890')
+
 
 class CanonicalizeUrlTest(unittest.TestCase):
 
@@ -668,4 +681,3 @@ class DataURITests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
