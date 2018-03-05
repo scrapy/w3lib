@@ -377,6 +377,9 @@ class UrlTests(unittest.TestCase):
         url = 'http://example.com/TEL:123-456-7890'
         self.assertEqual(filter_tel_scheme(url), 'http://example.com/')
 
+        url = 'http://example.com/TEL123-456-7890'
+        self.assertEqual(filter_tel_scheme(url), 'http://example.com/TEL123-456-7890')
+
 
 class CanonicalizeUrlTest(unittest.TestCase):
 
