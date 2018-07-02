@@ -16,6 +16,7 @@ from six.moves.urllib.parse import (urljoin, urlsplit, urlunsplit,
                                     quote, parse_qs, parse_qsl,
                                     ParseResult, unquote, urlunparse)
 from six.moves.urllib.request import pathname2url, url2pathname
+from urlparse4 import canonicalize_url as scurl_canonicalize
 from w3lib.util import to_bytes, to_native_str, to_unicode
 
 
@@ -428,60 +429,7 @@ def canonicalize_url(url, keep_blank_values=True, keep_fragments=False,
     # UTF-8 can handle all Unicode characters,
     # so we should be covered regarding URL normalization,
     # if not for proper URL expected by remote website.
-    try:
-        scheme, netloc, path, params, query, fragment = _safe_ParseResult(
-            parse_url(url), encoding=encoding)
-    except UnicodeEncodeError as e:
-        scheme, netloc, path, params, query, fragment = _safe_ParseResult(
-            parse_url(url), encoding='utf8')
-
-    # 1. decode query-string as UTF-8 (or keep raw bytes),
-    #    sort values,
-    #    and percent-encode them back
-    if six.PY2:
-        keyvals = parse_qsl(query, keep_blank_values)
-    else:
-        # Python3's urllib.parse.parse_qsl does not work as wanted
-        # for percent-encoded characters that do not match passed encoding,
-        # they get lost.
-        #
-        # e.g., 'q=b%a3' becomes [('q', 'b\ufffd')]
-        # (ie. with 'REPLACEMENT CHARACTER' (U+FFFD),
-        #      instead of \xa3 that you get with Python2's parse_qsl)
-        #
-        # what we want here is to keep raw bytes, and percent encode them
-        # so as to preserve whatever encoding what originally used.
-        #
-        # See https://tools.ietf.org/html/rfc3987#section-6.4:
-        #
-        # For example, it is possible to have a URI reference of
-        # "http://www.example.org/r%E9sum%E9.xml#r%C3%A9sum%C3%A9", where the
-        # document name is encoded in iso-8859-1 based on server settings, but
-        # where the fragment identifier is encoded in UTF-8 according to
-        # [XPointer]. The IRI corresponding to the above URI would be (in XML
-        # notation)
-        # "http://www.example.org/r%E9sum%E9.xml#r&#xE9;sum&#xE9;".
-        # Similar considerations apply to query parts.  The functionality of
-        # IRIs (namely, to be able to include non-ASCII characters) can only be
-        # used if the query part is encoded in UTF-8.
-        keyvals = parse_qsl_to_bytes(query, keep_blank_values)
-    keyvals.sort()
-    query = urlencode(keyvals)
-
-    # 2. decode percent-encoded sequences in path as UTF-8 (or keep raw bytes)
-    #    and percent-encode path again (this normalizes to upper-case %XX)
-    uqp = _unquotepath(path)
-    path = quote(uqp, _safe_chars) or '/'
-
-    fragment = '' if not keep_fragments else fragment
-
-    # every part should be safe already
-    return urlunparse((scheme,
-                       netloc.lower().rstrip(':'),
-                       path,
-                       params,
-                       query,
-                       fragment))
+    scurl_canonicalize(url, keep_blank_values, keep_fragments, encoding)
 
 
 def _unquotepath(path):
