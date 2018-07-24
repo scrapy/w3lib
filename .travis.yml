@@ -1,5 +1,6 @@
 language: python
-sudo: false
+sudo: required
+dist: trusty
 matrix:
   include:
     - python: 2.7
@@ -34,7 +35,18 @@ install:
         source "$HOME/virtualenvs/$PYPY_VERSION/bin/activate"
       fi
   - pip install -U tox twine wheel codecov
-script: tox
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    packages:
+    - gcc-5
+    - g++-5
+before_install: sudo apt-get update -qq
+script:
+  - sudo unlink /usr/bin/gcc && sudo ln -s /usr/bin/gcc-5 /usr/bin/gcc
+  - sudo unlink /usr/bin/g++ && sudo ln -s /usr/bin/g++-5 /usr/bin/g++
+  - tox
 after_success:
   - codecov
 
