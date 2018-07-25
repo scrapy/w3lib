@@ -422,7 +422,6 @@ def _canonicalize_url(url, keep_blank_values=True, keep_fragments=False,
 
     For more examples, see the tests in `tests/test_url.py`.
     """
-    print('dit me may')
     # If supplied `encoding` is not compatible with all characters in `url`,
     # fallback to UTF-8 as safety net.
     # UTF-8 can handle all Unicode characters,

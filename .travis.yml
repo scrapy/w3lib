@@ -1,6 +1,5 @@
 language: python
-sudo: required
-dist: trusty
+sudo: false
 matrix:
   include:
     - python: 2.7
@@ -17,6 +16,23 @@ matrix:
       env: TOXENV=pypy3
     - python: 3.6
       env: TOXENV=py36
+    # this env is added to test scurl implementation of canonicalize_url
+    - python: 3.6
+      env: TOXENV=scurl
+      sudo: false
+      dist: trusty
+      addons:
+        apt:
+          sources:
+          - ubuntu-toolchain-r-test
+          packages:
+          - gcc-5
+          - g++-5
+      before_install: sudo apt-get update -qq
+      script:
+        - sudo unlink /usr/bin/gcc && sudo ln -s /usr/bin/gcc-5 /usr/bin/gcc
+        - sudo unlink /usr/bin/g++ && sudo ln -s /usr/bin/g++-5 /usr/bin/g++
+        - tox
 
 install:
   - |
@@ -35,17 +51,7 @@ install:
         source "$HOME/virtualenvs/$PYPY_VERSION/bin/activate"
       fi
   - pip install -U tox twine wheel codecov
-addons:
-  apt:
-    sources:
-    - ubuntu-toolchain-r-test
-    packages:
-    - gcc-5
-    - g++-5
-before_install: sudo apt-get update -qq
 script:
-  - sudo unlink /usr/bin/gcc && sudo ln -s /usr/bin/gcc-5 /usr/bin/gcc
-  - sudo unlink /usr/bin/g++ && sudo ln -s /usr/bin/g++-5 /usr/bin/g++
   - tox
 after_success:
   - codecov
