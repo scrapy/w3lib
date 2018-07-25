@@ -5,6 +5,22 @@ matrix:
     - python: 2.7
       env: TOXENV=py27
     - python: 2.7
+      env: TOXENV=scurl27
+      sudo: required
+      dist: trusty
+      addons:
+        apt:
+          sources:
+          - ubuntu-toolchain-r-test
+          packages:
+          - gcc-5
+          - g++-5
+      before_install: sudo apt-get update -qq
+      script:
+        - sudo unlink /usr/bin/gcc && sudo ln -s /usr/bin/gcc-5 /usr/bin/gcc
+        - sudo unlink /usr/bin/g++ && sudo ln -s /usr/bin/g++-5 /usr/bin/g++
+        - tox
+    - python: 2.7
       env: TOXENV=pypy
     - python: 3.3
       env: TOXENV=py33
@@ -19,7 +35,7 @@ matrix:
     # this env is added to test scurl implementation of canonicalize_url
     - python: 3.6
       env: TOXENV=scurl
-      sudo: false
+      sudo: required
       dist: trusty
       addons:
         apt:
