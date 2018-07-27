@@ -27,7 +27,17 @@ def headers_raw_to_dict(headers_raw):
 
     if headers_raw is None:
         return None
-    headers = headers_raw.splitlines()
+
+    headers = []
+    for line in headers_raw.split(b'\r\n'):
+        if line.startswith(b' ') or line.startswith(b'\t'):
+            try:
+                headers[-1] += (b'\r\n' + line)
+            except IndexError:
+                raise ValueError('Malformed raw headers')
+        else:
+            headers.append(line)
+
     headers_tuples = [header.split(b':', 1) for header in headers]
 
     result_dict = {}
