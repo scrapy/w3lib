@@ -182,6 +182,8 @@ def url_query_cleaner(url, parameterlist=(), sep='&', kvsep='=', remove=False, u
     seen = set()
     querylist = []
     for ksv in query.split(sep):
+        if not ksv:
+            continue
         k, _, _ = ksv.partition(kvsep)
         if unique and k in seen:
             continue

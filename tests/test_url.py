@@ -284,6 +284,10 @@ class UrlTests(unittest.TestCase):
                          'http://example.com/?version=1&pageurl=test&param2=value2')
 
     def test_url_query_cleaner(self):
+        self.assertEqual('product.html',
+                url_query_cleaner("product.html?"))
+        self.assertEqual('product.html',
+                url_query_cleaner("product.html?&"))
         self.assertEqual('product.html?id=200',
                 url_query_cleaner("product.html?id=200&foo=bar&name=wired", ['id']))
         self.assertEqual('product.html?id=200',
@@ -308,6 +312,10 @@ class UrlTests(unittest.TestCase):
                 url_query_cleaner("product.html?id=2&foo=bar&name=wired", ['id', 'foo'], remove=True))
         self.assertEqual('product.html?foo=bar&name=wired',
                 url_query_cleaner("product.html?id=2&foo=bar&name=wired", ['id', 'footo'], remove=True))
+        self.assertEqual('product.html',
+                url_query_cleaner("product.html", ['id'], remove=True))
+        self.assertEqual('product.html',
+                url_query_cleaner("product.html?&", ['id'], remove=True))
         self.assertEqual('product.html?foo=bar',
                 url_query_cleaner("product.html?foo=bar&name=wired", 'foo'))
         self.assertEqual('product.html?foobar=wired',
