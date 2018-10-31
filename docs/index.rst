@@ -8,7 +8,7 @@ This is a Python library of web-related functions, such as:
 
 * remove comments, or tags from HTML snippets
 * extract base url from HTML snippets
-* translate entites on HTML strings
+* translate entities on HTML strings
 * convert raw HTTP headers to dicts and vice-versa
 * construct HTTP auth header
 * converting HTML pages to unicode
