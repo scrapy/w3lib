@@ -84,7 +84,7 @@ def safe_url_string(url, encoding='utf8', path_encoding='utf8'):
 
 _parent_dirs = re.compile(r'/?(\.\./)+')
 
-def safe_download_url(url):
+def safe_download_url(url, encoding='utf8', path_encoding='utf8'):
     """ Make a url for download. This will call safe_url_string
     and then strip the fragment, if one exists. The path will
     be normalised.
@@ -92,11 +92,11 @@ def safe_download_url(url):
     If the path is outside the document root, it will be changed
     to be within the document root.
     """
-    safe_url = safe_url_string(url)
+    safe_url = safe_url_string(url, encoding, path_encoding)
     scheme, netloc, path, query, _ = urlsplit(safe_url)
     if path:
         path = _parent_dirs.sub('', posixpath.normpath(path))
-        if url.endswith('/') and not path.endswith('/'):
+        if safe_url.endswith('/') and not path.endswith('/'):
             path += '/'
     else:
         path = '/'
