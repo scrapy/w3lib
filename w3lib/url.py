@@ -234,8 +234,8 @@ def add_or_replace_parameters(url, new_parameters):
     >>> import w3lib.url
     >>> w3lib.url.add_or_replace_parameters('http://www.example.com/index.php', {'arg': 'v'})
     'http://www.example.com/index.php?arg=v'
-    >>> w3lib.url.add_or_replace_parameters('http://www.example.com/index.php?arg1=v1&arg2=v2&arg3=v3',
-    {'arg4': 'v4', 'arg3': 'v3new'})
+    >>> args = {'arg4': 'v4', 'arg3': 'v3new'}
+    >>> w3lib.url.add_or_replace_parameters('http://www.example.com/index.php?arg1=v1&arg2=v2&arg3=v3', args)
     'http://www.example.com/index.php?arg1=v1&arg2=v2&arg3=v3new&arg4=v4'
     >>>
 
