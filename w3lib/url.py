@@ -9,7 +9,7 @@ import re
 import posixpath
 import warnings
 import string
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 import six
 from six.moves.urllib.parse import (urljoin, urlsplit, urlunsplit,
                                     urldefrag, urlencode, urlparse,
@@ -204,7 +204,7 @@ def _add_or_replace_parameters(url, params):
     parsed = urlsplit(url)
     args = parse_qsl(parsed.query, keep_blank_values=True)
 
-    new_args = dict(args)
+    new_args = OrderedDict(args)
     new_args.update(params)
     new_args = [(k, v) for k, v in new_args.items()]
 

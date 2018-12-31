@@ -288,9 +288,9 @@ class UrlTests(unittest.TestCase):
         self.assertEqual(add_or_replace_parameters(url, {'arg': 'v'}),
                          'http://domain/test?arg=v')
         url = 'http://domain/test?arg1=v1&arg2=v2&arg3=v3'
-        self.assertEqual(add_or_replace_parameter(url, {'arg4': 'v4'}),
+        self.assertEqual(add_or_replace_parameters(url, {'arg4': 'v4'}),
                          'http://domain/test?arg1=v1&arg2=v2&arg3=v3&arg4=v4')
-        self.assertEqual(add_or_replace_parameter(url, {'arg4': 'v4', 'arg3': 'v3new'}),
+        self.assertEqual(add_or_replace_parameters(url, {'arg4': 'v4', 'arg3': 'v3new'}),
                          'http://domain/test?arg1=v1&arg2=v2&arg3=v3new&arg4=v4')
 
     def test_url_query_cleaner(self):
