@@ -229,12 +229,12 @@ def add_or_replace_parameter(url, name, new_value):
 
 
 def add_or_replace_parameters(url, new_parameters):
-    """Add or remove a parameter to a given url
+    """Add or remove a parameters to a given url
 
     >>> import w3lib.url
-    >>> w3lib.url.add_or_replace_parameter('http://www.example.com/index.php', {'arg': 'v'})
+    >>> w3lib.url.add_or_replace_parameters('http://www.example.com/index.php', {'arg': 'v'})
     'http://www.example.com/index.php?arg=v'
-    >>> w3lib.url.add_or_replace_parameter('http://www.example.com/index.php?arg1=v1&arg2=v2&arg3=v3',
+    >>> w3lib.url.add_or_replace_parameters('http://www.example.com/index.php?arg1=v1&arg2=v2&arg3=v3',
     {'arg4': 'v4', 'arg3': 'v3new'})
     'http://www.example.com/index.php?arg1=v1&arg2=v2&arg3=v3new&arg4=v4'
     >>>
