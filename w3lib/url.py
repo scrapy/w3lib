@@ -369,6 +369,7 @@ def parse_data_uri(uri):
 
 
 __all__ = ["add_or_replace_parameter",
+           "add_or_replace_parameters",
            "any_to_uri",
            "canonicalize_url",
            "file_uri_to_path",
