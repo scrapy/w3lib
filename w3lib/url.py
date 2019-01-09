@@ -206,7 +206,6 @@ def _add_or_replace_parameters(url, params):
 
     new_args = OrderedDict(args)
     new_args.update(params)
-    new_args = [(k, v) for k, v in new_args.items()]
 
     query = urlencode(new_args)
     return urlunsplit(parsed._replace(query=query))
