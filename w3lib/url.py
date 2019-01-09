@@ -34,7 +34,7 @@ EXTRA_SAFE_CHARS = b'|'  # see https://github.com/scrapy/w3lib/pull/25
 
 _safe_chars = RFC3986_RESERVED + RFC3986_UNRESERVED + EXTRA_SAFE_CHARS + b'%'
 
-def safe_url_string(url, encoding='utf8', quote_path=None, path_encoding='utf8'):
+def safe_url_string(url, encoding='utf8', path_encoding='utf8', quote_path=True):
     """Convert the given URL into a legal URL by escaping unsafe characters
     according to RFC-3986.
 
