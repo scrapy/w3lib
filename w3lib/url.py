@@ -35,9 +35,11 @@ EXTRA_SAFE_CHARS = b'|'  # see https://github.com/scrapy/w3lib/pull/25
 _safe_chars = RFC3986_RESERVED + RFC3986_UNRESERVED + EXTRA_SAFE_CHARS + b'%'
 
 def safe_url_string(url, encoding='utf8', path_encoding='utf8', quote_path=True):
-    """Convert the given URL into a legal URL by escaping unsafe characters
-    according to RFC-3986.
-
+    """When quote_path is True, this will convert the given URL into a 
+    legal URL by escaping unsafe characters according to RFC-3986.
+    If quote_path is False, this method will return url as it is.
+    
+    
     If a bytes URL is given, it is first converted to `str` using the given
     encoding (which defaults to 'utf-8'). 'utf-8' encoding is used for
     URL path component (unless overriden by path_encoding), and given
