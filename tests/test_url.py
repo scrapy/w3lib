@@ -62,6 +62,17 @@ class UrlTests(unittest.TestCase):
     def test_safe_url_string_unsafe_chars(self):
         safeurl = safe_url_string(r"http://localhost:8001/unwise{,},|,\,^,[,],`?|=[]&[]=|")
         self.assertEqual(safeurl, r"http://localhost:8001/unwise%7B,%7D,|,%5C,%5E,[,],%60?|=[]&[]=|")
+        
+    def test_safe_url_string_quote_path(self):
+        safeurl = safe_url_string(u'http://google.com/"hello"', self.encoding, True)
+        self.assertEqual(safeurl, u'http://google.com/%22hello%22')
+        
+        safeurl = safe_url_string(u'http://google.com/"hello"', self.encoding, False)
+        self.assertEqual(safeurl, u'http://google.com/"hello"')
+        
+        safeurl = safe_url_string(u'http://google.com/"hello"', self.encoding)
+        self.assertEqual(safeurl, u'http://google.com/"hello"')
+        
 
     def test_safe_url_string_with_query(self):
         safeurl = safe_url_string(u"http://www.example.com/£?unit=µ")
