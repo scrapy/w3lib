@@ -64,13 +64,13 @@ class UrlTests(unittest.TestCase):
         self.assertEqual(safeurl, r"http://localhost:8001/unwise%7B,%7D,|,%5C,%5E,[,],%60?|=[]&[]=|")
         
     def test_safe_url_string_quote_path(self):
-        safeurl = safe_url_string(u'http://google.com/"hello"', encoding='utf8',path_encoding='utf8', True)
+        safeurl = safe_url_string(u'http://google.com/"hello"', encoding=self.encoding, path_encoding=self.path_encoding, quote_path=True)
         self.assertEqual(safeurl, u'http://google.com/%22hello%22')
         
-        safeurl = safe_url_string(u'http://google.com/"hello"', encoding='utf8',path_encoding='utf8', False)
+        safeurl = safe_url_string(u'http://google.com/"hello"', encoding=self.encoding, path_encoding=self.path_encoding, quote_path=False)
         self.assertEqual(safeurl, u'http://google.com/"hello"')
         
-        safeurl = safe_url_string(u'http://google.com/"hello"', encoding='utf8',path_encoding='utf8')
+        safeurl = safe_url_string(u'http://google.com/"hello"', encoding=self.encoding, path_encoding=self.path_encoding)
         self.assertEqual(safeurl, u'http://google.com/%22hello%22')
         
 
