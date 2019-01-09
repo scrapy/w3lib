@@ -34,7 +34,7 @@ EXTRA_SAFE_CHARS = b'|'  # see https://github.com/scrapy/w3lib/pull/25
 
 _safe_chars = RFC3986_RESERVED + RFC3986_UNRESERVED + EXTRA_SAFE_CHARS + b'%'
 
-def safe_url_string(url, encoding='utf8', escape_URL=None, path_encoding='utf8'):
+def safe_url_string(url, encoding='utf8', quote_path=None, path_encoding='utf8'):
     """Convert the given URL into a legal URL by escaping unsafe characters
     according to RFC-3986.
 
@@ -68,34 +68,18 @@ def safe_url_string(url, encoding='utf8', escape_URL=None, path_encoding='utf8')
 
     # quote() in Python2 return type follows input type;
     # quote() in Python3 always returns Unicode (native str)
-    
-    if bool(escape_URL):
-        return urlunsplit((
-            to_native_str(parts.scheme),
-            to_native_str(netloc).rstrip(':'),
+    return urlunsplit((
+        to_native_str(parts.scheme),
+        to_native_str(netloc).rstrip(':'),
 
-            # default encoding for path component SHOULD be UTF-8
-            to_native_str(parts.path),
+        # default encoding for path component SHOULD be UTF-8
+        quote(to_bytes(parts.path, path_encoding), _safe_chars) if quote_path else to_native_str(parts.path),
 
-            # encoding of query and fragment follows page encoding
-            # or form-charset (if known and passed)
-            quote(to_bytes(parts.query, encoding), _safe_chars),
-            quote(to_bytes(parts.fragment, encoding), _safe_chars),
-        ))
-      
-    else:
-        return urlunsplit((
-            to_native_str(parts.scheme),
-            to_native_str(netloc).rstrip(':'),
-
-            # default encoding for path component SHOULD be UTF-8
-            quote(to_bytes(parts.path, path_encoding), _safe_chars),
-
-            # encoding of query and fragment follows page encoding
-            # or form-charset (if known and passed)
-            quote(to_bytes(parts.query, encoding), _safe_chars),
-            quote(to_bytes(parts.fragment, encoding), _safe_chars),
-        ))
+        # encoding of query and fragment follows page encoding
+        # or form-charset (if known and passed)
+        quote(to_bytes(parts.query, encoding), _safe_chars),
+        quote(to_bytes(parts.fragment, encoding), _safe_chars),
+    ))
 
 
 _parent_dirs = re.compile(r'/?(\.\./)+')
