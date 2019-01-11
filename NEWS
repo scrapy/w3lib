@@ -1,6 +1,14 @@
 w3lib release notes
 ===================
 
+1.20.0 (2019-01-11)
+-------------------
+
+- Fix url_query_cleaner to do not append "?" to urls without a query string (issue #109)
+- Add support for Python 3.7 and drop Python 3.3 (issue #113)
+- Add `w3lib.url.add_or_replace_parameters` helper (issue #117)
+- Documentation fixes (issue #115)
+
 1.19.0 (2018-01-25)
 -------------------
 
