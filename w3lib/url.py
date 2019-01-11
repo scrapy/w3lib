@@ -9,7 +9,7 @@ import re
 import posixpath
 import warnings
 import string
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 import six
 from six.moves.urllib.parse import (urljoin, urlsplit, urlunsplit,
                                     urldefrag, urlencode, urlparse,
@@ -200,6 +200,17 @@ def url_query_cleaner(url, parameterlist=(), sep='&', kvsep='=', remove=False, u
     return url
 
 
+def _add_or_replace_parameters(url, params):
+    parsed = urlsplit(url)
+    args = parse_qsl(parsed.query, keep_blank_values=True)
+
+    new_args = OrderedDict(args)
+    new_args.update(params)
+
+    query = urlencode(new_args)
+    return urlunsplit(parsed._replace(query=query))
+
+
 def add_or_replace_parameter(url, name, new_value):
     """Add or remove a parameter to a given url
 
@@ -213,23 +224,22 @@ def add_or_replace_parameter(url, name, new_value):
     >>>
 
     """
-    parsed = urlsplit(url)
-    args = parse_qsl(parsed.query, keep_blank_values=True)
+    return _add_or_replace_parameters(url, {name: new_value})
 
-    new_args = []
-    found = False
-    for name_, value_ in args:
-        if name_ == name:
-            new_args.append((name_, new_value))
-            found = True
-        else:
-            new_args.append((name_, value_))
 
-    if not found:
-        new_args.append((name, new_value))
+def add_or_replace_parameters(url, new_parameters):
+    """Add or remove a parameters to a given url
 
-    query = urlencode(new_args)
-    return urlunsplit(parsed._replace(query=query))
+    >>> import w3lib.url
+    >>> w3lib.url.add_or_replace_parameters('http://www.example.com/index.php', {'arg': 'v'})
+    'http://www.example.com/index.php?arg=v'
+    >>> args = {'arg4': 'v4', 'arg3': 'v3new'}
+    >>> w3lib.url.add_or_replace_parameters('http://www.example.com/index.php?arg1=v1&arg2=v2&arg3=v3', args)
+    'http://www.example.com/index.php?arg1=v1&arg2=v2&arg3=v3new&arg4=v4'
+    >>>
+
+    """
+    return _add_or_replace_parameters(url, new_parameters)
 
 
 def path_to_file_uri(path):
@@ -292,6 +302,7 @@ _mediatype_parameter_pattern = re.compile(
 
 _ParseDataURIResult = namedtuple("ParseDataURIResult",
                                  "media_type media_type_parameters data")
+
 
 def parse_data_uri(uri):
     """
@@ -357,6 +368,7 @@ def parse_data_uri(uri):
 
 
 __all__ = ["add_or_replace_parameter",
+           "add_or_replace_parameters",
            "any_to_uri",
            "canonicalize_url",
            "file_uri_to_path",
