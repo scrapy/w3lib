@@ -42,7 +42,7 @@ def safe_url_string(url, encoding='utf8', path_encoding='utf8', quote_path=True)
     encoding (which defaults to 'utf-8'). If quote_path is True (default), 
     path_encoding ('utf-8' by default) is used to encode URL path component
     which is then quoted. Otherwise, if quote_path is False, path component
-    is not encoded or quoted, and given encoding is used for query string 
+    is not encoded or quoted. Given encoding is used for query string 
     or form data.
 
     When passing an encoding, you should use the encoding of the
