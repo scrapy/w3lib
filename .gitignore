@@ -9,3 +9,4 @@ docs/_build
 _trial_temp
 .coverage
 .cache
+.mypy_cache/

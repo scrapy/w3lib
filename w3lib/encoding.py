@@ -6,7 +6,7 @@ import re
 import codecs
 import encodings  # type: ignore
 from sys import version_info
-from typing import Optional, AnyStr, Tuple, Callable, Union
+from typing import Optional, AnyStr, Tuple, Callable, Union, cast
 import six
 
 from .util import to_native_str
@@ -15,7 +15,7 @@ _HEADER_ENCODING_RE = re.compile(r'charset=([\w-]+)', re.I)
 
 
 def http_content_type_encoding(content_type):
-    # type: (str) -> Optional[str]
+    # type: (Optional[str]) -> Optional[str]
     """Extract the encoding in the content-type header
 
     >>> import w3lib.encoding
@@ -28,6 +28,7 @@ def http_content_type_encoding(content_type):
         match = _HEADER_ENCODING_RE.search(content_type)
         if match:
             return resolve_encoding(match.group(1))
+    return None
 
 
 # regexp for parsing HTTP meta tags
@@ -91,6 +92,7 @@ def html_body_declared_encoding(html_body_str):
                 or match.group('xmlcharset')
         if encoding:
             return resolve_encoding(to_native_str(encoding))
+    return None
 
 
 # Default encoding translation
@@ -127,8 +129,8 @@ def _c18n_encoding(encoding):
     This performs normalization and translates aliases using python's
     encoding aliases
     """
-    normed = encodings.normalize_encoding(encoding).lower()
-    return encodings.aliases.aliases.get(normed, normed)
+    normed = encodings.normalize_encoding(encoding).lower()  # type: ignore
+    return encodings.aliases.aliases.get(normed, normed)  # type: ignore
 
 
 def resolve_encoding(encoding_alias):
@@ -273,6 +275,7 @@ def html_to_unicode(content_type_header, html_body_str,
     enc = http_content_type_encoding(content_type_header)
     # FIXME: remove type: ignore when mypy bug is fixed
     bom_enc, bom = read_bom(html_body_str)  # type: ignore
+    bom = cast(bytes, bom)
     if enc is not None:
         # remove BOM if it agrees with the encoding
         if enc == bom_enc:

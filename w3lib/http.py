@@ -35,7 +35,7 @@ def headers_raw_to_dict(headers_raw):
     headers = headers_raw.splitlines()
     headers_tuples = [header.split(b':', 1) for header in headers]
 
-    result_dict = {}
+    result_dict = {} # type: Dict[bytes, List[bytes]]
     for header_item in headers_tuples:
         if not len(header_item) == 2:
             continue

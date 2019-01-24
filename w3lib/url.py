@@ -70,7 +70,7 @@ def safe_url_string(url, encoding='utf8', path_encoding='utf8'):
     try:
         netloc = parts.netloc.encode('idna')
     except UnicodeError:
-        netloc = parts.netloc
+        netloc = parts.netloc  # type: ignore
 
     # quote() in Python2 return type follows input type;
     # quote() in Python3 always returns Unicode (native str)
@@ -116,7 +116,7 @@ def is_url(text):
     return text.partition("://")[0] in ('file', 'http', 'https')
 
 
-def url_query_parameter(url, parameter, default=None, keep_blank_values=0):
+def url_query_parameter(url, parameter, default=None, keep_blank_values=False):
     # type: (str, String, T, bool) -> Union[str, T]
     """Return the value of a url parameter, given the url and parameter name
 
@@ -543,7 +543,7 @@ def parse_url(url, encoding=None):
 
 
 if not six.PY2:
-    from urllib.parse import _coerce_args, unquote_to_bytes
+    from urllib.parse import _coerce_args, unquote_to_bytes  # type: ignore
 
     def parse_qsl_to_bytes(qs, keep_blank_values=False):
         """Parse a query given as a string argument.
