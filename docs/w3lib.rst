@@ -26,3 +26,9 @@ w3lib Package
 
 .. automodule:: w3lib.url
     :members:
+
+:mod:`form` Module
+-----------------
+
+.. automodule:: w3lib.form
+    :members:

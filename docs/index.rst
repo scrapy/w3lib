@@ -39,7 +39,7 @@ Install
 Tests
 =====
 
-`nose`_ is the preferred way to run tests. Just run: ``nosetests`` from the
+`pytest`_ is the preferred way to run tests. Just run: ``pytest`` from the
 root directory to execute tests using the default Python interpreter.
 
 `tox`_ could be used to run tests for all supported Python versions.
@@ -48,7 +48,7 @@ the root directory - tests will be executed for all available
 Python interpreters.
 
 .. _tox: http://tox.testrun.org
-.. _nose: http://readthedocs.org/docs/nose/en/latest/
+.. _pytest: https://docs.pytest.org/en/latest/
 
 
 Changelog
@@ -74,4 +74,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
