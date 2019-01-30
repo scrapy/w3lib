@@ -85,7 +85,7 @@ def html_body_declared_encoding(html_body_str):
     if isinstance(chunk, bytes):
         match = _BODY_ENCODING_BYTES_RE.search(chunk)
     else:
-        match = _BODY_ENCODING_STR_RE.search(chunk)
+        match = _BODY_ENCODING_STR_RE.search(chunk)  # type: ignore
 
     if match:
         encoding = match.group('charset') or match.group('charset2') \
