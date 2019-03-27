@@ -9,7 +9,7 @@ import re
 import posixpath
 import warnings
 import string
-from collections import namedtuple, OrderedDict
+from collections import namedtuple
 import six
 from six.moves.urllib.parse import (urljoin, urlsplit, urlunsplit,
                                     urldefrag, urlencode, urlparse,
