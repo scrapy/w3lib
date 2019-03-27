@@ -205,11 +205,12 @@ def _add_or_replace_parameters(url, params):
     args = parse_qsl(parsed.query, keep_blank_values=True)
 
     new_args = []
+    changing_params = list(params.keys())
     for name, value in args:
         if name in params.keys():
             new_args.append((name, params[name]))
             del params[name]
-        else:
+        elif name not in changing_params:
             new_args.append((name, value))
     new_args.extend([(name, value) for name, value in params.items()])
 

@@ -286,6 +286,8 @@ class UrlTests(unittest.TestCase):
         url = 'http://domain/test?arg1=v1&arg2=v2&arg1=v3'
         self.assertEqual(add_or_replace_parameter(url, 'arg4', 'v4'),
                          'http://domain/test?arg1=v1&arg2=v2&arg1=v3&arg4=v4')
+        self.assertEqual(add_or_replace_parameter(url, 'arg1', 'v3'),
+                         'http://domain/test?arg1=v3&arg2=v2')
 
     def test_add_or_replace_parameters(self):
         url = 'http://domain/test'
@@ -299,6 +301,8 @@ class UrlTests(unittest.TestCase):
         url = 'http://domain/test?arg1=v1&arg2=v2&arg1=v3'
         self.assertEqual(add_or_replace_parameters(url, {'arg4': 'v4'}),
                          'http://domain/test?arg1=v1&arg2=v2&arg1=v3&arg4=v4')
+        self.assertEqual(add_or_replace_parameters(url, {'arg1': 'v3'}),
+                         'http://domain/test?arg1=v3&arg2=v2')
 
     def test_url_query_cleaner(self):
         self.assertEqual('product.html',
