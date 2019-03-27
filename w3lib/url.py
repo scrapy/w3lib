@@ -204,8 +204,14 @@ def _add_or_replace_parameters(url, params):
     parsed = urlsplit(url)
     args = parse_qsl(parsed.query, keep_blank_values=True)
 
-    new_args = OrderedDict(args)
-    new_args.update(params)
+    new_args = []
+    for name, value in args:
+        if name in params.keys():
+            new_args.append((name, params[name]))
+            del params[name]
+        else:
+            new_args.append((name, value))
+    new_args.extend([(name, value) for name, value in params.items()])
 
     query = urlencode(new_args)
     return urlunsplit(parsed._replace(query=query))
