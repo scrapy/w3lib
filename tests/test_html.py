@@ -184,6 +184,10 @@ class RemoveTagsWithContentTest(unittest.TestCase):
         # text with empty tags
         self.assertEqual(remove_tags_with_content(u'<br/>a<br />', which_ones=('br',)), u'a')
 
+    def test_tags_with_shared_prefix(self):
+        # https://github.com/scrapy/w3lib/issues/114
+        self.assertEqual(remove_tags_with_content(u'<span></span><s></s>', which_ones=('s',)), u'<span></span>')
+
 
 class ReplaceEscapeCharsTest(unittest.TestCase):
     def test_returns_unicode(self):
