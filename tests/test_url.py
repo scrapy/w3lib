@@ -650,6 +650,21 @@ class CanonicalizeUrlTest(unittest.TestCase):
             "http://www.{label}.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9".format(
                     label=u"example"*11))
 
+    def test_preserve_nonfragment_hash(self):
+        # don't decode `%23` to `#`
+        self.assertEqual(canonicalize_url("http://www.example.com/path/to/%23/foo/bar"),
+                                          "http://www.example.com/path/to/%23/foo/bar")
+        self.assertEqual(canonicalize_url("http://www.example.com/path/to/%23/foo/bar#frag"),
+                                          "http://www.example.com/path/to/%23/foo/bar")
+        self.assertEqual(canonicalize_url("http://www.example.com/path/to/%23/foo/bar#frag", keep_fragments=True),
+                                          "http://www.example.com/path/to/%23/foo/bar#frag")
+        self.assertEqual(canonicalize_url("http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2Fpath%2Fto%2F%23%2Fbar%2Ffoo"),
+                                          "http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2Fpath%2Fto%2F%23%2Fbar%2Ffoo")
+        self.assertEqual(canonicalize_url("http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2F%2Fpath%2Fto%2F%23%2Fbar%2Ffoo#frag"),
+                                          "http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2F%2Fpath%2Fto%2F%23%2Fbar%2Ffoo")
+        self.assertEqual(canonicalize_url("http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2F%2Fpath%2Fto%2F%23%2Fbar%2Ffoo#frag", keep_fragments=True),
+                                          "http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2F%2Fpath%2Fto%2F%23%2Fbar%2Ffoo#frag")
+
 
 class DataURITests(unittest.TestCase):
 
