@@ -327,6 +327,20 @@ class GetBaseUrlTest(unittest.TestCase):
         self.assertEqual(get_base_url(text, baseurl),
                          'http://example.org/sterling%a3')
 
+    def test_get_base_url_ignore_comments(self):
+        baseurl = u'https://example.org'
+
+        text = u"""
+            <html>
+            <head><title>Dummy</title>
+            <!--<base href="http://127.0.0.1" />-->
+            <base href="http://example.org/something" />
+            </head>
+            <body>blahablsdfsal&amp;</body>
+            </html>"""
+        self.assertEqual(get_base_url(text, baseurl), 'http://example.org/something')
+        self.assertEqual(get_base_url(text, baseurl.encode('ascii')), 'http://example.org/something')
+
 
 class GetMetaRefreshTest(unittest.TestCase):
     def test_get_meta_refresh(self):
