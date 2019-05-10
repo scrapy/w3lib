@@ -106,6 +106,8 @@ class RemoveCommentsTest(unittest.TestCase):
         self.assertEqual(remove_comments(b"test <!--textcoment--> whatever"), u'test  whatever')
         self.assertEqual(remove_comments(b"test <!--\ntextcoment\n--> whatever"), u'test  whatever')
 
+        self.assertEqual(remove_comments(b"test <!--"), u'test ')
+
 
 class RemoveTagsTest(unittest.TestCase):
     def test_returns_unicode(self):
