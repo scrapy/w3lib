@@ -214,7 +214,8 @@ def _add_or_replace_parameters(url, params):
         elif name not in changing_params:
             new_args.append((name, value))
 
-    new_args.extend([(name, value) for name, value in params.items() if name not in seen_params])
+    not_modified_args = [(name, value) for name, value in params.items() if name not in seen_params]
+    new_args += not_modified_args
 
     query = urlencode(new_args)
     return urlunsplit(parsed._replace(query=query))
