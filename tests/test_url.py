@@ -304,6 +304,12 @@ class UrlTests(unittest.TestCase):
         self.assertEqual(add_or_replace_parameters(url, {'arg1': 'v3'}),
                          'http://domain/test?arg1=v3&arg2=v2')
 
+    def test_add_or_replace_parameters_does_not_change_input_param(self):
+        url = 'http://domain/test?arg=original'
+        input_param = {'arg': 'value'}
+        new_url = add_or_replace_parameters(url, input_param)  # noqa
+        self.assertEqual(input_param, {'arg': 'value'})
+
     def test_url_query_cleaner(self):
         self.assertEqual('product.html',
                 url_query_cleaner("product.html?"))
