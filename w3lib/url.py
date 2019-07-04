@@ -199,15 +199,13 @@ def url_query_cleaner(url, parameterlist=(), sep='&', kvsep='=', remove=False, u
         url += '#' + fragment
     return url
 
-
 def _add_or_replace_parameters(url, params):
     parsed = urlsplit(url)
-    args = parse_qsl(parsed.query, keep_blank_values=True)
-
+    current_args = parse_qsl(parsed.query, keep_blank_values=True)
     new_args = []
-    changing_params = list(params.keys())
-    for name, value in args:
-        if name in params.keys():
+    changing_params = set(params)
+    for name, value in current_args:
+        if name in params:
             new_args.append((name, params[name]))
             del params[name]
         elif name not in changing_params:
