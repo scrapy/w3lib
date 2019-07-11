@@ -34,11 +34,12 @@ EXTRA_SAFE_CHARS = b'|'  # see https://github.com/scrapy/w3lib/pull/25
 
 _safe_chars = RFC3986_RESERVED + RFC3986_UNRESERVED + EXTRA_SAFE_CHARS + b'%'
 
-remove_tab_newline = re.compile(r'[\t\n\r]')  # see https://url.spec.whatwg.org/#url-parsing
+_ascii_tab_newline_re = re.compile(r'[\t\n\r]')  # see https://infra.spec.whatwg.org/#ascii-tab-or-newline
 
 def safe_url_string(url, encoding='utf8', path_encoding='utf8'):
     """Convert the given URL into a legal URL by escaping unsafe characters
-    according to RFC-3986.
+    according to RFC-3986. Also, ASCII tabs and newlines are removed
+    as per https://url.spec.whatwg.org/#url-parsing.
 
     If a bytes URL is given, it is first converted to `str` using the given
     encoding (which defaults to 'utf-8'). 'utf-8' encoding is used for
@@ -59,7 +60,7 @@ def safe_url_string(url, encoding='utf8', path_encoding='utf8'):
     #   - if the supplied (or default) encoding chokes,
     #     percent-encode offending bytes
     decoded = to_unicode(url, encoding=encoding, errors='percentencode')
-    parts = urlsplit(remove_tab_newline.sub('', decoded))
+    parts = urlsplit(_ascii_tab_newline_re.sub('', decoded))
 
     # IDNA encoding can fail for too long labels (>63 characters)
     # or missing labels (e.g. http://.example.com)
