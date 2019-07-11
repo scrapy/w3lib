@@ -34,6 +34,8 @@ EXTRA_SAFE_CHARS = b'|'  # see https://github.com/scrapy/w3lib/pull/25
 
 _safe_chars = RFC3986_RESERVED + RFC3986_UNRESERVED + EXTRA_SAFE_CHARS + b'%'
 
+remove_tab_newline = re.compile(r'[\t\n\r]')  # see https://url.spec.whatwg.org/#url-parsing
+
 def safe_url_string(url, encoding='utf8', path_encoding='utf8'):
     """Convert the given URL into a legal URL by escaping unsafe characters
     according to RFC-3986.
@@ -56,8 +58,8 @@ def safe_url_string(url, encoding='utf8', path_encoding='utf8'):
     #     encoded with the supplied encoding (or UTF8 by default)
     #   - if the supplied (or default) encoding chokes,
     #     percent-encode offending bytes
-    parts = urlsplit(to_unicode(url, encoding=encoding,
-                                errors='percentencode'))
+    decoded = to_unicode(url, encoding=encoding, errors='percentencode')
+    parts = urlsplit(remove_tab_newline.sub('', decoded))
 
     # IDNA encoding can fail for too long labels (>63 characters)
     # or missing labels (e.g. http://.example.com)
