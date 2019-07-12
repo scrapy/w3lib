@@ -58,8 +58,8 @@ class UrlTests(unittest.TestCase):
         self.assertEqual(safeurl, "http://www.example.com/%A3")
 
         self.assertTrue(isinstance(safe_url_string(b'http://example.com/'), str))
-        
-        # Remove ASCII tab and newlines
+
+    def test_safe_url_string_remove_ascii_tab_and_newlines(self):
         self.assertEqual(safe_url_string("http://example.com/test\n.html"),
                                          "http://example.com/test.html")
         self.assertEqual(safe_url_string("http://example.com/test\t.html"),
