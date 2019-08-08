@@ -59,6 +59,20 @@ class UrlTests(unittest.TestCase):
 
         self.assertTrue(isinstance(safe_url_string(b'http://example.com/'), str))
 
+    def test_safe_url_string_remove_ascii_tab_and_newlines(self):
+        self.assertEqual(safe_url_string("http://example.com/test\n.html"),
+                                         "http://example.com/test.html")
+        self.assertEqual(safe_url_string("http://example.com/test\t.html"),
+                                         "http://example.com/test.html")
+        self.assertEqual(safe_url_string("http://example.com/test\r.html"),
+                                         "http://example.com/test.html")
+        self.assertEqual(safe_url_string("http://example.com/test\r.html\n"),
+                                         "http://example.com/test.html")
+        self.assertEqual(safe_url_string("http://example.com/test\r\n.html\t"),
+                                         "http://example.com/test.html")
+        self.assertEqual(safe_url_string("http://example.com/test\a\n.html"),
+                                         "http://example.com/test%07.html")
+
     def test_safe_url_string_unsafe_chars(self):
         safeurl = safe_url_string(r"http://localhost:8001/unwise{,},|,\,^,[,],`?|=[]&[]=|")
         self.assertEqual(safeurl, r"http://localhost:8001/unwise%7B,%7D,|,%5C,%5E,[,],%60?|=[]&[]=|")
