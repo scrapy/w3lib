@@ -203,6 +203,19 @@ class UrlTests(unittest.TestCase):
                          'http://www.example.org/image')
         self.assertEqual(safe_download_url('http://www.example.org/dir/'),
                          'http://www.example.org/dir/')
+        self.assertEqual(safe_download_url(b'http://www.example.org/dir/'),
+                         'http://www.example.org/dir/')
+
+        # Encoding related tests
+        self.assertEqual(safe_download_url(b'http://www.example.org?\xa3',
+                         encoding='latin-1', path_encoding='latin-1'),
+                         'http://www.example.org/?%A3')
+        self.assertEqual(safe_download_url(b'http://www.example.org?\xc2\xa3',
+                         encoding='utf-8', path_encoding='utf-8'),
+                         'http://www.example.org/?%C2%A3')
+        self.assertEqual(safe_download_url(b'http://www.example.org/\xc2\xa3?\xc2\xa3',
+                         encoding='utf-8', path_encoding='latin-1'),
+                         'http://www.example.org/%A3?%C2%A3')
 
     def test_is_url(self):
         self.assertTrue(is_url('http://www.example.org'))
