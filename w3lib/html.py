@@ -122,7 +122,7 @@ def replace_tags(text, token='', encoding=None):
     return _tag_re.sub(token, to_unicode(text, encoding))
 
 
-_REMOVECOMMENTS_RE = re.compile(u'<!--.*?-->', re.DOTALL)
+_REMOVECOMMENTS_RE = re.compile(u'<!--.*?(?:-->|$)', re.DOTALL)
 def remove_comments(text, encoding=None):
     """ Remove HTML Comments.
 
