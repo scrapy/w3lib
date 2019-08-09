@@ -1,11 +1,18 @@
 w3lib release notes
 ===================
 
-1.20.1 (2019-08-NN)
+1.21.0 (2019-08-09)
 -------------------
 
+- Add the ``encoding`` and ``path_encoding`` parameters to
+  :func:`w3lib.url.safe_download_url` (issue #118)
+- :func:`w3lib.url.safe_url_string` now also removes tabs and new lines
+  (issue #133)
+- :func:`w3lib.html.remove_comments` now also removes truncated comments
+  (issue #129)
 - :func:`w3lib.html.remove_tags_with_content` no longer removes tags which
   start with the same text as one of the specified tags (issue #114)
+- Recommend pytest instead of nose to run tests (issue #124)
 
 
 1.20.0 (2019-01-11)
