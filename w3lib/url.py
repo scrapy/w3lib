@@ -69,15 +69,18 @@ def safe_url_string(url, encoding='utf8', path_encoding='utf8', quote_path=True)
     except UnicodeError:
         netloc = parts.netloc
 
+    # default encoding for path component SHOULD be UTF-8
+    if quote_path:
+        path = quote(to_bytes(parts.path, path_encoding), _safe_chars)
+    else:
+        path = to_native_str(parts.path)
+    
     # quote() in Python2 return type follows input type;
     # quote() in Python3 always returns Unicode (native str)
     return urlunsplit((
         to_native_str(parts.scheme),
         to_native_str(netloc).rstrip(':'),
-
-        # default encoding for path component SHOULD be UTF-8
-        quote(to_bytes(parts.path, path_encoding), _safe_chars) if quote_path else to_native_str(parts.path),
-
+        path,
         # encoding of query and fragment follows page encoding
         # or form-charset (if known and passed)
         quote(to_bytes(parts.query, encoding), _safe_chars),
