@@ -5,7 +5,7 @@ import unittest
 from w3lib.url import (is_url, safe_url_string, safe_download_url,
     url_query_parameter, add_or_replace_parameter, url_query_cleaner,
     file_uri_to_path, parse_data_uri, path_to_file_uri, any_to_uri,
-    urljoin_rfc, canonicalize_url, parse_url)
+    urljoin_rfc, canonicalize_url, parse_url, add_or_replace_parameters)
 from six.moves.urllib.parse import urlparse
 
 
@@ -58,6 +58,20 @@ class UrlTests(unittest.TestCase):
         self.assertEqual(safeurl, "http://www.example.com/%A3")
 
         self.assertTrue(isinstance(safe_url_string(b'http://example.com/'), str))
+
+    def test_safe_url_string_remove_ascii_tab_and_newlines(self):
+        self.assertEqual(safe_url_string("http://example.com/test\n.html"),
+                                         "http://example.com/test.html")
+        self.assertEqual(safe_url_string("http://example.com/test\t.html"),
+                                         "http://example.com/test.html")
+        self.assertEqual(safe_url_string("http://example.com/test\r.html"),
+                                         "http://example.com/test.html")
+        self.assertEqual(safe_url_string("http://example.com/test\r.html\n"),
+                                         "http://example.com/test.html")
+        self.assertEqual(safe_url_string("http://example.com/test\r\n.html\t"),
+                                         "http://example.com/test.html")
+        self.assertEqual(safe_url_string("http://example.com/test\a\n.html"),
+                                         "http://example.com/test%07.html")
 
     def test_safe_url_string_unsafe_chars(self):
         safeurl = safe_url_string(r"http://localhost:8001/unwise{,},|,\,^,[,],`?|=[]&[]=|")
@@ -214,6 +228,19 @@ class UrlTests(unittest.TestCase):
                          'http://www.example.org/image')
         self.assertEqual(safe_download_url('http://www.example.org/dir/'),
                          'http://www.example.org/dir/')
+        self.assertEqual(safe_download_url(b'http://www.example.org/dir/'),
+                         'http://www.example.org/dir/')
+
+        # Encoding related tests
+        self.assertEqual(safe_download_url(b'http://www.example.org?\xa3',
+                         encoding='latin-1', path_encoding='latin-1'),
+                         'http://www.example.org/?%A3')
+        self.assertEqual(safe_download_url(b'http://www.example.org?\xc2\xa3',
+                         encoding='utf-8', path_encoding='utf-8'),
+                         'http://www.example.org/?%C2%A3')
+        self.assertEqual(safe_download_url(b'http://www.example.org/\xc2\xa3?\xc2\xa3',
+                         encoding='utf-8', path_encoding='latin-1'),
+                         'http://www.example.org/%A3?%C2%A3')
 
     def test_is_url(self):
         self.assertTrue(is_url('http://www.example.org'))
@@ -293,6 +320,16 @@ class UrlTests(unittest.TestCase):
                          'http://example.com/?version=2&pageurl=http%3A%2F%2Fwww.example.com%2Ftest%2F%23fragment%3Dy&param2=value2')
         self.assertEqual(add_or_replace_parameter(url, 'pageurl', 'test'),
                          'http://example.com/?version=1&pageurl=test&param2=value2')
+
+    def test_add_or_replace_parameters(self):
+        url = 'http://domain/test'
+        self.assertEqual(add_or_replace_parameters(url, {'arg': 'v'}),
+                         'http://domain/test?arg=v')
+        url = 'http://domain/test?arg1=v1&arg2=v2&arg3=v3'
+        self.assertEqual(add_or_replace_parameters(url, {'arg4': 'v4'}),
+                         'http://domain/test?arg1=v1&arg2=v2&arg3=v3&arg4=v4')
+        self.assertEqual(add_or_replace_parameters(url, {'arg4': 'v4', 'arg3': 'v3new'}),
+                         'http://domain/test?arg1=v1&arg2=v2&arg3=v3new&arg4=v4')
 
     def test_url_query_cleaner(self):
         self.assertEqual('product.html',
