@@ -633,6 +633,14 @@ class CanonicalizeUrlTest(unittest.TestCase):
             "http://www.{label}.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9".format(
                     label=u"example"*11))
 
+    def test_strip_spaces(self):
+        self.assertEqual(canonicalize_url(' https://example.com'),
+                         'https://example.com/')
+        self.assertEqual(canonicalize_url('https://example.com '),
+                         'https://example.com/')
+        self.assertEqual(canonicalize_url(' https://example.com '),
+                         'https://example.com/')
+
 
 class DataURITests(unittest.TestCase):
 
