@@ -9,7 +9,7 @@ import re
 import posixpath
 import warnings
 import string
-from collections import namedtuple, OrderedDict
+from collections import namedtuple
 import six
 from six.moves.urllib.parse import (urljoin, urlsplit, urlunsplit,
                                     urldefrag, urlencode, urlparse,
@@ -212,9 +212,18 @@ def url_query_cleaner(url, parameterlist=(), sep='&', kvsep='=', remove=False, u
 def _add_or_replace_parameters(url, params):
     parsed = urlsplit(url)
     args = parse_qsl(parsed.query, keep_blank_values=True)
-
-    new_args = OrderedDict(args)
-    new_args.update(params)
+    new_args = []
+    updated_params = set()
+    for name, val in args:
+        if name not in params:
+            new_args.append((name, val))
+            continue
+        if name not in updated_params:
+            updated_params.add(name)
+            new_args.append((name, params[name]))
+    for name, val in params.items():
+        if name not in updated_params:
+            new_args.append((name, val))
 
     query = urlencode(new_args)
     return urlunsplit(parsed._replace(query=query))
