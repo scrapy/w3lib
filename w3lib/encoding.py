@@ -23,7 +23,7 @@ def http_content_type_encoding(content_type):
 
 # regexp for parsing HTTP meta tags
 _TEMPLATE = r'''%s\s*=\s*["']?\s*%s\s*["']?'''
-_SKIP_ATTRS = '''(?x)(?:\\s+
+_SKIP_ATTRS = '''(?:\\s+
     [^=<>/\\s"'\x00-\x1f\x7f]+  # Attribute name
     (?:\\s*=\\s*
     (?:  # ' and " are entity encoded (&apos;, &quot;), so no need for \', \"
@@ -33,7 +33,7 @@ _SKIP_ATTRS = '''(?x)(?:\\s+
         |
         [^'"\\s]+  # attr having no ' nor "
     ))?
-)*?'''
+)*?'''  # must be used with re.VERBOSE flag
 _HTTPEQUIV_RE = _TEMPLATE % ('http-equiv', 'Content-Type')
 _CONTENT_RE = _TEMPLATE % ('content', r'(?P<mime>[^;]+);\s*charset=(?P<charset>[\w-]+)')
 _CONTENT2_RE = _TEMPLATE % ('charset', r'(?P<charset2>[\w-]+)')
@@ -42,8 +42,9 @@ _XML_ENCODING_RE = _TEMPLATE % ('encoding', r'(?P<xmlcharset>[\w-]+)')
 # check for meta tags, or xml decl. and stop search if a body tag is encountered
 _BODY_ENCODING_PATTERN = r'<\s*(?:meta%s(?:(?:\s+%s|\s+%s){2}|\s+%s)|\?xml\s[^>]+%s|body)' % (
     _SKIP_ATTRS, _HTTPEQUIV_RE, _CONTENT_RE, _CONTENT2_RE, _XML_ENCODING_RE)
-_BODY_ENCODING_STR_RE = re.compile(_BODY_ENCODING_PATTERN, re.I)
-_BODY_ENCODING_BYTES_RE = re.compile(_BODY_ENCODING_PATTERN.encode('ascii'), re.I)
+_BODY_ENCODING_STR_RE = re.compile(_BODY_ENCODING_PATTERN, re.I | re.VERBOSE)
+_BODY_ENCODING_BYTES_RE = re.compile(_BODY_ENCODING_PATTERN.encode('ascii'),
+                                     re.I | re.VERBOSE)
 
 def html_body_declared_encoding(html_body_str):
     '''Return the encoding specified in meta tags in the html body,
@@ -108,7 +109,7 @@ DEFAULT_ENCODING_TRANSLATION = {
 }
 
 def _c18n_encoding(encoding):
-    """Cannonicalize an encoding name
+    """Canonicalize an encoding name
 
     This performs normalization and translates aliases using python's
     encoding aliases
