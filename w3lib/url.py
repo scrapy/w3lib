@@ -423,8 +423,7 @@ def _safe_ParseResult(parts, encoding='utf8', path_encoding='utf8'):
         quote(to_bytes(parts.fragment, encoding), _safe_chars)
     )
 
-
-def canonicalize_url(url, keep_blank_values=True, keep_fragments=False,
+def _canonicalize_url(url, keep_blank_values=True, keep_fragments=False,
                      encoding=None):
     r"""Canonicalize the given url by applying the following procedures:
 
@@ -514,6 +513,10 @@ def canonicalize_url(url, keep_blank_values=True, keep_fragments=False,
                        query,
                        fragment))
 
+try:
+    from scurl import canonicalize_url
+except ImportError as e:
+    canonicalize_url = _canonicalize_url
 
 def _unquotepath(path):
     for reserved in ('2f', '2F', '3f', '3F'):
