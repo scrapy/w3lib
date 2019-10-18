@@ -75,7 +75,7 @@ def safe_url_string(url, encoding='utf8', path_encoding='utf8', quote_path=True)
 
     # default encoding for path component SHOULD be UTF-8
     if quote_path:
-        path = quote(to_bytes(parts.path, path_encoding), _safe_chars)
+        path = quote(to_bytes(parts.path, path_encoding), _path_safe_chars)
     else:
         path = to_native_str(parts.path)
     
