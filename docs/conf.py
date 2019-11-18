@@ -26,6 +26,7 @@ sys.path.insert(0, os.path.abspath('..'))
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
+    'hoverxref.extension',
     'notfound.extension',
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
@@ -255,6 +256,11 @@ intersphinx_mapping = {
 }
 
 
-# --- Nitpicking options ------------------------------------------------------
+# -- Nitpicking options -------------------------------------------------------
 
 nitpicky = True
+
+
+# -- sphinx-hoverxref options -------------------------------------------------
+
+hoverxref_auto_ref = True
