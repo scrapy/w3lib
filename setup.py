@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='w3lib',
-    version='1.19.0',
+    version='1.21.0',
     license='BSD',
     description='Library of web-related functions',
     author='Scrapy project',
@@ -21,10 +21,10 @@ setup(
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
         'Topic :: Internet :: WWW/HTTP',

@@ -122,7 +122,7 @@ def replace_tags(text, token='', encoding=None):
     return _tag_re.sub(token, to_unicode(text, encoding))
 
 
-_REMOVECOMMENTS_RE = re.compile(u'<!--.*?-->', re.DOTALL)
+_REMOVECOMMENTS_RE = re.compile(u'<!--.*?(?:-->|$)', re.DOTALL)
 def remove_comments(text, encoding=None):
     """ Remove HTML Comments.
 
@@ -220,7 +220,7 @@ def remove_tags_with_content(text, which_ones=(), encoding=None):
 
     text = to_unicode(text, encoding)
     if which_ones:
-        tags = '|'.join([r'<%s.*?</%s>|<%s\s*/>' % (tag, tag, tag) for tag in which_ones])
+        tags = '|'.join([r'<%s\b.*?</%s>|<%s\s*/>' % (tag, tag, tag) for tag in which_ones])
         retags = re.compile(tags, re.DOTALL | re.IGNORECASE)
         text = retags.sub(u'', text)
     return text

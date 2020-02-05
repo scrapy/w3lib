@@ -106,6 +106,8 @@ class RemoveCommentsTest(unittest.TestCase):
         self.assertEqual(remove_comments(b"test <!--textcoment--> whatever"), u'test  whatever')
         self.assertEqual(remove_comments(b"test <!--\ntextcoment\n--> whatever"), u'test  whatever')
 
+        self.assertEqual(remove_comments(b"test <!--"), u'test ')
+
 
 class RemoveTagsTest(unittest.TestCase):
     def test_returns_unicode(self):
@@ -183,6 +185,10 @@ class RemoveTagsWithContentTest(unittest.TestCase):
     def test_empty_tags(self):
         # text with empty tags
         self.assertEqual(remove_tags_with_content(u'<br/>a<br />', which_ones=('br',)), u'a')
+
+    def test_tags_with_shared_prefix(self):
+        # https://github.com/scrapy/w3lib/issues/114
+        self.assertEqual(remove_tags_with_content(u'<span></span><s></s>', which_ones=('s',)), u'<span></span>')
 
 
 class ReplaceEscapeCharsTest(unittest.TestCase):

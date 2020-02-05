@@ -5,7 +5,7 @@ import unittest
 from w3lib.url import (is_url, safe_url_string, safe_download_url,
     url_query_parameter, add_or_replace_parameter, url_query_cleaner,
     file_uri_to_path, parse_data_uri, path_to_file_uri, any_to_uri,
-    urljoin_rfc, canonicalize_url, parse_url)
+    urljoin_rfc, canonicalize_url, parse_url, add_or_replace_parameters)
 from six.moves.urllib.parse import urlparse
 
 
@@ -59,9 +59,34 @@ class UrlTests(unittest.TestCase):
 
         self.assertTrue(isinstance(safe_url_string(b'http://example.com/'), str))
 
+    def test_safe_url_string_remove_ascii_tab_and_newlines(self):
+        self.assertEqual(safe_url_string("http://example.com/test\n.html"),
+                                         "http://example.com/test.html")
+        self.assertEqual(safe_url_string("http://example.com/test\t.html"),
+                                         "http://example.com/test.html")
+        self.assertEqual(safe_url_string("http://example.com/test\r.html"),
+                                         "http://example.com/test.html")
+        self.assertEqual(safe_url_string("http://example.com/test\r.html\n"),
+                                         "http://example.com/test.html")
+        self.assertEqual(safe_url_string("http://example.com/test\r\n.html\t"),
+                                         "http://example.com/test.html")
+        self.assertEqual(safe_url_string("http://example.com/test\a\n.html"),
+                                         "http://example.com/test%07.html")
+
     def test_safe_url_string_unsafe_chars(self):
         safeurl = safe_url_string(r"http://localhost:8001/unwise{,},|,\,^,[,],`?|=[]&[]=|")
         self.assertEqual(safeurl, r"http://localhost:8001/unwise%7B,%7D,|,%5C,%5E,[,],%60?|=[]&[]=|")
+        
+    def test_safe_url_string_quote_path(self):
+        safeurl = safe_url_string(u'http://google.com/"hello"', quote_path=True)
+        self.assertEqual(safeurl, u'http://google.com/%22hello%22')
+        
+        safeurl = safe_url_string(u'http://google.com/"hello"', quote_path=False)
+        self.assertEqual(safeurl, u'http://google.com/"hello"')
+        
+        safeurl = safe_url_string(u'http://google.com/"hello"')
+        self.assertEqual(safeurl, u'http://google.com/%22hello%22')
+        
 
     def test_safe_url_string_with_query(self):
         safeurl = safe_url_string(u"http://www.example.com/£?unit=µ")
@@ -203,6 +228,19 @@ class UrlTests(unittest.TestCase):
                          'http://www.example.org/image')
         self.assertEqual(safe_download_url('http://www.example.org/dir/'),
                          'http://www.example.org/dir/')
+        self.assertEqual(safe_download_url(b'http://www.example.org/dir/'),
+                         'http://www.example.org/dir/')
+
+        # Encoding related tests
+        self.assertEqual(safe_download_url(b'http://www.example.org?\xa3',
+                         encoding='latin-1', path_encoding='latin-1'),
+                         'http://www.example.org/?%A3')
+        self.assertEqual(safe_download_url(b'http://www.example.org?\xc2\xa3',
+                         encoding='utf-8', path_encoding='utf-8'),
+                         'http://www.example.org/?%C2%A3')
+        self.assertEqual(safe_download_url(b'http://www.example.org/\xc2\xa3?\xc2\xa3',
+                         encoding='utf-8', path_encoding='latin-1'),
+                         'http://www.example.org/%A3?%C2%A3')
 
     def test_is_url(self):
         self.assertTrue(is_url('http://www.example.org'))
@@ -283,7 +321,38 @@ class UrlTests(unittest.TestCase):
         self.assertEqual(add_or_replace_parameter(url, 'pageurl', 'test'),
                          'http://example.com/?version=1&pageurl=test&param2=value2')
 
+        url = 'http://domain/test?arg1=v1&arg2=v2&arg1=v3'
+        self.assertEqual(add_or_replace_parameter(url, 'arg4', 'v4'),
+                         'http://domain/test?arg1=v1&arg2=v2&arg1=v3&arg4=v4')
+        self.assertEqual(add_or_replace_parameter(url, 'arg1', 'v3'),
+                         'http://domain/test?arg1=v3&arg2=v2')
+
+    def test_add_or_replace_parameters(self):
+        url = 'http://domain/test'
+        self.assertEqual(add_or_replace_parameters(url, {'arg': 'v'}),
+                         'http://domain/test?arg=v')
+        url = 'http://domain/test?arg1=v1&arg2=v2&arg3=v3'
+        self.assertEqual(add_or_replace_parameters(url, {'arg4': 'v4'}),
+                         'http://domain/test?arg1=v1&arg2=v2&arg3=v3&arg4=v4')
+        self.assertEqual(add_or_replace_parameters(url, {'arg4': 'v4', 'arg3': 'v3new'}),
+                         'http://domain/test?arg1=v1&arg2=v2&arg3=v3new&arg4=v4')
+        url = 'http://domain/test?arg1=v1&arg2=v2&arg1=v3'
+        self.assertEqual(add_or_replace_parameters(url, {'arg4': 'v4'}),
+                         'http://domain/test?arg1=v1&arg2=v2&arg1=v3&arg4=v4')
+        self.assertEqual(add_or_replace_parameters(url, {'arg1': 'v3'}),
+                         'http://domain/test?arg1=v3&arg2=v2')
+
+    def test_add_or_replace_parameters_does_not_change_input_param(self):
+        url = 'http://domain/test?arg=original'
+        input_param = {'arg': 'value'}
+        new_url = add_or_replace_parameters(url, input_param)  # noqa
+        self.assertEqual(input_param, {'arg': 'value'})
+
     def test_url_query_cleaner(self):
+        self.assertEqual('product.html',
+                url_query_cleaner("product.html?"))
+        self.assertEqual('product.html',
+                url_query_cleaner("product.html?&"))
         self.assertEqual('product.html?id=200',
                 url_query_cleaner("product.html?id=200&foo=bar&name=wired", ['id']))
         self.assertEqual('product.html?id=200',
@@ -308,6 +377,10 @@ class UrlTests(unittest.TestCase):
                 url_query_cleaner("product.html?id=2&foo=bar&name=wired", ['id', 'foo'], remove=True))
         self.assertEqual('product.html?foo=bar&name=wired',
                 url_query_cleaner("product.html?id=2&foo=bar&name=wired", ['id', 'footo'], remove=True))
+        self.assertEqual('product.html',
+                url_query_cleaner("product.html", ['id'], remove=True))
+        self.assertEqual('product.html',
+                url_query_cleaner("product.html?&", ['id'], remove=True))
         self.assertEqual('product.html?foo=bar',
                 url_query_cleaner("product.html?foo=bar&name=wired", 'foo'))
         self.assertEqual('product.html?foobar=wired',
@@ -321,7 +394,7 @@ class UrlTests(unittest.TestCase):
 
     def test_path_to_file_uri(self):
         if os.name == 'nt':
-            self.assertEqual(path_to_file_uri("C:\\windows\clock.avi"),
+            self.assertEqual(path_to_file_uri(r"C:\\windows\clock.avi"),
                              "file:///C:/windows/clock.avi")
         else:
             self.assertEqual(path_to_file_uri("/some/path.txt"),
@@ -329,13 +402,13 @@ class UrlTests(unittest.TestCase):
 
         fn = "test.txt"
         x = path_to_file_uri(fn)
-        self.assert_(x.startswith('file:///'))
+        self.assertTrue(x.startswith('file:///'))
         self.assertEqual(file_uri_to_path(x).lower(), os.path.abspath(fn).lower())
 
     def test_file_uri_to_path(self):
         if os.name == 'nt':
             self.assertEqual(file_uri_to_path("file:///C:/windows/clock.avi"),
-                             "C:\\windows\clock.avi")
+                             r"C:\\windows\clock.avi")
             uri = "file:///C:/windows/clock.avi"
             uri2 = path_to_file_uri(file_uri_to_path(uri))
             self.assertEqual(uri, uri2)
@@ -353,7 +426,7 @@ class UrlTests(unittest.TestCase):
 
     def test_any_to_uri(self):
         if os.name == 'nt':
-            self.assertEqual(any_to_uri("C:\\windows\clock.avi"),
+            self.assertEqual(any_to_uri(r"C:\\windows\clock.avi"),
                              "file:///C:/windows/clock.avi")
         else:
             self.assertEqual(any_to_uri("/some/path.txt"),
