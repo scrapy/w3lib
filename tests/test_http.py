@@ -41,6 +41,20 @@ class HttpTests(unittest.TestCase):
                             b'  type="application/xop+xml";',
                             b'\tboundary="example"',
                             b'Cache-Control: no-cache'))
+        # With strict=False, the header value that spans across
+        # multiple lines does not get parsed fully, and only the first
+        # line is retained.
+        dct = {b'Content-Type': [b'multipart/related;'],
+               b'Cache-Control': [b'no-cache']}
+        self.assertEqual(headers_raw_to_dict(raw), dct)
+
+    def test_headers_raw_to_dict_multiline_strict(self):
+        raw = b'\r\n'.join((b'Content-Type: multipart/related;',
+                            b'  type="application/xop+xml";',
+                            b'\tboundary="example"',
+                            b'Cache-Control: no-cache'))
+        # With strict=True, the header value that spans across
+        # multiple lines does get parsed fully.
         dct = {
             b'Content-Type': [
                 b'\r\n'.join((b'multipart/related;',
@@ -48,7 +62,7 @@ class HttpTests(unittest.TestCase):
                               b'\tboundary="example"'))
             ],
             b'Cache-Control': [b'no-cache']}
-        self.assertEqual(headers_raw_to_dict(raw), dct)
+        self.assertEqual(headers_raw_to_dict(raw, strict=True), dct)
 
     def test_headers_dict_to_raw(self):
         dct = OrderedDict([
