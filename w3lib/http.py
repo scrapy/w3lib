@@ -39,7 +39,7 @@ def headers_raw_to_dict(headers_raw, strict=False):
         for line in headers_raw.split(b'\r\n'):
             if line.startswith(b' ') or line.startswith(b'\t'):
                 try:
-                    headers[-1] += (b'\r\n' + line)
+                    headers[-1] += b'\r\n' + line
                 except IndexError:
                     raise ValueError('Malformed raw headers')
             else:
