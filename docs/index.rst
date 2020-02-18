@@ -39,15 +39,14 @@ Install
 Tests
 =====
 
-`pytest`_ is the preferred way to run tests. Just run: ``pytest`` from the
-root directory to execute tests using the default Python interpreter.
+:doc:`pytest <pytest:index>` is the preferred way to run tests. Just run:
+``pytest`` from the root directory to execute tests using the default Python
+interpreter.
 
 :doc:`tox <tox:index>` could be used to run tests for all supported Python
 versions. Install it (using 'pip install tox') and then run ``tox`` from
 the root directory - tests will be executed for all available
 Python interpreters.
-
-.. _pytest: https://docs.pytest.org/en/latest/
 
 
 Changelog
@@ -59,12 +58,10 @@ Changelog
 History
 -------
 
-The code of w3lib was originally part of the `Scrapy framework`_ but was later
-stripped out of Scrapy, with the aim of make it more reusable and to provide a
-useful library of web functions without depending on Scrapy.
-
-.. _Scrapy framework: http://scrapy.org
-.. _NEWS file: https://github.com/scrapy/w3lib/blob/master/NEWS
+The code of w3lib was originally part of the :doc:`Scrapy framework
+<scrapy:index>` but was later stripped out of Scrapy, with the aim of make it
+more reusable and to provide a useful library of web functions without
+depending on Scrapy.
 
 
 Indices and tables
