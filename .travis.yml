@@ -49,7 +49,7 @@ deploy:
     tags: true
     all_branches: true
     repo: scrapy/w3lib
-    condition: "$TOXENV == py27"
+    condition: "$TOXENV == py37"
 
 cache:
   directories:
