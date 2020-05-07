@@ -30,6 +30,7 @@ disable=bad-continuation,
         trailing-whitespace,
         unidiomatic-typecheck,
         unreachable,
+        unused-argument,
         unused-variable,
         wrong-import-order,
         wrong-import-position
