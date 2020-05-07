@@ -174,7 +174,8 @@ def remove_tags(text, which_ones=(), keep=(), encoding=None):
     You can't remove some and keep some:
 
     >>> w3lib.html.remove_tags(doc, which_ones=('a',), keep=('p',))
-    ...
+    Traceback (most recent call last):
+        ...
     ValueError: Cannot use both which_ones and keep
     >>>
 
