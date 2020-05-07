@@ -211,7 +211,7 @@ class ReplaceEscapeCharsTest(unittest.TestCase):
         # text with escape chars
         self.assertEqual(replace_escape_chars(u'escape\n\n'), u'escape')
         self.assertEqual(replace_escape_chars(u'escape\n', which_ones=('\t',)), u'escape\n')
-        self.assertEqual(replace_escape_chars(u'escape\tchars\n', which_ones=('\t')), 'escapechars\n')
+        self.assertEqual(replace_escape_chars(u'escape\tchars\n', which_ones=('\t',)), 'escapechars\n')
         self.assertEqual(replace_escape_chars(u'escape\tchars\n', replace_by=' '), 'escape chars ')
         self.assertEqual(replace_escape_chars(u'escape\tchars\n', replace_by=u'\xa3'), u'escape\xa3chars\xa3')
         self.assertEqual(replace_escape_chars(u'escape\tchars\n', replace_by=b'\xc2\xa3'), u'escape\xa3chars\xa3')
