@@ -175,15 +175,13 @@ def remove_tags(text, which_ones=(), keep=(), encoding=None):
 
     >>> w3lib.html.remove_tags(doc, which_ones=('a',), keep=('p',))
     Traceback (most recent call last):
-      File "<stdin>", line 1, in <module>
-      File "/usr/local/lib/python2.7/dist-packages/w3lib/html.py", line 101, in remove_tags
-        assert not (which_ones and keep), 'which_ones and keep can not be given at the same time'
-    AssertionError: which_ones and keep can not be given at the same time
+        ...
+    ValueError: Cannot use both which_ones and keep
     >>>
 
     """
-
-    assert not (which_ones and keep), 'which_ones and keep can not be given at the same time'
+    if which_ones and keep:
+        raise ValueError('Cannot use both which_ones and keep')
 
     which_ones = {tag.lower() for tag in which_ones}
     keep = {tag.lower() for tag in keep}
