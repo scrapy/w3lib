@@ -11,6 +11,12 @@ w3lib release notes
   :func:`w3lib.url.add_or_replace_parameters` no longer remove duplicate
   parameters from the original query string that are not being added or
   replaced (issue #126)
+- :func:`w3lib.html.remove_tags` now raises a :exc:`ValueError` exception
+  instead of :exc:`AssertionError` when using both the ``which_ones`` and the
+  ``keep`` parameters (issue #154)
+- Test improvements (issues #143, #146, #148, #149)
+- Documentation improvements (issues #140, #144, #145, #151, #152, #153)
+- Code cleanup (issue #139)
 
 
 1.21.0 (2019-08-09)
