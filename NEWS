@@ -1,6 +1,24 @@
 w3lib release notes
 ===================
 
+1.22.0 (2020-05-NN)
+-------------------
+
+- Python 3.4 is no longer supported (issue #156)
+- :func:`w3lib.url.safe_url_string` now supports an optional ``quote_path``
+  parameter to disable the percent-encoding of the URL path (issue #119)
+- :func:`w3lib.url.add_or_replace_parameter` and
+  :func:`w3lib.url.add_or_replace_parameters` no longer remove duplicate
+  parameters from the original query string that are not being added or
+  replaced (issue #126)
+- :func:`w3lib.html.remove_tags` now raises a :exc:`ValueError` exception
+  instead of :exc:`AssertionError` when using both the ``which_ones`` and the
+  ``keep`` parameters (issue #154)
+- Test improvements (issues #143, #146, #148, #149)
+- Documentation improvements (issues #140, #144, #145, #151, #152, #153)
+- Code cleanup (issue #139)
+
+
 1.21.0 (2019-08-09)
 -------------------
 
