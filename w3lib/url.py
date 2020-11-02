@@ -42,10 +42,10 @@ def safe_url_string(url, encoding='utf8', path_encoding='utf8', quote_path=True)
     as per https://url.spec.whatwg.org/#url-parsing.
 
     If a bytes URL is given, it is first converted to `str` using the given
-    encoding (which defaults to 'utf-8'). If quote_path is True (default), 
+    encoding (which defaults to 'utf-8'). If quote_path is True (default),
     path_encoding ('utf-8' by default) is used to encode URL path component
     which is then quoted. Otherwise, if quote_path is False, path component
-    is not encoded or quoted. Given encoding is used for query string 
+    is not encoded or quoted. Given encoding is used for query string
     or form data.
 
     When passing an encoding, you should use the encoding of the
@@ -77,7 +77,7 @@ def safe_url_string(url, encoding='utf8', path_encoding='utf8', quote_path=True)
         path = quote(to_bytes(parts.path, path_encoding), _safe_chars)
     else:
         path = to_native_str(parts.path)
-    
+
     # quote() in Python2 return type follows input type;
     # quote() in Python3 always returns Unicode (native str)
     return urlunsplit((
@@ -204,7 +204,7 @@ def url_query_cleaner(url, parameterlist=(), sep='&', kvsep='=', remove=False, u
             querylist.append(ksv)
             seen.add(k)
     url = '?'.join([base, sep.join(querylist)]) if querylist else base
-    if keep_fragments:
+    if keep_fragments and fragment:
         url += '#' + fragment
     return url
 
