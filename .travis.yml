@@ -11,7 +11,7 @@ matrix:
     - python: 2.7
       env: TOXENV=py27
     - python: pypy
-      env: TOXENV=pypy
+      env: PYPY_VERSION=2.7-v7.0.0 TOXENV=pypy
     - python: 3.5
       env: TOXENV=py35
     - python: 3.6
@@ -31,9 +31,9 @@ install:
   # install 7.0.0. This can be removed once the Python 2 PyPy version in Travis
   # includes a fix.
   - |
-      if [ "$TOXENV" = "pypy" ]; then
-        export PYPY_VERSION="pypy-7.0.0-linux_x86_64-portable"
-        wget "https://bitbucket.org/squeaky/portable-pypy/downloads/${PYPY_VERSION}.tar.bz2"
+      if [[ ! -z "$PYPY_VERSION" ]]; then
+        export PYPY_VERSION="pypy$PYPY_VERSION-linux64"
+        wget "https://downloads.python.org/pypy/${PYPY_VERSION}.tar.bz2"
         tar -jxf ${PYPY_VERSION}.tar.bz2
         virtualenv --python="$PYPY_VERSION/bin/pypy" "$HOME/virtualenvs/$PYPY_VERSION"
         source "$HOME/virtualenvs/$PYPY_VERSION/bin/activate"
