@@ -299,10 +299,6 @@ class UrlTests(unittest.TestCase):
         self.assertEqual(add_or_replace_parameter(url, 'arg3', 'nv3'),
                          'http://domain/test?arg1=v1&arg2=v2&arg3=nv3')
 
-        url = 'http://domain/test?arg1=v1;arg2=v2'
-        self.assertEqual(add_or_replace_parameter(url, 'arg1', 'v3'),
-                         'http://domain/test?arg1=v3&arg2=v2')
-
         self.assertEqual(add_or_replace_parameter("http://domain/moreInfo.asp?prodID=", 'prodID', '20'),
                          'http://domain/moreInfo.asp?prodID=20')
         url = 'http://rmc-offers.co.uk/productlist.asp?BCat=2%2C60&CatID=60'
