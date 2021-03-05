@@ -33,6 +33,7 @@ RFC3986_UNRESERVED = (string.ascii_letters + string.digits + "-._~").encode('asc
 EXTRA_SAFE_CHARS = b'|'  # see https://github.com/scrapy/w3lib/pull/25
 
 _safe_chars = RFC3986_RESERVED + RFC3986_UNRESERVED + EXTRA_SAFE_CHARS + b'%'
+_path_safe_chars = _safe_chars.replace(b'#', b'')
 
 _ascii_tab_newline_re = re.compile(r'[\t\n\r]')  # see https://infra.spec.whatwg.org/#ascii-tab-or-newline
 
@@ -74,7 +75,7 @@ def safe_url_string(url, encoding='utf8', path_encoding='utf8', quote_path=True)
 
     # default encoding for path component SHOULD be UTF-8
     if quote_path:
-        path = quote(to_bytes(parts.path, path_encoding), _safe_chars)
+        path = quote(to_bytes(parts.path, path_encoding), _path_safe_chars)
     else:
         path = to_native_str(parts.path)
     
@@ -414,7 +415,7 @@ def _safe_ParseResult(parts, encoding='utf8', path_encoding='utf8'):
         to_native_str(netloc),
 
         # default encoding for path component SHOULD be UTF-8
-        quote(to_bytes(parts.path, path_encoding), _safe_chars),
+        quote(to_bytes(parts.path, path_encoding), _path_safe_chars),
         quote(to_bytes(parts.params, path_encoding), _safe_chars),
 
         # encoding of query and fragment follows page encoding
@@ -502,7 +503,7 @@ def canonicalize_url(url, keep_blank_values=True, keep_fragments=False,
     # 2. decode percent-encoded sequences in path as UTF-8 (or keep raw bytes)
     #    and percent-encode path again (this normalizes to upper-case %XX)
     uqp = _unquotepath(path)
-    path = quote(uqp, _safe_chars) or '/'
+    path = quote(uqp, _path_safe_chars) or '/'
 
     fragment = '' if not keep_fragments else fragment
 
