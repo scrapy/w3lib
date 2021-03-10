@@ -16,13 +16,17 @@ jobs:
       matrix:
         include:
         - python-version: 3.7
-          env: TOXENV=docs
+          env:
+            TOXENV: docs
         - python-version: 3.8
-          env: TOXENV=flake8
+          env:
+            TOXENV: flake8
         - python-version: 3.8
-          env: TOXENV=pylint
+          env:
+            TOXENV: pylint
         - python-version: 3.8
-          env: TOXENV=security
+          env:
+            TOXENV: security
 
     steps:
     - uses: actions/checkout@v2
