@@ -2,13 +2,12 @@ name: Publish
 
 on:
   push:
-    branches:
-      - master
+    tags:
+      - v*
 
 jobs:
   publish:
     runs-on: ubuntu-20.04
-    if: startsWith(github.event.ref, 'refs/tags/')
 
     steps:
     - uses: actions/checkout@v2
