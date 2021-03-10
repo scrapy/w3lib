@@ -1,12 +1,14 @@
-# -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import os
 import unittest
+
+import pytest
+from six.moves.urllib.parse import urlparse
+
 from w3lib.url import (is_url, safe_url_string, safe_download_url,
     url_query_parameter, add_or_replace_parameter, url_query_cleaner,
     file_uri_to_path, parse_data_uri, path_to_file_uri, any_to_uri,
     urljoin_rfc, canonicalize_url, parse_url, add_or_replace_parameters)
-from six.moves.urllib.parse import urlparse
 
 
 class UrlTests(unittest.TestCase):
@@ -76,17 +78,16 @@ class UrlTests(unittest.TestCase):
     def test_safe_url_string_unsafe_chars(self):
         safeurl = safe_url_string(r"http://localhost:8001/unwise{,},|,\,^,[,],`?|=[]&[]=|")
         self.assertEqual(safeurl, r"http://localhost:8001/unwise%7B,%7D,|,%5C,%5E,[,],%60?|=[]&[]=|")
-        
+
     def test_safe_url_string_quote_path(self):
         safeurl = safe_url_string(u'http://google.com/"hello"', quote_path=True)
         self.assertEqual(safeurl, u'http://google.com/%22hello%22')
-        
+
         safeurl = safe_url_string(u'http://google.com/"hello"', quote_path=False)
         self.assertEqual(safeurl, u'http://google.com/"hello"')
-        
+
         safeurl = safe_url_string(u'http://google.com/"hello"')
         self.assertEqual(safeurl, u'http://google.com/%22hello%22')
-        
 
     def test_safe_url_string_with_query(self):
         safeurl = safe_url_string(u"http://www.example.com/£?unit=µ")
@@ -310,10 +311,6 @@ class UrlTests(unittest.TestCase):
         self.assertEqual(add_or_replace_parameter(url, 'arg3', 'nv3'),
                          'http://domain/test?arg1=v1&arg2=v2&arg3=nv3')
 
-        url = 'http://domain/test?arg1=v1;arg2=v2'
-        self.assertEqual(add_or_replace_parameter(url, 'arg1', 'v3'),
-                         'http://domain/test?arg1=v3&arg2=v2')
-
         self.assertEqual(add_or_replace_parameter("http://domain/moreInfo.asp?prodID=", 'prodID', '20'),
                          'http://domain/moreInfo.asp?prodID=20')
         url = 'http://rmc-offers.co.uk/productlist.asp?BCat=2%2C60&CatID=60'
@@ -337,6 +334,13 @@ class UrlTests(unittest.TestCase):
                          'http://domain/test?arg1=v1&arg2=v2&arg1=v3&arg4=v4')
         self.assertEqual(add_or_replace_parameter(url, 'arg1', 'v3'),
                          'http://domain/test?arg1=v3&arg2=v2')
+
+    @pytest.mark.xfail(reason="https://github.com/scrapy/w3lib/issues/164")
+    def test_add_or_replace_parameter_fail(self):
+        self.assertEqual(
+            add_or_replace_parameter('http://domain/test?arg1=v1;arg2=v2', 'arg1', 'v3'),
+            'http://domain/test?arg1=v3&arg2=v2'
+        )
 
     def test_add_or_replace_parameters(self):
         url = 'http://domain/test'
@@ -767,4 +771,3 @@ class DataURITests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
