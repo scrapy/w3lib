@@ -1,4 +1,4 @@
-name: Build
+name: Tests
 
 on:
   push:
@@ -9,24 +9,12 @@ on:
       - master
 
 jobs:
-  build:
+  tests:
 
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        include:
-        - python-version: 3.7
-          env:
-            TOXENV: docs
-        - python-version: 3.8
-          env:
-            TOXENV: flake8
-        - python-version: 3.8
-          env:
-            TOXENV: pylint
-        - python-version: 3.8
-          env:
-            TOXENV: security
+        python-version: [2.7, 3.5, 3.6, 3.7, 3.8, pypy3]
 
     steps:
     - uses: actions/checkout@v2
@@ -36,9 +24,11 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Run check
-      env: ${{ matrix.env }}
+    - name: Run tests
       run: |
         pip install --upgrade pip
         pip install --upgrade tox
-        tox
+        tox -e py
+
+    - name: Upload coverage report
+      run: bash <(curl -s https://codecov.io/bash)
