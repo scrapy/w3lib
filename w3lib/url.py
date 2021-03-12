@@ -19,6 +19,28 @@ from six.moves.urllib.request import pathname2url, url2pathname
 from w3lib.util import to_bytes, to_native_str, to_unicode
 
 
+def _encode_netloc(onetloc):
+    """
+    :type onetloc: unicode
+    :rtype: unicode
+    """
+    try:
+        idx = onetloc.rfind(u':')
+        if idx != -1:
+            hostname = onetloc[:idx]
+            portpart = onetloc[idx:]
+        else:
+            hostname = onetloc
+            portpart = u''
+        # assert isinstance(hostname, unicode)
+        # assert isinstance(portpart, unicode)
+        hostname = to_unicode(hostname.encode('idna'))
+        netloc = hostname + portpart
+    except UnicodeError:
+        netloc = onetloc
+    return netloc
+
+
 # error handling function for bytes-to-Unicode decoding errors with URLs
 def _quote_byte(error):
     return (to_unicode(quote(error.object[error.start:error.end])), error.end)
@@ -68,10 +90,7 @@ def safe_url_string(url, encoding='utf8', path_encoding='utf8', quote_path=True)
 
     # IDNA encoding can fail for too long labels (>63 characters)
     # or missing labels (e.g. http://.example.com)
-    try:
-        netloc = parts.netloc.encode('idna')
-    except UnicodeError:
-        netloc = parts.netloc
+    netloc = _encode_netloc(parts.netloc)
 
     # default encoding for path component SHOULD be UTF-8
     if quote_path:
@@ -405,10 +424,7 @@ __all__ = ["add_or_replace_parameter",
 def _safe_ParseResult(parts, encoding='utf8', path_encoding='utf8'):
     # IDNA encoding can fail for too long labels (>63 characters)
     # or missing labels (e.g. http://.example.com)
-    try:
-        netloc = parts.netloc.encode('idna')
-    except UnicodeError:
-        netloc = parts.netloc
+    netloc = _encode_netloc(parts.netloc)
 
     return (
         to_native_str(parts.scheme),
