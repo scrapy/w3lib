@@ -10,13 +10,44 @@ import posixpath
 import warnings
 import string
 from collections import namedtuple
+from inspect import getfullargspec
+
 import six
-from six.moves.urllib.parse import (urljoin, urlsplit, urlunsplit,
-                                    urldefrag, urlencode, urlparse,
-                                    quote, parse_qs, parse_qsl,
-                                    ParseResult, unquote, urlunparse)
+from six.moves.urllib.parse import (
+    urljoin,
+    urlsplit,
+    urlunsplit,
+    urldefrag,
+    urlencode,
+    urlparse,
+    quote,
+    parse_qs as _parse_qs,
+    parse_qsl as _parse_qsl,
+    ParseResult,
+    unquote,
+    urlunparse,
+)
 from six.moves.urllib.request import pathname2url, url2pathname
+
 from w3lib.util import to_bytes, to_native_str, to_unicode
+
+
+_REMOVE_SEPARATOR = 'separator' not in getfullargspec(_parse_qs)[0]
+
+
+def _handle_separator(func, *args, **kwargs):
+    if _REMOVE_SEPARATOR:
+        kwargs.pop('separator', None)
+    return func(*args, **kwargs)
+
+
+def parse_qs(*args, **kwargs):
+    return _handle_separator(_parse_qs, *args, **kwargs)
+
+
+def parse_qsl(*args, **kwargs):
+    return _handle_separator(_parse_qsl, *args, **kwargs)
+
 
 
 # error handling function for bytes-to-Unicode decoding errors with URLs
@@ -117,7 +148,14 @@ def is_url(text):
     return text.partition("://")[0] in ('file', 'http', 'https')
 
 
-def url_query_parameter(url, parameter, default=None, keep_blank_values=0):
+def url_query_parameter(
+    url,
+    parameter,
+    default=None,
+    keep_blank_values=0,
+    *,
+    separator='&',
+):
     """Return the value of a url parameter, given the url and parameter name
 
     General case:
@@ -148,7 +186,8 @@ def url_query_parameter(url, parameter, default=None, keep_blank_values=0):
 
     queryparams = parse_qs(
         urlsplit(str(url))[3],
-        keep_blank_values=keep_blank_values
+        keep_blank_values=keep_blank_values,
+        separator=separator,
     )
     return queryparams.get(parameter, [default])[0]
 
@@ -209,9 +248,13 @@ def url_query_cleaner(url, parameterlist=(), sep='&', kvsep='=', remove=False, u
         url += '#' + fragment
     return url
 
-def _add_or_replace_parameters(url, params):
+def _add_or_replace_parameters(url, params, *, separator='&'):
     parsed = urlsplit(url)
-    current_args = parse_qsl(parsed.query, keep_blank_values=True)
+    current_args = parse_qsl(
+        parsed.query,
+        keep_blank_values=True,
+        separator=separator,
+    )
 
     new_args = []
     seen_params = set()
@@ -229,7 +272,7 @@ def _add_or_replace_parameters(url, params):
     return urlunsplit(parsed._replace(query=query))
 
 
-def add_or_replace_parameter(url, name, new_value):
+def add_or_replace_parameter(url, name, new_value, *, separator='&'):
     """Add or remove a parameter to a given url
 
     >>> import w3lib.url
@@ -242,10 +285,10 @@ def add_or_replace_parameter(url, name, new_value):
     >>>
 
     """
-    return _add_or_replace_parameters(url, {name: new_value})
+    return _add_or_replace_parameters(url, {name: new_value}, separator=separator)
 
 
-def add_or_replace_parameters(url, new_parameters):
+def add_or_replace_parameters(url, new_parameters, *, separator='&'):
     """Add or remove a parameters to a given url
 
     >>> import w3lib.url
@@ -257,7 +300,7 @@ def add_or_replace_parameters(url, new_parameters):
     >>>
 
     """
-    return _add_or_replace_parameters(url, new_parameters)
+    return _add_or_replace_parameters(url, new_parameters, separator=separator)
 
 
 def path_to_file_uri(path):
@@ -425,8 +468,14 @@ def _safe_ParseResult(parts, encoding='utf8', path_encoding='utf8'):
     )
 
 
-def canonicalize_url(url, keep_blank_values=True, keep_fragments=False,
-                     encoding=None):
+def canonicalize_url(
+    url,
+    keep_blank_values=True,
+    keep_fragments=False,
+    encoding=None,
+    *,
+    query_separator='&',
+):
     r"""Canonicalize the given url by applying the following procedures:
 
     - sort query arguments, first by key, then by value
@@ -471,7 +520,7 @@ def canonicalize_url(url, keep_blank_values=True, keep_fragments=False,
     #    sort values,
     #    and percent-encode them back
     if six.PY2:
-        keyvals = parse_qsl(query, keep_blank_values)
+        keyvals = parse_qsl(query, keep_blank_values, separator=query_separator)
     else:
         # Python3's urllib.parse.parse_qsl does not work as wanted
         # for percent-encoded characters that do not match passed encoding,
@@ -496,7 +545,11 @@ def canonicalize_url(url, keep_blank_values=True, keep_fragments=False,
         # Similar considerations apply to query parts.  The functionality of
         # IRIs (namely, to be able to include non-ASCII characters) can only be
         # used if the query part is encoded in UTF-8.
-        keyvals = parse_qsl_to_bytes(query, keep_blank_values)
+        keyvals = parse_qsl_to_bytes(
+            query,
+            keep_blank_values,
+            separator=query_separator,
+        )
     keyvals.sort()
     query = urlencode(keyvals)
 
@@ -545,7 +598,7 @@ def parse_url(url, encoding=None):
 if not six.PY2:
     from urllib.parse import _coerce_args, unquote_to_bytes
 
-    def parse_qsl_to_bytes(qs, keep_blank_values=False):
+    def parse_qsl_to_bytes(qs, keep_blank_values=False, *, separator='&'):
         """Parse a query given as a string argument.
 
         Data are returned as a list of name, value pairs as bytes.
