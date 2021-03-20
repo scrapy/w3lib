@@ -1,7 +1,14 @@
-import unittest, codecs
-import six
-from w3lib.encoding import (html_body_declared_encoding, read_bom, to_unicode,
-        http_content_type_encoding, resolve_encoding, html_to_unicode)
+import codecs
+import unittest
+
+from w3lib.encoding import (
+    html_body_declared_encoding,
+    http_content_type_encoding,
+    html_to_unicode,
+    read_bom,
+    resolve_encoding,
+    to_unicode,
+)
 
 class RequestEncodingTests(unittest.TestCase):
     utf8_fragments = [
@@ -107,18 +114,18 @@ class HtmlConversionTests(unittest.TestCase):
         original_string = unicode_string.encode('cp1251')
         encoding, body_unicode = html_to_unicode(ct('cp1251'), original_string)
         # check body_as_unicode
-        self.assertTrue(isinstance(body_unicode, six.text_type))
+        self.assertTrue(isinstance(body_unicode, str))
         self.assertEqual(body_unicode, unicode_string)
 
     def _assert_encoding(self, content_type, body, expected_encoding,
                 expected_unicode):
-        assert not isinstance(body, six.text_type)
+        assert not isinstance(body, str)
         encoding, body_unicode = html_to_unicode(ct(content_type), body)
-        self.assertTrue(isinstance(body_unicode, six.text_type))
+        self.assertTrue(isinstance(body_unicode, str))
         self.assertEqual(norm_encoding(encoding),
                 norm_encoding(expected_encoding))
 
-        if isinstance(expected_unicode, six.string_types):
+        if isinstance(expected_unicode, str):
             self.assertEqual(body_unicode, expected_unicode)
         else:
             self.assertTrue(
@@ -177,9 +184,9 @@ class HtmlConversionTests(unittest.TestCase):
 
     def _assert_encoding_detected(self, content_type, expected_encoding, body,
             **kwargs):
-        assert not isinstance(body, six.text_type)
+        assert not isinstance(body, str)
         encoding, body_unicode  = html_to_unicode(ct(content_type), body, **kwargs)
-        self.assertTrue(isinstance(body_unicode, six.text_type))
+        self.assertTrue(isinstance(body_unicode, str))
         self.assertEqual(norm_encoding(encoding),  norm_encoding(expected_encoding))
 
     def test_BOM(self):

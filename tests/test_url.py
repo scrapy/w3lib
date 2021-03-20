@@ -1,15 +1,25 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import
 import os
 import unittest
+from urllib.parse import urlparse
 
 import pytest
-from six.moves.urllib.parse import urlparse
 
-from w3lib.url import (is_url, safe_url_string, safe_download_url,
-    url_query_parameter, add_or_replace_parameter, url_query_cleaner,
-    file_uri_to_path, parse_data_uri, path_to_file_uri, any_to_uri,
-    urljoin_rfc, canonicalize_url, parse_url, add_or_replace_parameters)
+from w3lib.url import (
+    add_or_replace_parameter,
+    add_or_replace_parameters,
+    any_to_uri,
+    canonicalize_url,
+    file_uri_to_path,
+    is_url,
+    parse_data_uri,
+    parse_url,
+    path_to_file_uri,
+    safe_download_url,
+    safe_url_string,
+    url_query_parameter,
+    url_query_cleaner,
+    urljoin_rfc,
+)
 
 
 class UrlTests(unittest.TestCase):

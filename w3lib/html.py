@@ -5,16 +5,16 @@ Functions for dealing with markup text
 
 import warnings
 import re
-import six
-from six import moves
+from html.entities import name2codepoint
+from urllib.parse import urljoin
 
 from w3lib.util import to_bytes, to_unicode
 from w3lib.url import safe_url_string
 
 _ent_re = re.compile(r'&((?P<named>[a-z\d]+)|#(?P<dec>\d+)|#x(?P<hex>[a-f\d]+))(?P<semicolon>;?)', re.IGNORECASE)
 _tag_re = re.compile(r'<[a-zA-Z\/!].*?>', re.DOTALL)
-_baseurl_re = re.compile(six.u(r'<base\s[^>]*href\s*=\s*[\"\']\s*([^\"\'\s]+)\s*[\"\']'), re.I)
-_meta_refresh_re = re.compile(six.u(r'<meta\s[^>]*http-equiv[^>]*refresh[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)'), re.DOTALL | re.IGNORECASE)
+_baseurl_re = re.compile(r'<base\s[^>]*href\s*=\s*[\"\']\s*([^\"\'\s]+)\s*[\"\']', re.I)
+_meta_refresh_re = re.compile(r'<meta\s[^>]*http-equiv[^>]*refresh[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)', re.DOTALL | re.IGNORECASE)
 _cdata_re = re.compile(r'((?P<cdata_s><!\[CDATA\[)(?P<cdata_d>.*?)(?P<cdata_e>\]\]>))', re.DOTALL)
 
 HTML5_WHITESPACE = ' \t\n\r\x0c'
@@ -77,8 +77,10 @@ def replace_entities(text, keep=(), remove_illegal=True, encoding='utf-8'):
             if entity_name.lower() in keep:
                 return m.group(0)
             else:
-                number = (moves.html_entities.name2codepoint.get(entity_name) or
-                    moves.html_entities.name2codepoint.get(entity_name.lower()))
+                number = (
+                    name2codepoint.get(entity_name)
+                    or name2codepoint.get(entity_name.lower())
+                )
         if number is not None:
             # Numeric character references in the 80-9F range are typically
             # interpreted by browsers as representing the characters mapped
@@ -86,9 +88,9 @@ def replace_entities(text, keep=(), remove_illegal=True, encoding='utf-8'):
             # see: http://en.wikipedia.org/wiki/Character_encodings_in_HTML
             try:
                 if 0x80 <= number <= 0x9f:
-                    return six.int2byte(number).decode('cp1252')
+                    return bytes((number,)).decode('cp1252')
                 else:
-                    return six.unichr(number)
+                    return chr(number)
             except ValueError:
                 pass
 
@@ -265,7 +267,7 @@ def unquote_markup(text, keep=(), remove_illegal=True, encoding=None):
     text = to_unicode(text, encoding)
     ret_text = u''
     for fragment in _get_fragments(text, _cdata_re):
-        if isinstance(fragment, six.string_types):
+        if isinstance(fragment, str):
             # it's not a CDATA (so we try to remove its entities)
             ret_text += replace_entities(fragment, keep=keep, remove_illegal=remove_illegal)
         else:
@@ -284,7 +286,7 @@ def get_base_url(text, baseurl='', encoding='utf-8'):
     text = to_unicode(text, encoding)
     m = _baseurl_re.search(text)
     if m:
-        return moves.urllib.parse.urljoin(
+        return urljoin(
             safe_url_string(baseurl),
             safe_url_string(m.group(1), encoding=encoding)
         )
@@ -301,8 +303,6 @@ def get_meta_refresh(text, baseurl='', encoding='utf-8', ignore_tags=('script', 
 
     """
 
-    if six.PY2:
-        baseurl = to_bytes(baseurl, encoding)
     try:
         text = to_unicode(text, encoding)
     except UnicodeDecodeError:
@@ -314,7 +314,7 @@ def get_meta_refresh(text, baseurl='', encoding='utf-8', ignore_tags=('script', 
     if m:
         interval = float(m.group('int'))
         url = safe_url_string(m.group('url').strip(' "\''), encoding)
-        url = moves.urllib.parse.urljoin(baseurl, url)
+        url = urljoin(baseurl, url)
         return interval, url
     else:
         return None, None

@@ -1,18 +1,25 @@
-# -*- coding: utf-8 -*-
 import unittest
-import six
-from w3lib.html import (replace_entities, replace_tags, remove_comments,
-    remove_tags_with_content, replace_escape_chars, remove_tags, unquote_markup,
-    get_base_url, get_meta_refresh)
+
+from w3lib.html import (
+    get_base_url,
+    get_meta_refresh,
+    remove_comments,
+    remove_tags,
+    remove_tags_with_content,
+    replace_entities,
+    replace_escape_chars,
+    replace_tags,
+    unquote_markup,
+)
 
 
 class RemoveEntitiesTest(unittest.TestCase):
     def test_returns_unicode(self):
         # make sure it always return uncode
-        assert isinstance(replace_entities(b'no entities'), six.text_type)
-        assert isinstance(replace_entities(b'Price: &pound;100!'),  six.text_type)
-        assert isinstance(replace_entities(u'no entities'), six.text_type)
-        assert isinstance(replace_entities(u'Price: &pound;100!'),  six.text_type)
+        assert isinstance(replace_entities(b'no entities'), str)
+        assert isinstance(replace_entities(b'Price: &pound;100!'),  str)
+        assert isinstance(replace_entities(u'no entities'), str)
+        assert isinstance(replace_entities(u'Price: &pound;100!'),  str)
 
     def test_regular(self):
         # regular conversions
@@ -71,8 +78,8 @@ class RemoveEntitiesTest(unittest.TestCase):
 class ReplaceTagsTest(unittest.TestCase):
     def test_returns_unicode(self):
         # make sure it always return uncode
-        assert isinstance(replace_tags(b'no entities'), six.text_type)
-        assert isinstance(replace_tags('no entities'), six.text_type)
+        assert isinstance(replace_tags(b'no entities'), str)
+        assert isinstance(replace_tags('no entities'), str)
 
     def test_replace_tags(self):
         self.assertEqual(replace_tags(u'This text contains <a>some tag</a>'),
@@ -88,10 +95,10 @@ class ReplaceTagsTest(unittest.TestCase):
 class RemoveCommentsTest(unittest.TestCase):
     def test_returns_unicode(self):
         # make sure it always return unicode
-        assert isinstance(remove_comments(b'without comments'), six.text_type)
-        assert isinstance(remove_comments(b'<!-- with comments -->'), six.text_type)
-        assert isinstance(remove_comments(u'without comments'), six.text_type)
-        assert isinstance(remove_comments(u'<!-- with comments -->'), six.text_type)
+        assert isinstance(remove_comments(b'without comments'), str)
+        assert isinstance(remove_comments(b'<!-- with comments -->'), str)
+        assert isinstance(remove_comments(u'without comments'), str)
+        assert isinstance(remove_comments(u'<!-- with comments -->'), str)
 
     def test_no_comments(self):
         # text without comments
@@ -112,16 +119,16 @@ class RemoveCommentsTest(unittest.TestCase):
 class RemoveTagsTest(unittest.TestCase):
     def test_returns_unicode(self):
         # make sure it always return unicode
-        assert isinstance(remove_tags(b'no tags'), six.text_type)
-        assert isinstance(remove_tags(b'no tags', which_ones=('p',)), six.text_type)
-        assert isinstance(remove_tags(b'<p>one tag</p>'), six.text_type)
-        assert isinstance(remove_tags(b'<p>one tag</p>', which_ones=('p')), six.text_type)
-        assert isinstance(remove_tags(b'<a>link</a>', which_ones=('b',)), six.text_type)
-        assert isinstance(remove_tags(u'no tags'), six.text_type)
-        assert isinstance(remove_tags(u'no tags', which_ones=('p',)), six.text_type)
-        assert isinstance(remove_tags(u'<p>one tag</p>'), six.text_type)
-        assert isinstance(remove_tags(u'<p>one tag</p>', which_ones=('p')), six.text_type)
-        assert isinstance(remove_tags(u'<a>link</a>', which_ones=('b',)), six.text_type)
+        assert isinstance(remove_tags(b'no tags'), str)
+        assert isinstance(remove_tags(b'no tags', which_ones=('p',)), str)
+        assert isinstance(remove_tags(b'<p>one tag</p>'), str)
+        assert isinstance(remove_tags(b'<p>one tag</p>', which_ones=('p')), str)
+        assert isinstance(remove_tags(b'<a>link</a>', which_ones=('b',)), str)
+        assert isinstance(remove_tags(u'no tags'), str)
+        assert isinstance(remove_tags(u'no tags', which_ones=('p',)), str)
+        assert isinstance(remove_tags(u'<p>one tag</p>'), str)
+        assert isinstance(remove_tags(u'<p>one tag</p>', which_ones=('p')), str)
+        assert isinstance(remove_tags(u'<a>link</a>', which_ones=('b',)), str)
 
     def test_remove_tags_without_tags(self):
         # text without tags
@@ -160,14 +167,14 @@ class RemoveTagsTest(unittest.TestCase):
 class RemoveTagsWithContentTest(unittest.TestCase):
     def test_returns_unicode(self):
         # make sure it always return unicode
-        assert isinstance(remove_tags_with_content(b'no tags'), six.text_type)
-        assert isinstance(remove_tags_with_content(b'no tags', which_ones=('p',)), six.text_type)
-        assert isinstance(remove_tags_with_content(b'<p>one tag</p>', which_ones=('p',)), six.text_type)
-        assert isinstance(remove_tags_with_content(b'<a>link</a>', which_ones=('b',)), six.text_type)
-        assert isinstance(remove_tags_with_content(u'no tags'), six.text_type)
-        assert isinstance(remove_tags_with_content(u'no tags', which_ones=('p',)), six.text_type)
-        assert isinstance(remove_tags_with_content(u'<p>one tag</p>', which_ones=('p',)), six.text_type)
-        assert isinstance(remove_tags_with_content(u'<a>link</a>', which_ones=('b',)), six.text_type)
+        assert isinstance(remove_tags_with_content(b'no tags'), str)
+        assert isinstance(remove_tags_with_content(b'no tags', which_ones=('p',)), str)
+        assert isinstance(remove_tags_with_content(b'<p>one tag</p>', which_ones=('p',)), str)
+        assert isinstance(remove_tags_with_content(b'<a>link</a>', which_ones=('b',)), str)
+        assert isinstance(remove_tags_with_content(u'no tags'), str)
+        assert isinstance(remove_tags_with_content(u'no tags', which_ones=('p',)), str)
+        assert isinstance(remove_tags_with_content(u'<p>one tag</p>', which_ones=('p',)), str)
+        assert isinstance(remove_tags_with_content(u'<a>link</a>', which_ones=('b',)), str)
 
     def test_without_tags(self):
         # text without tags
@@ -194,13 +201,13 @@ class RemoveTagsWithContentTest(unittest.TestCase):
 class ReplaceEscapeCharsTest(unittest.TestCase):
     def test_returns_unicode(self):
         # make sure it always return unicode
-        assert isinstance(replace_escape_chars(b'no ec'), six.text_type)
-        assert isinstance(replace_escape_chars(b'no ec', replace_by='str'), six.text_type)
-        assert isinstance(replace_escape_chars(b'no ec', replace_by=u'str'), six.text_type)
-        assert isinstance(replace_escape_chars(b'no ec', which_ones=('\n', '\t',)), six.text_type)
-        assert isinstance(replace_escape_chars(u'no ec'), six.text_type)
-        assert isinstance(replace_escape_chars(u'no ec', replace_by=u'str'), six.text_type)
-        assert isinstance(replace_escape_chars(u'no ec', which_ones=('\n', '\t',)), six.text_type)
+        assert isinstance(replace_escape_chars(b'no ec'), str)
+        assert isinstance(replace_escape_chars(b'no ec', replace_by='str'), str)
+        assert isinstance(replace_escape_chars(b'no ec', replace_by=u'str'), str)
+        assert isinstance(replace_escape_chars(b'no ec', which_ones=('\n', '\t',)), str)
+        assert isinstance(replace_escape_chars(u'no ec'), str)
+        assert isinstance(replace_escape_chars(u'no ec', replace_by=u'str'), str)
+        assert isinstance(replace_escape_chars(u'no ec', which_ones=('\n', '\t',)), str)
 
     def test_without_escape_chars(self):
         # text without escape chars
@@ -226,8 +233,8 @@ class UnquoteMarkupTest(unittest.TestCase):
 
     def test_returns_unicode(self):
         # make sure it always return unicode
-        assert isinstance(unquote_markup(self.sample_txt1.encode('latin-1')), six.text_type)
-        assert isinstance(unquote_markup(self.sample_txt2), six.text_type)
+        assert isinstance(unquote_markup(self.sample_txt1.encode('latin-1')), str)
+        assert isinstance(unquote_markup(self.sample_txt2), str)
 
     def test_unquote_markup(self):
         self.assertEqual(unquote_markup(self.sample_txt1), u"""<node1>hi, this is sample text with entities: & \xa9

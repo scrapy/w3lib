@@ -1,9 +1,6 @@
 import warnings
-import six
-if six.PY2:
-    from cStringIO import StringIO as BytesIO
-else:
-    from io import BytesIO
+from io import BytesIO
+
 from w3lib.util import unicode_to_str
 
 
