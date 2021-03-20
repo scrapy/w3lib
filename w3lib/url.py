@@ -16,7 +16,6 @@ from urllib.parse import (
     parse_qsl,
     ParseResult,
     quote,
-    unquote,
     unquote_to_bytes,
     urldefrag,
     urlencode,

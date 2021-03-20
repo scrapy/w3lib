@@ -8,7 +8,7 @@ import re
 from html.entities import name2codepoint
 from urllib.parse import urljoin
 
-from w3lib.util import to_bytes, to_unicode
+from w3lib.util import to_unicode
 from w3lib.url import safe_url_string
 
 _ent_re = re.compile(r'&((?P<named>[a-z\d]+)|#(?P<dec>\d+)|#x(?P<hex>[a-f\d]+))(?P<semicolon>;?)', re.IGNORECASE)
