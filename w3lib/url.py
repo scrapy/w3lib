@@ -49,7 +49,6 @@ def parse_qsl(*args, **kwargs):
     return _handle_separator(_parse_qsl, *args, **kwargs)
 
 
-
 # error handling function for bytes-to-Unicode decoding errors with URLs
 def _quote_byte(error):
     return (to_unicode(quote(error.object[error.start:error.end])), error.end)
