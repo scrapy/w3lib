@@ -1,9 +1,6 @@
 import warnings
-import six
-if six.PY2:
-    from cStringIO import StringIO as BytesIO
-else:
-    from io import BytesIO
+from io import BytesIO
+
 from w3lib.util import unicode_to_str
 
 
@@ -49,13 +46,13 @@ def encode_multipart(data):
     end_boundary = sep_boundary + b'--'
     body = BytesIO()
     for key, value in data.items():
-        title = u'\r\nContent-Disposition: form-data; name="%s"' % key
+        title = '\r\nContent-Disposition: form-data; name="%s"' % key
         # handle multiple entries for the same name
         if type(value) != type([]):
             value = [value]
         for value in value:
             if type(value) is tuple:
-                title += u'; filename="%s"' % value[0]
+                title += '; filename="%s"' % value[0]
                 value = value[1]
             else:
                 value = unicode_to_str(value)  # in distutils: str(value).encode('utf-8')

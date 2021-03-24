@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-#
 # w3lib documentation build configuration file, created by
 # sphinx-quickstart on Sun Jan 26 22:19:38 2014.
 #
@@ -47,8 +45,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'w3lib'
-copyright = u'2014, w3lib developers'
+project = 'w3lib'
+copyright = '2014, w3lib developers'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -190,8 +188,8 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'w3lib.tex', u'w3lib Documentation',
-   u'w3lib developers', 'manual'),
+  ('index', 'w3lib.tex', 'w3lib Documentation',
+   'w3lib developers', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -220,8 +218,8 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'w3lib', u'w3lib Documentation',
-     [u'w3lib developers'], 1)
+    ('index', 'w3lib', 'w3lib Documentation',
+     ['w3lib developers'], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -234,8 +232,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'w3lib', u'w3lib Documentation',
-   u'w3lib developers', 'w3lib', 'One line description of project.',
+  ('index', 'w3lib', 'w3lib Documentation',
+   'w3lib developers', 'w3lib', 'One line description of project.',
    'Miscellaneous'),
 ]
 

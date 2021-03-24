@@ -1,38 +1,48 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import
 import os
 import unittest
+from urllib.parse import urlparse
 
 import pytest
-from six.moves.urllib.parse import urlparse
 
-from w3lib.url import (is_url, safe_url_string, safe_download_url,
-    url_query_parameter, add_or_replace_parameter, url_query_cleaner,
-    file_uri_to_path, parse_data_uri, path_to_file_uri, any_to_uri,
-    urljoin_rfc, canonicalize_url, parse_url, add_or_replace_parameters)
+from w3lib.url import (
+    add_or_replace_parameter,
+    add_or_replace_parameters,
+    any_to_uri,
+    canonicalize_url,
+    file_uri_to_path,
+    is_url,
+    parse_data_uri,
+    parse_url,
+    path_to_file_uri,
+    safe_download_url,
+    safe_url_string,
+    url_query_parameter,
+    url_query_cleaner,
+    urljoin_rfc,
+)
 
 
 class UrlTests(unittest.TestCase):
 
     def test_safe_url_string(self):
         # Motoko Kusanagi (Cyborg from Ghost in the Shell)
-        motoko = u'\u8349\u8599 \u7d20\u5b50'
+        motoko = '\u8349\u8599 \u7d20\u5b50'
         self.assertEqual(safe_url_string(motoko),  # note the %20 for space
                         '%E8%8D%89%E8%96%99%20%E7%B4%A0%E5%AD%90')
         self.assertEqual(safe_url_string(motoko),
                          safe_url_string(safe_url_string(motoko)))
-        self.assertEqual(safe_url_string(u'©'), # copyright symbol
+        self.assertEqual(safe_url_string('©'), # copyright symbol
                          '%C2%A9')
         # page-encoding does not affect URL path
-        self.assertEqual(safe_url_string(u'©', 'iso-8859-1'),
+        self.assertEqual(safe_url_string('©', 'iso-8859-1'),
                          '%C2%A9')
         # path_encoding does
-        self.assertEqual(safe_url_string(u'©', path_encoding='iso-8859-1'),
+        self.assertEqual(safe_url_string('©', path_encoding='iso-8859-1'),
                          '%A9')
         self.assertEqual(safe_url_string("http://www.example.org/"),
                         'http://www.example.org/')
 
-        alessi = u'/ecommerce/oggetto/Te \xf2/tea-strainer/1273'
+        alessi = '/ecommerce/oggetto/Te \xf2/tea-strainer/1273'
 
         self.assertEqual(safe_url_string(alessi),
                          '/ecommerce/oggetto/Te%20%C3%B2/tea-strainer/1273')
@@ -44,19 +54,19 @@ class UrlTests(unittest.TestCase):
 
         # page-encoding does not affect URL path
         # we still end up UTF-8 encoding characters before percent-escaping
-        safeurl = safe_url_string(u"http://www.example.com/£")
+        safeurl = safe_url_string("http://www.example.com/£")
         self.assertTrue(isinstance(safeurl, str))
         self.assertEqual(safeurl, "http://www.example.com/%C2%A3")
 
-        safeurl = safe_url_string(u"http://www.example.com/£", encoding='utf-8')
+        safeurl = safe_url_string("http://www.example.com/£", encoding='utf-8')
         self.assertTrue(isinstance(safeurl, str))
         self.assertEqual(safeurl, "http://www.example.com/%C2%A3")
 
-        safeurl = safe_url_string(u"http://www.example.com/£", encoding='latin-1')
+        safeurl = safe_url_string("http://www.example.com/£", encoding='latin-1')
         self.assertTrue(isinstance(safeurl, str))
         self.assertEqual(safeurl, "http://www.example.com/%C2%A3")
 
-        safeurl = safe_url_string(u"http://www.example.com/£", path_encoding='latin-1')
+        safeurl = safe_url_string("http://www.example.com/£", path_encoding='latin-1')
         self.assertTrue(isinstance(safeurl, str))
         self.assertEqual(safeurl, "http://www.example.com/%A3")
 
@@ -81,43 +91,43 @@ class UrlTests(unittest.TestCase):
         self.assertEqual(safeurl, r"http://localhost:8001/unwise%7B,%7D,|,%5C,%5E,[,],%60?|=[]&[]=|")
 
     def test_safe_url_string_quote_path(self):
-        safeurl = safe_url_string(u'http://google.com/"hello"', quote_path=True)
-        self.assertEqual(safeurl, u'http://google.com/%22hello%22')
+        safeurl = safe_url_string('http://google.com/"hello"', quote_path=True)
+        self.assertEqual(safeurl, 'http://google.com/%22hello%22')
 
-        safeurl = safe_url_string(u'http://google.com/"hello"', quote_path=False)
-        self.assertEqual(safeurl, u'http://google.com/"hello"')
+        safeurl = safe_url_string('http://google.com/"hello"', quote_path=False)
+        self.assertEqual(safeurl, 'http://google.com/"hello"')
 
-        safeurl = safe_url_string(u'http://google.com/"hello"')
-        self.assertEqual(safeurl, u'http://google.com/%22hello%22')
+        safeurl = safe_url_string('http://google.com/"hello"')
+        self.assertEqual(safeurl, 'http://google.com/%22hello%22')
 
     def test_safe_url_string_with_query(self):
-        safeurl = safe_url_string(u"http://www.example.com/£?unit=µ")
+        safeurl = safe_url_string("http://www.example.com/£?unit=µ")
         self.assertTrue(isinstance(safeurl, str))
         self.assertEqual(safeurl, "http://www.example.com/%C2%A3?unit=%C2%B5")
 
-        safeurl = safe_url_string(u"http://www.example.com/£?unit=µ", encoding='utf-8')
+        safeurl = safe_url_string("http://www.example.com/£?unit=µ", encoding='utf-8')
         self.assertTrue(isinstance(safeurl, str))
         self.assertEqual(safeurl, "http://www.example.com/%C2%A3?unit=%C2%B5")
 
-        safeurl = safe_url_string(u"http://www.example.com/£?unit=µ", encoding='latin-1')
+        safeurl = safe_url_string("http://www.example.com/£?unit=µ", encoding='latin-1')
         self.assertTrue(isinstance(safeurl, str))
         self.assertEqual(safeurl, "http://www.example.com/%C2%A3?unit=%B5")
 
-        safeurl = safe_url_string(u"http://www.example.com/£?unit=µ", path_encoding='latin-1')
+        safeurl = safe_url_string("http://www.example.com/£?unit=µ", path_encoding='latin-1')
         self.assertTrue(isinstance(safeurl, str))
         self.assertEqual(safeurl, "http://www.example.com/%A3?unit=%C2%B5")
 
-        safeurl = safe_url_string(u"http://www.example.com/£?unit=µ", encoding='latin-1', path_encoding='latin-1')
+        safeurl = safe_url_string("http://www.example.com/£?unit=µ", encoding='latin-1', path_encoding='latin-1')
         self.assertTrue(isinstance(safeurl, str))
         self.assertEqual(safeurl, "http://www.example.com/%A3?unit=%B5")
 
     def test_safe_url_string_misc(self):
         # mixing Unicode and percent-escaped sequences
-        safeurl = safe_url_string(u"http://www.example.com/£?unit=%C2%B5")
+        safeurl = safe_url_string("http://www.example.com/£?unit=%C2%B5")
         self.assertTrue(isinstance(safeurl, str))
         self.assertEqual(safeurl, "http://www.example.com/%C2%A3?unit=%C2%B5")
 
-        safeurl = safe_url_string(u"http://www.example.com/%C2%A3?unit=µ")
+        safeurl = safe_url_string("http://www.example.com/%C2%A3?unit=µ")
         self.assertTrue(isinstance(safeurl, str))
         self.assertEqual(safeurl, "http://www.example.com/%C2%A3?unit=%C2%B5")
 
@@ -147,7 +157,7 @@ class UrlTests(unittest.TestCase):
         self.assertEqual(safeurl, "http://www.example.com/%A3?unit=%B5")
 
         # cp1251
-        # >>> u'Россия'.encode('cp1251')
+        # >>> 'Россия'.encode('cp1251')
         # '\xd0\xee\xf1\xf1\xe8\xff'
         safeurl = safe_url_string(b"http://www.example.com/country/\xd0\xee\xf1\xf1\xe8\xff")
         self.assertTrue(isinstance(safeurl, str))
@@ -159,36 +169,36 @@ class UrlTests(unittest.TestCase):
         # http://unicode.org/faq/idn.html
         # + various others
         websites = (
-            (u'http://www.färgbolaget.nu/färgbolaget', 'http://www.xn--frgbolaget-q5a.nu/f%C3%A4rgbolaget'),
-            (u'http://www.räksmörgås.se/?räksmörgås=yes', 'http://www.xn--rksmrgs-5wao1o.se/?r%C3%A4ksm%C3%B6rg%C3%A5s=yes'),
-            (u'http://www.brændendekærlighed.com/brændende/kærlighed', 'http://www.xn--brndendekrlighed-vobh.com/br%C3%A6ndende/k%C3%A6rlighed'),
-            (u'http://www.예비교사.com', 'http://www.xn--9d0bm53a3xbzui.com'),
-            (u'http://理容ナカムラ.com', 'http://xn--lck1c3crb1723bpq4a.com'),
-            (u'http://あーるいん.com', 'http://xn--l8je6s7a45b.com'),
+            ('http://www.färgbolaget.nu/färgbolaget', 'http://www.xn--frgbolaget-q5a.nu/f%C3%A4rgbolaget'),
+            ('http://www.räksmörgås.se/?räksmörgås=yes', 'http://www.xn--rksmrgs-5wao1o.se/?r%C3%A4ksm%C3%B6rg%C3%A5s=yes'),
+            ('http://www.brændendekærlighed.com/brændende/kærlighed', 'http://www.xn--brndendekrlighed-vobh.com/br%C3%A6ndende/k%C3%A6rlighed'),
+            ('http://www.예비교사.com', 'http://www.xn--9d0bm53a3xbzui.com'),
+            ('http://理容ナカムラ.com', 'http://xn--lck1c3crb1723bpq4a.com'),
+            ('http://あーるいん.com', 'http://xn--l8je6s7a45b.com'),
 
             # --- real websites ---
 
             # in practice, this redirect (301) to http://www.buecher.de/?q=b%C3%BCcher
-            (u'http://www.bücher.de/?q=bücher', 'http://www.xn--bcher-kva.de/?q=b%C3%BCcher'),
+            ('http://www.bücher.de/?q=bücher', 'http://www.xn--bcher-kva.de/?q=b%C3%BCcher'),
 
             # Japanese
-            (u'http://はじめよう.みんな/?query=サ&maxResults=5', 'http://xn--p8j9a0d9c9a.xn--q9jyb4c/?query=%E3%82%B5&maxResults=5'),
+            ('http://はじめよう.みんな/?query=サ&maxResults=5', 'http://xn--p8j9a0d9c9a.xn--q9jyb4c/?query=%E3%82%B5&maxResults=5'),
 
             # Russian
-            (u'http://кто.рф/', 'http://xn--j1ail.xn--p1ai/'),
-            (u'http://кто.рф/index.php?domain=Что', 'http://xn--j1ail.xn--p1ai/index.php?domain=%D0%A7%D1%82%D0%BE'),
+            ('http://кто.рф/', 'http://xn--j1ail.xn--p1ai/'),
+            ('http://кто.рф/index.php?domain=Что', 'http://xn--j1ail.xn--p1ai/index.php?domain=%D0%A7%D1%82%D0%BE'),
 
             # Korean
-            (u'http://내도메인.한국/', 'http://xn--220b31d95hq8o.xn--3e0b707e/'),
-            (u'http://맨체스터시티축구단.한국/', 'http://xn--2e0b17htvgtvj9haj53ccob62ni8d.xn--3e0b707e/'),
+            ('http://내도메인.한국/', 'http://xn--220b31d95hq8o.xn--3e0b707e/'),
+            ('http://맨체스터시티축구단.한국/', 'http://xn--2e0b17htvgtvj9haj53ccob62ni8d.xn--3e0b707e/'),
 
             # Arabic
-            (u'http://nic.شبكة', 'http://nic.xn--ngbc5azd'),
+            ('http://nic.شبكة', 'http://nic.xn--ngbc5azd'),
 
             # Chinese
-            (u'https://www.贷款.在线', 'https://www.xn--0kwr83e.xn--3ds443g'),
-            (u'https://www2.xn--0kwr83e.在线', 'https://www2.xn--0kwr83e.xn--3ds443g'),
-            (u'https://www3.贷款.xn--3ds443g', 'https://www3.xn--0kwr83e.xn--3ds443g'),
+            ('https://www.贷款.在线', 'https://www.xn--0kwr83e.xn--3ds443g'),
+            ('https://www2.xn--0kwr83e.在线', 'https://www2.xn--0kwr83e.xn--3ds443g'),
+            ('https://www3.贷款.xn--3ds443g', 'https://www3.xn--0kwr83e.xn--3ds443g'),
         )
         for idn_input, safe_result in websites:
             safeurl = safe_url_string(idn_input)
@@ -202,23 +212,23 @@ class UrlTests(unittest.TestCase):
     def test_safe_url_idna_encoding_failure(self):
         # missing DNS label
         self.assertEqual(
-            safe_url_string(u"http://.example.com/résumé?q=résumé"),
+            safe_url_string("http://.example.com/résumé?q=résumé"),
             "http://.example.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9")
 
         # DNS label too long
         self.assertEqual(
             safe_url_string(
-                u"http://www.{label}.com/résumé?q=résumé".format(
-                    label=u"example"*11)),
+                "http://www.{label}.com/résumé?q=résumé".format(
+                    label="example"*11)),
             "http://www.{label}.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9".format(
-                    label=u"example"*11))
+                    label="example"*11))
 
     def test_safe_url_port_number(self):
         self.assertEqual(
-            safe_url_string(u"http://www.example.com:80/résumé?q=résumé"),
+            safe_url_string("http://www.example.com:80/résumé?q=résumé"),
             "http://www.example.com:80/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9")
         self.assertEqual(
-            safe_url_string(u"http://www.example.com:/résumé?q=résumé"),
+            safe_url_string("http://www.example.com:/résumé?q=résumé"),
             "http://www.example.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9")
 
     def test_safe_url_string_preserve_nonfragment_hash(self):
@@ -475,7 +485,7 @@ class CanonicalizeUrlTest(unittest.TestCase):
                                           "http://www.example.com/")
 
     def test_return_str(self):
-        assert isinstance(canonicalize_url(u"http://www.example.com"), str)
+        assert isinstance(canonicalize_url("http://www.example.com"), str)
         assert isinstance(canonicalize_url(b"http://www.example.com"), str)
 
     def test_append_missing_path(self):
@@ -516,7 +526,7 @@ class CanonicalizeUrlTest(unittest.TestCase):
         self.assertEqual(canonicalize_url("http://www.example.com/do?b=&c&a=2"),
                                           "http://www.example.com/do?a=2&b=&c=")
 
-        self.assertEqual(canonicalize_url(u'http://www.example.com/do?1750,4'),
+        self.assertEqual(canonicalize_url('http://www.example.com/do?1750,4'),
                                            'http://www.example.com/do?1750%2C4=')
 
     def test_spaces(self):
@@ -528,28 +538,28 @@ class CanonicalizeUrlTest(unittest.TestCase):
                                           "http://www.example.com/do?a=1&q=a+space")
 
     def test_canonicalize_url_unicode_path(self):
-        self.assertEqual(canonicalize_url(u"http://www.example.com/résumé"),
+        self.assertEqual(canonicalize_url("http://www.example.com/résumé"),
                                           "http://www.example.com/r%C3%A9sum%C3%A9")
 
     def test_canonicalize_url_unicode_query_string(self):
         # default encoding for path and query is UTF-8
-        self.assertEqual(canonicalize_url(u"http://www.example.com/résumé?q=résumé"),
+        self.assertEqual(canonicalize_url("http://www.example.com/résumé?q=résumé"),
                                           "http://www.example.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9")
 
         # passed encoding will affect query string
-        self.assertEqual(canonicalize_url(u"http://www.example.com/résumé?q=résumé", encoding='latin1'),
+        self.assertEqual(canonicalize_url("http://www.example.com/résumé?q=résumé", encoding='latin1'),
                                           "http://www.example.com/r%C3%A9sum%C3%A9?q=r%E9sum%E9")
 
-        self.assertEqual(canonicalize_url(u"http://www.example.com/résumé?country=Россия", encoding='cp1251'),
+        self.assertEqual(canonicalize_url("http://www.example.com/résumé?country=Россия", encoding='cp1251'),
                                           "http://www.example.com/r%C3%A9sum%C3%A9?country=%D0%EE%F1%F1%E8%FF")
 
     def test_canonicalize_url_unicode_query_string_wrong_encoding(self):
         # trying to encode with wrong encoding
         # fallback to UTF-8
-        self.assertEqual(canonicalize_url(u"http://www.example.com/résumé?currency=€", encoding='latin1'),
+        self.assertEqual(canonicalize_url("http://www.example.com/résumé?currency=€", encoding='latin1'),
                                           "http://www.example.com/r%C3%A9sum%C3%A9?currency=%E2%82%AC")
 
-        self.assertEqual(canonicalize_url(u"http://www.example.com/résumé?country=Россия", encoding='latin1'),
+        self.assertEqual(canonicalize_url("http://www.example.com/résumé?country=Россия", encoding='latin1'),
                                           "http://www.example.com/r%C3%A9sum%C3%A9?country=%D0%A0%D0%BE%D1%81%D1%81%D0%B8%D1%8F")
 
     def test_normalize_percent_encoding_in_paths(self):
@@ -581,28 +591,28 @@ class CanonicalizeUrlTest(unittest.TestCase):
                                           "http://www.example.com/a%20do?a=1"),
         self.assertEqual(canonicalize_url("http://www.example.com/a %20do?a=1"),
                                           "http://www.example.com/a%20%20do?a=1"),
-        self.assertEqual(canonicalize_url(u"http://www.example.com/a do£.html?a=1"),
+        self.assertEqual(canonicalize_url("http://www.example.com/a do£.html?a=1"),
                                           "http://www.example.com/a%20do%C2%A3.html?a=1")
         self.assertEqual(canonicalize_url(b"http://www.example.com/a do\xc2\xa3.html?a=1"),
                                           "http://www.example.com/a%20do%C2%A3.html?a=1")
 
     def test_non_ascii_percent_encoding_in_query_arguments(self):
-        self.assertEqual(canonicalize_url(u"http://www.example.com/do?price=£500&a=5&z=3"),
-                                          u"http://www.example.com/do?a=5&price=%C2%A3500&z=3")
+        self.assertEqual(canonicalize_url("http://www.example.com/do?price=£500&a=5&z=3"),
+                                          "http://www.example.com/do?a=5&price=%C2%A3500&z=3")
         self.assertEqual(canonicalize_url(b"http://www.example.com/do?price=\xc2\xa3500&a=5&z=3"),
                                           "http://www.example.com/do?a=5&price=%C2%A3500&z=3")
         self.assertEqual(canonicalize_url(b"http://www.example.com/do?price(\xc2\xa3)=500&a=1"),
                                           "http://www.example.com/do?a=1&price%28%C2%A3%29=500")
 
     def test_urls_with_auth_and_ports(self):
-        self.assertEqual(canonicalize_url(u"http://user:pass@www.example.com:81/do?now=1"),
-                                          u"http://user:pass@www.example.com:81/do?now=1")
+        self.assertEqual(canonicalize_url("http://user:pass@www.example.com:81/do?now=1"),
+                                          "http://user:pass@www.example.com:81/do?now=1")
 
     def test_remove_fragments(self):
-        self.assertEqual(canonicalize_url(u"http://user:pass@www.example.com/do?a=1#frag"),
-                                          u"http://user:pass@www.example.com/do?a=1")
-        self.assertEqual(canonicalize_url(u"http://user:pass@www.example.com/do?a=1#frag", keep_fragments=True),
-                                          u"http://user:pass@www.example.com/do?a=1#frag")
+        self.assertEqual(canonicalize_url("http://user:pass@www.example.com/do?a=1#frag"),
+                                          "http://user:pass@www.example.com/do?a=1")
+        self.assertEqual(canonicalize_url("http://user:pass@www.example.com/do?a=1#frag", keep_fragments=True),
+                                          "http://user:pass@www.example.com/do?a=1#frag")
 
     def test_dont_convert_safe_characters(self):
         # dont convert safe characters to percent encoding representation
@@ -616,7 +626,7 @@ class CanonicalizeUrlTest(unittest.TestCase):
         # percent-encoded as utf-8, that's why canonicalize_url must always
         # convert the urls to string. the following test asserts that
         # functionality.
-        self.assertEqual(canonicalize_url(u'http://www.example.com/caf%E9-con-leche.htm'),
+        self.assertEqual(canonicalize_url('http://www.example.com/caf%E9-con-leche.htm'),
                                            'http://www.example.com/caf%E9-con-leche.htm')
 
     def test_domains_are_case_insensitive(self):
@@ -624,10 +634,10 @@ class CanonicalizeUrlTest(unittest.TestCase):
                                           "http://www.example.com/")
 
     def test_canonicalize_idns(self):
-        self.assertEqual(canonicalize_url(u'http://www.bücher.de?q=bücher'),
+        self.assertEqual(canonicalize_url('http://www.bücher.de?q=bücher'),
                                            'http://www.xn--bcher-kva.de/?q=b%C3%BCcher')
         # Japanese (+ reordering query parameters)
-        self.assertEqual(canonicalize_url(u'http://はじめよう.みんな/?query=サ&maxResults=5'),
+        self.assertEqual(canonicalize_url('http://はじめよう.みんな/?query=サ&maxResults=5'),
                                            'http://xn--p8j9a0d9c9a.xn--q9jyb4c/?maxResults=5&query=%E3%82%B5')
 
     def test_quoted_slash_and_question_sign(self):
@@ -638,7 +648,7 @@ class CanonicalizeUrlTest(unittest.TestCase):
 
     def test_canonicalize_urlparsed(self):
         # canonicalize_url() can be passed an already urlparse'd URL
-        self.assertEqual(canonicalize_url(urlparse(u"http://www.example.com/résumé?q=résumé")),
+        self.assertEqual(canonicalize_url(urlparse("http://www.example.com/résumé?q=résumé")),
                                           "http://www.example.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9")
         self.assertEqual(canonicalize_url(urlparse('http://www.example.com/caf%e9-con-leche.htm')),
                                           'http://www.example.com/caf%E9-con-leche.htm')
@@ -647,7 +657,7 @@ class CanonicalizeUrlTest(unittest.TestCase):
 
     def test_canonicalize_parse_url(self):
         # parse_url() wraps urlparse and is used in link extractors
-        self.assertEqual(canonicalize_url(parse_url(u"http://www.example.com/résumé?q=résumé")),
+        self.assertEqual(canonicalize_url(parse_url("http://www.example.com/résumé?q=résumé")),
                                           "http://www.example.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9")
         self.assertEqual(canonicalize_url(parse_url('http://www.example.com/caf%e9-con-leche.htm')),
                                           'http://www.example.com/caf%E9-con-leche.htm')
@@ -655,10 +665,10 @@ class CanonicalizeUrlTest(unittest.TestCase):
                                           "http://www.example.com/a%A3do?q=r%C3%A9sum%C3%A9")
 
     def test_canonicalize_url_idempotence(self):
-        for url, enc in [(u'http://www.bücher.de/résumé?q=résumé', 'utf8'),
-                         (u'http://www.example.com/résumé?q=résumé', 'latin1'),
-                         (u'http://www.example.com/résumé?country=Россия', 'cp1251'),
-                         (u'http://はじめよう.みんな/?query=サ&maxResults=5', 'iso2022jp')]:
+        for url, enc in [('http://www.bücher.de/résumé?q=résumé', 'utf8'),
+                         ('http://www.example.com/résumé?q=résumé', 'latin1'),
+                         ('http://www.example.com/résumé?country=Россия', 'cp1251'),
+                         ('http://はじめよう.みんな/?query=サ&maxResults=5', 'iso2022jp')]:
             canonicalized = canonicalize_url(url, encoding=enc)
 
             # if we canonicalize again, we ge the same result
@@ -670,16 +680,16 @@ class CanonicalizeUrlTest(unittest.TestCase):
     def test_canonicalize_url_idna_exceptions(self):
         # missing DNS label
         self.assertEqual(
-            canonicalize_url(u"http://.example.com/résumé?q=résumé"),
+            canonicalize_url("http://.example.com/résumé?q=résumé"),
             "http://.example.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9")
 
         # DNS label too long
         self.assertEqual(
             canonicalize_url(
-                u"http://www.{label}.com/résumé?q=résumé".format(
-                    label=u"example"*11)),
+                "http://www.{label}.com/résumé?q=résumé".format(
+                    label="example"*11)),
             "http://www.{label}.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9".format(
-                    label=u"example"*11))
+                    label="example"*11))
 
     def test_preserve_nonfragment_hash(self):
         # don't decode `%23` to `#`
@@ -706,7 +716,7 @@ class DataURITests(unittest.TestCase):
         self.assertEqual(result.data, b"A brief note")
 
     def test_text_uri(self):
-        result = parse_data_uri(u"data:,A%20brief%20note")
+        result = parse_data_uri("data:,A%20brief%20note")
         self.assertEqual(result.data, b"A brief note")
 
     def test_bytes_uri(self):
@@ -714,8 +724,8 @@ class DataURITests(unittest.TestCase):
         self.assertEqual(result.data, b"A brief note")
 
     def test_unicode_uri(self):
-        result = parse_data_uri(u"data:,é")
-        self.assertEqual(result.data, u"é".encode('utf-8'))
+        result = parse_data_uri("data:,é")
+        self.assertEqual(result.data, "é".encode('utf-8'))
 
     def test_default_mediatype(self):
         result = parse_data_uri("data:;charset=iso-8859-7,%be%d3%be")
