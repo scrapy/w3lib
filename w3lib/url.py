@@ -8,7 +8,6 @@ import os
 import posixpath
 import re
 import string
-import warnings
 from collections import namedtuple
 from urllib.parse import (
     _coerce_args,
@@ -392,21 +391,20 @@ def parse_data_uri(uri):
     return _ParseDataURIResult(media_type, media_type_params, data)
 
 
-__all__ = ["add_or_replace_parameter",
-           "add_or_replace_parameters",
-           "any_to_uri",
-           "canonicalize_url",
-           "file_uri_to_path",
-           "is_url",
-           "parse_data_uri",
-           "path_to_file_uri",
-           "safe_download_url",
-           "safe_url_string",
-           "url_query_cleaner",
-           "url_query_parameter",
-
-           # this last one is deprecated ; include it to be on the safe side
-           "urljoin_rfc"]
+__all__ = [
+    "add_or_replace_parameter",
+    "add_or_replace_parameters",
+    "any_to_uri",
+    "canonicalize_url",
+    "file_uri_to_path",
+    "is_url",
+    "parse_data_uri",
+    "path_to_file_uri",
+    "safe_download_url",
+    "safe_url_string",
+    "url_query_cleaner",
+    "url_query_parameter",
+]
 
 
 def _safe_ParseResult(parts, encoding='utf8', path_encoding='utf8'):
@@ -585,38 +583,3 @@ def parse_qsl_to_bytes(qs, keep_blank_values=False):
             value = _coerce_result(value)
             r.append((name, value))
     return r
-
-
-def urljoin_rfc(base, ref, encoding='utf-8'):
-    r"""
-    .. warning::
-
-        This function is deprecated and will be removed in future.
-        It is not supported with Python 3.
-        Please use ``urlparse.urljoin`` instead.
-
-    Same as urlparse.urljoin but supports unicode values in base and ref
-    parameters (in which case they will be converted to str using the given
-    encoding).
-
-    Always returns a str.
-
-    >>> import w3lib.url
-    >>> w3lib.url.urljoin_rfc('http://www.example.com/path/index.html', '/otherpath/index2.html')
-    'http://www.example.com/otherpath/index2.html'
-    >>>
-
-    >>> # Note: the following does not work in Python 3
-    >>> w3lib.url.urljoin_rfc(b'http://www.example.com/path/index.html', 'fran\u00e7ais/d\u00e9part.htm') # doctest: +SKIP
-    'http://www.example.com/path/fran\xc3\xa7ais/d\xc3\xa9part.htm'
-    >>>
-
-
-    """
-
-    warnings.warn("w3lib.url.urljoin_rfc is deprecated, use urlparse.urljoin instead",
-        DeprecationWarning)
-
-    str_base = to_bytes(base, encoding)
-    str_ref = to_bytes(ref, encoding)
-    return urljoin(str_base, str_ref)

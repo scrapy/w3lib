@@ -18,7 +18,6 @@ from w3lib.url import (
     safe_url_string,
     url_query_parameter,
     url_query_cleaner,
-    urljoin_rfc,
 )
 
 
@@ -461,10 +460,6 @@ class UrlTests(unittest.TestCase):
                          "file:///some/path.txt")
         self.assertEqual(any_to_uri("http://www.example.com/some/path.txt"),
                          "http://www.example.com/some/path.txt")
-
-    def test_urljoin_rfc_deprecated(self):
-        jurl = urljoin_rfc("http://www.example.com/", "/test")
-        self.assertEqual(jurl, b"http://www.example.com/test")
 
 
 class CanonicalizeUrlTest(unittest.TestCase):
