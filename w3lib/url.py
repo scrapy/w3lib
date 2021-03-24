@@ -5,17 +5,27 @@ library.
 import base64
 import codecs
 import os
-import re
 import posixpath
-import warnings
+import re
 import string
+import warnings
 from collections import namedtuple
-import six
-from six.moves.urllib.parse import (urljoin, urlsplit, urlunsplit,
-                                    urldefrag, urlencode, urlparse,
-                                    quote, parse_qs, parse_qsl,
-                                    ParseResult, unquote, urlunparse)
-from six.moves.urllib.request import pathname2url, url2pathname
+from urllib.parse import (
+    _coerce_args,
+    parse_qs,
+    parse_qsl,
+    ParseResult,
+    quote,
+    unquote_to_bytes,
+    urldefrag,
+    urlencode,
+    urljoin,
+    urlparse,
+    urlsplit,
+    urlunparse,
+    urlunsplit,
+)
+from urllib.request import pathname2url, url2pathname
 from w3lib.util import to_bytes, to_native_str, to_unicode
 
 
@@ -185,7 +195,7 @@ def url_query_cleaner(url, parameterlist=(), sep='&', kvsep='=', remove=False, u
 
     """
 
-    if isinstance(parameterlist, (six.text_type, bytes)):
+    if isinstance(parameterlist, (str, bytes)):
         parameterlist = [parameterlist]
     url, fragment = urldefrag(url)
     base, _, query = url.partition('?')
@@ -347,10 +357,7 @@ def parse_data_uri(uri):
     # delimiters, but it makes parsing easier and should not affect
     # well-formed URIs, as the delimiters used in this URI scheme are not
     # allowed, percent-encoded or not, in tokens.
-    if six.PY2:
-        uri = unquote(uri)
-    else:
-        uri = unquote_to_bytes(uri)
+    uri = unquote_to_bytes(uri)
 
     media_type = "text/plain"
     media_type_params = {}
@@ -449,7 +456,7 @@ def canonicalize_url(url, keep_blank_values=True, keep_fragments=False,
     'http://www.example.com/do?a=50&b=2&b=5&c=3'
     >>>
     >>> # UTF-8 conversion + percent-encoding of non-ASCII characters
-    >>> w3lib.url.canonicalize_url(u'http://www.example.com/r\u00e9sum\u00e9')
+    >>> w3lib.url.canonicalize_url('http://www.example.com/r\u00e9sum\u00e9')
     'http://www.example.com/r%C3%A9sum%C3%A9'
     >>>
 
@@ -470,33 +477,32 @@ def canonicalize_url(url, keep_blank_values=True, keep_fragments=False,
     # 1. decode query-string as UTF-8 (or keep raw bytes),
     #    sort values,
     #    and percent-encode them back
-    if six.PY2:
-        keyvals = parse_qsl(query, keep_blank_values)
-    else:
-        # Python3's urllib.parse.parse_qsl does not work as wanted
-        # for percent-encoded characters that do not match passed encoding,
-        # they get lost.
-        #
-        # e.g., 'q=b%a3' becomes [('q', 'b\ufffd')]
-        # (ie. with 'REPLACEMENT CHARACTER' (U+FFFD),
-        #      instead of \xa3 that you get with Python2's parse_qsl)
-        #
-        # what we want here is to keep raw bytes, and percent encode them
-        # so as to preserve whatever encoding what originally used.
-        #
-        # See https://tools.ietf.org/html/rfc3987#section-6.4:
-        #
-        # For example, it is possible to have a URI reference of
-        # "http://www.example.org/r%E9sum%E9.xml#r%C3%A9sum%C3%A9", where the
-        # document name is encoded in iso-8859-1 based on server settings, but
-        # where the fragment identifier is encoded in UTF-8 according to
-        # [XPointer]. The IRI corresponding to the above URI would be (in XML
-        # notation)
-        # "http://www.example.org/r%E9sum%E9.xml#r&#xE9;sum&#xE9;".
-        # Similar considerations apply to query parts.  The functionality of
-        # IRIs (namely, to be able to include non-ASCII characters) can only be
-        # used if the query part is encoded in UTF-8.
-        keyvals = parse_qsl_to_bytes(query, keep_blank_values)
+
+    # Python's urllib.parse.parse_qsl does not work as wanted
+    # for percent-encoded characters that do not match passed encoding,
+    # they get lost.
+    #
+    # e.g., 'q=b%a3' becomes [('q', 'b\ufffd')]
+    # (ie. with 'REPLACEMENT CHARACTER' (U+FFFD),
+    #      instead of \xa3 that you get with Python2's parse_qsl)
+    #
+    # what we want here is to keep raw bytes, and percent encode them
+    # so as to preserve whatever encoding what originally used.
+    #
+    # See https://tools.ietf.org/html/rfc3987#section-6.4:
+    #
+    # For example, it is possible to have a URI reference of
+    # "http://www.example.org/r%E9sum%E9.xml#r%C3%A9sum%C3%A9", where the
+    # document name is encoded in iso-8859-1 based on server settings, but
+    # where the fragment identifier is encoded in UTF-8 according to
+    # [XPointer]. The IRI corresponding to the above URI would be (in XML
+    # notation)
+    # "http://www.example.org/r%E9sum%E9.xml#r&#xE9;sum&#xE9;".
+    # Similar considerations apply to query parts.  The functionality of
+    # IRIs (namely, to be able to include non-ASCII characters) can only be
+    # used if the query part is encoded in UTF-8.
+    keyvals = parse_qsl_to_bytes(query, keep_blank_values)
+
     keyvals.sort()
     query = urlencode(keyvals)
 
@@ -520,17 +526,12 @@ def _unquotepath(path):
     for reserved in ('2f', '2F', '3f', '3F'):
         path = path.replace('%' + reserved, '%25' + reserved.upper())
 
-    if six.PY2:
-        # in Python 2, '%a3' becomes '\xa3', which is what we want
-        return unquote(path)
-    else:
-        # in Python 3,
-        # standard lib's unquote() does not work for non-UTF-8
-        # percent-escaped characters, they get lost.
-        # e.g., '%a3' becomes 'REPLACEMENT CHARACTER' (U+FFFD)
-        #
-        # unquote_to_bytes() returns raw bytes instead
-        return unquote_to_bytes(path)
+    # standard lib's unquote() does not work for non-UTF-8
+    # percent-escaped characters, they get lost.
+    # e.g., '%a3' becomes 'REPLACEMENT CHARACTER' (U+FFFD)
+    #
+    # unquote_to_bytes() returns raw bytes instead
+    return unquote_to_bytes(path)
 
 
 def parse_url(url, encoding=None):
@@ -542,51 +543,48 @@ def parse_url(url, encoding=None):
     return urlparse(to_unicode(url, encoding))
 
 
-if not six.PY2:
-    from urllib.parse import _coerce_args, unquote_to_bytes
+def parse_qsl_to_bytes(qs, keep_blank_values=False):
+    """Parse a query given as a string argument.
 
-    def parse_qsl_to_bytes(qs, keep_blank_values=False):
-        """Parse a query given as a string argument.
+    Data are returned as a list of name, value pairs as bytes.
 
-        Data are returned as a list of name, value pairs as bytes.
+    Arguments:
 
-        Arguments:
+    qs: percent-encoded query string to be parsed
 
-        qs: percent-encoded query string to be parsed
+    keep_blank_values: flag indicating whether blank values in
+        percent-encoded queries should be treated as blank strings.  A
+        true value indicates that blanks should be retained as blank
+        strings.  The default false value indicates that blank values
+        are to be ignored and treated as if they were  not included.
 
-        keep_blank_values: flag indicating whether blank values in
-            percent-encoded queries should be treated as blank strings.  A
-            true value indicates that blanks should be retained as blank
-            strings.  The default false value indicates that blank values
-            are to be ignored and treated as if they were  not included.
-
-        """
-        # This code is the same as Python3's parse_qsl()
-        # (at https://hg.python.org/cpython/rev/c38ac7ab8d9a)
-        # except for the unquote(s, encoding, errors) calls replaced
-        # with unquote_to_bytes(s)
-        qs, _coerce_result = _coerce_args(qs)
-        pairs = [s2 for s1 in qs.split('&') for s2 in s1.split(';')]
-        r = []
-        for name_value in pairs:
-            if not name_value:
+    """
+    # This code is the same as Python3's parse_qsl()
+    # (at https://hg.python.org/cpython/rev/c38ac7ab8d9a)
+    # except for the unquote(s, encoding, errors) calls replaced
+    # with unquote_to_bytes(s)
+    qs, _coerce_result = _coerce_args(qs)
+    pairs = [s2 for s1 in qs.split('&') for s2 in s1.split(';')]
+    r = []
+    for name_value in pairs:
+        if not name_value:
+            continue
+        nv = name_value.split('=', 1)
+        if len(nv) != 2:
+            # Handle case of a control-name with no equal sign
+            if keep_blank_values:
+                nv.append('')
+            else:
                 continue
-            nv = name_value.split('=', 1)
-            if len(nv) != 2:
-                # Handle case of a control-name with no equal sign
-                if keep_blank_values:
-                    nv.append('')
-                else:
-                    continue
-            if len(nv[1]) or keep_blank_values:
-                name = nv[0].replace('+', ' ')
-                name = unquote_to_bytes(name)
-                name = _coerce_result(name)
-                value = nv[1].replace('+', ' ')
-                value = unquote_to_bytes(value)
-                value = _coerce_result(value)
-                r.append((name, value))
-        return r
+        if len(nv[1]) or keep_blank_values:
+            name = nv[0].replace('+', ' ')
+            name = unquote_to_bytes(name)
+            name = _coerce_result(name)
+            value = nv[1].replace('+', ' ')
+            value = unquote_to_bytes(value)
+            value = _coerce_result(value)
+            r.append((name, value))
+    return r
 
 
 def urljoin_rfc(base, ref, encoding='utf-8'):
@@ -604,12 +602,12 @@ def urljoin_rfc(base, ref, encoding='utf-8'):
     Always returns a str.
 
     >>> import w3lib.url
-    >>> w3lib.url.urljoin_rfc('http://www.example.com/path/index.html', u'/otherpath/index2.html')
+    >>> w3lib.url.urljoin_rfc('http://www.example.com/path/index.html', '/otherpath/index2.html')
     'http://www.example.com/otherpath/index2.html'
     >>>
 
     >>> # Note: the following does not work in Python 3
-    >>> w3lib.url.urljoin_rfc(b'http://www.example.com/path/index.html', u'fran\u00e7ais/d\u00e9part.htm') # doctest: +SKIP
+    >>> w3lib.url.urljoin_rfc(b'http://www.example.com/path/index.html', 'fran\u00e7ais/d\u00e9part.htm') # doctest: +SKIP
     'http://www.example.com/path/fran\xc3\xa7ais/d\xc3\xa9part.htm'
     >>>
 

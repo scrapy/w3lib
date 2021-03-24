@@ -1,20 +1,19 @@
-# -*- coding: utf-8 -*-
 """
 Functions for dealing with markup text
 """
 
 import warnings
 import re
-import six
-from six import moves
+from html.entities import name2codepoint
+from urllib.parse import urljoin
 
-from w3lib.util import to_bytes, to_unicode
+from w3lib.util import to_unicode
 from w3lib.url import safe_url_string
 
 _ent_re = re.compile(r'&((?P<named>[a-z\d]+)|#(?P<dec>\d+)|#x(?P<hex>[a-f\d]+))(?P<semicolon>;?)', re.IGNORECASE)
 _tag_re = re.compile(r'<[a-zA-Z\/!].*?>', re.DOTALL)
-_baseurl_re = re.compile(six.u(r'<base\s[^>]*href\s*=\s*[\"\']\s*([^\"\'\s]+)\s*[\"\']'), re.I)
-_meta_refresh_re = re.compile(six.u(r'<meta\s[^>]*http-equiv[^>]*refresh[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)'), re.DOTALL | re.IGNORECASE)
+_baseurl_re = re.compile(r'<base\s[^>]*href\s*=\s*[\"\']\s*([^\"\'\s]+)\s*[\"\']', re.I)
+_meta_refresh_re = re.compile(r'<meta\s[^>]*http-equiv[^>]*refresh[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)', re.DOTALL | re.IGNORECASE)
 _cdata_re = re.compile(r'((?P<cdata_s><!\[CDATA\[)(?P<cdata_d>.*?)(?P<cdata_e>\]\]>))', re.DOTALL)
 
 HTML5_WHITESPACE = ' \t\n\r\x0c'
@@ -39,7 +38,7 @@ def remove_entities(text, keep=(), remove_illegal=True, encoding='utf-8'):
     return replace_entities(text, keep, remove_illegal, encoding)
 
 def replace_entities(text, keep=(), remove_illegal=True, encoding='utf-8'):
-    u"""Remove entities from the given `text` by converting them to their
+    """Remove entities from the given `text` by converting them to their
     corresponding unicode character.
 
     `text` can be a unicode string or a byte string encoded in the given
@@ -59,7 +58,7 @@ def replace_entities(text, keep=(), remove_illegal=True, encoding='utf-8'):
 
     >>> import w3lib.html
     >>> w3lib.html.replace_entities(b'Price: &pound;100')
-    u'Price: \\xa3100'
+    'Price: \\xa3100'
     >>> print(w3lib.html.replace_entities(b'Price: &pound;100'))
     Price: £100
     >>>
@@ -77,8 +76,10 @@ def replace_entities(text, keep=(), remove_illegal=True, encoding='utf-8'):
             if entity_name.lower() in keep:
                 return m.group(0)
             else:
-                number = (moves.html_entities.name2codepoint.get(entity_name) or
-                    moves.html_entities.name2codepoint.get(entity_name.lower()))
+                number = (
+                    name2codepoint.get(entity_name)
+                    or name2codepoint.get(entity_name.lower())
+                )
         if number is not None:
             # Numeric character references in the 80-9F range are typically
             # interpreted by browsers as representing the characters mapped
@@ -86,13 +87,13 @@ def replace_entities(text, keep=(), remove_illegal=True, encoding='utf-8'):
             # see: http://en.wikipedia.org/wiki/Character_encodings_in_HTML
             try:
                 if 0x80 <= number <= 0x9f:
-                    return six.int2byte(number).decode('cp1252')
+                    return bytes((number,)).decode('cp1252')
                 else:
-                    return six.unichr(number)
+                    return chr(number)
             except ValueError:
                 pass
 
-        return u'' if remove_illegal and groups.get('semicolon') else m.group(0)
+        return '' if remove_illegal and groups.get('semicolon') else m.group(0)
 
     return _ent_re.sub(convert_entity, to_unicode(text, encoding))
 
@@ -111,10 +112,10 @@ def replace_tags(text, token='', encoding=None):
     Examples:
 
     >>> import w3lib.html
-    >>> w3lib.html.replace_tags(u'This text contains <a>some tag</a>')
-    u'This text contains some tag'
+    >>> w3lib.html.replace_tags('This text contains <a>some tag</a>')
+    'This text contains some tag'
     >>> w3lib.html.replace_tags('<p>Je ne parle pas <b>fran\\xe7ais</b></p>', ' -- ', 'latin-1')
-    u' -- Je ne parle pas  -- fran\\xe7ais --  -- '
+    ' -- Je ne parle pas  -- fran\\xe7ais --  -- '
     >>>
 
     """
@@ -122,19 +123,19 @@ def replace_tags(text, token='', encoding=None):
     return _tag_re.sub(token, to_unicode(text, encoding))
 
 
-_REMOVECOMMENTS_RE = re.compile(u'<!--.*?(?:-->|$)', re.DOTALL)
+_REMOVECOMMENTS_RE = re.compile('<!--.*?(?:-->|$)', re.DOTALL)
 def remove_comments(text, encoding=None):
     """ Remove HTML Comments.
 
     >>> import w3lib.html
     >>> w3lib.html.remove_comments(b"test <!--textcoment--> whatever")
-    u'test  whatever'
+    'test  whatever'
     >>>
 
     """
 
     text = to_unicode(text, encoding)
-    return _REMOVECOMMENTS_RE.sub(u'', text)
+    return _REMOVECOMMENTS_RE.sub('', text)
 
 def remove_tags(text, which_ones=(), keep=(), encoding=None):
     """ Remove HTML Tags only.
@@ -156,19 +157,19 @@ def remove_tags(text, which_ones=(), keep=(), encoding=None):
     >>> import w3lib.html
     >>> doc = '<div><p><b>This is a link:</b> <a href="http://www.example.com">example</a></p></div>'
     >>> w3lib.html.remove_tags(doc)
-    u'This is a link: example'
+    'This is a link: example'
     >>>
 
     Keep only some tags:
 
     >>> w3lib.html.remove_tags(doc, keep=('div',))
-    u'<div>This is a link: example</div>'
+    '<div>This is a link: example</div>'
     >>>
 
     Remove only specific tags:
 
     >>> w3lib.html.remove_tags(doc, which_ones=('a','b'))
-    u'<div><p>This is a link: example</p></div>'
+    '<div><p>This is a link: example</p></div>'
     >>>
 
     You can't remove some and keep some:
@@ -195,7 +196,7 @@ def remove_tags(text, which_ones=(), keep=(), encoding=None):
 
     def remove_tag(m):
         tag = m.group(1)
-        return u'' if will_remove(tag) else m.group(0)
+        return '' if will_remove(tag) else m.group(0)
 
     regex = '</?([^ >/]+).*?>'
     retags = re.compile(regex, re.DOTALL | re.IGNORECASE)
@@ -211,7 +212,7 @@ def remove_tags_with_content(text, which_ones=(), encoding=None):
     >>> import w3lib.html
     >>> doc = '<div><p><b>This is a link:</b> <a href="http://www.example.com">example</a></p></div>'
     >>> w3lib.html.remove_tags_with_content(doc, which_ones=('b',))
-    u'<div><p> <a href="http://www.example.com">example</a></p></div>'
+    '<div><p> <a href="http://www.example.com">example</a></p></div>'
     >>>
 
     """
@@ -220,11 +221,11 @@ def remove_tags_with_content(text, which_ones=(), encoding=None):
     if which_ones:
         tags = '|'.join([r'<%s\b.*?</%s>|<%s\s*/>' % (tag, tag, tag) for tag in which_ones])
         retags = re.compile(tags, re.DOTALL | re.IGNORECASE)
-        text = retags.sub(u'', text)
+        text = retags.sub('', text)
     return text
 
 
-def replace_escape_chars(text, which_ones=('\n', '\t', '\r'), replace_by=u'', \
+def replace_escape_chars(text, which_ones=('\n', '\t', '\r'), replace_by='', \
         encoding=None):
     """Remove escape characters.
 
@@ -263,9 +264,9 @@ def unquote_markup(text, keep=(), remove_illegal=True, encoding=None):
         yield txt[offset:]
 
     text = to_unicode(text, encoding)
-    ret_text = u''
+    ret_text = ''
     for fragment in _get_fragments(text, _cdata_re):
-        if isinstance(fragment, six.string_types):
+        if isinstance(fragment, str):
             # it's not a CDATA (so we try to remove its entities)
             ret_text += replace_entities(fragment, keep=keep, remove_illegal=remove_illegal)
         else:
@@ -284,7 +285,7 @@ def get_base_url(text, baseurl='', encoding='utf-8'):
     text = to_unicode(text, encoding)
     m = _baseurl_re.search(text)
     if m:
-        return moves.urllib.parse.urljoin(
+        return urljoin(
             safe_url_string(baseurl),
             safe_url_string(m.group(1), encoding=encoding)
         )
@@ -301,8 +302,6 @@ def get_meta_refresh(text, baseurl='', encoding='utf-8', ignore_tags=('script', 
 
     """
 
-    if six.PY2:
-        baseurl = to_bytes(baseurl, encoding)
     try:
         text = to_unicode(text, encoding)
     except UnicodeDecodeError:
@@ -314,7 +313,7 @@ def get_meta_refresh(text, baseurl='', encoding='utf-8', ignore_tags=('script', 
     if m:
         interval = float(m.group('int'))
         url = safe_url_string(m.group('url').strip(' "\''), encoding)
-        url = moves.urllib.parse.urljoin(baseurl, url)
+        url = urljoin(baseurl, url)
         return interval, url
     else:
         return None, None
