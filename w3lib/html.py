@@ -39,7 +39,7 @@ def remove_entities(text, keep=(), remove_illegal=True, encoding='utf-8'):
     return replace_entities(text, keep, remove_illegal, encoding)
 
 def replace_entities(text, keep=(), remove_illegal=True, encoding='utf-8'):
-    u"""Remove entities from the given `text` by converting them to their
+    """Remove entities from the given `text` by converting them to their
     corresponding unicode character.
 
     `text` can be a unicode string or a byte string encoded in the given
@@ -59,7 +59,7 @@ def replace_entities(text, keep=(), remove_illegal=True, encoding='utf-8'):
 
     >>> import w3lib.html
     >>> w3lib.html.replace_entities(b'Price: &pound;100')
-    u'Price: \\xa3100'
+    'Price: \\xa3100'
     >>> print(w3lib.html.replace_entities(b'Price: &pound;100'))
     Price: £100
     >>>
@@ -94,7 +94,7 @@ def replace_entities(text, keep=(), remove_illegal=True, encoding='utf-8'):
             except ValueError:
                 pass
 
-        return u'' if remove_illegal and groups.get('semicolon') else m.group(0)
+        return '' if remove_illegal and groups.get('semicolon') else m.group(0)
 
     return _ent_re.sub(convert_entity, to_unicode(text, encoding))
 
@@ -113,10 +113,10 @@ def replace_tags(text, token='', encoding=None):
     Examples:
 
     >>> import w3lib.html
-    >>> w3lib.html.replace_tags(u'This text contains <a>some tag</a>')
-    u'This text contains some tag'
+    >>> w3lib.html.replace_tags('This text contains <a>some tag</a>')
+    'This text contains some tag'
     >>> w3lib.html.replace_tags('<p>Je ne parle pas <b>fran\\xe7ais</b></p>', ' -- ', 'latin-1')
-    u' -- Je ne parle pas  -- fran\\xe7ais --  -- '
+    ' -- Je ne parle pas  -- fran\\xe7ais --  -- '
     >>>
 
     """
@@ -124,19 +124,19 @@ def replace_tags(text, token='', encoding=None):
     return _tag_re.sub(token, to_unicode(text, encoding))
 
 
-_REMOVECOMMENTS_RE = re.compile(u'<!--.*?(?:-->|$)', re.DOTALL)
+_REMOVECOMMENTS_RE = re.compile('<!--.*?(?:-->|$)', re.DOTALL)
 def remove_comments(text, encoding=None):
     """ Remove HTML Comments.
 
     >>> import w3lib.html
     >>> w3lib.html.remove_comments(b"test <!--textcoment--> whatever")
-    u'test  whatever'
+    'test  whatever'
     >>>
 
     """
 
     text = to_unicode(text, encoding)
-    return _REMOVECOMMENTS_RE.sub(u'', text)
+    return _REMOVECOMMENTS_RE.sub('', text)
 
 def remove_tags(text, which_ones=(), keep=(), encoding=None):
     """ Remove HTML Tags only.
@@ -158,19 +158,19 @@ def remove_tags(text, which_ones=(), keep=(), encoding=None):
     >>> import w3lib.html
     >>> doc = '<div><p><b>This is a link:</b> <a href="http://www.example.com">example</a></p></div>'
     >>> w3lib.html.remove_tags(doc)
-    u'This is a link: example'
+    'This is a link: example'
     >>>
 
     Keep only some tags:
 
     >>> w3lib.html.remove_tags(doc, keep=('div',))
-    u'<div>This is a link: example</div>'
+    '<div>This is a link: example</div>'
     >>>
 
     Remove only specific tags:
 
     >>> w3lib.html.remove_tags(doc, which_ones=('a','b'))
-    u'<div><p>This is a link: example</p></div>'
+    '<div><p>This is a link: example</p></div>'
     >>>
 
     You can't remove some and keep some:
@@ -197,7 +197,7 @@ def remove_tags(text, which_ones=(), keep=(), encoding=None):
 
     def remove_tag(m):
         tag = m.group(1)
-        return u'' if will_remove(tag) else m.group(0)
+        return '' if will_remove(tag) else m.group(0)
 
     regex = '</?([^ >/]+).*?>'
     retags = re.compile(regex, re.DOTALL | re.IGNORECASE)
@@ -213,7 +213,7 @@ def remove_tags_with_content(text, which_ones=(), encoding=None):
     >>> import w3lib.html
     >>> doc = '<div><p><b>This is a link:</b> <a href="http://www.example.com">example</a></p></div>'
     >>> w3lib.html.remove_tags_with_content(doc, which_ones=('b',))
-    u'<div><p> <a href="http://www.example.com">example</a></p></div>'
+    '<div><p> <a href="http://www.example.com">example</a></p></div>'
     >>>
 
     """
@@ -222,11 +222,11 @@ def remove_tags_with_content(text, which_ones=(), encoding=None):
     if which_ones:
         tags = '|'.join([r'<%s\b.*?</%s>|<%s\s*/>' % (tag, tag, tag) for tag in which_ones])
         retags = re.compile(tags, re.DOTALL | re.IGNORECASE)
-        text = retags.sub(u'', text)
+        text = retags.sub('', text)
     return text
 
 
-def replace_escape_chars(text, which_ones=('\n', '\t', '\r'), replace_by=u'', \
+def replace_escape_chars(text, which_ones=('\n', '\t', '\r'), replace_by='', \
         encoding=None):
     """Remove escape characters.
 
@@ -265,7 +265,7 @@ def unquote_markup(text, keep=(), remove_illegal=True, encoding=None):
         yield txt[offset:]
 
     text = to_unicode(text, encoding)
-    ret_text = u''
+    ret_text = ''
     for fragment in _get_fragments(text, _cdata_re):
         if isinstance(fragment, str):
             # it's not a CDATA (so we try to remove its entities)

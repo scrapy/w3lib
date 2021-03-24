@@ -456,7 +456,7 @@ def canonicalize_url(url, keep_blank_values=True, keep_fragments=False,
     'http://www.example.com/do?a=50&b=2&b=5&c=3'
     >>>
     >>> # UTF-8 conversion + percent-encoding of non-ASCII characters
-    >>> w3lib.url.canonicalize_url(u'http://www.example.com/r\u00e9sum\u00e9')
+    >>> w3lib.url.canonicalize_url('http://www.example.com/r\u00e9sum\u00e9')
     'http://www.example.com/r%C3%A9sum%C3%A9'
     >>>
 
@@ -602,12 +602,12 @@ def urljoin_rfc(base, ref, encoding='utf-8'):
     Always returns a str.
 
     >>> import w3lib.url
-    >>> w3lib.url.urljoin_rfc('http://www.example.com/path/index.html', u'/otherpath/index2.html')
+    >>> w3lib.url.urljoin_rfc('http://www.example.com/path/index.html', '/otherpath/index2.html')
     'http://www.example.com/otherpath/index2.html'
     >>>
 
     >>> # Note: the following does not work in Python 3
-    >>> w3lib.url.urljoin_rfc(b'http://www.example.com/path/index.html', u'fran\u00e7ais/d\u00e9part.htm') # doctest: +SKIP
+    >>> w3lib.url.urljoin_rfc(b'http://www.example.com/path/index.html', 'fran\u00e7ais/d\u00e9part.htm') # doctest: +SKIP
     'http://www.example.com/path/fran\xc3\xa7ais/d\xc3\xa9part.htm'
     >>>
 
