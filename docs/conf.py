@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-#
 # w3lib documentation build configuration file, created by
 # sphinx-quickstart on Sun Jan 26 22:19:38 2014.
 #

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Functions for handling encoding of web pages
 """

@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import unittest
 from collections import OrderedDict
 from w3lib.http import (basic_auth_header,
