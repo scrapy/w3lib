@@ -18,7 +18,6 @@ from urllib.parse import (
     unquote_to_bytes,
     urldefrag,
     urlencode,
-    urljoin,
     urlparse,
     urlsplit,
     urlunparse,
