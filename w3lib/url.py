@@ -24,7 +24,7 @@ from urllib.parse import (
     urlunsplit,
 )
 from urllib.request import pathname2url, url2pathname
-from w3lib.util import to_bytes, to_native_str, to_unicode
+from w3lib.util import to_bytes, to_unicode
 
 
 # error handling function for bytes-to-Unicode decoding errors with URLs
@@ -85,13 +85,13 @@ def safe_url_string(url, encoding='utf8', path_encoding='utf8', quote_path=True)
     if quote_path:
         path = quote(to_bytes(parts.path, path_encoding), _path_safe_chars)
     else:
-        path = to_native_str(parts.path)
+        path = to_unicode(parts.path)
     
     # quote() in Python2 return type follows input type;
     # quote() in Python3 always returns Unicode (native str)
     return urlunsplit((
-        to_native_str(parts.scheme),
-        to_native_str(netloc).rstrip(':'),
+        to_unicode(parts.scheme),
+        to_unicode(netloc).rstrip(':'),
         path,
         # encoding of query and fragment follows page encoding
         # or form-charset (if known and passed)
@@ -415,8 +415,8 @@ def _safe_ParseResult(parts, encoding='utf8', path_encoding='utf8'):
         netloc = parts.netloc
 
     return (
-        to_native_str(parts.scheme),
-        to_native_str(netloc),
+        to_unicode(parts.scheme),
+        to_unicode(netloc),
 
         # default encoding for path component SHOULD be UTF-8
         quote(to_bytes(parts.path, path_encoding), _path_safe_chars),

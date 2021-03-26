@@ -1,4 +1,12 @@
+from warnings import warn
+
+
 def str_to_unicode(text, encoding=None, errors='strict'):
+    warn(
+        "The w3lib.utils.str_to_unicode function is deprecated and "
+        "will be removed in a future release.",
+        DeprecationWarning
+    )
     if encoding is None:
         encoding = 'utf-8'
     if isinstance(text, bytes):
@@ -6,6 +14,11 @@ def str_to_unicode(text, encoding=None, errors='strict'):
     return text
 
 def unicode_to_str(text, encoding=None, errors='strict'):
+    warn(
+        "The w3lib.utils.unicode_to_str function is deprecated and "
+        "will be removed in a future release.",
+        DeprecationWarning
+    )
     if encoding is None:
         encoding = 'utf-8'
     if isinstance(text, str):
@@ -38,4 +51,10 @@ def to_bytes(text, encoding=None, errors='strict'):
 
 def to_native_str(text, encoding=None, errors='strict'):
     """ Return str representation of `text` """
+    warn(
+        "The w3lib.utils.to_native_str function is deprecated and "
+        "will be removed in a future release. Please use "
+        "w3lib.utils.to_unicode instead.",
+        DeprecationWarning
+    )
     return to_unicode(text, encoding, errors)
