@@ -5,7 +5,8 @@ def str_to_unicode(text, encoding=None, errors='strict'):
     warn(
         "The w3lib.utils.str_to_unicode function is deprecated and "
         "will be removed in a future release.",
-        DeprecationWarning
+        DeprecationWarning,
+        stacklevel=2,
     )
     if encoding is None:
         encoding = 'utf-8'
@@ -17,7 +18,8 @@ def unicode_to_str(text, encoding=None, errors='strict'):
     warn(
         "The w3lib.utils.unicode_to_str function is deprecated and "
         "will be removed in a future release.",
-        DeprecationWarning
+        DeprecationWarning,
+        stacklevel=2,
     )
     if encoding is None:
         encoding = 'utf-8'
@@ -55,6 +57,7 @@ def to_native_str(text, encoding=None, errors='strict'):
         "The w3lib.utils.to_native_str function is deprecated and "
         "will be removed in a future release. Please use "
         "w3lib.utils.to_unicode instead.",
-        DeprecationWarning
+        DeprecationWarning,
+        stacklevel=2,
     )
     return to_unicode(text, encoding, errors)
