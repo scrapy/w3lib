@@ -1,8 +1,14 @@
 from unittest import TestCase
 
-from pytest import deprecated_call
+from pytest import deprecated_call, raises
 
-from w3lib.util import str_to_unicode, to_native_str, unicode_to_str
+from w3lib.util import (
+    str_to_unicode,
+    to_bytes,
+    to_native_str,
+    to_unicode,
+    unicode_to_str,
+)
 
 
 class StrToUnicodeTestCase(TestCase):
@@ -12,11 +18,25 @@ class StrToUnicodeTestCase(TestCase):
             str_to_unicode('')
 
 
+class ToBytesTestCase(TestCase):
+
+    def test_type_error(self):
+        with raises(TypeError):
+            to_bytes(True)
+
+
 class ToNativeStrTestCase(TestCase):
 
     def test_deprecation(self):
         with deprecated_call():
             to_native_str('')
+
+
+class ToUnicodeTestCase(TestCase):
+
+    def test_type_error(self):
+        with raises(TypeError):
+            to_unicode(True)
 
 
 class UnicodeToStrTestCase(TestCase):
