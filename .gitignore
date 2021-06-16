@@ -11,3 +11,5 @@ _trial_temp
 coverage.xml
 .cache
 .mypy_cache/
+/index.txt
+.dmypy.json
