@@ -9,8 +9,8 @@ import posixpath
 import re
 import string
 from collections import namedtuple
+from typing import Callable, Optional, Sequence, Tuple, Union, cast, Dict
 from urllib.parse import (
-    _coerce_args,
     parse_qs,
     parse_qsl,
     ParseResult,
@@ -23,13 +23,16 @@ from urllib.parse import (
     urlunparse,
     urlunsplit,
 )
+from urllib.parse import _coerce_args  # type: ignore
 from urllib.request import pathname2url, url2pathname
-from w3lib.util import to_unicode
+from w3lib.util import to_bytes, to_native_str, to_unicode
+from w3lib._types import AnyUnicodeError, StrOrBytes
 
 
 # error handling function for bytes-to-Unicode decoding errors with URLs
-def _quote_byte(error):
-    return (quote(error.object[error.start : error.end]), error.end)
+def _quote_byte(error: UnicodeError) -> Tuple[str, int]:
+    error = cast(AnyUnicodeError, error)
+    return (to_unicode(quote(error.object[error.start:error.end])), error.end)
 
 
 codecs.register_error("percentencode", _quote_byte)
@@ -49,7 +52,7 @@ _ascii_tab_newline_re = re.compile(
 )  # see https://infra.spec.whatwg.org/#ascii-tab-or-newline
 
 
-def safe_url_string(url, encoding="utf8", path_encoding="utf8", quote_path=True):
+def safe_url_string(url: StrOrBytes, encoding: str ='utf8', path_encoding: str ='utf8', quote_path: bool = True) -> str:
     """Convert the given URL into a legal URL by escaping unsafe characters
     according to RFC-3986. Also, ASCII tabs and newlines are removed
     as per https://url.spec.whatwg.org/#url-parsing.
@@ -83,7 +86,7 @@ def safe_url_string(url, encoding="utf8", path_encoding="utf8", quote_path=True)
     try:
         netloc = parts.netloc.encode("idna").decode()
     except UnicodeError:
-        netloc = parts.netloc
+        netloc = parts.netloc.encode('utf-8')
 
     # default encoding for path component SHOULD be UTF-8
     if quote_path:
@@ -105,8 +108,8 @@ def safe_url_string(url, encoding="utf8", path_encoding="utf8", quote_path=True)
 _parent_dirs = re.compile(r"/?(\.\./)+")
 
 
-def safe_download_url(url, encoding="utf8", path_encoding="utf8"):
-    """Make a url for download. This will call safe_url_string
+def safe_download_url(url: StrOrBytes, encoding: str ='utf8', path_encoding: str ='utf8') -> str:
+    """ Make a url for download. This will call safe_url_string
     and then strip the fragment, if one exists. The path will
     be normalised.
 
@@ -124,11 +127,11 @@ def safe_download_url(url, encoding="utf8", path_encoding="utf8"):
     return urlunsplit((scheme, netloc, path, query, ""))
 
 
-def is_url(text):
-    return text.partition("://")[0] in ("file", "http", "https")
+def is_url(text: str) -> bool:
+    return text.partition("://")[0] in ('file', 'http', 'https')
 
 
-def url_query_parameter(url, parameter, default=None, keep_blank_values=0):
+def url_query_parameter(url: StrOrBytes, parameter: str, default: Optional[str] = None, keep_blank_values: Union[bool, int]=0) -> Optional[str]:
     """Return the value of a url parameter, given the url and parameter name
 
     General case:
@@ -157,19 +160,17 @@ def url_query_parameter(url, parameter, default=None, keep_blank_values=0):
 
     """
 
-    queryparams = parse_qs(urlsplit(str(url))[3], keep_blank_values=keep_blank_values)
-    return queryparams.get(parameter, [default])[0]
+    queryparams = parse_qs(
+        urlsplit(str(url))[3],
+        keep_blank_values=bool(keep_blank_values)
+    )
+    if parameter in queryparams:
+        return queryparams[parameter][0]
+    else:
+        return default
 
 
-def url_query_cleaner(
-    url,
-    parameterlist=(),
-    sep="&",
-    kvsep="=",
-    remove=False,
-    unique=True,
-    keep_fragments=False,
-):
+def url_query_cleaner(url: StrOrBytes, parameterlist: Union[StrOrBytes, Sequence[StrOrBytes]] = (), sep: str = '&', kvsep: str = '=', remove: bool  = False, unique: bool = True, keep_fragments: bool = False) -> str:
     """Clean URL arguments leaving only those passed in the parameterlist keeping order
 
     >>> import w3lib.url
@@ -204,7 +205,9 @@ def url_query_cleaner(
     if isinstance(parameterlist, (str, bytes)):
         parameterlist = [parameterlist]
     url, fragment = urldefrag(url)
-    base, _, query = url.partition("?")
+    url = cast(str, url)
+    fragment = cast(str, fragment)
+    base, _, query = url.partition('?')
     seen = set()
     querylist = []
     for ksv in query.split(sep):
@@ -222,11 +225,10 @@ def url_query_cleaner(
             seen.add(k)
     url = "?".join([base, sep.join(querylist)]) if querylist else base
     if keep_fragments:
-        url += "#" + fragment
-    return url
+        url += '#' + fragment
+    return cast(str, url)
 
-
-def _add_or_replace_parameters(url, params):
+def _add_or_replace_parameters(url: str, params: Dict[str, str]) -> str:
     parsed = urlsplit(url)
     current_args = parse_qsl(parsed.query, keep_blank_values=True)
 
@@ -248,7 +250,7 @@ def _add_or_replace_parameters(url, params):
     return urlunsplit(parsed._replace(query=query))
 
 
-def add_or_replace_parameter(url, name, new_value):
+def add_or_replace_parameter(url: str, name: str, new_value: str) -> str:
     """Add or remove a parameter to a given url
 
     >>> import w3lib.url
@@ -264,7 +266,7 @@ def add_or_replace_parameter(url, name, new_value):
     return _add_or_replace_parameters(url, {name: new_value})
 
 
-def add_or_replace_parameters(url, new_parameters):
+def add_or_replace_parameters(url: str, new_parameters: Dict[str, str]) -> str:
     """Add or remove a parameters to a given url
 
     >>> import w3lib.url
@@ -279,7 +281,7 @@ def add_or_replace_parameters(url, new_parameters):
     return _add_or_replace_parameters(url, new_parameters)
 
 
-def path_to_file_uri(path):
+def path_to_file_uri(path: str) -> str:
     """Convert local filesystem path to legal File URIs as described in:
     http://en.wikipedia.org/wiki/File_URI_scheme
     """
@@ -289,7 +291,7 @@ def path_to_file_uri(path):
     return "file:///%s" % x.lstrip("/")
 
 
-def file_uri_to_path(uri):
+def file_uri_to_path(uri: str) -> str:
     """Convert File URI to local filesystem path according to:
     http://en.wikipedia.org/wiki/File_URI_scheme
     """
@@ -297,7 +299,7 @@ def file_uri_to_path(uri):
     return url2pathname(uri_path)
 
 
-def any_to_uri(uri_or_path):
+def any_to_uri(uri_or_path: str) -> str:
     """If given a path name, return its File URI, otherwise return it
     unmodified
     """
@@ -342,12 +344,11 @@ _mediatype_parameter_pattern = re.compile(
     ).encode()
 )
 
-_ParseDataURIResult = namedtuple(
-    "ParseDataURIResult", "media_type media_type_parameters data"
-)
+_ParseDataURIResult = namedtuple("_ParseDataURIResult",
+                                 "media_type media_type_parameters data")
 
 
-def parse_data_uri(uri):
+def parse_data_uri(uri: StrOrBytes) -> _ParseDataURIResult:
     """
 
     Parse a data: URI, returning a 3-tuple of media type, dictionary of media
@@ -389,7 +390,7 @@ def parse_data_uri(uri):
         if m:
             attribute, value, value_quoted = m.groups()
             if value_quoted:
-                value = re.sub(br"\\(.)", r"\1", value_quoted)
+                value = re.sub(br'\\(.)', rb'\1', value_quoted)
             media_type_params[attribute.decode()] = value.decode()
             uri = uri[m.end() :]
         else:
@@ -477,9 +478,8 @@ def canonicalize_url(url, keep_blank_values=True, keep_fragments=False, encoding
     # if not for proper URL expected by remote website.
     try:
         scheme, netloc, path, params, query, fragment = _safe_ParseResult(
-            parse_url(url), encoding=encoding or "utf8"
-        )
-    except UnicodeEncodeError as e:
+            parse_url(url), encoding=encoding or 'utf8')
+    except UnicodeEncodeError:
         scheme, netloc, path, params, query, fragment = _safe_ParseResult(
             parse_url(url), encoding="utf8"
         )
@@ -570,8 +570,9 @@ def parse_qsl_to_bytes(qs, keep_blank_values=False):
     # (at https://hg.python.org/cpython/rev/c38ac7ab8d9a)
     # except for the unquote(s, encoding, errors) calls replaced
     # with unquote_to_bytes(s)
-    qs, _coerce_result = _coerce_args(qs)
-    pairs = [s2 for s1 in qs.split("&") for s2 in s1.split(";")]
+    coerce_args = cast(Callable[..., Tuple[str, Callable]], _coerce_args)
+    qs, _coerce_result = coerce_args(qs)
+    pairs = [s2 for s1 in qs.split('&') for s2 in s1.split(';')]
     r = []
     for name_value in pairs:
         if not name_value:

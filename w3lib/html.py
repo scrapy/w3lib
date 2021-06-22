@@ -4,29 +4,22 @@ Functions for dealing with markup text
 
 import re
 from html.entities import name2codepoint
+from typing import Match, Sequence, AnyStr
 from urllib.parse import urljoin
 
 from w3lib.util import to_unicode
 from w3lib.url import safe_url_string
 
-_ent_re = re.compile(
-    r"&((?P<named>[a-z\d]+)|#(?P<dec>\d+)|#x(?P<hex>[a-f\d]+))(?P<semicolon>;?)",
-    re.IGNORECASE,
-)
-_tag_re = re.compile(r"<[a-zA-Z\/!].*?>", re.DOTALL)
-_baseurl_re = re.compile(r"<base\s[^>]*href\s*=\s*[\"\']\s*([^\"\'\s]+)\s*[\"\']", re.I)
-_meta_refresh_re = re.compile(
-    r'<meta\s[^>]*http-equiv[^>]*refresh[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)',
-    re.DOTALL | re.IGNORECASE,
-)
-_cdata_re = re.compile(
-    r"((?P<cdata_s><!\[CDATA\[)(?P<cdata_d>.*?)(?P<cdata_e>\]\]>))", re.DOTALL
-)
+_ent_re = re.compile(r'&((?P<named>[a-z\d]+)|#(?P<dec>\d+)|#x(?P<hex>[a-f\d]+))(?P<semicolon>;?)', re.IGNORECASE)
+_tag_re = re.compile(r'<[a-zA-Z\/!].*?>', re.DOTALL)
+_baseurl_re = re.compile(r'<base\s[^>]*href\s*=\s*[\"\']\s*([^\"\'\s]+)\s*[\"\']', re.I)
+_meta_refresh_re = re.compile(r'<meta\s[^>]*http-equiv[^>]*refresh[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)', re.DOTALL | re.IGNORECASE)
+_cdata_re = re.compile(r'((?P<cdata_s><!\[CDATA\[)(?P<cdata_d>.*?)(?P<cdata_e>\]\]>))', re.DOTALL)
 
-HTML5_WHITESPACE = " \t\n\r\x0c"
+HTML5_WHITESPACE = ' \t\n\r\x0c'
 
 
-def replace_entities(text, keep=(), remove_illegal=True, encoding="utf-8"):
+def replace_entities(text: AnyStr, keep: Sequence[str] = (), remove_illegal: bool = True, encoding: str ='utf-8'):
     """Remove entities from the given `text` by converting them to their
     corresponding unicode character.
 
@@ -54,14 +47,15 @@ def replace_entities(text, keep=(), remove_illegal=True, encoding="utf-8"):
 
     """
 
-    def convert_entity(m):
+    def convert_entity(m: Match):
         groups = m.groupdict()
-        if groups.get("dec"):
-            number = int(groups["dec"], 10)
-        elif groups.get("hex"):
-            number = int(groups["hex"], 16)
-        elif groups.get("named"):
-            entity_name = groups["named"]
+        number = None
+        if groups.get('dec'):
+            number = int(groups['dec'], 10)
+        elif groups.get('hex'):
+            number = int(groups['hex'], 16)
+        elif groups.get('named'):
+            entity_name = groups['named']
             if entity_name.lower() in keep:
                 return m.group(0)
             else:
@@ -85,8 +79,7 @@ def replace_entities(text, keep=(), remove_illegal=True, encoding="utf-8"):
 
     return _ent_re.sub(convert_entity, to_unicode(text, encoding))
 
-
-def has_entities(text, encoding=None):
+def has_entities(text: AnyStr, encoding=None):
     return bool(_ent_re.search(to_unicode(text, encoding)))
 
 
