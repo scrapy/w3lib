@@ -5,6 +5,7 @@ from w3lib.util import to_bytes
 HeadersDictInput = Mapping[bytes, Union[Any, Sequence]]
 HeadersDictOutput = MutableMapping[bytes, List[bytes]]
 
+
 def headers_raw_to_dict(headers_raw: Optional[bytes]) -> Optional[HeadersDictOutput]:
     r"""
     Convert raw headers (single multi-line bytestring)

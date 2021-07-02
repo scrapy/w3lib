@@ -52,7 +52,7 @@ _ascii_tab_newline_re = re.compile(
 )  # see https://infra.spec.whatwg.org/#ascii-tab-or-newline
 
 
-def safe_url_string(url: StrOrBytes, encoding: str ='utf8', path_encoding: str ='utf8', quote_path: bool = True) -> str:
+def safe_url_string(url: StrOrBytes, encoding: str = 'utf8', path_encoding: str = 'utf8', quote_path: bool = True) -> str:
     """Convert the given URL into a legal URL by escaping unsafe characters
     according to RFC-3986. Also, ASCII tabs and newlines are removed
     as per https://url.spec.whatwg.org/#url-parsing.
@@ -108,7 +108,7 @@ def safe_url_string(url: StrOrBytes, encoding: str ='utf8', path_encoding: str =
 _parent_dirs = re.compile(r"/?(\.\./)+")
 
 
-def safe_download_url(url: StrOrBytes, encoding: str ='utf8', path_encoding: str ='utf8') -> str:
+def safe_download_url(url: StrOrBytes, encoding: str = 'utf8', path_encoding: str = 'utf8') -> str:
     """ Make a url for download. This will call safe_url_string
     and then strip the fragment, if one exists. The path will
     be normalised.
@@ -131,7 +131,7 @@ def is_url(text: str) -> bool:
     return text.partition("://")[0] in ('file', 'http', 'https')
 
 
-def url_query_parameter(url: StrOrBytes, parameter: str, default: Optional[str] = None, keep_blank_values: Union[bool, int]=0) -> Optional[str]:
+def url_query_parameter(url: StrOrBytes, parameter: str, default: Optional[str] = None, keep_blank_values: Union[bool, int] = 0) -> Optional[str]:
     """Return the value of a url parameter, given the url and parameter name
 
     General case:
@@ -170,7 +170,8 @@ def url_query_parameter(url: StrOrBytes, parameter: str, default: Optional[str] 
         return default
 
 
-def url_query_cleaner(url: StrOrBytes, parameterlist: Union[StrOrBytes, Sequence[StrOrBytes]] = (), sep: str = '&', kvsep: str = '=', remove: bool  = False, unique: bool = True, keep_fragments: bool = False) -> str:
+def url_query_cleaner(
+        url: StrOrBytes, parameterlist: Union[StrOrBytes, Sequence[StrOrBytes]] = (), sep: str = '&', kvsep: str = '=', remove: bool = False, unique: bool = True, keep_fragments: bool = False) -> str:
     """Clean URL arguments leaving only those passed in the parameterlist keeping order
 
     >>> import w3lib.url

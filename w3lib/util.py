@@ -3,15 +3,18 @@ from typing import Optional
 from w3lib._types import StrOrBytes
 
 
-def str_to_unicode(text: StrOrBytes, encoding: Optional[str] = None, errors: str ='strict') -> str:
+def str_to_unicode(
+    text: StrOrBytes, encoding: Optional[str] = None, errors: str = 'strict'
+) -> str:
     if encoding is None:
         encoding = "utf-8"
     if isinstance(text, bytes):
         return text.decode(encoding, errors)
     return text
 
-
-def unicode_to_str(text: StrOrBytes, encoding: Optional[str] = None, errors: str = 'strict') -> bytes:
+def unicode_to_str(
+    text: StrOrBytes, encoding: Optional[str] = None, errors: str = 'strict'
+) -> bytes:
     warn(
         "The w3lib.utils.unicode_to_str function is deprecated and "
         "will be removed in a future release.",
@@ -25,7 +28,9 @@ def unicode_to_str(text: StrOrBytes, encoding: Optional[str] = None, errors: str
     return text
 
 
-def to_unicode(text: StrOrBytes, encoding: Optional[str] = None, errors: str = 'strict') -> str:
+def to_unicode(
+    text: StrOrBytes, encoding: Optional[str] = None, errors: str = 'strict'
+) -> str:
     """Return the unicode representation of a bytes object `text`. If `text`
     is already an unicode object, return it as-is."""
     if isinstance(text, str):
@@ -39,7 +44,9 @@ def to_unicode(text: StrOrBytes, encoding: Optional[str] = None, errors: str = '
     return text.decode(encoding, errors)
 
 
-def to_bytes(text: StrOrBytes, encoding: Optional[str] = None, errors: str = 'strict') -> bytes:
+def to_bytes(
+    text: StrOrBytes, encoding: Optional[str] = None, errors: str = 'strict'
+) -> bytes:
     """Return the binary representation of `text`. If `text`
     is already a bytes object, return it as-is."""
     if isinstance(text, bytes):
@@ -53,7 +60,9 @@ def to_bytes(text: StrOrBytes, encoding: Optional[str] = None, errors: str = 'st
     return text.encode(encoding, errors)
 
 
-def to_native_str(text: StrOrBytes, encoding: Optional[str] = None, errors: str = 'strict') -> str:
+def to_native_str(
+    text: StrOrBytes, encoding: Optional[str] = None, errors: str = 'strict'
+) -> str:
     """ Return str representation of `text` """
     warn(
         "The w3lib.utils.to_native_str function is deprecated and "

@@ -19,7 +19,7 @@ _cdata_re = re.compile(r'((?P<cdata_s><!\[CDATA\[)(?P<cdata_d>.*?)(?P<cdata_e>\]
 HTML5_WHITESPACE = ' \t\n\r\x0c'
 
 
-def replace_entities(text: AnyStr, keep: Sequence[str] = (), remove_illegal: bool = True, encoding: str ='utf-8'):
+def replace_entities(text: AnyStr, keep: Sequence[str] = (), remove_illegal: bool = True, encoding: str = 'utf-8'):
     """Remove entities from the given `text` by converting them to their
     corresponding unicode character.
 

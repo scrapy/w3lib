@@ -3,7 +3,7 @@ Functions for handling encoding of web pages
 """
 import re, codecs, encodings
 from sys import version_info
-from typing import  Callable, Match, Optional, Tuple, Union, cast
+from typing import Callable, Match, Optional, Tuple, Union, cast
 from w3lib._types import AnyUnicodeError, StrOrBytes
 from w3lib.util import to_native_str
 
