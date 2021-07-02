@@ -38,14 +38,16 @@ class RequestEncodingTests(unittest.TestCase):
         utf32le = b"\xff\xfe\x00\x00\x34\x6c\x00\x00"
         for string in (utf16be, utf16le, utf32be, utf32le):
             bom_encoding, bom = read_bom(string)
-            decoded = string[len(bom) :].decode(bom_encoding)
+            assert bom_encoding is not None
+            assert bom is not None
+            decoded = string[len(bom):].decode(bom_encoding)
             self.assertEqual(water_unicode, decoded)
         # Body without BOM
-        enc, bom = read_bom("foo")
+        enc, bom = read_bom(b"foo")
         self.assertEqual(enc, None)
         self.assertEqual(bom, None)
         # Empty body
-        enc, bom = read_bom("")
+        enc, bom = read_bom(b"")
         self.assertEqual(enc, None)
         self.assertEqual(bom, None)
 

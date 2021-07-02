@@ -1,6 +1,7 @@
 import unittest
 from collections import OrderedDict
-from w3lib.http import basic_auth_header, headers_dict_to_raw, headers_raw_to_dict
+from w3lib.http import (HeadersDictInput, basic_auth_header,
+                        headers_dict_to_raw, headers_raw_to_dict)
 
 __doctests__ = ["w3lib.http"]  # for trial support
 
@@ -47,7 +48,10 @@ class HttpTests(unittest.TestCase):
         )
 
     def test_headers_dict_to_raw_listtuple(self):
-        dct = OrderedDict([(b"Content-type", [b"text/html"]), (b"Accept", [b"gzip"])])
+        dct: HeadersDictInput = OrderedDict([
+            (b'Content-type', [b'text/html']),
+            (b'Accept', [b'gzip'])
+        ])
         self.assertEqual(
             headers_dict_to_raw(dct), b"Content-type: text/html\r\nAccept: gzip"
         )
@@ -70,10 +74,12 @@ class HttpTests(unittest.TestCase):
         )
 
     def test_headers_dict_to_raw_wrong_values(self):
-        dct = OrderedDict(
-            [
-                (b"Content-type", 0),
-            ]
+        dct: HeadersDictInput = OrderedDict([
+            (b'Content-type', 0),
+        ])
+        self.assertEqual(
+            headers_dict_to_raw(dct),
+            b''
         )
         self.assertEqual(headers_dict_to_raw(dct), b"")
 
