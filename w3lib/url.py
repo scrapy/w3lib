@@ -24,12 +24,12 @@ from urllib.parse import (
     urlunsplit,
 )
 from urllib.request import pathname2url, url2pathname
-from w3lib.util import to_bytes, to_native_str, to_unicode
+from w3lib.util import to_unicode
 
 
 # error handling function for bytes-to-Unicode decoding errors with URLs
 def _quote_byte(error):
-    return (to_unicode(quote(error.object[error.start:error.end])), error.end)
+    return (quote(error.object[error.start:error.end]), error.end)
 
 codecs.register_error('percentencode', _quote_byte)
 
@@ -77,26 +77,22 @@ def safe_url_string(url, encoding='utf8', path_encoding='utf8', quote_path=True)
     # IDNA encoding can fail for too long labels (>63 characters)
     # or missing labels (e.g. http://.example.com)
     try:
-        netloc = parts.netloc.encode('idna')
+        netloc = parts.netloc.encode('idna').decode()
     except UnicodeError:
         netloc = parts.netloc
 
     # default encoding for path component SHOULD be UTF-8
     if quote_path:
-        path = quote(to_bytes(parts.path, path_encoding), _path_safe_chars)
+        path = quote(parts.path.encode(path_encoding), _path_safe_chars)
     else:
-        path = to_native_str(parts.path)
+        path = parts.path
     
-    # quote() in Python2 return type follows input type;
-    # quote() in Python3 always returns Unicode (native str)
     return urlunsplit((
-        to_native_str(parts.scheme),
-        to_native_str(netloc).rstrip(':'),
+        parts.scheme,
+        netloc.rstrip(':'),
         path,
-        # encoding of query and fragment follows page encoding
-        # or form-charset (if known and passed)
-        quote(to_bytes(parts.query, encoding), _safe_chars),
-        quote(to_bytes(parts.fragment, encoding), _safe_chars),
+        quote(parts.query.encode(encoding), _safe_chars),
+        quote(parts.fragment.encode(encoding), _safe_chars),
     ))
 
 
@@ -410,22 +406,17 @@ def _safe_ParseResult(parts, encoding='utf8', path_encoding='utf8'):
     # IDNA encoding can fail for too long labels (>63 characters)
     # or missing labels (e.g. http://.example.com)
     try:
-        netloc = parts.netloc.encode('idna')
+        netloc = parts.netloc.encode('idna').decode()
     except UnicodeError:
         netloc = parts.netloc
 
     return (
-        to_native_str(parts.scheme),
-        to_native_str(netloc),
-
-        # default encoding for path component SHOULD be UTF-8
-        quote(to_bytes(parts.path, path_encoding), _path_safe_chars),
-        quote(to_bytes(parts.params, path_encoding), _safe_chars),
-
-        # encoding of query and fragment follows page encoding
-        # or form-charset (if known and passed)
-        quote(to_bytes(parts.query, encoding), _safe_chars),
-        quote(to_bytes(parts.fragment, encoding), _safe_chars)
+        parts.scheme,
+        netloc,
+        quote(parts.path.encode(path_encoding), _path_safe_chars),
+        quote(parts.params.encode(path_encoding), _safe_chars),
+        quote(parts.query.encode(encoding), _safe_chars),
+        quote(parts.fragment.encode(encoding), _safe_chars)
     )
 
 
@@ -466,7 +457,7 @@ def canonicalize_url(url, keep_blank_values=True, keep_fragments=False,
     # if not for proper URL expected by remote website.
     try:
         scheme, netloc, path, params, query, fragment = _safe_ParseResult(
-            parse_url(url), encoding=encoding)
+            parse_url(url), encoding=encoding or 'utf8')
     except UnicodeEncodeError as e:
         scheme, netloc, path, params, query, fragment = _safe_ParseResult(
             parse_url(url), encoding='utf8')
