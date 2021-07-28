@@ -26,11 +26,41 @@ class HttpTests(unittest.TestCase):
         self.assertIsNone(headers_dict_to_raw(None))
 
     def test_headers_raw_to_dict(self):
-        raw = b"Content-type: text/html\n\rAccept: gzip\n\r\
-                Cache-Control: no-cache\n\rCache-Control: no-store\n\n"
-        dct = {b'Content-type': [b'text/html'], b'Accept': [b'gzip'], 
+        raw = b'\r\n'.join((b"Content-type: text/html",
+                            b"Accept: gzip",
+                            b"Cache-Control: no-cache",
+                            b"Cache-Control: no-store"))
+        dct = {b'Content-type': [b'text/html'], b'Accept': [b'gzip'],
                b'Cache-Control': [b'no-cache', b'no-store']}
         self.assertEqual(headers_raw_to_dict(raw), dct)
+
+    def test_headers_raw_to_dict_multiline(self):
+        raw = b'\r\n'.join((b'Content-Type: multipart/related;',
+                            b'  type="application/xop+xml";',
+                            b'\tboundary="example"',
+                            b'Cache-Control: no-cache'))
+        # With strict=False, the header value that spans across
+        # multiple lines does not get parsed fully, and only the first
+        # line is retained.
+        dct = {b'Content-Type': [b'multipart/related;'],
+               b'Cache-Control': [b'no-cache']}
+        self.assertEqual(headers_raw_to_dict(raw), dct)
+
+    def test_headers_raw_to_dict_multiline_strict(self):
+        raw = b'\r\n'.join((b'Content-Type: multipart/related;',
+                            b'  type="application/xop+xml";',
+                            b'\tboundary="example"',
+                            b'Cache-Control: no-cache'))
+        # With strict=True, the header value that spans across
+        # multiple lines does get parsed fully.
+        dct = {
+            b'Content-Type': [
+                b'\r\n'.join((b'multipart/related;',
+                              b'  type="application/xop+xml";',
+                              b'\tboundary="example"'))
+            ],
+            b'Cache-Control': [b'no-cache']}
+        self.assertEqual(headers_raw_to_dict(raw, strict=True), dct)
 
     def test_headers_dict_to_raw(self):
         dct = OrderedDict([

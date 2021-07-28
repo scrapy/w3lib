@@ -1,10 +1,16 @@
 from base64 import urlsafe_b64encode
 
 
-def headers_raw_to_dict(headers_raw):
+def headers_raw_to_dict(headers_raw, strict=False):
     r"""
     Convert raw headers (single multi-line bytestring)
     to a dictionary.
+
+    `strict` is a bool parameter controlling the multi-line parsing behavior.
+    If 'True', only the character sequence '\r\n' is considered as the line
+    delimiter, as per the HTTP specification (e.g., RFC 2616). If 'False'
+    (default), lines are delimited by 'str.splitlines()' and a wider range
+    of character(s) are considered as line boundaries.
 
     For example:
 
@@ -27,7 +33,20 @@ def headers_raw_to_dict(headers_raw):
 
     if headers_raw is None:
         return None
-    headers = headers_raw.splitlines()
+
+    if strict:
+        headers = []
+        for line in headers_raw.split(b'\r\n'):
+            if line.startswith(b' ') or line.startswith(b'\t'):
+                try:
+                    headers[-1] += b'\r\n' + line
+                except IndexError:
+                    raise ValueError('Malformed raw headers')
+            else:
+                headers.append(line)
+    else:
+        headers = headers_raw.splitlines()
+
     headers_tuples = [header.split(b':', 1) for header in headers]
 
     result_dict = {}
