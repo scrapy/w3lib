@@ -27,6 +27,9 @@ jobs:
         - python-version: 3.9
           env:
             TOXENV: security
+        - python-version: 3.9
+          env:
+            TOXENV: black
 
     steps:
     - uses: actions/checkout@v2
