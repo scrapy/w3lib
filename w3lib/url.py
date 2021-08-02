@@ -9,7 +9,7 @@ import posixpath
 import re
 import string
 from collections import namedtuple
-from typing import Callable, Optional, Sequence, Tuple, Union, cast, Dict
+from typing import Callable, List, Optional, Sequence, Tuple, Union, cast, Dict
 from urllib.parse import (
     parse_qs,
     parse_qsl,
@@ -25,7 +25,7 @@ from urllib.parse import (
 )
 from urllib.parse import _coerce_args  # type: ignore
 from urllib.request import pathname2url, url2pathname
-from w3lib.util import to_bytes, to_native_str, to_unicode
+from w3lib.util import to_unicode
 from w3lib._types import AnyUnicodeError, StrOrBytes
 
 
@@ -84,7 +84,7 @@ def safe_url_string(url: StrOrBytes, encoding: str = 'utf8', path_encoding: str 
     # IDNA encoding can fail for too long labels (>63 characters)
     # or missing labels (e.g. http://.example.com)
     try:
-        netloc = parts.netloc.encode("idna").decode()
+        netloc = parts.netloc.encode('idna')
     except UnicodeError:
         netloc = parts.netloc.encode('utf-8')
 
@@ -94,15 +94,13 @@ def safe_url_string(url: StrOrBytes, encoding: str = 'utf8', path_encoding: str 
     else:
         path = parts.path
 
-    return urlunsplit(
-        (
-            parts.scheme,
-            netloc.rstrip(":"),
-            path,
-            quote(parts.query.encode(encoding), _safe_chars),
-            quote(parts.fragment.encode(encoding), _safe_chars),
-        )
-    )
+    return urlunsplit((
+        parts.scheme,
+        netloc.decode().rstrip(':'),
+        path,
+        quote(parts.query.encode(encoding), _safe_chars),
+        quote(parts.fragment.encode(encoding), _safe_chars),
+    ))
 
 
 _parent_dirs = re.compile(r"/?(\.\./)+")
@@ -425,7 +423,7 @@ __all__ = [
 ]
 
 
-def _safe_ParseResult(parts, encoding="utf8", path_encoding="utf8"):
+def _safe_ParseResult(parts: ParseResult, encoding: str = 'utf8', path_encoding: str = 'utf8') -> Tuple[str, str, str, str, str, str]:
     # IDNA encoding can fail for too long labels (>63 characters)
     # or missing labels (e.g. http://.example.com)
     try:
@@ -443,7 +441,8 @@ def _safe_ParseResult(parts, encoding="utf8", path_encoding="utf8"):
     )
 
 
-def canonicalize_url(url, keep_blank_values=True, keep_fragments=False, encoding=None):
+def canonicalize_url(url: StrOrBytes, keep_blank_values: bool = True, keep_fragments: bool = False,
+                     encoding: Optional[str] = None) -> str:
     r"""Canonicalize the given url by applying the following procedures:
 
     - sort query arguments, first by key, then by value
@@ -530,9 +529,9 @@ def canonicalize_url(url, keep_blank_values=True, keep_fragments=False, encoding
     )
 
 
-def _unquotepath(path):
-    for reserved in ("2f", "2F", "3f", "3F"):
-        path = path.replace("%" + reserved, "%25" + reserved.upper())
+def _unquotepath(path: str) -> bytes:
+    for reserved in ('2f', '2F', '3f', '3F'):
+        path = path.replace('%' + reserved, '%25' + reserved.upper())
 
     # standard lib's unquote() does not work for non-UTF-8
     # percent-escaped characters, they get lost.
@@ -542,7 +541,7 @@ def _unquotepath(path):
     return unquote_to_bytes(path)
 
 
-def parse_url(url, encoding=None):
+def parse_url(url: Union[StrOrBytes, ParseResult], encoding: Optional[str] = None) -> ParseResult:
     """Return urlparsed url from the given argument (which could be an already
     parsed url)
     """
@@ -551,7 +550,7 @@ def parse_url(url, encoding=None):
     return urlparse(to_unicode(url, encoding))
 
 
-def parse_qsl_to_bytes(qs, keep_blank_values=False):
+def parse_qsl_to_bytes(qs: str, keep_blank_values: bool = False) -> List[Tuple[bytes, bytes]]:
     """Parse a query given as a string argument.
 
     Data are returned as a list of name, value pairs as bytes.
@@ -586,11 +585,11 @@ def parse_qsl_to_bytes(qs, keep_blank_values=False):
             else:
                 continue
         if len(nv[1]) or keep_blank_values:
-            name = nv[0].replace("+", " ")
+            name: StrOrBytes = nv[0].replace('+', ' ')
             name = unquote_to_bytes(name)
             name = _coerce_result(name)
-            value = nv[1].replace("+", " ")
+            value: StrOrBytes = nv[1].replace('+', ' ')
             value = unquote_to_bytes(value)
             value = _coerce_result(value)
-            r.append((name, value))
+            r.append((cast(bytes, name), cast(bytes, value)))
     return r

@@ -1,6 +1,6 @@
 from base64 import urlsafe_b64encode
 from typing import Any, List, MutableMapping, Optional, AnyStr, Sequence, Union, Mapping
-from w3lib.util import to_bytes
+from w3lib.util import to_bytes, to_native_str
 
 HeadersDictInput = Mapping[bytes, Union[Any, Sequence]]
 HeadersDictOutput = MutableMapping[bytes, List[bytes]]
@@ -95,7 +95,7 @@ def basic_auth_header(username: AnyStr, password: AnyStr, encoding: str = 'ISO-8
 
     """
 
-    auth = "%r:%r" % (username, password)
+    auth = "%s:%s" % (to_native_str(username), to_native_str(password))
     # XXX: RFC 2617 doesn't define encoding, but ISO-8859-1
     # seems to be the most widely used encoding here. See also:
     # http://greenbytes.de/tech/webdav/draft-ietf-httpauth-basicauth-enc-latest.html
