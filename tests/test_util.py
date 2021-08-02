@@ -12,35 +12,30 @@ from w3lib.util import (
 
 
 class StrToUnicodeTestCase(TestCase):
-
     def test_deprecation(self):
         with deprecated_call():
-            str_to_unicode('')
+            str_to_unicode("")
 
 
 class ToBytesTestCase(TestCase):
-
     def test_type_error(self):
         with raises(TypeError):
             to_bytes(True)
 
 
 class ToNativeStrTestCase(TestCase):
-
     def test_deprecation(self):
         with deprecated_call():
-            to_native_str('')
+            to_native_str("")
 
 
 class ToUnicodeTestCase(TestCase):
-
     def test_type_error(self):
         with raises(TypeError):
             to_unicode(True)
 
 
 class UnicodeToStrTestCase(TestCase):
-
     def test_deprecation(self):
         with deprecated_call():
-            unicode_to_str('')
+            unicode_to_str("")

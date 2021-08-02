@@ -28,7 +28,7 @@ def headers_raw_to_dict(headers_raw):
     if headers_raw is None:
         return None
     headers = headers_raw.splitlines()
-    headers_tuples = [header.split(b':', 1) for header in headers]
+    headers_tuples = [header.split(b":", 1) for header in headers]
 
     result_dict = {}
     for header_item in headers_tuples:
@@ -75,10 +75,10 @@ def headers_dict_to_raw(headers_dict):
         elif isinstance(value, (list, tuple)):
             for v in value:
                 raw_lines.append(b": ".join([key, v]))
-    return b'\r\n'.join(raw_lines)
+    return b"\r\n".join(raw_lines)
 
 
-def basic_auth_header(username, password, encoding='ISO-8859-1'):
+def basic_auth_header(username, password, encoding="ISO-8859-1"):
     """
     Return an `Authorization` header field value for `HTTP Basic Access Authentication (RFC 2617)`_
 
@@ -96,4 +96,4 @@ def basic_auth_header(username, password, encoding='ISO-8859-1'):
         # seems to be the most widely used encoding here. See also:
         # http://greenbytes.de/tech/webdav/draft-ietf-httpauth-basicauth-enc-latest.html
         auth = auth.encode(encoding)
-    return b'Basic ' + urlsafe_b64encode(auth)
+    return b"Basic " + urlsafe_b64encode(auth)
