@@ -370,6 +370,8 @@ ParseDataURIResult = namedtuple(
 ParseDataURIResult.__doc__ = "The return value type of `w3lib.url.parse_data_uri`."
 
 
+# If we add the return type hint sphinx would error:
+#   w3lib/url.py:docstring of w3lib.url.parse_data_uri::py:class reference target not found: w3lib.url.ParseDataURIResult
 def parse_data_uri(uri: StrOrBytes):  # type: ignore
     """
 
