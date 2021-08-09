@@ -364,12 +364,13 @@ _mediatype_parameter_pattern = re.compile(
     ).encode()
 )
 
-_ParseDataURIResult = namedtuple(
-    "_ParseDataURIResult", "media_type media_type_parameters data"
+ParseDataURIResult = namedtuple(
+    "ParseDataURIResult", "media_type media_type_parameters data"
 )
+ParseDataURIResult.__doc__ = "The return value type of `w3lib.url.parse_data_uri`."
 
 
-def parse_data_uri(uri: StrOrBytes) -> _ParseDataURIResult:
+def parse_data_uri(uri: StrOrBytes):  # type: ignore
     """
 
     Parse a data: URI, returning a 3-tuple of media type, dictionary of media
@@ -426,7 +427,7 @@ def parse_data_uri(uri: StrOrBytes) -> _ParseDataURIResult:
             raise ValueError("invalid data URI")
         data = base64.b64decode(data)
 
-    return _ParseDataURIResult(media_type, media_type_params, data)
+    return ParseDataURIResult(media_type, media_type_params, data)
 
 
 __all__ = [
