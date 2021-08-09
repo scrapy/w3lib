@@ -32,7 +32,7 @@ from w3lib._types import AnyUnicodeError, StrOrBytes
 # error handling function for bytes-to-Unicode decoding errors with URLs
 def _quote_byte(error: UnicodeError) -> Tuple[str, int]:
     error = cast(AnyUnicodeError, error)
-    return (to_unicode(quote(error.object[error.start:error.end])), error.end)
+    return (to_unicode(quote(error.object[error.start : error.end])), error.end)
 
 
 codecs.register_error("percentencode", _quote_byte)
@@ -52,7 +52,12 @@ _ascii_tab_newline_re = re.compile(
 )  # see https://infra.spec.whatwg.org/#ascii-tab-or-newline
 
 
-def safe_url_string(url: StrOrBytes, encoding: str = 'utf8', path_encoding: str = 'utf8', quote_path: bool = True) -> str:
+def safe_url_string(
+    url: StrOrBytes,
+    encoding: str = "utf8",
+    path_encoding: str = "utf8",
+    quote_path: bool = True,
+) -> str:
     """Convert the given URL into a legal URL by escaping unsafe characters
     according to RFC-3986. Also, ASCII tabs and newlines are removed
     as per https://url.spec.whatwg.org/#url-parsing.
@@ -84,9 +89,9 @@ def safe_url_string(url: StrOrBytes, encoding: str = 'utf8', path_encoding: str 
     # IDNA encoding can fail for too long labels (>63 characters)
     # or missing labels (e.g. http://.example.com)
     try:
-        netloc = parts.netloc.encode('idna')
+        netloc = parts.netloc.encode("idna")
     except UnicodeError:
-        netloc = parts.netloc.encode('utf-8')
+        netloc = parts.netloc.encode("utf-8")
 
     # default encoding for path component SHOULD be UTF-8
     if quote_path:
@@ -94,20 +99,24 @@ def safe_url_string(url: StrOrBytes, encoding: str = 'utf8', path_encoding: str 
     else:
         path = parts.path
 
-    return urlunsplit((
-        parts.scheme,
-        netloc.decode().rstrip(':'),
-        path,
-        quote(parts.query.encode(encoding), _safe_chars),
-        quote(parts.fragment.encode(encoding), _safe_chars),
-    ))
+    return urlunsplit(
+        (
+            parts.scheme,
+            netloc.decode().rstrip(":"),
+            path,
+            quote(parts.query.encode(encoding), _safe_chars),
+            quote(parts.fragment.encode(encoding), _safe_chars),
+        )
+    )
 
 
 _parent_dirs = re.compile(r"/?(\.\./)+")
 
 
-def safe_download_url(url: StrOrBytes, encoding: str = 'utf8', path_encoding: str = 'utf8') -> str:
-    """ Make a url for download. This will call safe_url_string
+def safe_download_url(
+    url: StrOrBytes, encoding: str = "utf8", path_encoding: str = "utf8"
+) -> str:
+    """Make a url for download. This will call safe_url_string
     and then strip the fragment, if one exists. The path will
     be normalised.
 
@@ -126,10 +135,15 @@ def safe_download_url(url: StrOrBytes, encoding: str = 'utf8', path_encoding: st
 
 
 def is_url(text: str) -> bool:
-    return text.partition("://")[0] in ('file', 'http', 'https')
+    return text.partition("://")[0] in ("file", "http", "https")
 
 
-def url_query_parameter(url: StrOrBytes, parameter: str, default: Optional[str] = None, keep_blank_values: Union[bool, int] = 0) -> Optional[str]:
+def url_query_parameter(
+    url: StrOrBytes,
+    parameter: str,
+    default: Optional[str] = None,
+    keep_blank_values: Union[bool, int] = 0,
+) -> Optional[str]:
     """Return the value of a url parameter, given the url and parameter name
 
     General case:
@@ -159,8 +173,7 @@ def url_query_parameter(url: StrOrBytes, parameter: str, default: Optional[str] 
     """
 
     queryparams = parse_qs(
-        urlsplit(str(url))[3],
-        keep_blank_values=bool(keep_blank_values)
+        urlsplit(str(url))[3], keep_blank_values=bool(keep_blank_values)
     )
     if parameter in queryparams:
         return queryparams[parameter][0]
@@ -169,7 +182,14 @@ def url_query_parameter(url: StrOrBytes, parameter: str, default: Optional[str] 
 
 
 def url_query_cleaner(
-        url: StrOrBytes, parameterlist: Union[StrOrBytes, Sequence[StrOrBytes]] = (), sep: str = '&', kvsep: str = '=', remove: bool = False, unique: bool = True, keep_fragments: bool = False) -> str:
+    url: StrOrBytes,
+    parameterlist: Union[StrOrBytes, Sequence[StrOrBytes]] = (),
+    sep: str = "&",
+    kvsep: str = "=",
+    remove: bool = False,
+    unique: bool = True,
+    keep_fragments: bool = False,
+) -> str:
     """Clean URL arguments leaving only those passed in the parameterlist keeping order
 
     >>> import w3lib.url
@@ -206,7 +226,7 @@ def url_query_cleaner(
     url, fragment = urldefrag(url)
     url = cast(str, url)
     fragment = cast(str, fragment)
-    base, _, query = url.partition('?')
+    base, _, query = url.partition("?")
     seen = set()
     querylist = []
     for ksv in query.split(sep):
@@ -224,8 +244,9 @@ def url_query_cleaner(
             seen.add(k)
     url = "?".join([base, sep.join(querylist)]) if querylist else base
     if keep_fragments:
-        url += '#' + fragment
+        url += "#" + fragment
     return cast(str, url)
+
 
 def _add_or_replace_parameters(url: str, params: Dict[str, str]) -> str:
     parsed = urlsplit(url)
@@ -343,8 +364,9 @@ _mediatype_parameter_pattern = re.compile(
     ).encode()
 )
 
-_ParseDataURIResult = namedtuple("_ParseDataURIResult",
-                                 "media_type media_type_parameters data")
+_ParseDataURIResult = namedtuple(
+    "_ParseDataURIResult", "media_type media_type_parameters data"
+)
 
 
 def parse_data_uri(uri: StrOrBytes) -> _ParseDataURIResult:
@@ -389,7 +411,7 @@ def parse_data_uri(uri: StrOrBytes) -> _ParseDataURIResult:
         if m:
             attribute, value, value_quoted = m.groups()
             if value_quoted:
-                value = re.sub(br'\\(.)', rb'\1', value_quoted)
+                value = re.sub(br"\\(.)", rb"\1", value_quoted)
             media_type_params[attribute.decode()] = value.decode()
             uri = uri[m.end() :]
         else:
@@ -423,7 +445,9 @@ __all__ = [
 ]
 
 
-def _safe_ParseResult(parts: ParseResult, encoding: str = 'utf8', path_encoding: str = 'utf8') -> Tuple[str, str, str, str, str, str]:
+def _safe_ParseResult(
+    parts: ParseResult, encoding: str = "utf8", path_encoding: str = "utf8"
+) -> Tuple[str, str, str, str, str, str]:
     # IDNA encoding can fail for too long labels (>63 characters)
     # or missing labels (e.g. http://.example.com)
     try:
@@ -441,8 +465,12 @@ def _safe_ParseResult(parts: ParseResult, encoding: str = 'utf8', path_encoding:
     )
 
 
-def canonicalize_url(url: Union[StrOrBytes, ParseResult], keep_blank_values: bool = True, keep_fragments: bool = False,
-                     encoding: Optional[str] = None) -> str:
+def canonicalize_url(
+    url: Union[StrOrBytes, ParseResult],
+    keep_blank_values: bool = True,
+    keep_fragments: bool = False,
+    encoding: Optional[str] = None,
+) -> str:
     r"""Canonicalize the given url by applying the following procedures:
 
     - sort query arguments, first by key, then by value
@@ -478,7 +506,8 @@ def canonicalize_url(url: Union[StrOrBytes, ParseResult], keep_blank_values: boo
     # if not for proper URL expected by remote website.
     try:
         scheme, netloc, path, params, query, fragment = _safe_ParseResult(
-            parse_url(url), encoding=encoding or 'utf8')
+            parse_url(url), encoding=encoding or "utf8"
+        )
     except UnicodeEncodeError:
         scheme, netloc, path, params, query, fragment = _safe_ParseResult(
             parse_url(url), encoding="utf8"
@@ -530,8 +559,8 @@ def canonicalize_url(url: Union[StrOrBytes, ParseResult], keep_blank_values: boo
 
 
 def _unquotepath(path: str) -> bytes:
-    for reserved in ('2f', '2F', '3f', '3F'):
-        path = path.replace('%' + reserved, '%25' + reserved.upper())
+    for reserved in ("2f", "2F", "3f", "3F"):
+        path = path.replace("%" + reserved, "%25" + reserved.upper())
 
     # standard lib's unquote() does not work for non-UTF-8
     # percent-escaped characters, they get lost.
@@ -541,7 +570,9 @@ def _unquotepath(path: str) -> bytes:
     return unquote_to_bytes(path)
 
 
-def parse_url(url: Union[StrOrBytes, ParseResult], encoding: Optional[str] = None) -> ParseResult:
+def parse_url(
+    url: Union[StrOrBytes, ParseResult], encoding: Optional[str] = None
+) -> ParseResult:
     """Return urlparsed url from the given argument (which could be an already
     parsed url)
     """
@@ -550,7 +581,9 @@ def parse_url(url: Union[StrOrBytes, ParseResult], encoding: Optional[str] = Non
     return urlparse(to_unicode(url, encoding))
 
 
-def parse_qsl_to_bytes(qs: str, keep_blank_values: bool = False) -> List[Tuple[bytes, bytes]]:
+def parse_qsl_to_bytes(
+    qs: str, keep_blank_values: bool = False
+) -> List[Tuple[bytes, bytes]]:
     """Parse a query given as a string argument.
 
     Data are returned as a list of name, value pairs as bytes.
@@ -572,7 +605,7 @@ def parse_qsl_to_bytes(qs: str, keep_blank_values: bool = False) -> List[Tuple[b
     # with unquote_to_bytes(s)
     coerce_args = cast(Callable[..., Tuple[str, Callable]], _coerce_args)
     qs, _coerce_result = coerce_args(qs)
-    pairs = [s2 for s1 in qs.split('&') for s2 in s1.split(';')]
+    pairs = [s2 for s1 in qs.split("&") for s2 in s1.split(";")]
     r = []
     for name_value in pairs:
         if not name_value:
@@ -585,10 +618,10 @@ def parse_qsl_to_bytes(qs: str, keep_blank_values: bool = False) -> List[Tuple[b
             else:
                 continue
         if len(nv[1]) or keep_blank_values:
-            name: StrOrBytes = nv[0].replace('+', ' ')
+            name: StrOrBytes = nv[0].replace("+", " ")
             name = unquote_to_bytes(name)
             name = _coerce_result(name)
-            value: StrOrBytes = nv[1].replace('+', ' ')
+            value: StrOrBytes = nv[1].replace("+", " ")
             value = unquote_to_bytes(value)
             value = _coerce_result(value)
             r.append((cast(bytes, name), cast(bytes, value)))

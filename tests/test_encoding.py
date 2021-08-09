@@ -40,7 +40,7 @@ class RequestEncodingTests(unittest.TestCase):
             bom_encoding, bom = read_bom(string)
             assert bom_encoding is not None
             assert bom is not None
-            decoded = string[len(bom):].decode(bom_encoding)
+            decoded = string[len(bom) :].decode(bom_encoding)
             self.assertEqual(water_unicode, decoded)
         # Body without BOM
         enc, bom = read_bom(b"foo")
