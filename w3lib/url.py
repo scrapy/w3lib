@@ -441,7 +441,7 @@ def _safe_ParseResult(parts: ParseResult, encoding: str = 'utf8', path_encoding:
     )
 
 
-def canonicalize_url(url: StrOrBytes, keep_blank_values: bool = True, keep_fragments: bool = False,
+def canonicalize_url(url: Union[StrOrBytes, ParseResult], keep_blank_values: bool = True, keep_fragments: bool = False,
                      encoding: Optional[str] = None) -> str:
     r"""Canonicalize the given url by applying the following procedures:
 

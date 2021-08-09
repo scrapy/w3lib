@@ -9,6 +9,7 @@ from urllib.parse import urljoin
 
 from w3lib.util import to_unicode
 from w3lib.url import safe_url_string
+from w3lib._types import StrOrBytes
 
 _ent_re = re.compile(r'&((?P<named>[a-z\d]+)|#(?P<dec>\d+)|#x(?P<hex>[a-f\d]+))(?P<semicolon>;?)', re.IGNORECASE)
 _tag_re = re.compile(r'<[a-zA-Z\/!].*?>', re.DOTALL)
@@ -213,7 +214,7 @@ def remove_tags_with_content(text: AnyStr, which_ones: Iterable[str] = (), encod
     return utext
 
 
-def replace_escape_chars(text: AnyStr, which_ones: Iterable[str] = ('\n', '\t', '\r'), replace_by: str = '', \
+def replace_escape_chars(text: AnyStr, which_ones: Iterable[str] = ('\n', '\t', '\r'), replace_by: StrOrBytes = '', \
         encoding: Optional[str] = None) -> str:
     """Remove escape characters.
 
@@ -265,8 +266,7 @@ def unquote_markup(text: AnyStr, keep: Iterable[str] = (), remove_illegal: bool 
             ret_text += fragment.group("cdata_d")
     return ret_text
 
-
-def get_base_url(text: AnyStr, baseurl: str = '', encoding: str = 'utf-8') -> str:
+def get_base_url(text: AnyStr, baseurl: StrOrBytes = '', encoding: str = 'utf-8') -> str:
     """Return the base url if declared in the given HTML `text`,
     relative to the given base url.
 
