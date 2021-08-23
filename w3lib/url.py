@@ -89,9 +89,11 @@ def safe_url_string(
     # IDNA encoding can fail for too long labels (>63 characters)
     # or missing labels (e.g. http://.example.com)
     try:
-        netloc = parts.netloc.encode("idna")
+        netloc_bytes = parts.netloc.encode("idna")
     except UnicodeError:
-        netloc = parts.netloc.encode("utf-8")
+        netloc = parts.netloc
+    else:
+        netloc = netloc_bytes.decode()
 
     # default encoding for path component SHOULD be UTF-8
     if quote_path:
@@ -102,7 +104,7 @@ def safe_url_string(
     return urlunsplit(
         (
             parts.scheme,
-            netloc.decode().rstrip(":"),
+            netloc.rstrip(":"),
             path,
             quote(parts.query.encode(encoding), _safe_chars),
             quote(parts.fragment.encode(encoding), _safe_chars),
@@ -370,9 +372,7 @@ ParseDataURIResult = namedtuple(
 ParseDataURIResult.__doc__ = "The return value type of `w3lib.url.parse_data_uri`."
 
 
-# If we add the return type hint sphinx would error:
-#   w3lib/url.py:docstring of w3lib.url.parse_data_uri::py:class reference target not found: w3lib.url.ParseDataURIResult
-def parse_data_uri(uri: StrOrBytes):  # type: ignore
+def parse_data_uri(uri: StrOrBytes) -> ParseDataURIResult:
     """
 
     Parse a data: URI, returning a 3-tuple of media type, dictionary of media
