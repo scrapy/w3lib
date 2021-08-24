@@ -378,6 +378,7 @@ _mediatype_parameter_pattern = re.compile(
 
 class ParseDataURIResult(NamedTuple):
     """Named tuple returned by :func:`parse_data_uri`."""
+
     #: MIME type type and subtype, separated by / (e.g. ``"text/plain"``).
     media_type: str
     #: MIME type parameters (e.g. ``{"charset": "US-ASCII"}``).
