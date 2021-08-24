@@ -8,8 +8,17 @@ import os
 import posixpath
 import re
 import string
-from collections import namedtuple
-from typing import Callable, List, Optional, Sequence, Tuple, Union, cast, Dict
+from typing import (
+    cast,
+    Callable,
+    Dict,
+    List,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 from urllib.parse import (
     parse_qs,
     parse_qsl,
@@ -366,20 +375,19 @@ _mediatype_parameter_pattern = re.compile(
     ).encode()
 )
 
-ParseDataURIResult = namedtuple(
-    "ParseDataURIResult", "media_type media_type_parameters data"
-)
-ParseDataURIResult.__doc__ = "The return value type of `w3lib.url.parse_data_uri`."
+
+class ParseDataURIResult(NamedTuple):
+    """Named tuple returned by :func:`parse_data_uri`."""
+    #: MIME type type and subtype, separated by / (e.g. ``"text/plain"``).
+    media_type: str
+    #: MIME type parameters (e.g. ``{"charset": "US-ASCII"}``).
+    media_type_parameters: dict[str, str]
+    #: Data, decoded if it was encoded in base64 format.
+    data: bytes
 
 
 def parse_data_uri(uri: StrOrBytes) -> ParseDataURIResult:
-    """
-
-    Parse a data: URI, returning a 3-tuple of media type, dictionary of media
-    type parameters, and data.
-
-    """
-
+    """Parse a data: URI into :class:`ParseDataURIResult`."""
     if not isinstance(uri, bytes):
         uri = safe_url_string(uri).encode("ascii")
 

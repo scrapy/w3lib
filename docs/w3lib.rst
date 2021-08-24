@@ -27,4 +27,5 @@ w3lib Package
 .. automodule:: w3lib.url
     :members:
 
-.. autoclass:: ParseDataURIResult
+    .. autoclass:: ParseDataURIResult
+       :members:
