@@ -69,7 +69,7 @@ class RemoveEntitiesTest(unittest.TestCase):
     def test_browser_hack(self):
         # check browser hack for numeric character references in the 80-9F range
         self.assertEqual(replace_entities("x&#153;y", encoding="cp1252"), "x\u2122y")
-        self.assertEqual(replace_entities("x&#x99;y", encoding="cp1252"), u"x\u2122y")
+        self.assertEqual(replace_entities("x&#x99;y", encoding="cp1252"), "x\u2122y")
 
     def test_missing_semicolon(self):
         for entity, result in (

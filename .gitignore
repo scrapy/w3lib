@@ -10,3 +10,7 @@ _trial_temp
 .coverage
 coverage.xml
 .cache
+.mypy_cache/
+/index.txt
+.dmypy.json
+.hypothesis/

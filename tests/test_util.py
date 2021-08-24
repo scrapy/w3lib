@@ -20,7 +20,7 @@ class StrToUnicodeTestCase(TestCase):
 class ToBytesTestCase(TestCase):
     def test_type_error(self):
         with raises(TypeError):
-            to_bytes(True)
+            to_bytes(True)  # type: ignore
 
 
 class ToNativeStrTestCase(TestCase):
@@ -32,7 +32,7 @@ class ToNativeStrTestCase(TestCase):
 class ToUnicodeTestCase(TestCase):
     def test_type_error(self):
         with raises(TypeError):
-            to_unicode(True)
+            to_unicode(True)  # type: ignore
 
 
 class UnicodeToStrTestCase(TestCase):

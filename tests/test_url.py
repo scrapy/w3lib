@@ -508,7 +508,7 @@ class UrlTests(unittest.TestCase):
     def test_add_or_replace_parameters_does_not_change_input_param(self):
         url = "http://domain/test?arg=original"
         input_param = {"arg": "value"}
-        new_url = add_or_replace_parameters(url, input_param)  # noqa
+        add_or_replace_parameters(url, input_param)  # noqa
         self.assertEqual(input_param, {"arg": "value"})
 
     def test_url_query_cleaner(self):
@@ -817,15 +817,18 @@ class CanonicalizeUrlTest(unittest.TestCase):
         self.assertEqual(
             canonicalize_url("http://www.example.com/a do?a=1"),
             "http://www.example.com/a%20do?a=1",
-        ),
+        )
+
         self.assertEqual(
             canonicalize_url("http://www.example.com/a %20do?a=1"),
             "http://www.example.com/a%20%20do?a=1",
-        ),
+        )
+
         self.assertEqual(
             canonicalize_url("http://www.example.com/a do£.html?a=1"),
             "http://www.example.com/a%20do%C2%A3.html?a=1",
         )
+
         self.assertEqual(
             canonicalize_url(b"http://www.example.com/a do\xc2\xa3.html?a=1"),
             "http://www.example.com/a%20do%C2%A3.html?a=1",

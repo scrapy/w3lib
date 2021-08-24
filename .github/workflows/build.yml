@@ -30,6 +30,9 @@ jobs:
         - python-version: 3.9
           env:
             TOXENV: black
+        - python-version: 3.9
+          env:
+            TOXENV: typing
 
     steps:
     - uses: actions/checkout@v2

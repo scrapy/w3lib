@@ -3,11 +3,14 @@ Functions for handling encoding of web pages
 """
 import re, codecs, encodings
 from sys import version_info
+from typing import Callable, Match, Optional, Tuple, Union, cast
+from w3lib._types import AnyUnicodeError, StrOrBytes
+from w3lib.util import to_native_str
 
 _HEADER_ENCODING_RE = re.compile(r"charset=([\w-]+)", re.I)
 
 
-def http_content_type_encoding(content_type):
+def http_content_type_encoding(content_type: Optional[str]) -> Optional[str]:
     """Extract the encoding in the content-type header
 
     >>> import w3lib.encoding
@@ -20,6 +23,8 @@ def http_content_type_encoding(content_type):
         match = _HEADER_ENCODING_RE.search(content_type)
         if match:
             return resolve_encoding(match.group(1))
+
+    return None
 
 
 # regexp for parsing HTTP meta tags
@@ -51,7 +56,7 @@ _BODY_ENCODING_BYTES_RE = re.compile(
 )
 
 
-def html_body_declared_encoding(html_body_str):
+def html_body_declared_encoding(html_body_str: StrOrBytes) -> Optional[str]:
     '''Return the encoding specified in meta tags in the html body,
     or ``None`` if no suitable encoding was found
 
@@ -75,6 +80,7 @@ def html_body_declared_encoding(html_body_str):
 
     # html5 suggests the first 1024 bytes are sufficient, we allow for more
     chunk = html_body_str[:4096]
+    match: Union[Optional[Match[bytes]], Optional[Match[str]]]
     if isinstance(chunk, bytes):
         match = _BODY_ENCODING_BYTES_RE.search(chunk)
     else:
@@ -87,7 +93,9 @@ def html_body_declared_encoding(html_body_str):
             or match.group("xmlcharset")
         )
         if encoding:
-            return resolve_encoding(encoding)
+            return resolve_encoding(to_native_str(encoding))
+
+    return None
 
 
 # Default encoding translation
@@ -118,7 +126,7 @@ DEFAULT_ENCODING_TRANSLATION = {
 }
 
 
-def _c18n_encoding(encoding):
+def _c18n_encoding(encoding: str) -> str:
     """Canonicalize an encoding name
 
     This performs normalization and translates aliases using python's
@@ -128,7 +136,7 @@ def _c18n_encoding(encoding):
     return encodings.aliases.aliases.get(normed, normed)
 
 
-def resolve_encoding(encoding_alias):
+def resolve_encoding(encoding_alias: str) -> Optional[str]:
     """Return the encoding that `encoding_alias` maps to, or ``None``
     if the encoding cannot be interpreted
 
@@ -158,7 +166,7 @@ _BOM_TABLE = [
 _FIRST_CHARS = set(c[0] for (c, _) in _BOM_TABLE)
 
 
-def read_bom(data):
+def read_bom(data: bytes) -> Union[Tuple[None, None], Tuple[str, bytes]]:
     r"""Read the byte order mark in the text, if present, and
     return the encoding represented by the BOM and the BOM.
 
@@ -189,10 +197,12 @@ def read_bom(data):
 
 # Python decoder doesn't follow unicode standard when handling
 # bad utf-8 encoded strings. see http://bugs.python.org/issue8271
-codecs.register_error("w3lib_replace", lambda exc: ("\ufffd", exc.end))
+codecs.register_error(
+    "w3lib_replace", lambda exc: ("\ufffd", cast(AnyUnicodeError, exc).end)
+)
 
 
-def to_unicode(data_str, encoding):
+def to_unicode(data_str: bytes, encoding: str) -> str:
     """Convert a str object to unicode using the encoding given
 
     Characters that cannot be converted will be converted to ``\\ufffd`` (the
@@ -204,8 +214,11 @@ def to_unicode(data_str, encoding):
 
 
 def html_to_unicode(
-    content_type_header, html_body_str, default_encoding="utf8", auto_detect_fun=None
-):
+    content_type_header: Optional[str],
+    html_body_str: bytes,
+    default_encoding: str = "utf8",
+    auto_detect_fun: Optional[Callable[[bytes], str]] = None,
+) -> Tuple[str, str]:
     r'''Convert raw html bytes to unicode
 
     This attempts to make a reasonable guess at the content encoding of the
@@ -273,17 +286,20 @@ def html_to_unicode(
     if enc is not None:
         # remove BOM if it agrees with the encoding
         if enc == bom_enc:
+            bom = cast(bytes, bom)
             html_body_str = html_body_str[len(bom) :]
         elif enc == "utf-16" or enc == "utf-32":
             # read endianness from BOM, or default to big endian
             # tools.ietf.org/html/rfc2781 section 4.3
             if bom_enc is not None and bom_enc.startswith(enc):
                 enc = bom_enc
+                bom = cast(bytes, bom)
                 html_body_str = html_body_str[len(bom) :]
             else:
                 enc += "-be"
         return enc, to_unicode(html_body_str, enc)
     if bom_enc is not None:
+        bom = cast(bytes, bom)
         return bom_enc, to_unicode(html_body_str[len(bom) :], bom_enc)
     enc = html_body_declared_encoding(html_body_str)
     if enc is None and (auto_detect_fun is not None):
