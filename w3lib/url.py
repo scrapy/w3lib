@@ -381,7 +381,7 @@ class ParseDataURIResult(NamedTuple):
     #: MIME type type and subtype, separated by / (e.g. ``"text/plain"``).
     media_type: str
     #: MIME type parameters (e.g. ``{"charset": "US-ASCII"}``).
-    media_type_parameters: dict[str, str]
+    media_type_parameters: Dict[str, str]
     #: Data, decoded if it was encoded in base64 format.
     data: bytes
 
