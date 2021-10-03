@@ -109,7 +109,7 @@ def safe_url_string(
         # When we have hostname we use it instead of netloc directly
         if hostname:
             if isinstance(username, str) and isinstance(password, str):
-                netloc_bytes += f'{":".join([username, password])}@'.encode("idna")
+                netloc_bytes += f'{username}:{password}@'.encode("idna")
             netloc_bytes += hostname.encode("idna")
             if port_number:
                 netloc_bytes += f":{port_number}".encode("idna")
