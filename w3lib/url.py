@@ -95,10 +95,26 @@ def safe_url_string(
     decoded = to_unicode(url, encoding=encoding, errors="percentencode")
     parts = urlsplit(_ascii_tab_newline_re.sub("", decoded))
 
+    username, password, hostname, port_number = (
+        parts.username,
+        parts.password,
+        parts.hostname,
+        parts.port
+    )
+    netloc_bytes = b''
+
     # IDNA encoding can fail for too long labels (>63 characters)
     # or missing labels (e.g. http://.example.com)
     try:
-        netloc_bytes = parts.netloc.encode("idna")
+        # When we have hostname we use it instead of netloc directly
+        if hostname:
+            if isinstance(username, str) and isinstance(password, str):
+                netloc_bytes += f'{":".join([username, password])}@'.encode("idna")
+            netloc_bytes += hostname.encode("idna")
+            if port_number:
+                netloc_bytes += f":{port_number}".encode("idna")
+        else:
+            netloc_bytes = parts.netloc.encode("idna")
     except UnicodeError:
         netloc = parts.netloc
     else:
