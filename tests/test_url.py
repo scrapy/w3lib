@@ -1112,9 +1112,9 @@ class DataURITests(unittest.TestCase):
         self.assertEqual(safe_url_string('ftp://admin:admin@新华网.中国:21'),
                          'ftp://admin:admin@xn--xkrr14bows.xn--fiqs8s:21')
 
-    def test_safe_url_string_encode_idna_domain_with_username_without_password_and_port_number(self):
+    def test_safe_url_string_encode_idna_domain_with_username_and_empty_password_and_port_number(self):
         self.assertEqual(safe_url_string('ftp://admin:@新华网.中国:21'),
-                         'ftp://admin:@xn--xkrr14bows.xn--fiqs8s:21')
+                         'ftp://admin@xn--xkrr14bows.xn--fiqs8s:21')
 
 
 if __name__ == "__main__":
