@@ -111,9 +111,8 @@ def safe_url_string(
             if isinstance(username, str) and isinstance(password, str):
                 netloc_bytes += username.encode(encoding)
                 if password:
-                    netloc_bytes += f':{password}@'.encode(encoding)
-                else:
-                    netloc_bytes += b'@'
+                    netloc_bytes += f':{password}'.encode(encoding)
+                netloc_bytes += b'@'
             netloc_bytes += hostname.encode("idna")
             if port_number:
                 netloc_bytes += f":{port_number}".encode(encoding)
