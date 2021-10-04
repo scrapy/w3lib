@@ -99,9 +99,9 @@ def safe_url_string(
         parts.username,
         parts.password,
         parts.hostname,
-        parts.port
+        parts.port,
     )
-    netloc_bytes = b''
+    netloc_bytes = b""
 
     # IDNA encoding can fail for too long labels (>63 characters)
     # or missing labels (e.g. http://.example.com)
@@ -111,8 +111,8 @@ def safe_url_string(
             if isinstance(username, str) and isinstance(password, str):
                 netloc_bytes += quote(username, _safe_chars).encode(encoding)
                 if password:
-                    netloc_bytes += f':{quote(password, _safe_chars)}'.encode(encoding)
-                netloc_bytes += b'@'
+                    netloc_bytes += f":{quote(password, _safe_chars)}".encode(encoding)
+                netloc_bytes += b"@"
             netloc_bytes += hostname.encode("idna")
             if port_number:
                 netloc_bytes += f":{port_number}".encode(encoding)

@@ -1105,20 +1105,33 @@ class DataURITests(unittest.TestCase):
         self.assertEqual(result.data, b"A brief note")
 
     def test_safe_url_string_encode_idna_domain_with_port(self):
-        self.assertEqual(safe_url_string('http://新华网.中国:80'),
-                         'http://xn--xkrr14bows.xn--fiqs8s:80')
+        self.assertEqual(
+            safe_url_string("http://新华网.中国:80"), "http://xn--xkrr14bows.xn--fiqs8s:80"
+        )
 
-    def test_safe_url_string_encode_idna_domain_with_username_password_and_port_number(self):
-        self.assertEqual(safe_url_string('ftp://admin:admin@新华网.中国:21'),
-                         'ftp://admin:admin@xn--xkrr14bows.xn--fiqs8s:21')
-        self.assertEqual(safe_url_string('http://Åsa:abc123@➡.ws:81/admin'),
-                         'http://%C3%85sa:abc123@xn--hgi.ws:81/admin')
-        self.assertEqual(safe_url_string('http://japão:não@️i❤️.ws:8000/'),
-                         'http://jap%C3%A3o:n%C3%A3o@xn--i-7iq.ws:8000/')
+    def test_safe_url_string_encode_idna_domain_with_username_password_and_port_number(
+        self,
+    ):
+        self.assertEqual(
+            safe_url_string("ftp://admin:admin@新华网.中国:21"),
+            "ftp://admin:admin@xn--xkrr14bows.xn--fiqs8s:21",
+        )
+        self.assertEqual(
+            safe_url_string("http://Åsa:abc123@➡.ws:81/admin"),
+            "http://%C3%85sa:abc123@xn--hgi.ws:81/admin",
+        )
+        self.assertEqual(
+            safe_url_string("http://japão:não@️i❤️.ws:8000/"),
+            "http://jap%C3%A3o:n%C3%A3o@xn--i-7iq.ws:8000/",
+        )
 
-    def test_safe_url_string_encode_idna_domain_with_username_and_empty_password_and_port_number(self):
-        self.assertEqual(safe_url_string('ftp://admin:@新华网.中国:21'),
-                         'ftp://admin@xn--xkrr14bows.xn--fiqs8s:21')
+    def test_safe_url_string_encode_idna_domain_with_username_and_empty_password_and_port_number(
+        self,
+    ):
+        self.assertEqual(
+            safe_url_string("ftp://admin:@新华网.中国:21"),
+            "ftp://admin@xn--xkrr14bows.xn--fiqs8s:21",
+        )
 
 
 if __name__ == "__main__":
