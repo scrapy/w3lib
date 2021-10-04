@@ -1132,6 +1132,10 @@ class DataURITests(unittest.TestCase):
             safe_url_string("ftp://admin:@新华网.中国:21"),
             "ftp://admin@xn--xkrr14bows.xn--fiqs8s:21",
         )
+        self.assertEqual(
+            safe_url_string("ftp://admin@新华网.中国:21"),
+            "ftp://admin@xn--xkrr14bows.xn--fiqs8s:21",
+        )
 
 
 if __name__ == "__main__":
