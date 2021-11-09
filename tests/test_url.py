@@ -266,12 +266,8 @@ class UrlTests(unittest.TestCase):
 
         # DNS label too long
         self.assertEqual(
-            safe_url_string(
-                "http://www.{label}.com/résumé?q=résumé".format(label="example" * 11)
-            ),
-            "http://www.{label}.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9".format(
-                label="example" * 11
-            ),
+            safe_url_string(f"http://www.{'example' * 11}.com/résumé?q=résumé"),
+            f"http://www.{'example' * 11}.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9",
         )
 
     def test_safe_url_port_number(self):
@@ -971,12 +967,8 @@ class CanonicalizeUrlTest(unittest.TestCase):
 
         # DNS label too long
         self.assertEqual(
-            canonicalize_url(
-                "http://www.{label}.com/résumé?q=résumé".format(label="example" * 11)
-            ),
-            "http://www.{label}.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9".format(
-                label="example" * 11
-            ),
+            canonicalize_url(f"http://www.{'example' * 11}.com/résumé?q=résumé"),
+            f"http://www.{'example' * 11}.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9",
         )
 
     def test_preserve_nonfragment_hash(self):
