@@ -13,6 +13,7 @@ setup(
     include_package_data=True,
     zip_safe=False,
     platforms=["Any"],
+    python_requires=">=3.6",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: BSD License",
