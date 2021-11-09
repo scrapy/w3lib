@@ -4,7 +4,7 @@ Functions for handling encoding of web pages
 import re, codecs, encodings
 from typing import Callable, Match, Optional, Tuple, Union, cast
 from w3lib._types import AnyUnicodeError, StrOrBytes
-from w3lib.util import to_native_str
+import w3lib.util
 
 _HEADER_ENCODING_RE = re.compile(r"charset=([\w-]+)", re.I)
 
@@ -92,7 +92,7 @@ def html_body_declared_encoding(html_body_str: StrOrBytes) -> Optional[str]:
             or match.group("xmlcharset")
         )
         if encoding:
-            return resolve_encoding(to_native_str(encoding))
+            return resolve_encoding(w3lib.util.to_unicode(encoding))
 
     return None
 
