@@ -1033,7 +1033,7 @@ class DataURITests(unittest.TestCase):
 
     def test_unicode_uri(self):
         result = parse_data_uri("data:,é")
-        self.assertEqual(result.data, "é".encode("utf-8"))
+        self.assertEqual(result.data, "é".encode())
 
     def test_default_mediatype(self):
         result = parse_data_uri("data:;charset=iso-8859-7,%be%d3%be")

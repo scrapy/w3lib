@@ -162,7 +162,7 @@ _BOM_TABLE = [
     (codecs.BOM_UTF16_LE, "utf-16-le"),
     (codecs.BOM_UTF8, "utf-8"),
 ]
-_FIRST_CHARS = set(c[0] for (c, _) in _BOM_TABLE)
+_FIRST_CHARS = {c[0] for (c, _) in _BOM_TABLE}
 
 
 def read_bom(data: bytes) -> Union[Tuple[None, None], Tuple[str, bytes]]:

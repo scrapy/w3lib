@@ -97,7 +97,7 @@ def basic_auth_header(
 
     """
 
-    auth = "%s:%s" % (to_unicode(username), to_unicode(password))
+    auth = f"{to_unicode(username)}:{to_unicode(password)}"
     # XXX: RFC 2617 doesn't define encoding, but ISO-8859-1
     # seems to be the most widely used encoding here. See also:
     # http://greenbytes.de/tech/webdav/draft-ietf-httpauth-basicauth-enc-latest.html
