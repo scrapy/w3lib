@@ -2,10 +2,9 @@
 Functions for handling encoding of web pages
 """
 import re, codecs, encodings
-from sys import version_info
 from typing import Callable, Match, Optional, Tuple, Union, cast
 from w3lib._types import AnyUnicodeError, StrOrBytes
-from w3lib.util import to_native_str
+import w3lib.util
 
 _HEADER_ENCODING_RE = re.compile(r"charset=([\w-]+)", re.I)
 
@@ -46,6 +45,7 @@ _CONTENT2_RE = _TEMPLATE % ("charset", r"(?P<charset2>[\w-]+)")
 _XML_ENCODING_RE = _TEMPLATE % ("encoding", r"(?P<xmlcharset>[\w-]+)")
 
 # check for meta tags, or xml decl. and stop search if a body tag is encountered
+# pylint: disable=consider-using-f-string
 _BODY_ENCODING_PATTERN = (
     r"<\s*(?:meta%s(?:(?:\s+%s|\s+%s){2}|\s+%s)|\?xml\s[^>]+%s|body)"
     % (_SKIP_ATTRS, _HTTPEQUIV_RE, _CONTENT_RE, _CONTENT2_RE, _XML_ENCODING_RE)
@@ -93,7 +93,7 @@ def html_body_declared_encoding(html_body_str: StrOrBytes) -> Optional[str]:
             or match.group("xmlcharset")
         )
         if encoding:
-            return resolve_encoding(to_native_str(encoding))
+            return resolve_encoding(w3lib.util.to_unicode(encoding))
 
     return None
 
@@ -163,7 +163,7 @@ _BOM_TABLE = [
     (codecs.BOM_UTF16_LE, "utf-16-le"),
     (codecs.BOM_UTF8, "utf-8"),
 ]
-_FIRST_CHARS = set(c[0] for (c, _) in _BOM_TABLE)
+_FIRST_CHARS = {c[0] for (c, _) in _BOM_TABLE}
 
 
 def read_bom(data: bytes) -> Union[Tuple[None, None], Tuple[str, bytes]]:
@@ -208,9 +208,7 @@ def to_unicode(data_str: bytes, encoding: str) -> str:
     Characters that cannot be converted will be converted to ``\\ufffd`` (the
     unicode replacement character).
     """
-    return data_str.decode(
-        encoding, "replace" if version_info[0:2] >= (3, 3) else "w3lib_replace"
-    )
+    return data_str.decode(encoding, "replace")
 
 
 def html_to_unicode(
