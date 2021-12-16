@@ -149,7 +149,7 @@ class HtmlConversionTests(unittest.TestCase):
         else:
             self.assertTrue(
                 body_unicode in expected_unicode,
-                "%s is not in %s" % (body_unicode, expected_unicode),
+                f"{body_unicode} is not in {expected_unicode}",
             )
 
     def test_content_type_and_conversion(self):

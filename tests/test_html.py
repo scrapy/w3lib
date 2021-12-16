@@ -124,7 +124,7 @@ class RemoveEntitiesTest(unittest.TestCase):
         ):
             self.assertEqual(replace_entities(entity, encoding="cp1252"), result)
             self.assertEqual(
-                replace_entities("x%sy" % entity, encoding="cp1252"), "x%sy" % result
+                replace_entities(f"x{entity}y", encoding="cp1252"), f"x{result}y"
             )
 
     def test_encoding(self):

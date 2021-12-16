@@ -338,7 +338,7 @@ def path_to_file_uri(path: str) -> str:
     x = pathname2url(os.path.abspath(path))
     if os.name == "nt":
         x = x.replace("|", ":")  # http://bugs.python.org/issue5861
-    return "file:///%s" % x.lstrip("/")
+    return f"file:///{x.lstrip('/')}"
 
 
 def file_uri_to_path(uri: str) -> str:
@@ -363,6 +363,7 @@ def any_to_uri(uri_or_path: str) -> str:
 _char = set(map(chr, range(127)))
 
 # RFC 2045 token.
+# pylint: disable=consider-using-f-string
 _token = r"[{}]+".format(
     re.escape(
         "".join(
@@ -378,6 +379,7 @@ _token = r"[{}]+".format(
 )
 
 # RFC 822 quoted-string, without surrounding quotation marks.
+# pylint: disable=consider-using-f-string
 _quoted_string = r"(?:[{}]|(?:\\[{}]))*".format(
     re.escape("".join(_char - {'"', "\\", "\r"})), re.escape("".join(_char))
 )

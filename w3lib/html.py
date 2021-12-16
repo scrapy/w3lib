@@ -228,9 +228,7 @@ def remove_tags_with_content(
 
     utext = to_unicode(text, encoding)
     if which_ones:
-        tags = "|".join(
-            [r"<%s\b.*?</%s>|<%s\s*/>" % (tag, tag, tag) for tag in which_ones]
-        )
+        tags = "|".join([fr"<{tag}\b.*?</{tag}>|<{tag}\s*/>" for tag in which_ones])
         retags = re.compile(tags, re.DOTALL | re.IGNORECASE)
         utext = retags.sub("", utext)
     return utext
