@@ -303,6 +303,47 @@ class UrlTests(unittest.TestCase):
             "http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2F%2Fpath%2Fto%2F%23%2Fbar%2Ffoo#frag",
         )
 
+    def test_safe_url_string_encode_idna_domain_with_port(self):
+        self.assertEqual(
+            safe_url_string("http://新华网.中国:80"), "http://xn--xkrr14bows.xn--fiqs8s:80"
+        )
+
+    def test_safe_url_string_encode_idna_domain_with_username_password_and_port_number(
+        self,
+    ):
+        self.assertEqual(
+            safe_url_string("ftp://admin:admin@新华网.中国:21"),
+            "ftp://admin:admin@xn--xkrr14bows.xn--fiqs8s:21",
+        )
+        self.assertEqual(
+            safe_url_string("http://Åsa:abc123@➡.ws:81/admin"),
+            "http://%C3%85sa:abc123@xn--hgi.ws:81/admin",
+        )
+        self.assertEqual(
+            safe_url_string("http://japão:não@️i❤️.ws:8000/"),
+            "http://jap%C3%A3o:n%C3%A3o@xn--i-7iq.ws:8000/",
+        )
+
+    def test_safe_url_string_encode_idna_domain_with_username_and_empty_password_and_port_number(
+        self,
+    ):
+        self.assertEqual(
+            safe_url_string("ftp://admin:@新华网.中国:21"),
+            "ftp://admin:@xn--xkrr14bows.xn--fiqs8s:21",
+        )
+        self.assertEqual(
+            safe_url_string("ftp://admin@新华网.中国:21"),
+            "ftp://admin@xn--xkrr14bows.xn--fiqs8s:21",
+        )
+
+    def test_safe_url_string_userinfo_unsafe_chars(
+        self,
+    ):
+        self.assertEqual(
+            safe_url_string("ftp://admin:|%@example.com"),
+            "ftp://admin:%7C%25@example.com",
+        )
+
     def test_safe_download_url(self):
         self.assertEqual(
             safe_download_url("http://www.example.org"), "http://www.example.org/"
@@ -1095,39 +1136,6 @@ class DataURITests(unittest.TestCase):
         self.assertEqual(result.data, b"A brief note")
         result = parse_data_uri("DaTa:,A%20brief%20note")
         self.assertEqual(result.data, b"A brief note")
-
-    def test_safe_url_string_encode_idna_domain_with_port(self):
-        self.assertEqual(
-            safe_url_string("http://新华网.中国:80"), "http://xn--xkrr14bows.xn--fiqs8s:80"
-        )
-
-    def test_safe_url_string_encode_idna_domain_with_username_password_and_port_number(
-        self,
-    ):
-        self.assertEqual(
-            safe_url_string("ftp://admin:admin@新华网.中国:21"),
-            "ftp://admin:admin@xn--xkrr14bows.xn--fiqs8s:21",
-        )
-        self.assertEqual(
-            safe_url_string("http://Åsa:abc123@➡.ws:81/admin"),
-            "http://%C3%85sa:abc123@xn--hgi.ws:81/admin",
-        )
-        self.assertEqual(
-            safe_url_string("http://japão:não@️i❤️.ws:8000/"),
-            "http://jap%C3%A3o:n%C3%A3o@xn--i-7iq.ws:8000/",
-        )
-
-    def test_safe_url_string_encode_idna_domain_with_username_and_empty_password_and_port_number(
-        self,
-    ):
-        self.assertEqual(
-            safe_url_string("ftp://admin:@新华网.中国:21"),
-            "ftp://admin@xn--xkrr14bows.xn--fiqs8s:21",
-        )
-        self.assertEqual(
-            safe_url_string("ftp://admin@新华网.中国:21"),
-            "ftp://admin@xn--xkrr14bows.xn--fiqs8s:21",
-        )
 
 
 if __name__ == "__main__":
