@@ -669,3 +669,14 @@ http://www.example.org/index.php" />
             get_meta_refresh(body, baseurl, ignore_tags=()),
             (0.0, "http://example.org/foobar_required"),
         )
+
+    def test_redirections_in_different_ordering__in_meta_tag(self):
+        baseurl = 'http://localhost:8000'
+        url1 = '<html><head><meta http-equiv="refresh" content="0;url=dummy.html"></head></html>'
+        url2 = '<html><head><meta content="0;url=dummy.html" http-equiv="refresh"></head></html>'
+        self.assertEqual(
+            get_meta_refresh(url1, baseurl), (0.0, 'http://localhost:8000/dummy.html')
+        )
+        self.assertEqual(
+            get_meta_refresh(url2, baseurl), (0.0, 'http://localhost:8000/dummy.html')
+        )
