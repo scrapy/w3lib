@@ -25,22 +25,7 @@ _meta_refresh_re2 = re.compile(
     r'<meta\s[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)\shttp-equiv="refresh"',
     re.DOTALL | re.IGNORECASE,
 )
-# create patterns here...
-# re_first = re.compile(r'meta\s[^>]*')
-# re_second = re.compile(r'content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*')
-# re_third = re.compile(r'http-equiv[^>]*refresh[^>]*')
-# re_fourth = re.compile(r'url=\s*(?P<url>.*?)(?P=quote)')
 
-# create a list with them
-# regexes = [re_first, re_second, re_third, re_fourth]
-
-# create the combined one
-# pattern_combined = '|'.join(x.pattern for x in regexes)
-#
-# _meta_refresh_re2 = re.compile(
-#     pattern_combined,
-#     re.DOTALL | re.IGNORECASE,
-# )
 _cdata_re = re.compile(
     r"((?P<cdata_s><!\[CDATA\[)(?P<cdata_d>.*?)(?P<cdata_e>\]\]>))", re.DOTALL
 )
@@ -360,7 +345,6 @@ def get_meta_refresh(
     utext = remove_comments(replace_entities(utext))
     m = _meta_refresh_re.search(utext) or _meta_refresh_re2.search(utext)
     if m:
-        m.group("int")
         interval = float(m.group("int"))
         url = safe_url_string(m.group("url").strip(" \"'"), encoding)
         url = urljoin(baseurl, url)
