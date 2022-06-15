@@ -73,54 +73,18 @@ class RemoveEntitiesTest(unittest.TestCase):
 
     def test_missing_semicolon(self):
         for entity, result in (
-            (
-                "&lt&lt!",
-                "<<!",
-            ),
-            (
-                "&LT!",
-                "<!",
-            ),
-            (
-                "&#X41 ",
-                "A ",
-            ),
-            (
-                "&#x41!",
-                "A!",
-            ),
-            (
-                "&#x41h",
-                "Ah",
-            ),
-            (
-                "&#65!",
-                "A!",
-            ),
-            (
-                "&#65x",
-                "Ax",
-            ),
-            (
-                "&sup3!",
-                "\u00B3!",
-            ),
-            (
-                "&Aacute!",
-                "\u00C1!",
-            ),
-            (
-                "&#9731!",
-                "\u2603!",
-            ),
-            (
-                "&#153",
-                "\u2122",
-            ),
-            (
-                "&#x99",
-                "\u2122",
-            ),
+            ("&lt&lt!", "<<!"),
+            ("&LT!", "<!"),
+            ("&#X41 ", "A "),
+            ("&#x41!", "A!"),
+            ("&#x41h", "Ah"),
+            ("&#65!", "A!"),
+            ("&#65x", "Ax"),
+            ("&sup3!", "\u00B3!"),
+            ("&Aacute!", "\u00C1!"),
+            ("&#9731!", "\u2603!"),
+            ("&#153", "\u2122"),
+            ("&#x99", "\u2122"),
         ):
             self.assertEqual(replace_entities(entity, encoding="cp1252"), result)
             self.assertEqual(
@@ -203,16 +167,7 @@ class RemoveTagsTest(unittest.TestCase):
     def test_remove_tags_without_tags(self):
         # text without tags
         self.assertEqual(remove_tags("no tags"), "no tags")
-        self.assertEqual(
-            remove_tags(
-                "no tags",
-                which_ones=(
-                    "p",
-                    "b",
-                ),
-            ),
-            "no tags",
-        )
+        self.assertEqual(remove_tags("no tags", which_ones=("p", "b")), "no tags")
 
     def test_remove_tags(self):
         # text with tags
@@ -294,14 +249,7 @@ class RemoveTagsWithContentTest(unittest.TestCase):
         # text without tags
         self.assertEqual(remove_tags_with_content("no tags"), "no tags")
         self.assertEqual(
-            remove_tags_with_content(
-                "no tags",
-                which_ones=(
-                    "p",
-                    "b",
-                ),
-            ),
-            "no tags",
+            remove_tags_with_content("no tags", which_ones=("p", "b")), "no tags"
         )
 
     def test_with_tags(self):
@@ -340,28 +288,10 @@ class ReplaceEscapeCharsTest(unittest.TestCase):
         assert isinstance(replace_escape_chars(b"no ec"), str)
         assert isinstance(replace_escape_chars(b"no ec", replace_by="str"), str)
         assert isinstance(replace_escape_chars(b"no ec", replace_by="str"), str)
-        assert isinstance(
-            replace_escape_chars(
-                b"no ec",
-                which_ones=(
-                    "\n",
-                    "\t",
-                ),
-            ),
-            str,
-        )
+        assert isinstance(replace_escape_chars(b"no ec", which_ones=("\n", "\t")), str)
         assert isinstance(replace_escape_chars("no ec"), str)
         assert isinstance(replace_escape_chars("no ec", replace_by="str"), str)
-        assert isinstance(
-            replace_escape_chars(
-                "no ec",
-                which_ones=(
-                    "\n",
-                    "\t",
-                ),
-            ),
-            str,
-        )
+        assert isinstance(replace_escape_chars("no ec", which_ones=("\n", "\t")), str)
 
     def test_without_escape_chars(self):
         # text without escape chars
@@ -671,12 +601,12 @@ http://www.example.org/index.php" />
         )
 
     def test_redirections_in_different_ordering__in_meta_tag(self):
-        baseurl = 'http://localhost:8000'
+        baseurl = "http://localhost:8000"
         url1 = '<html><head><meta http-equiv="refresh" content="0;url=dummy.html"></head></html>'
         url2 = '<html><head><meta content="0;url=dummy.html" http-equiv="refresh"></head></html>'
         self.assertEqual(
-            get_meta_refresh(url1, baseurl), (0.0, 'http://localhost:8000/dummy.html')
+            get_meta_refresh(url1, baseurl), (0.0, "http://localhost:8000/dummy.html")
         )
         self.assertEqual(
-            get_meta_refresh(url2, baseurl), (0.0, 'http://localhost:8000/dummy.html')
+            get_meta_refresh(url2, baseurl), (0.0, "http://localhost:8000/dummy.html")
         )

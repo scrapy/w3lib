@@ -22,7 +22,7 @@ _meta_refresh_re = re.compile(
     re.DOTALL | re.IGNORECASE,
 )
 _meta_refresh_re2 = re.compile(
-     r'<meta\s[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)[^>]*?\shttp-equiv\s*=[^>]*refresh',
+    r'<meta\s[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)[^>]*?\shttp-equiv\s*=[^>]*refresh',
     re.DOTALL | re.IGNORECASE,
 )
 
