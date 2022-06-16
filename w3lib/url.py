@@ -55,6 +55,7 @@ EXTRA_SAFE_CHARS = b"|"  # see https://github.com/scrapy/w3lib/pull/25
 
 _safe_chars = RFC3986_RESERVED + RFC3986_UNRESERVED + EXTRA_SAFE_CHARS + b"%"
 _path_safe_chars = _safe_chars.replace(b"#", b"")
+RFC3986_USERINFO_SAFE_CHARS = RFC3986_UNRESERVED + RFC3986_SUB_DELIMS + b":"
 
 _ascii_tab_newline_re = re.compile(
     r"[\t\n\r]"
@@ -95,14 +96,34 @@ def safe_url_string(
     decoded = to_unicode(url, encoding=encoding, errors="percentencode")
     parts = urlsplit(_ascii_tab_newline_re.sub("", decoded))
 
-    # IDNA encoding can fail for too long labels (>63 characters)
-    # or missing labels (e.g. http://.example.com)
-    try:
-        netloc_bytes = parts.netloc.encode("idna")
-    except UnicodeError:
-        netloc = parts.netloc
-    else:
-        netloc = netloc_bytes.decode()
+    username, password, hostname, port = (
+        parts.username,
+        parts.password,
+        parts.hostname,
+        parts.port,
+    )
+    netloc_bytes = b""
+    if username is not None or password is not None:
+        if username is not None:
+            safe_username = quote(username, RFC3986_USERINFO_SAFE_CHARS)
+            netloc_bytes += safe_username.encode(encoding)
+        if password is not None:
+            netloc_bytes += b":"
+            safe_password = quote(password, RFC3986_USERINFO_SAFE_CHARS)
+            netloc_bytes += safe_password.encode(encoding)
+        netloc_bytes += b"@"
+    if hostname is not None:
+        try:
+            netloc_bytes += hostname.encode("idna")
+        except UnicodeError:
+            # IDNA encoding can fail for too long labels (>63 characters) or
+            # missing labels (e.g. http://.example.com)
+            netloc_bytes += hostname.encode(encoding)
+    if port is not None:
+        netloc_bytes += b":"
+        netloc_bytes += str(port).encode(encoding)
+
+    netloc = netloc_bytes.decode()
 
     # default encoding for path component SHOULD be UTF-8
     if quote_path:
@@ -113,7 +134,7 @@ def safe_url_string(
     return urlunsplit(
         (
             parts.scheme,
-            netloc.rstrip(":"),
+            netloc,
             path,
             quote(parts.query.encode(encoding), _safe_chars),
             quote(parts.fragment.encode(encoding), _safe_chars),
