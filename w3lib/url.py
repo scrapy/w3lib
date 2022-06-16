@@ -338,8 +338,6 @@ def path_to_file_uri(path: str) -> str:
     http://en.wikipedia.org/wiki/File_URI_scheme
     """
     x = pathname2url(os.path.abspath(path))
-    if os.name == "nt":
-        x = x.replace("|", ":")  # http://bugs.python.org/issue5861
     return f"file:///{x.lstrip('/')}"
 
 
