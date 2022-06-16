@@ -446,7 +446,7 @@ def parse_data_uri(uri: StrOrBytes) -> ParseDataURIResult:
         if m:
             attribute, value, value_quoted = m.groups()
             if value_quoted:
-                value = re.sub(br"\\(.)", rb"\1", value_quoted)
+                value = re.sub(rb"\\(.)", rb"\1", value_quoted)
             media_type_params[attribute.decode()] = value.decode()
             uri = uri[m.end() :]
         else:
