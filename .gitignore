@@ -8,4 +8,9 @@ dist
 docs/_build
 _trial_temp
 .coverage
+coverage.xml
 .cache
+.mypy_cache/
+/index.txt
+.dmypy.json
+.hypothesis/

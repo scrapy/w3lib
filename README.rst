@@ -2,8 +2,8 @@
 w3lib
 =====
 
-.. image:: https://secure.travis-ci.org/scrapy/w3lib.png?branch=master
-   :target: http://travis-ci.org/scrapy/w3lib
+.. image:: https://github.com/scrapy/w3lib/actions/workflows/tests.yml/badge.svg
+   :target: https://github.com/scrapy/w3lib/actions
 
 .. image:: https://img.shields.io/codecov/c/github/scrapy/w3lib/master.svg
    :target: http://codecov.io/github/scrapy/w3lib?branch=master
@@ -27,7 +27,7 @@ This is a Python library of web-related functions, such as:
 Requirements
 ============
 
-Python 2.7 or Python 3.5+
+Python 3.6+
 
 Install
 =======
