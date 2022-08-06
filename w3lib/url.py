@@ -41,7 +41,7 @@ from w3lib._types import AnyUnicodeError, StrOrBytes
 # error handling function for bytes-to-Unicode decoding errors with URLs
 def _quote_byte(error: UnicodeError) -> Tuple[str, int]:
     error = cast(AnyUnicodeError, error)
-    return (to_unicode(quote(error.object[error.start : error.end])), error.end)
+    return (to_unicode(quote(error.object[error.start: error.end])), error.end)
 
 
 codecs.register_error("percentencode", _quote_byte)
@@ -435,7 +435,7 @@ def parse_data_uri(uri: StrOrBytes) -> ParseDataURIResult:
     m = _mediatype_pattern.match(uri)
     if m:
         media_type = m.group().decode()
-        uri = uri[m.end() :]
+        uri = uri[m.end():]
     else:
         media_type_params["charset"] = "US-ASCII"
 
@@ -446,7 +446,7 @@ def parse_data_uri(uri: StrOrBytes) -> ParseDataURIResult:
             if value_quoted:
                 value = re.sub(rb"\\(.)", rb"\1", value_quoted)
             media_type_params[attribute.decode()] = value.decode()
-            uri = uri[m.end() :]
+            uri = uri[m.end():]
         else:
             break
 

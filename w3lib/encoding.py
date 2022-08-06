@@ -285,20 +285,20 @@ def html_to_unicode(
         # remove BOM if it agrees with the encoding
         if enc == bom_enc:
             bom = cast(bytes, bom)
-            html_body_str = html_body_str[len(bom) :]
+            html_body_str = html_body_str[len(bom):]
         elif enc == "utf-16" or enc == "utf-32":
             # read endianness from BOM, or default to big endian
             # tools.ietf.org/html/rfc2781 section 4.3
             if bom_enc is not None and bom_enc.startswith(enc):
                 enc = bom_enc
                 bom = cast(bytes, bom)
-                html_body_str = html_body_str[len(bom) :]
+                html_body_str = html_body_str[len(bom):]
             else:
                 enc += "-be"
         return enc, to_unicode(html_body_str, enc)
     if bom_enc is not None:
         bom = cast(bytes, bom)
-        return bom_enc, to_unicode(html_body_str[len(bom) :], bom_enc)
+        return bom_enc, to_unicode(html_body_str[len(bom):], bom_enc)
     enc = html_body_declared_encoding(html_body_str)
     if enc is None and (auto_detect_fun is not None):
         enc = auto_detect_fun(html_body_str)
