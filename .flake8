@@ -9,5 +9,8 @@ ignore =
     W503,
     W504,
 
+    # black disagrees with flake8, and inserts whitespace
+    E203,  # whitespace before ':'
+
     # It seems flake8 can misfire on it
     E401, # multiple imports on one line

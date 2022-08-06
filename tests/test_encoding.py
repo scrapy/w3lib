@@ -40,7 +40,7 @@ class RequestEncodingTests(unittest.TestCase):
             bom_encoding, bom = read_bom(string)
             assert bom_encoding is not None
             assert bom is not None
-            decoded = string[len(bom):].decode(bom_encoding)
+            decoded = string[len(bom) :].decode(bom_encoding)
             self.assertEqual(water_unicode, decoded)
         # Body without BOM
         enc, bom = read_bom(b"foo")
@@ -282,6 +282,7 @@ class HtmlConversionTests(unittest.TestCase):
     def test_autodetect(self):
         def asciif(x):
             return "ascii"
+
         body = b"""<meta charset="utf-8">"""
         # body encoding takes precedence
         self._assert_encoding_detected(None, "utf-8", body, auto_detect_fun=asciif)
