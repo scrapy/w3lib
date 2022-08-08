@@ -275,7 +275,7 @@ def url_query_cleaner(
             querylist.append(ksv)
             seen.add(k)
     url = "?".join([base, sep.join(querylist)]) if querylist else base
-    if keep_fragments:
+    if keep_fragments and fragment:
         url += "#" + fragment
     return cast(str, url)
 
