@@ -280,7 +280,9 @@ class HtmlConversionTests(unittest.TestCase):
         self._assert_encoding_detected(None, "utf-8", codecs.BOM_UTF8 + body)
 
     def test_autodetect(self):
-        asciif = lambda x: "ascii"
+        def asciif(x):
+            return "ascii"
+
         body = b"""<meta charset="utf-8">"""
         # body encoding takes precedence
         self._assert_encoding_detected(None, "utf-8", body, auto_detect_fun=asciif)
