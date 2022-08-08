@@ -630,12 +630,11 @@ class UrlTests(unittest.TestCase):
                 keep_fragments=True,
             ),
         )
-        self.assertEqual('product.html?id=200',
-                url_query_cleaner(
-                    "product.html?id=200&foo=bar&name=wired",
-                    ["id"],
-                    keep_fragments=True
-                ),
+        self.assertEqual(
+            "product.html?id=200",
+            url_query_cleaner(
+                "product.html?id=200&foo=bar&name=wired", ["id"], keep_fragments=True
+            ),
         )
 
     def test_path_to_file_uri(self):
