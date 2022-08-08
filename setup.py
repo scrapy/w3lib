@@ -10,6 +10,9 @@ setup(
     author_email="info@scrapy.org",
     url="https://github.com/scrapy/w3lib",
     packages=find_packages(exclude=("tests", "tests.*")),
+    package_data={
+        "w3lib": ["py.typed"],
+    },
     include_package_data=True,
     zip_safe=False,
     platforms=["Any"],
