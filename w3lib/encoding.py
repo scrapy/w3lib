@@ -1,8 +1,11 @@
 """
 Functions for handling encoding of web pages
 """
-import re, codecs, encodings
+import re
+import codecs
+import encodings
 from typing import Callable, Match, Optional, Tuple, Union, cast
+
 from w3lib._types import AnyUnicodeError, StrOrBytes
 import w3lib.util
 
