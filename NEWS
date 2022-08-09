@@ -8,18 +8,18 @@ Backwards incompatible changes:
 
 - Python 2 is no longer supported; Python 3.6+ is required now (#168, #175).
 - :func:`w3lib.url.safe_url_string` and :func:`w3lib.url.canonicalize_url`
-  no longer convert "%23" to "#" when it appears in URl path. This is a bug
-  fix. It's listed as a backwards incomatible change because in some
-  cases :func:`w3lib.url.canonicalize_url` output is going to change,
-  and so, if this output is used to generate URL fingerprints, fingerprints
-  might be incompatible with those created with the previous w3lib versions
+  no longer convert "%23" to "#" when it appears in the URL path. This is a bug
+  fix. It's listed as a backward-incomatible change because in some cases the
+  output of :func:`w3lib.url.canonicalize_url` is going to change, and so, if
+  this output is used to generate URL fingerprints, new fingerprints might be
+  incompatible with those created with the previous w3lib versions
   (#141).
 
 Deprecation removals (#169):
 
-- ``w3lib.form`` module is removed.
-- ``w3lib.html.remove_entities`` function is removed.
-- ``w3lib.url.urljoin_rfc`` function is removed.
+- The ``w3lib.form`` module is removed.
+- The ``w3lib.html.remove_entities`` function is removed.
+- The ``w3lib.url.urljoin_rfc`` function is removed.
 
 The following functions are deprecated, and will be removed in future releases
 (#170):
@@ -36,10 +36,12 @@ Other improvements and bug fixes:
   ``http-equiv`` is written after ``content`` (#179).
 - Fixed :func:`w3lib.url.safe_url_string` for IDNA domains with ports (#174).
 - :func:`w3lib.url.url_query_cleaner` no longer adds an unneeded ``#`` when
-  ``keep_fragments=True`` is passed, and URL doesn't have a fragment (#159).
-- Removed a workaround for ancient pathname2url bug (#142)
-- CI is migrated to Github Actions (#166, #177); other CI improvements (#160, #182).
-- Code is formatted using black (#173)
+  ``keep_fragments=True`` is passed, and the URL doesn't have a fragment
+  (#159).
+- Removed a workaround for an ancient pathname2url bug (#142)
+- CI is migrated to GitHub Actions (#166, #177); other CI improvements (#160,
+  #182).
+- The code is formatted using black (#173).
 
 1.22.0 (2020-05-13)
 -------------------
