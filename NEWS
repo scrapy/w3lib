@@ -1,8 +1,12 @@
 w3lib release notes
 ===================
 
-2.0.0 (to be released)
-----------------------
+2.0.1 (2022-08-11)
+------------------
+Minor documentation fix (release date is set in the changelog).
+
+2.0.0 (2022-08-11)
+------------------
 
 Backwards incompatible changes:
 
