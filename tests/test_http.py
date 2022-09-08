@@ -17,7 +17,7 @@ class HttpTests(unittest.TestCase):
         )
         # Check url unsafe encoded header
         self.assertEqual(
-            b"Basic c29tZXVzZXI6QDx5dTk-Jm8_UQ==",
+            b"Basic c29tZXVzZXI6QDx5dTk+Jm8/UQ==",
             basic_auth_header("someuser", "@<yu9>&o?Q"),
         )
 
@@ -28,7 +28,7 @@ class HttpTests(unittest.TestCase):
         )
         # default encoding (ISO-8859-1)
         self.assertEqual(
-            b"Basic c29t5nVz6HI6c_htZXDkc3M=", basic_auth_header("somæusèr", "sømepäss")
+            b"Basic c29t5nVz6HI6c/htZXDkc3M=", basic_auth_header("somæusèr", "sømepäss")
         )
 
     def test_headers_raw_dict_none(self):
