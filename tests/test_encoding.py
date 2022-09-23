@@ -220,10 +220,10 @@ class HtmlConversionTests(unittest.TestCase):
     def test_BOM(self):
         # utf-16 cases already tested, as is the BOM detection function
 
-        # http header takes precedence, irrespective of BOM
+        # BOM takes precedence, ahead of the http header
         bom_be_str = codecs.BOM_UTF16_BE + "hi".encode("utf-16-be")
-        expected = "\ufffd\ufffd\x00h\x00i"
-        self._assert_encoding("utf-8", bom_be_str, "utf-8", expected)
+        expected = "hi"
+        self._assert_encoding("utf-8", bom_be_str, "utf-16-be", expected)
 
         # BOM is stripped when it agrees with the encoding, or used to
         # determine encoding
