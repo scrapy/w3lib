@@ -218,7 +218,7 @@ def html_to_unicode(
     content_type_header: Optional[str],
     html_body_str: bytes,
     default_encoding: str = "utf8",
-    auto_detect_fun: Optional[Callable[[bytes], str]] = None,
+    auto_detect_fun: Optional[Callable[[bytes], Optional[str]]] = None,
 ) -> Tuple[str, str]:
     r'''Convert raw html bytes to unicode
 
