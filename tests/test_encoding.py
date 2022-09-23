@@ -225,8 +225,7 @@ class HtmlConversionTests(unittest.TestCase):
         expected = "hi"
         self._assert_encoding("utf-8", bom_be_str, "utf-16-be", expected)
 
-        # BOM is stripped when it agrees with the encoding, or used to
-        # determine encoding
+        # BOM is stripped when present
         bom_utf8_str = codecs.BOM_UTF8 + b"hi"
         self._assert_encoding("utf-8", bom_utf8_str, "utf-8", "hi")
         self._assert_encoding(None, bom_utf8_str, "utf-8", "hi")
