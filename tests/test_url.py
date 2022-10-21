@@ -352,12 +352,12 @@ class UrlTests(unittest.TestCase):
 
         self.assertEqual(
             safe_url_string("http://%user:%pass@host"),
-            "http://%user:%pass@host",
+            "http://%25user:%25pass@host",
         )
 
         self.assertEqual(
             safe_url_string("http://%26user:%26pass@host"),
-            "http://%26user:%26pass@host",
+            "http://&user:&pass@host",
         )
 
         self.assertEqual(
@@ -372,7 +372,7 @@ class UrlTests(unittest.TestCase):
 
         self.assertEqual(
             safe_url_string("http://%25%26user:%25%26pass@host"),
-            "http://%25%26user:%25%26pass@host",
+            "http://%25&user:%25&pass@host",
         )
 
     def test_safe_download_url(self):
