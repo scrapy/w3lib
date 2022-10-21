@@ -30,7 +30,8 @@ from urllib.parse import (
     urlparse,
     urlsplit,
     urlunparse,
-    urlunsplit, unquote,
+    urlunsplit,
+    unquote,
 )
 from urllib.parse import _coerce_args  # type: ignore
 from urllib.request import pathname2url, url2pathname
