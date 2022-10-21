@@ -344,6 +344,37 @@ class UrlTests(unittest.TestCase):
             "ftp://admin:%7C%25@example.com",
         )
 
+    def test_safe_url_string_user_and_pass_percentage_encoded(self):
+        self.assertEqual(
+            safe_url_string("http://%25user:%25pass@host"),
+            "http://%25user:%25pass@host",
+        )
+
+        self.assertEqual(
+            safe_url_string("http://%user:%pass@host"),
+            "http://%user:%pass@host",
+        )
+
+        self.assertEqual(
+            safe_url_string("http://%26user:%26pass@host"),
+            "http://%26user:%26pass@host",
+        )
+
+        self.assertEqual(
+            safe_url_string("http://%2525user:%2525pass@host"),
+            "http://%2525user:%2525pass@host",
+        )
+
+        self.assertEqual(
+            safe_url_string("http://%2526user:%2526pass@host"),
+            "http://%2526user:%2526pass@host",
+        )
+
+        self.assertEqual(
+            safe_url_string("http://%25%26user:%25%26pass@host"),
+            "http://%25%26user:%25%26pass@host",
+        )
+
     def test_safe_download_url(self):
         self.assertEqual(
             safe_download_url("http://www.example.org"), "http://www.example.org/"
