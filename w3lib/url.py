@@ -31,6 +31,7 @@ from urllib.parse import (
     urlsplit,
     urlunparse,
     urlunsplit,
+    unquote,
 )
 from urllib.parse import _coerce_args  # type: ignore
 from urllib.request import pathname2url, url2pathname
@@ -105,11 +106,11 @@ def safe_url_string(
     netloc_bytes = b""
     if username is not None or password is not None:
         if username is not None:
-            safe_username = quote(username, RFC3986_USERINFO_SAFE_CHARS)
+            safe_username = quote(unquote(username), RFC3986_USERINFO_SAFE_CHARS)
             netloc_bytes += safe_username.encode(encoding)
         if password is not None:
             netloc_bytes += b":"
-            safe_password = quote(password, RFC3986_USERINFO_SAFE_CHARS)
+            safe_password = quote(unquote(password), RFC3986_USERINFO_SAFE_CHARS)
             netloc_bytes += safe_password.encode(encoding)
         netloc_bytes += b"@"
     if hostname is not None:
