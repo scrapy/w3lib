@@ -1086,12 +1086,15 @@ class CanonicalizeUrlTest(unittest.TestCase):
         )
 
     def test_strip_spaces(self):
-        self.assertEqual(canonicalize_url(' https://example.com'),
-                         'https://example.com/')
-        self.assertEqual(canonicalize_url('https://example.com '),
-                         'https://example.com/')
-        self.assertEqual(canonicalize_url(' https://example.com '),
-                         'https://example.com/')
+        self.assertEqual(
+            canonicalize_url(" https://example.com"), "https://example.com/"
+        )
+        self.assertEqual(
+            canonicalize_url("https://example.com "), "https://example.com/"
+        )
+        self.assertEqual(
+            canonicalize_url(" https://example.com "), "https://example.com/"
+        )
 
 
 class DataURITests(unittest.TestCase):
