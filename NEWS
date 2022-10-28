@@ -1,6 +1,70 @@
 w3lib release notes
 ===================
 
+2.0.1 (2022-08-11)
+------------------
+Minor documentation fix (release date is set in the changelog).
+
+2.0.0 (2022-08-11)
+------------------
+
+Backwards incompatible changes:
+
+- Python 2 is no longer supported; Python 3.6+ is required now (#168, #175).
+- :func:`w3lib.url.safe_url_string` and :func:`w3lib.url.canonicalize_url`
+  no longer convert "%23" to "#" when it appears in the URL path. This is a bug
+  fix. It's listed as a backward-incomatible change because in some cases the
+  output of :func:`w3lib.url.canonicalize_url` is going to change, and so, if
+  this output is used to generate URL fingerprints, new fingerprints might be
+  incompatible with those created with the previous w3lib versions
+  (#141).
+
+Deprecation removals (#169):
+
+- The ``w3lib.form`` module is removed.
+- The ``w3lib.html.remove_entities`` function is removed.
+- The ``w3lib.url.urljoin_rfc`` function is removed.
+
+The following functions are deprecated, and will be removed in future releases
+(#170):
+
+- ``w3lib.util.str_to_unicode``
+- ``w3lib.util.unicode_to_str``
+- ``w3lib.util.to_native_str``
+
+Other improvements and bug fixes:
+
+- Type annotations are added (#172, #184).
+- Added support for Python 3.9 and 3.10 (#168, #176).
+- Fixed :func:`w3lib.html.get_meta_refresh` for ``<meta>`` tags where
+  ``http-equiv`` is written after ``content`` (#179).
+- Fixed :func:`w3lib.url.safe_url_string` for IDNA domains with ports (#174).
+- :func:`w3lib.url.url_query_cleaner` no longer adds an unneeded ``#`` when
+  ``keep_fragments=True`` is passed, and the URL doesn't have a fragment
+  (#159).
+- Removed a workaround for an ancient pathname2url bug (#142)
+- CI is migrated to GitHub Actions (#166, #177); other CI improvements (#160,
+  #182).
+- The code is formatted using black (#173).
+
+1.22.0 (2020-05-13)
+-------------------
+
+- Python 3.4 is no longer supported (issue #156)
+- :func:`w3lib.url.safe_url_string` now supports an optional ``quote_path``
+  parameter to disable the percent-encoding of the URL path (issue #119)
+- :func:`w3lib.url.add_or_replace_parameter` and
+  :func:`w3lib.url.add_or_replace_parameters` no longer remove duplicate
+  parameters from the original query string that are not being added or
+  replaced (issue #126)
+- :func:`w3lib.html.remove_tags` now raises a :exc:`ValueError` exception
+  instead of :exc:`AssertionError` when using both the ``which_ones`` and the
+  ``keep`` parameters (issue #154)
+- Test improvements (issues #143, #146, #148, #149)
+- Documentation improvements (issues #140, #144, #145, #151, #152, #153)
+- Code cleanup (issue #139)
+
+
 1.21.0 (2019-08-09)
 -------------------
 

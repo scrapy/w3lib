@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-#
 # w3lib documentation build configuration file, created by
 # sphinx-quickstart on Sun Jan 26 22:19:38 2014.
 #
@@ -26,6 +24,8 @@ sys.path.insert(0, os.path.abspath('..'))
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
+    'hoverxref.extension',
+    'notfound.extension',
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
     'sphinx.ext.intersphinx',
@@ -45,15 +45,15 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'w3lib'
-copyright = u'2014, w3lib developers'
+project = 'w3lib'
+copyright = '2014, w3lib developers'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
 # The full version, including alpha/beta/rc tags.
-release = '1.21.0'
+release = '2.0.1'
 # The short X.Y version.
 version = '.'.join(release.split('.')[:2])
 
@@ -125,7 +125,7 @@ html_theme = 'default'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = []
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
@@ -188,8 +188,8 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'w3lib.tex', u'w3lib Documentation',
-   u'w3lib developers', 'manual'),
+  ('index', 'w3lib.tex', 'w3lib Documentation',
+   'w3lib developers', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -218,8 +218,8 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'w3lib', u'w3lib Documentation',
-     [u'w3lib developers'], 1)
+    ('index', 'w3lib', 'w3lib Documentation',
+     ['w3lib developers'], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -232,8 +232,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'w3lib', u'w3lib Documentation',
-   u'w3lib developers', 'w3lib', 'One line description of project.',
+  ('index', 'w3lib', 'w3lib Documentation',
+   'w3lib developers', 'w3lib', 'One line description of project.',
    'Miscellaneous'),
 ]
 
@@ -248,4 +248,19 @@ texinfo_documents = [
 
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'http://docs.python.org/': None}
+intersphinx_mapping = {
+    'pytest': ('https://docs.pytest.org/en/latest', None),
+    'python': ('https://docs.python.org/3', None),
+    'scrapy': ('https://scrapy.readthedocs.io/en/latest', None),
+    'tox': ('https://tox.readthedocs.io/en/latest', None),
+}
+
+
+# -- Nitpicking options -------------------------------------------------------
+
+nitpicky = True
+
+
+# -- sphinx-hoverxref options -------------------------------------------------
+
+hoverxref_auto_ref = True
