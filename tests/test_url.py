@@ -820,6 +820,20 @@ class CanonicalizeUrlTest(unittest.TestCase):
             "http://www.example.com/r%C3%A9sum%C3%A9?country=%D0%A0%D0%BE%D1%81%D1%81%D0%B8%D1%8F",
         )
 
+    def test_canonicalize_url_percentage_encoding(self):
+        url = "https://example.com/path/to/foo%20bar%3a%20biz%20%2376%2c%20bang%202017#bash"
+        canonical = canonicalize_url(url)
+
+        # assert #bash is not on the url
+        canonical_url = (
+            "https://example.com/path/to/foo%20bar:%20biz%20%2376,%20bang%202017"
+        )
+        self.assertEqual(canonical, canonical_url)
+
+        # assert comma does not break url
+        canonical_from_canonical = canonicalize_url(canonical)
+        self.assertEqual(canonical, canonical_from_canonical)
+
     def test_normalize_percent_encoding_in_paths(self):
         self.assertEqual(
             canonicalize_url("http://www.example.com/r%c3%a9sum%c3%a9"),
