@@ -848,14 +848,8 @@ class CanonicalizeUrlTest(unittest.TestCase):
         url = "https://example.com/a%23b%2cc#bash"
         canonical = canonicalize_url(url)
         # %23 is not accidentally interpreted as a URL fragment separator
-        self.assertEqual(
-            canonical,
-            "https://example.com/a%23b,c"
-        )
-        self.assertEqual(
-            canonical,
-            canonicalize_url(canonical)
-        )
+        self.assertEqual(canonical, "https://example.com/a%23b,c")
+        self.assertEqual(canonical, canonicalize_url(canonical))
 
     def test_normalize_percent_encoding_in_query_arguments(self):
         self.assertEqual(
