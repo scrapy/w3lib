@@ -845,12 +845,12 @@ class CanonicalizeUrlTest(unittest.TestCase):
             "http://www.example.com/a%A3do?q=r%E9sum%E9",
         )
 
-        url = "https://example.com/path/to/foo%20bar%3a%20biz%20%2376%2c%20bang%202017#bash"
+        url = "https://example.com/a%23b%2cc#bash"
         canonical = canonicalize_url(url)
         # %23 is not accidentally interpreted as a URL fragment separator
         self.assertEqual(
             canonical,
-            "https://example.com/path/to/foo%20bar:%20biz%20%2376,%20bang%202017"
+            "https://example.com/a%23b,c"
         )
         self.assertEqual(
             canonical,
