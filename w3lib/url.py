@@ -451,7 +451,7 @@ def canonicalize_url(url, keep_blank_values=True, keep_fragments=False,
     # UTF-8 can handle all Unicode characters,
     # so we should be covered regarding URL normalization,
     # if not for proper URL expected by remote website.
-    if isinstance(url, six.string_types):
+    if isinstance(url, str):
         url = url.strip()
     try:
         scheme, netloc, path, params, query, fragment = _safe_ParseResult(
