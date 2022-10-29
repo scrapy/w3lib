@@ -1085,6 +1085,17 @@ class CanonicalizeUrlTest(unittest.TestCase):
             "http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2F%2Fpath%2Fto%2F%23%2Fbar%2Ffoo#frag",
         )
 
+    def test_strip_spaces(self):
+        self.assertEqual(
+            canonicalize_url(" https://example.com"), "https://example.com/"
+        )
+        self.assertEqual(
+            canonicalize_url("https://example.com "), "https://example.com/"
+        )
+        self.assertEqual(
+            canonicalize_url(" https://example.com "), "https://example.com/"
+        )
+
 
 class DataURITests(unittest.TestCase):
     def test_default_mediatype_charset(self):
