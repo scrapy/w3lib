@@ -204,16 +204,16 @@ class UrlTests(unittest.TestCase):
         # + various others
         websites = (
             (
-                "http://www.färgbolaget.nu/färgbolaget",
-                "http://www.xn--frgbolaget-q5a.nu/f%C3%A4rgbolaget",
+                "http://www.färgbolaget.nu",
+                "http://www.xn--frgbolaget-q5a.nu",
             ),
             (
-                "http://www.räksmörgås.se/?räksmörgås=yes",
-                "http://www.xn--rksmrgs-5wao1o.se/?r%C3%A4ksm%C3%B6rg%C3%A5s=yes",
+                "http://www.räksmörgås.se",
+                "http://www.xn--rksmrgs-5wao1o.se",
             ),
             (
-                "http://www.brændendekærlighed.com/brændende/kærlighed",
-                "http://www.xn--brndendekrlighed-vobh.com/br%C3%A6ndende/k%C3%A6rlighed",
+                "http://www.brændendekærlighed.com",
+                "http://www.xn--brndendekrlighed-vobh.com",
             ),
             ("http://www.예비교사.com", "http://www.xn--9d0bm53a3xbzui.com"),
             ("http://理容ナカムラ.com", "http://xn--lck1c3crb1723bpq4a.com"),
@@ -221,25 +221,25 @@ class UrlTests(unittest.TestCase):
             # --- real websites ---
             # in practice, this redirect (301) to http://www.buecher.de/?q=b%C3%BCcher
             (
-                "http://www.bücher.de/?q=bücher",
-                "http://www.xn--bcher-kva.de/?q=b%C3%BCcher",
+                "http://www.bücher.de",
+                "http://www.xn--bcher-kva.de",
             ),
             # Japanese
             (
-                "http://はじめよう.みんな/?query=サ&maxResults=5",
-                "http://xn--p8j9a0d9c9a.xn--q9jyb4c/?query=%E3%82%B5&maxResults=5",
+                "http://はじめよう.みんな",
+                "http://xn--p8j9a0d9c9a.xn--q9jyb4c",
             ),
             # Russian
-            ("http://кто.рф/", "http://xn--j1ail.xn--p1ai/"),
+            ("http://кто.рф", "http://xn--j1ail.xn--p1ai"),
             (
-                "http://кто.рф/index.php?domain=Что",
-                "http://xn--j1ail.xn--p1ai/index.php?domain=%D0%A7%D1%82%D0%BE",
+                "http://кто.рф",
+                "http://xn--j1ail.xn--p1ai",
             ),
             # Korean
-            ("http://내도메인.한국/", "http://xn--220b31d95hq8o.xn--3e0b707e/"),
+            ("http://내도메인.한국", "http://xn--220b31d95hq8o.xn--3e0b707e"),
             (
-                "http://맨체스터시티축구단.한국/",
-                "http://xn--2e0b17htvgtvj9haj53ccob62ni8d.xn--3e0b707e/",
+                "http://맨체스터시티축구단.한국",
+                "http://xn--2e0b17htvgtvj9haj53ccob62ni8d.xn--3e0b707e",
             ),
             # Arabic
             ("http://nic.شبكة", "http://nic.xn--ngbc5azd"),
