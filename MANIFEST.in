@@ -1,3 +1,12 @@
 # Include tests into distribution
-recursive-include tests *
+recursive-include tests *.py *.txt
 
+# Include documentation source
+recursive-include docs Makefile make.bat conf.py *.rst
+
+# Miscellaneous assets
+include LICENSE
+include NEWS
+include README.rst
+include pytest.ini
+include tox.ini

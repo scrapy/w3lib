@@ -1,6 +1,137 @@
 w3lib release notes
 ===================
 
+2.0.1 (2022-08-11)
+------------------
+Minor documentation fix (release date is set in the changelog).
+
+2.0.0 (2022-08-11)
+------------------
+
+Backwards incompatible changes:
+
+- Python 2 is no longer supported; Python 3.6+ is required now (#168, #175).
+- :func:`w3lib.url.safe_url_string` and :func:`w3lib.url.canonicalize_url`
+  no longer convert "%23" to "#" when it appears in the URL path. This is a bug
+  fix. It's listed as a backward-incomatible change because in some cases the
+  output of :func:`w3lib.url.canonicalize_url` is going to change, and so, if
+  this output is used to generate URL fingerprints, new fingerprints might be
+  incompatible with those created with the previous w3lib versions
+  (#141).
+
+Deprecation removals (#169):
+
+- The ``w3lib.form`` module is removed.
+- The ``w3lib.html.remove_entities`` function is removed.
+- The ``w3lib.url.urljoin_rfc`` function is removed.
+
+The following functions are deprecated, and will be removed in future releases
+(#170):
+
+- ``w3lib.util.str_to_unicode``
+- ``w3lib.util.unicode_to_str``
+- ``w3lib.util.to_native_str``
+
+Other improvements and bug fixes:
+
+- Type annotations are added (#172, #184).
+- Added support for Python 3.9 and 3.10 (#168, #176).
+- Fixed :func:`w3lib.html.get_meta_refresh` for ``<meta>`` tags where
+  ``http-equiv`` is written after ``content`` (#179).
+- Fixed :func:`w3lib.url.safe_url_string` for IDNA domains with ports (#174).
+- :func:`w3lib.url.url_query_cleaner` no longer adds an unneeded ``#`` when
+  ``keep_fragments=True`` is passed, and the URL doesn't have a fragment
+  (#159).
+- Removed a workaround for an ancient pathname2url bug (#142)
+- CI is migrated to GitHub Actions (#166, #177); other CI improvements (#160,
+  #182).
+- The code is formatted using black (#173).
+
+1.22.0 (2020-05-13)
+-------------------
+
+- Python 3.4 is no longer supported (issue #156)
+- :func:`w3lib.url.safe_url_string` now supports an optional ``quote_path``
+  parameter to disable the percent-encoding of the URL path (issue #119)
+- :func:`w3lib.url.add_or_replace_parameter` and
+  :func:`w3lib.url.add_or_replace_parameters` no longer remove duplicate
+  parameters from the original query string that are not being added or
+  replaced (issue #126)
+- :func:`w3lib.html.remove_tags` now raises a :exc:`ValueError` exception
+  instead of :exc:`AssertionError` when using both the ``which_ones`` and the
+  ``keep`` parameters (issue #154)
+- Test improvements (issues #143, #146, #148, #149)
+- Documentation improvements (issues #140, #144, #145, #151, #152, #153)
+- Code cleanup (issue #139)
+
+
+1.21.0 (2019-08-09)
+-------------------
+
+- Add the ``encoding`` and ``path_encoding`` parameters to
+  :func:`w3lib.url.safe_download_url` (issue #118)
+- :func:`w3lib.url.safe_url_string` now also removes tabs and new lines
+  (issue #133)
+- :func:`w3lib.html.remove_comments` now also removes truncated comments
+  (issue #129)
+- :func:`w3lib.html.remove_tags_with_content` no longer removes tags which
+  start with the same text as one of the specified tags (issue #114)
+- Recommend pytest instead of nose to run tests (issue #124)
+
+
+1.20.0 (2019-01-11)
+-------------------
+
+- Fix url_query_cleaner to do not append "?" to urls without a query string (issue #109)
+- Add support for Python 3.7 and drop Python 3.3 (issue #113)
+- Add `w3lib.url.add_or_replace_parameters` helper (issue #117)
+- Documentation fixes (issue #115)
+
+
+1.19.0 (2018-01-25)
+-------------------
+
+- Add a workaround for CPython segfault (https://bugs.python.org/issue32583)
+  which affect w3lib.encoding functions. This is technically **backwards
+  incompatible** because it changes the way non-decodable bytes are replaced
+  (in some cases instead of two ``\ufffd`` chars you can get one).
+  As a side effect, the fix speeds up decoding in Python 3.4+.
+- Add 'encoding' parameter for w3lib.http.basic_auth_header.
+- Fix pypy testing setup, add pypy3 to CI.
+
+
+1.18.0 (2017-08-03)
+-------------------
+
+- Include additional assets used for distribution packages in the source tarball
+- Consider ``[`` and ``]`` as safe characters in path and query components
+  of URLs, i.e. they are not escaped anymore
+- Disable codecov project coverage check
+
+
+1.17.0 (2017-02-08)
+-------------------
+
+- Add Python 3.5 and 3.6 support
+- Add ``w3lib.url.parse_data_uri`` helper for parsing "data:" URIs
+- Add ``w3lib.html.strip_html5_whitespace`` function to strip leading and
+  trailing whitespace as per W3C recommendations, e.g. for cleaning
+  "href" attribute values
+- Fix ``w3lib.http.headers_raw_to_dict`` for multiple headers with same name
+- Do not distribute tests/test_*.pyc artifacts
+
+
+1.16.0 (2016-11-10)
+-------------------
+
+- ``canonicalize_url()`` and ``safe_url_string()``:
+  strip ":" when no port is specified (as per `RFC 3986`_;
+  see also https://github.com/scrapy/scrapy/issues/2377)
+- ``url_query_cleaner()``: support new ``keep_fragments`` argument
+  (defaulting to ``False``)
+
+.. _RFC 3986: https://tools.ietf.org/html/rfc3986#section-3.2
+
 1.15.0 (2016-07-29)
 -------------------
 

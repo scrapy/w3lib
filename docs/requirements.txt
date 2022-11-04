@@ -1,0 +1,5 @@
+docutils<0.18  # https://github.yuuza.net/sphinx-doc/sphinx/issues/9727
+sphinx
+sphinx-hoverxref
+sphinx-notfound-page
+sphinx_rtd_theme
