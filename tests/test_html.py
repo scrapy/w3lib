@@ -372,6 +372,30 @@ class GetBaseUrlTest(unittest.TestCase):
             get_base_url(text, baseurl.encode("ascii")), "http://example.org/something"
         )
 
+    def test_base_url_in_comment(self):
+        self.assertEqual(
+            get_base_url("""<!-- <base href="http://example.com/"/> -->"""), ""
+        )
+        self.assertEqual(
+            get_base_url("""<!-- <base href="http://example.com/"/>"""), ""
+        )
+        self.assertEqual(
+            get_base_url("""<!-- <base href="http://example.com/"/> --"""), ""
+        )
+        self.assertEqual(
+            get_base_url(
+                """<!-- <!--  <base href="http://example.com/"/> -- -->  <base href="http://example_2.com/"/> """
+            ),
+            "http://example_2.com/",
+        )
+
+        self.assertEqual(
+            get_base_url(
+                """<!-- <base href="http://example.com/"/> --> <!-- <base href="http://example_2.com/"/> --> <base href="http://example_3.com/"/>"""
+            ),
+            "http://example_3.com/",
+        )
+
     def test_relative_url_with_absolute_path(self):
         baseurl = "https://example.org"
         text = """\
