@@ -35,8 +35,12 @@ from urllib.parse import (
 )
 from urllib.parse import _coerce_args  # type: ignore
 from urllib.request import pathname2url, url2pathname
-from w3lib.util import to_unicode
-from w3lib._types import AnyUnicodeError, StrOrBytes
+
+from ._rfc2396 import _RFC2396_USERINFO_PERCENT_ENCODE_SET
+from ._rfc3986 import _RFC3986_USERINFO_PERCENT_ENCODE_SET
+from ._types import AnyUnicodeError, StrOrBytes
+from ._url import _parse_url, _serialize_url, _USERINFO_PERCENT_ENCODE_SET
+from .util import to_unicode
 
 
 # error handling function for bytes-to-Unicode decoding errors with URLs
@@ -61,6 +65,55 @@ RFC3986_USERINFO_SAFE_CHARS = RFC3986_UNRESERVED + RFC3986_SUB_DELIMS + b":"
 _ascii_tab_newline_re = re.compile(
     r"[\t\n\r]"
 )  # see https://infra.spec.whatwg.org/#ascii-tab-or-newline
+
+_SAFE_USERINFO_PERCENT_ENCODE_SET = (
+    _USERINFO_PERCENT_ENCODE_SET
+    | _RFC3986_USERINFO_PERCENT_ENCODE_SET
+    | _RFC2396_USERINFO_PERCENT_ENCODE_SET
+)
+
+
+def safe_url(
+    input: str,
+    *,
+    encoding: str = "utf-8",
+) -> str:
+    """Return a version of *url* that most web servers can parse.
+
+    If *url* already matches that criteria, it is returned unmodified.
+
+    URL parsing-then-serializing is handled according to the `URL Living
+    Standard`_, in line with modern web browsers. As the standard changes, so
+    will this function. The current implementation is based on commit a46cb91_
+    of the standard, from 2022-10-26.
+
+    .. _a46cb91: https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/
+    .. _URL Living Standard: https://url.spec.whatwg.org/
+
+    However, unsafe character criteria is stricter than that of the `URL Living
+    Standard`_, so that the returned URL is also valid by additional standards
+    that are known to be used by modern web servers:
+
+    -   `RFC 2396`_ + `RFC 2732`_ + `java.net.URI`_ deviations in Java 8
+
+        .. _RFC 2396: https://www.rfc-editor.org/rfc/rfc2396.txt
+        .. _RFC 2732: https://www.rfc-editor.org/rfc/rfc2732.txt
+        .. _java.net.URI: https://docs.oracle.com/javase/8/docs/api/java/net/URI.html
+
+    -   `RFC 3986`_
+
+        .. _RFC 3986: https://www.rfc-editor.org/rfc/rfc3986.txt
+
+    *encoding* should be the encoding of the HTML page from which *url* was
+    extracted. If *url* does not come from an HTML page, *encoding* should not
+    be passed, i.e. it should be left as UTF-8.
+    """
+    url = _parse_url(
+        input,
+        encoding=encoding,
+        userinfo_percent_encode_set=_SAFE_USERINFO_PERCENT_ENCODE_SET,
+    )
+    return _serialize_url(url)
 
 
 def safe_url_string(

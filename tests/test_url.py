@@ -4,6 +4,16 @@ from urllib.parse import urlparse
 
 import pytest
 
+from w3lib._infra import (
+    _ASCII_ALPHA,
+    _ASCII_ALPHANUMERIC,
+    _ASCII_TAB_OR_NEWLINE,
+    _C0_CONTROL_OR_SPACE,
+)
+from w3lib._url import (
+    _C0_CONTROL_PERCENT_ENCODE_SET,
+    _percent_encode_after_encoding,
+)
 from w3lib.url import (
     add_or_replace_parameter,
     add_or_replace_parameters,
@@ -15,10 +25,236 @@ from w3lib.url import (
     parse_url,
     path_to_file_uri,
     safe_download_url,
+    safe_url,
     safe_url_string,
     url_query_parameter,
     url_query_cleaner,
 )
+
+
+@pytest.mark.parametrize(
+    "input,output",
+    (
+        ("", ""),
+        ("a", "a"),
+    ),
+)
+def test_percent_encode_after_encoding(input, output):
+    actual = _percent_encode_after_encoding(
+        input,
+        encoding="utf-8",
+        percent_encode_set=_C0_CONTROL_PERCENT_ENCODE_SET,
+    )
+    assert actual == output
+
+
+UNSET = object()
+
+# Test cases for URL-to-safe-URL conversions with a URL and an encoding as
+# input parameters.
+#
+# (encoding, input URL, output URL or exception)
+SAFE_URL_ENCODING_CASES = (
+    (UNSET, "", ValueError),
+    (UNSET, "https://example.com", "https://example.com"),
+)
+
+SAFE_URL_URL_INVALID_SCHEME_CASES = tuple(
+    (f"{scheme}://example.com", ValueError)
+    for scheme in (
+        # A scheme is required.
+        "",
+        # The first scheme letter must be an ASCII alpha.
+        # Note: 0x80 is included below to also test non-ASCII example.
+        *(
+            chr(value)
+            for value in range(0x81)
+            if (
+                chr(value) not in _ASCII_ALPHA
+                and chr(value) not in _C0_CONTROL_OR_SPACE  # stripped
+                and chr(value) != ":"  # separator
+            )
+        ),
+        # The follow-up scheme letters can also be ASCII numbers, plus, hyphen,
+        # or period.
+        *(
+            f"a{chr(value)}"
+            for value in range(0x81)
+            if (
+                chr(value) not in _ASCII_ALPHANUMERIC
+                and chr(value) not in "+-."
+                and chr(value) not in _C0_CONTROL_OR_SPACE  # stripped
+                and chr(value) != ":"  # separator
+            )
+        ),
+    )
+)
+
+# Remove any leading and trailing C0 control or space from input.
+SAFE_URL_URL_STRIP_CASES = tuple(
+    (f"{char}https://example.com{char}", "https://example.com")
+    for char in _C0_CONTROL_OR_SPACE
+    if char not in _ASCII_TAB_OR_NEWLINE
+)
+
+SCHEME_NON_FIRST = _ASCII_ALPHANUMERIC + "+-."
+
+# Username and password characters that do not need escaping.
+# Removed for RFC 2396 and RFC 3986: %
+# Removed for the URL living standard: :;=
+USERINFO_SAFE = _ASCII_ALPHANUMERIC + "-_.!~*'()" + "&+$,"
+USERNAME_TO_ENCODE = "".join(
+    chr(value)
+    for value in range(0x80)
+    if (
+        chr(value) not in _C0_CONTROL_OR_SPACE
+        and chr(value) not in USERINFO_SAFE
+        and chr(value) not in ":/?#"
+    )
+)
+USERNAME_ENCODED = "".join(f"%{ord(char):X}" for char in USERNAME_TO_ENCODE)
+PASSWORD_TO_ENCODE = USERNAME_TO_ENCODE + ":"
+PASSWORD_ENCODED = "".join(f"%{ord(char):X}" for char in PASSWORD_TO_ENCODE)
+
+# Test cases for URL-to-safe-URL conversions with only a URL as input parameter
+# (i.e. no encoding or base URL).
+#
+# (input URL, output URL or exception)
+SAFE_URL_URL_CASES = (
+    # Invalid input type
+    (1, Exception),
+    (object(), Exception),
+    # Empty string
+    ("", ValueError),
+    *SAFE_URL_URL_STRIP_CASES,
+    # Remove all ASCII tab or newline from input.
+    *(
+        (
+            (
+                f"{char}h{char}ttps{char}:{char}/{char}/{char}a{char}:{char}a"
+                f"{char}@{char}exam{char}ple.com{char}:{char}1{char}/{char}a"
+                f"{char}?{char}a{char}#{char}a{char}"
+            ),
+            "https://a:a@example.com:1/a?a#a",
+        )
+        for char in _ASCII_TAB_OR_NEWLINE
+    ),
+    # Scheme
+    *(
+        (f"{scheme}://example.com", f"{scheme.lower()}://example.com")
+        for scheme in _ASCII_ALPHA
+    ),
+    (
+        f"a{SCHEME_NON_FIRST}://example.com",
+        f"a{SCHEME_NON_FIRST.lower()}://example.com",
+    ),
+    *SAFE_URL_URL_INVALID_SCHEME_CASES,
+    # Authority
+    ("a://a@example.com", "a://a@example.com"),
+    ("a://a:@example.com", "a://a:@example.com"),
+    ("a://a:a@example.com", "a://a:a@example.com"),
+    ("a://a%3A@example.com", "a://a%3A@example.com"),
+    (
+        f"a://{USERINFO_SAFE}:{USERINFO_SAFE}@example.com",
+        f"a://{USERINFO_SAFE}:{USERINFO_SAFE}@example.com",
+    ),
+    (
+        f"a://{USERNAME_TO_ENCODE}:{PASSWORD_TO_ENCODE}@example.com",
+        f"a://{USERNAME_ENCODED}:{PASSWORD_ENCODED}@example.com",
+    ),
+    ("a://@\\example.com", ValueError),
+    # TODO: Non-ASCII
+)
+
+
+def _test_safe_url_func(url, *, encoding=UNSET, output, func):
+    kwargs = {}
+    if encoding is not UNSET:
+        kwargs["encoding"] = encoding
+    try:
+        is_exception = issubclass(output, Exception)
+    except TypeError:
+        is_exception = False
+    if is_exception:
+        with pytest.raises(output):
+            func(url, **kwargs)
+        return
+    actual = func(url, **kwargs)
+    assert actual == output
+    assert func(actual, **kwargs) == output  # Idempotency
+
+
+def _test_safe_url(url, *, encoding=UNSET, output):
+    return _test_safe_url_func(
+        url,
+        encoding=encoding,
+        output=output,
+        func=safe_url,
+    )
+
+
+@pytest.mark.parametrize("encoding,url,output", SAFE_URL_ENCODING_CASES)
+def test_safe_url_encoding(encoding, url, output):
+    _test_safe_url(url, encoding=encoding, output=output)
+
+
+@pytest.mark.parametrize("url,output", SAFE_URL_URL_CASES)
+def test_safe_url_url(url, output):
+    _test_safe_url(url, output=output)
+
+
+def _test_safe_url_string(url, *, encoding=UNSET, output):
+    return _test_safe_url_func(
+        url,
+        encoding=encoding,
+        output=output,
+        func=safe_url_string,
+    )
+
+
+KNOWN_SAFE_URL_STRING_ENCODING_ISSUES = {
+    (UNSET, ""),  # Invalid URL
+}
+
+
+@pytest.mark.parametrize(
+    "encoding,url,output",
+    tuple(
+        case
+        if case[:2] not in KNOWN_SAFE_URL_STRING_ENCODING_ISSUES
+        else pytest.param(*case, marks=pytest.mark.xfail(strict=True))
+        for case in SAFE_URL_ENCODING_CASES
+    ),
+)
+def test_safe_url_string_encoding(encoding, url, output):
+    _test_safe_url_string(url, encoding=encoding, output=output)
+
+
+KNOWN_SAFE_URL_STRING_URL_ISSUES = {
+    "",  # Invalid URL
+    *(case[0] for case in SAFE_URL_URL_STRIP_CASES),
+    *(case[0] for case in SAFE_URL_URL_INVALID_SCHEME_CASES),
+    # %3A gets decoded, going from a "a:" username to a "a" username with an
+    # empty password.
+    "a://a%3A@example.com",
+    # Userinfo characters that the URL living standard requires escaping (:;=)
+    # are not escaped.
+    f"a://{USERNAME_TO_ENCODE}:{PASSWORD_TO_ENCODE}@example.com",
+    "a://@\\example.com",  # Invalid URL
+}
+
+
+@pytest.mark.parametrize(
+    "url,output",
+    tuple(
+        case
+        if case[0] not in KNOWN_SAFE_URL_STRING_URL_ISSUES
+        else pytest.param(*case, marks=pytest.mark.xfail(strict=True))
+        for case in SAFE_URL_URL_CASES
+    ),
+)
+def test_safe_url_string_url(url, output):
+    _test_safe_url_string(url, output=output)
 
 
 class UrlTests(unittest.TestCase):

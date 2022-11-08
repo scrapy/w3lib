@@ -1,6 +1,9 @@
 import codecs
 import unittest
 
+import pytest
+
+from w3lib._encoding import _get_encoding, _LABEL_ENCODINGS
 from w3lib.encoding import (
     html_body_declared_encoding,
     http_content_type_encoding,
@@ -9,6 +12,26 @@ from w3lib.encoding import (
     resolve_encoding,
     to_unicode,
 )
+
+# Encodings from the spec that Python does not support.
+_UNSUPPORTED_ENCODINGS = {
+    "iso-8859-8-i",  # https://bugs.python.org/msg213772
+    "replacement",  # Not an actual encoding
+    # Not supported.
+    # We could bring support to it with the webencodings package.
+    "x-user-defined",
+}
+
+
+@pytest.mark.parametrize(
+    "label,name", tuple((label, name) for label, name in _LABEL_ENCODINGS.items())
+)
+def test_get_encoding_python(label, name):
+    """The encodings that _get_encoding can return must work as encoding
+    aliases in Python."""
+    assert _get_encoding(label) == name
+    if name not in _UNSUPPORTED_ENCODINGS:
+        codecs.lookup(name)  # Raises LookupError if not found.
 
 
 class RequestEncodingTests(unittest.TestCase):
