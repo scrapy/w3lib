@@ -311,7 +311,7 @@ def get_base_url(
 
     """
 
-    utext = to_unicode(text, encoding)
+    utext: str = remove_comments(text, encoding=encoding)
     m = _baseurl_re.search(utext)
     if m:
         return urljoin(
