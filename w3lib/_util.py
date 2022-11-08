@@ -1,3 +1,6 @@
+from typing import Union
+
+
 class _PercentEncodeSet:
     """Set of code points that require percent-encoding.
 
@@ -13,7 +16,7 @@ class _PercentEncodeSet:
     """
 
     def __init__(
-        self, code_points: str, *, greater_than: str = "\x7f", exclude: bool = False
+        self, code_points: str, *, greater_than: Union[int, str] = "\x7f", exclude: bool = False
     ):
         if isinstance(greater_than, str):
             greater_than = ord(greater_than)
@@ -26,16 +29,16 @@ class _PercentEncodeSet:
             )
         self._code_points = code_points
 
-    def __contains__(self, code_point: str):
+    def __contains__(self, code_point: str) -> bool:
         return code_point in self._code_points or ord(code_point) > self._greater_than
 
-    def __add__(self, code_points: str):
+    def __add__(self, code_points: str) -> "_PercentEncodeSet":
         return _PercentEncodeSet(
             self._code_points + code_points,
             greater_than=self._greater_than,
         )
 
-    def __sub__(self, code_points: str):
+    def __sub__(self, code_points: str) -> "_PercentEncodeSet":
         new_code_points = self._code_points
         for code_point in code_points:
             new_code_points = new_code_points.replace(code_point, "")

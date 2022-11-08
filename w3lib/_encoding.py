@@ -2,12 +2,12 @@
 
 import codecs
 from collections import deque
-from typing import Callable, List, Optional
+from typing import Callable, Dict, List, Optional
 
 from ._infra import _ASCII_WHITESPACE
 
 
-def _short_windows_125(last_digit):
+def _short_windows_125(last_digit: int) -> Dict[str, str]:
     return {
         label: f"windows-125{last_digit}"
         for label in (
@@ -429,18 +429,18 @@ class _PotentialError:
             items = []
         self.items = items
 
-    def is_continue(self):
+    def is_continue(self) -> bool:
         return self._continue
 
-    def is_finished(self):
+    def is_finished(self) -> bool:
         return self._finished
 
-    def is_error(self):
+    def is_error(self) -> bool:
         return self._error
 
 
 # https://encoding.spec.whatwg.org/commit-snapshots/3721bec25c59f5506744dfeb8e3af7783e2f0f52/#handler
-def _handle_codec(*, codec, input, item):
+def _handle_codec(*, codec, item):
     if item is None:
         return _PotentialError(finished=True)
     try:
@@ -462,8 +462,8 @@ def _read(input):
 
 
 # https://encoding.spec.whatwg.org/commit-snapshots/3721bec25c59f5506744dfeb8e3af7783e2f0f52/#concept-encoding-process
-def _process_item(item, *, codec, input, output, mode):
-    result = _handle_codec(codec=codec, input=input, item=item)
+def _process_item(item, *, codec, output, mode):
+    result = _handle_codec(codec=codec, item=item)
     if result.is_finished():
         return result
     if result.items:
@@ -510,7 +510,6 @@ def _process_queue(
         result = _process_item(
             _read(input),
             codec=codec,
-            input=input,
             output=output,
             mode=error_mode,
         )

@@ -14,12 +14,12 @@ _ASCII_ALPHANUMERIC = string.ascii_letters + string.digits
 
 
 # https://infra.spec.whatwg.org/commit-snapshots/59e0d16c1e3ba0e77c6a60bfc69a0929b8ffaa5d/#surrogate
-def _is_surrogate_code_point_id(code_point_id) -> bool:
+def _is_surrogate_code_point_id(code_point_id: int) -> bool:
     return 0xD800 <= code_point_id <= 0xDFFF
 
 
 # https://infra.spec.whatwg.org/commit-snapshots/59e0d16c1e3ba0e77c6a60bfc69a0929b8ffaa5d/#noncharacter
-def _is_noncharacter_code_point_id(code_point_id) -> bool:
+def _is_noncharacter_code_point_id(code_point_id: int) -> bool:
     if 0xFDD0 <= code_point_id <= 0xFDEF:
         return True
     return code_point_id in (

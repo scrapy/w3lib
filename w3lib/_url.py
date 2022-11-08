@@ -436,7 +436,7 @@ def _parse_url(
     base_url: str = None,
     encoding: str = "utf-8",
     userinfo_percent_encode_set: _PercentEncodeSet = _USERINFO_PERCENT_ENCODE_SET,
-) -> str:
+) -> _URL:
     """Return a :class:`_URL` object built from *url*, *base_url* and
     *encoding*, following the URL parsing algorithm defined in the `URL living
     standard`_.
