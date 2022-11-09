@@ -163,7 +163,9 @@ SAFE_URL_URL_CASES = (
         f"a://{USERNAME_ENCODED}:{PASSWORD_ENCODED}@example.com",
     ),
     ("a://@\\example.com", ValueError),
-    # TODO: Non-ASCII
+    ("a://\x80:\x80@example.com", "a://%C2%80:%C2%80@example.com"),
+    # Host
+    ("http://[2a01:5cc0:1:2::4]", "http://[2a01:5cc0:1:2::4]"),
 )
 
 

@@ -126,7 +126,7 @@ def _percent_encode_after_encoding(
             if space_as_plus and byte == b" ":
                 output += "+"
                 continue
-            isomorph = byte.decode()
+            isomorph = chr(ord(byte))
             if isomorph not in percent_encode_set:
                 output += isomorph
             else:
@@ -159,14 +159,14 @@ def _parse_ipv6(input: str) -> List[int]:
     piece_index = 0
     compress = None
     pointer = 0
-    input_lengh = len(input)
-    if input[pointer] == ":":
-        if input[pointer + 1] != ":":
+    input_lenght = len(input)
+    if pointer < input_lenght and input[pointer] == ":":
+        if pointer + 1 >= input_lenght or input[pointer + 1] != ":":
             raise ValueError
         pointer += 2
         piece_index += 1
         compress = piece_index
-    while pointer < input_lengh:
+    while pointer < input_lenght:
         if piece_index == 8:
             raise ValueError
         if input[pointer] == ":":
@@ -177,27 +177,27 @@ def _parse_ipv6(input: str) -> List[int]:
             compress = piece_index
             continue
         value = length = 0
-        while length < 4 and input[pointer] in _ASCII_HEX_DIGIT:
+        while length < 4 and pointer < input_lenght and input[pointer] in _ASCII_HEX_DIGIT:
             value = value * 0x10 + int(input[pointer], base=16)
             pointer += 1
             length += 1
-        if input[pointer] == ".":
+        if pointer < input_lenght and input[pointer] == ".":
             if length == 0:
                 raise ValueError
             pointer -= length
             if piece_index > 6:
                 raise ValueError
             numbers_seen = 0
-            while pointer < input_lengh:
+            while pointer < input_lenght:
                 ipv4_piece = None
                 if numbers_seen > 0:
                     if input[pointer] == "." and numbers_seen < 4:
                         pointer += 1
                     else:
                         raise ValueError
-                if input[pointer] not in _ASCII_DIGIT:
+                if pointer >= input_lenght or input[pointer] not in _ASCII_DIGIT:
                     raise ValueError
-                while input[pointer] in _ASCII_DIGIT:
+                while pointer < input_lenght and input[pointer] in _ASCII_DIGIT:
                     number = int(input[pointer])
                     if ipv4_piece is None:
                         ipv4_piece = number
@@ -216,11 +216,11 @@ def _parse_ipv6(input: str) -> List[int]:
             if numbers_seen != 4:
                 raise ValueError
             break
-        if input[pointer] == ":":
+        if pointer < input_lenght and input[pointer] == ":":
             pointer += 1
-            if pointer >= input_lengh:
+            if pointer >= input_lenght:
                 raise ValueError
-        elif pointer < input_lengh:
+        elif pointer < input_lenght:
             raise ValueError
         address[piece_index] = value
         piece_index += 1
