@@ -1,2 +1,3 @@
 skips:
+- B101  # Use of assert; we use them for mypy
 - B107

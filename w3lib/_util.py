@@ -16,7 +16,11 @@ class _PercentEncodeSet:
     """
 
     def __init__(
-        self, code_points: str, *, greater_than: Union[int, str] = "\x7f", exclude: bool = False
+        self,
+        code_points: str,
+        *,
+        greater_than: Union[int, str] = "\x7f",
+        exclude: bool = False,
     ):
         if isinstance(greater_than, str):
             greater_than = ord(greater_than)

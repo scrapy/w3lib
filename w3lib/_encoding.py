@@ -2,9 +2,14 @@
 
 import codecs
 from collections import deque
-from typing import Callable, Dict, List, Optional
+from typing import AnyStr, Callable, Dict, List, Optional, Tuple, Union
 
 from ._infra import _ASCII_WHITESPACE
+
+
+CodecFunction = Callable[[AnyStr], Tuple[AnyStr, int]]
+DecodeFunction = Callable[[bytes], Tuple[str, int]]
+EncodeFunction = Callable[[str], Tuple[bytes, int]]
 
 
 def _short_windows_125(last_digit: int) -> Dict[str, str]:
@@ -413,21 +418,21 @@ class _PotentialError:
         *,
         _continue: bool = False,
         error: bool = False,
-        error_code_point: Optional[str] = None,
+        error_code_point: Union[bytes, str, None] = None,
         finished: bool = False,
-        items: Optional[List] = None,
+        items: Union[bytes, str, None] = None,
     ) -> None:
-        self.code_point = error_code_point
+        self.code_point: Union[bytes, str, None] = error_code_point
         self._continue = _continue
         self._error = error
         self._finished = finished
         if isinstance(items, bytes):
-            items = [b"%c" % byte for byte in items]
+            _items: List[Union[bytes, str]] = [b"%c" % byte for byte in items]
         elif items is not None:
-            items = list(items)
+            _items = list(items)
         else:
-            items = []
-        self.items = items
+            _items = []
+        self.items: List[Union[bytes, str]] = _items
 
     def is_continue(self) -> bool:
         return self._continue
@@ -440,7 +445,9 @@ class _PotentialError:
 
 
 # https://encoding.spec.whatwg.org/commit-snapshots/3721bec25c59f5506744dfeb8e3af7783e2f0f52/#handler
-def _handle_codec(*, codec, item):
+def _handle_codec(
+    *, codec: CodecFunction, item: Union[bytes, str, None]
+) -> _PotentialError:
     if item is None:
         return _PotentialError(finished=True)
     try:
@@ -455,14 +462,16 @@ def _handle_codec(*, codec, item):
 
 
 # https://encoding.spec.whatwg.org/commit-snapshots/3721bec25c59f5506744dfeb8e3af7783e2f0f52/#concept-stream-read
-def _read(input):
+def _read(input: deque) -> Union[bytes, str, None]:
     if not input:
         return None
     return input.popleft()
 
 
 # https://encoding.spec.whatwg.org/commit-snapshots/3721bec25c59f5506744dfeb8e3af7783e2f0f52/#concept-encoding-process
-def _process_item(item, *, codec, output, mode):
+def _process_item(
+    item: Union[bytes, str, None], *, codec: CodecFunction, output: deque, mode: str
+) -> _PotentialError:
     result = _handle_codec(codec=codec, item=item)
     if result.is_finished():
         return result
@@ -470,10 +479,11 @@ def _process_item(item, *, codec, output, mode):
         for result_item in result.items:
             output.append(result_item)
     elif result.is_error():
+        assert result.code_point is not None
         if mode == "replacement":
             output.append("\uFFFD")
         elif mode == "html":
-            output.append(b"&#%i;" % result.code_point)
+            output.append(b"&#%i;" % ord(result.code_point))
         elif mode == "fatal":
             return result
     return _PotentialError(_continue=True)
@@ -483,8 +493,8 @@ def _process_item(item, *, codec, output, mode):
 def _utf_8_decode_without_bom_or_fail(
     *,
     input: deque,
-    output: deque = None,
-):
+    output: Optional[deque] = None,
+) -> deque:
     if output is None:
         output = deque()
     potential_error = _process_queue(
@@ -502,10 +512,10 @@ def _utf_8_decode_without_bom_or_fail(
 def _process_queue(
     *,
     input: deque,
-    codec,
+    codec: CodecFunction,
     output: deque,
     error_mode: str,
-):
+) -> _PotentialError:
     while True:
         result = _process_item(
             _read(input),
@@ -518,7 +528,9 @@ def _process_queue(
 
 
 # https://encoding.spec.whatwg.org/commit-snapshots/3721bec25c59f5506744dfeb8e3af7783e2f0f52/#encode-or-fail
-def _encode_or_fail(*, input, encoder, output: deque):
+def _encode_or_fail(
+    *, input: deque, encoder: EncodeFunction, output: deque
+) -> Optional[_PotentialError]:
     potential_error = _process_queue(
         input=input,
         codec=encoder,
@@ -526,17 +538,17 @@ def _encode_or_fail(*, input, encoder, output: deque):
         error_mode="fatal",
     )
     if potential_error.is_error():
-        return ord(potential_error.code_point)
+        return potential_error
     return None
 
 
-def _get_decoder(encoding: str) -> Callable:
+def _get_decoder(encoding: str) -> DecodeFunction:
     codec_info = codecs.lookup(encoding)
     return codec_info.decode
 
 
 # https://encoding.spec.whatwg.org/commit-snapshots/3721bec25c59f5506744dfeb8e3af7783e2f0f52/#get-an-encoder
-def _get_encoder(encoding: str) -> Callable:
+def _get_encoder(encoding: str) -> EncodeFunction:
     codec_info = codecs.lookup(encoding)
     return codec_info.encode
 
