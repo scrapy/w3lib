@@ -36,10 +36,28 @@ from urllib.parse import (
 from urllib.parse import _coerce_args  # type: ignore
 from urllib.request import pathname2url, url2pathname
 
-from ._rfc2396 import _RFC2396_USERINFO_PERCENT_ENCODE_SET
-from ._rfc3986 import _RFC3986_USERINFO_PERCENT_ENCODE_SET
+from ._rfc2396 import (
+    _RFC2396_ABS_PATH_PERCENT_ENCODE_SET,
+    _RFC2396_FRAGMENT_PERCENT_ENCODE_SET,
+    _RFC2396_QUERY_PERCENT_ENCODE_SET,
+    _RFC2396_USERINFO_PERCENT_ENCODE_SET,
+)
+from ._rfc3986 import (
+    _RFC3986_FRAGMENT_PERCENT_ENCODE_SET,
+    _RFC3986_QUERY_PERCENT_ENCODE_SET,
+    _RFC3986_PATH_PERCENT_ENCODE_SET,
+    _RFC3986_USERINFO_PERCENT_ENCODE_SET,
+)
 from ._types import AnyUnicodeError, StrOrBytes
-from ._url import _parse_url, _serialize_url, _USERINFO_PERCENT_ENCODE_SET
+from ._url import (
+    _FRAGMENT_PERCENT_ENCODE_SET,
+    _parse_url,
+    _PATH_PERCENT_ENCODE_SET,
+    _QUERY_PERCENT_ENCODE_SET,
+    _serialize_url,
+    _SPECIAL_QUERY_PERCENT_ENCODE_SET,
+    _USERINFO_PERCENT_ENCODE_SET,
+)
 from .util import to_unicode
 
 
@@ -70,6 +88,26 @@ _SAFE_USERINFO_PERCENT_ENCODE_SET = (
     _USERINFO_PERCENT_ENCODE_SET
     | _RFC3986_USERINFO_PERCENT_ENCODE_SET
     | _RFC2396_USERINFO_PERCENT_ENCODE_SET
+)
+_SAFE_PATH_PERCENT_ENCODE_SET = (
+    _PATH_PERCENT_ENCODE_SET
+    | _RFC3986_PATH_PERCENT_ENCODE_SET
+    | _RFC2396_ABS_PATH_PERCENT_ENCODE_SET
+)
+_SAFE_QUERY_PERCENT_ENCODE_SET = (
+    _QUERY_PERCENT_ENCODE_SET
+    | _RFC3986_QUERY_PERCENT_ENCODE_SET
+    | _RFC2396_QUERY_PERCENT_ENCODE_SET
+)
+_SAFE_SPECIAL_QUERY_PERCENT_ENCODE_SET = (
+    _SPECIAL_QUERY_PERCENT_ENCODE_SET
+    | _RFC3986_QUERY_PERCENT_ENCODE_SET
+    | _RFC2396_QUERY_PERCENT_ENCODE_SET
+)
+_SAFE_FRAGMENT_PERCENT_ENCODE_SET = (
+    _FRAGMENT_PERCENT_ENCODE_SET
+    | _RFC3986_FRAGMENT_PERCENT_ENCODE_SET
+    | _RFC2396_FRAGMENT_PERCENT_ENCODE_SET
 )
 
 
@@ -112,8 +150,12 @@ def safe_url(
         input,
         encoding=encoding,
         userinfo_percent_encode_set=_SAFE_USERINFO_PERCENT_ENCODE_SET,
+        path_percent_encode_set=_SAFE_PATH_PERCENT_ENCODE_SET,
+        query_percent_encode_set=_SAFE_QUERY_PERCENT_ENCODE_SET,
+        special_query_percent_encode_set=_SAFE_SPECIAL_QUERY_PERCENT_ENCODE_SET,
+        fragment_percent_encode_set=_SAFE_FRAGMENT_PERCENT_ENCODE_SET,
     )
-    return _serialize_url(url)
+    return _serialize_url(url, canonicalize=False)
 
 
 def safe_url_string(

@@ -13,6 +13,7 @@ from w3lib._infra import (
 from w3lib._url import (
     _C0_CONTROL_PERCENT_ENCODE_SET,
     _percent_encode_after_encoding,
+    _SPECIAL_SCHEMES,
 )
 from w3lib.url import (
     add_or_replace_parameter,
@@ -109,12 +110,66 @@ USERNAME_TO_ENCODE = "".join(
     if (
         chr(value) not in _C0_CONTROL_OR_SPACE
         and chr(value) not in USERINFO_SAFE
-        and chr(value) not in ":/?#"
+        and chr(value) not in ":/?#\\"
     )
 )
 USERNAME_ENCODED = "".join(f"%{ord(char):X}" for char in USERNAME_TO_ENCODE)
 PASSWORD_TO_ENCODE = USERNAME_TO_ENCODE + ":"
 PASSWORD_ENCODED = "".join(f"%{ord(char):X}" for char in PASSWORD_TO_ENCODE)
+
+# Path characters that do not need escaping.
+# Removed for RFC 2396 and RFC 3986: %[\]^|
+PATH_SAFE = _ASCII_ALPHANUMERIC + "-_.!~*'()" + ":@&=+$," + "/" + ";"
+PATH_TO_ENCODE = "".join(
+    chr(value)
+    for value in range(0x80)
+    if (
+        chr(value) not in _C0_CONTROL_OR_SPACE
+        and chr(value) not in PATH_SAFE
+        and chr(value) not in "?#\\"
+    )
+)
+PATH_ENCODED = "".join(f"%{ord(char):X}" for char in PATH_TO_ENCODE)
+
+# Query characters that do not need escaping.
+# Removed for RFC 2396 and RFC 3986: %[\]^`{|}
+# Removed for the URL living standard: ' (special)
+QUERY_SAFE = _ASCII_ALPHANUMERIC + "-_.!~*'()" + ":@&=+$," + "/" + ";" + "?"
+QUERY_TO_ENCODE = "".join(
+    chr(value)
+    for value in range(0x80)
+    if (
+        chr(value) not in _C0_CONTROL_OR_SPACE
+        and chr(value) not in QUERY_SAFE
+        and chr(value) not in "#"
+    )
+)
+QUERY_ENCODED = "".join(f"%{ord(char):X}" for char in QUERY_TO_ENCODE)
+SPECIAL_QUERY_SAFE = QUERY_SAFE.replace("'", "")
+SPECIAL_QUERY_TO_ENCODE = "".join(
+    chr(value)
+    for value in range(0x80)
+    if (
+        chr(value) not in _C0_CONTROL_OR_SPACE
+        and chr(value) not in SPECIAL_QUERY_SAFE
+        and chr(value) not in "#"
+    )
+)
+SPECIAL_QUERY_ENCODED = "".join(f"%{ord(char):X}" for char in SPECIAL_QUERY_TO_ENCODE)
+
+# Fragment characters that do not need escaping.
+# Removed for RFC 2396 and RFC 3986: #%[\\]^{|}
+FRAGMENT_SAFE = _ASCII_ALPHANUMERIC + "-_.!~*'()" + ":@&=+$," + "/" + ";" + "?"
+FRAGMENT_TO_ENCODE = "".join(
+    chr(value)
+    for value in range(0x80)
+    if (
+        chr(value) not in _C0_CONTROL_OR_SPACE
+        and chr(value) not in FRAGMENT_SAFE
+    )
+)
+FRAGMENT_ENCODED = "".join(f"%{ord(char):X}" for char in FRAGMENT_TO_ENCODE)
+
 
 # Test cases for URL-to-safe-URL conversions with only a URL as input parameter
 # (i.e. no encoding or base URL).
@@ -150,22 +205,84 @@ SAFE_URL_URL_CASES = (
     ),
     *SAFE_URL_URL_INVALID_SCHEME_CASES,
     # Authority
-    ("a://a@example.com", "a://a@example.com"),
-    ("a://a:@example.com", "a://a:@example.com"),
-    ("a://a:a@example.com", "a://a:a@example.com"),
-    ("a://a%3A@example.com", "a://a%3A@example.com"),
+    ("https://a@example.com", "https://a@example.com"),
+    ("https://a:@example.com", "https://a:@example.com"),
+    ("https://a:a@example.com", "https://a:a@example.com"),
+    ("https://a%3A@example.com", "https://a%3A@example.com"),
     (
-        f"a://{USERINFO_SAFE}:{USERINFO_SAFE}@example.com",
-        f"a://{USERINFO_SAFE}:{USERINFO_SAFE}@example.com",
+        f"https://{USERINFO_SAFE}:{USERINFO_SAFE}@example.com",
+        f"https://{USERINFO_SAFE}:{USERINFO_SAFE}@example.com",
     ),
     (
-        f"a://{USERNAME_TO_ENCODE}:{PASSWORD_TO_ENCODE}@example.com",
-        f"a://{USERNAME_ENCODED}:{PASSWORD_ENCODED}@example.com",
+        f"https://{USERNAME_TO_ENCODE}:{PASSWORD_TO_ENCODE}@example.com",
+        f"https://{USERNAME_ENCODED}:{PASSWORD_ENCODED}@example.com",
     ),
-    ("a://@\\example.com", ValueError),
-    ("a://\x80:\x80@example.com", "a://%C2%80:%C2%80@example.com"),
+    ("https://@\\example.com", ValueError),
+    ("https://\x80:\x80@example.com", "https://%C2%80:%C2%80@example.com"),
     # Host
+    ("https://example.com", "https://example.com"),
+    ("https://\x80.example", ValueError),
+    ("https://%80.example", ValueError),
+    ("https://ñ.example", "https://xn--ida.example"),
+    ("http://192.168.0.0", "http://192.168.0.0"),
+    ("http://192.168.0.256", ValueError),
+    ("http://192.168.0.0.0", ValueError),
     ("http://[2a01:5cc0:1:2::4]", "http://[2a01:5cc0:1:2::4]"),
+    ("http://[2a01:5cc0:1:2:3:4]", ValueError),
+    # Path
+    ("https://example.com/", "https://example.com/"),
+    ("https://example.com/a", "https://example.com/a"),
+    ("https://example.com\\a", "https://example.com/a"),
+    ("https://example.com/a\\b", "https://example.com/a/b"),
+    (
+        f"https://example.com/{PATH_SAFE}",
+        f"https://example.com/{PATH_SAFE}",
+    ),
+    (
+        f"https://example.com/{PATH_TO_ENCODE}",
+        f"https://example.com/{PATH_ENCODED}",
+    ),
+    ("https://example.com/ñ", "https://example.com/%C3%B1"),
+    # Query
+    ("https://example.com?", "https://example.com?"),
+    ("https://example.com/?", "https://example.com/?"),
+    ("https://example.com?a", "https://example.com?a"),
+    ("https://example.com?a=", "https://example.com?a="),
+    ("https://example.com?a=b", "https://example.com?a=b"),
+    (
+        f"a://example.com?{QUERY_SAFE}",
+        f"a://example.com?{QUERY_SAFE}",
+    ),
+    (
+        f"a://example.com?{QUERY_TO_ENCODE}",
+        f"a://example.com?{QUERY_ENCODED}",
+    ),
+    *(
+        (
+            f"{scheme}://example.com?{SPECIAL_QUERY_SAFE}",
+            f"{scheme}://example.com?{SPECIAL_QUERY_SAFE}",
+        )
+        for scheme in _SPECIAL_SCHEMES
+    ),
+    *(
+        (
+            f"{scheme}://example.com?{SPECIAL_QUERY_TO_ENCODE}",
+            f"{scheme}://example.com?{SPECIAL_QUERY_ENCODED}",
+        )
+        for scheme in _SPECIAL_SCHEMES
+    ),
+    ("https://example.com?ñ", "https://example.com?%C3%B1"),
+    # Fragment
+    ("https://example.com#", "https://example.com#"),
+    ("https://example.com#a", "https://example.com#a"),
+    (
+        f"a://example.com#{FRAGMENT_SAFE}",
+        f"a://example.com#{FRAGMENT_SAFE}",
+    ),
+    (
+        f"a://example.com#{FRAGMENT_TO_ENCODE}",
+        f"a://example.com#{FRAGMENT_ENCODED}",
+    ),
 )
 
 
@@ -238,11 +355,21 @@ KNOWN_SAFE_URL_STRING_URL_ISSUES = {
     *(case[0] for case in SAFE_URL_URL_INVALID_SCHEME_CASES),
     # %3A gets decoded, going from a "a:" username to a "a" username with an
     # empty password.
-    "a://a%3A@example.com",
+    "https://a%3A@example.com",
     # Userinfo characters that the URL living standard requires escaping (:;=)
     # are not escaped.
-    f"a://{USERNAME_TO_ENCODE}:{PASSWORD_TO_ENCODE}@example.com",
-    "a://@\\example.com",  # Invalid URL
+    f"https://{USERNAME_TO_ENCODE}:{PASSWORD_TO_ENCODE}@example.com",
+    "https://@\\example.com",  # Invalid URL
+    "http://[2a01:5cc0:1:2::4]",  # https://github.com/scrapy/w3lib/issues/193
+    "https://\x80.example",  # Invalid domain name (non-visible character)
+    "https://%80.example",  # Invalid domain name (non-visible character)
+    "http://192.168.0.256",  # Invalid IP address
+    "http://192.168.0.0.0",  # Invalid IP address / domain name
+    "http://[2a01:5cc0:1:2:3:4]",  # Invalid IPv6
+    # Does not convert \\ to /
+    "https://example.com\\a",
+    "https://example.com\\a\\b",
+    "https://example.com/a/b",  # Encodes the last /
 }
 
 

@@ -4,7 +4,7 @@
 
 from collections import deque
 from enum import auto, Enum
-from itertools import chain
+from itertools import chain, tee, zip_longest
 from math import floor
 from typing import List, Optional, Tuple, Union
 
@@ -64,6 +64,7 @@ _DEFAULT_PORTS = {
     "ws": 80,
     "wss": 443,
 }
+_SPECIAL_SCHEMES = set(_DEFAULT_PORTS.keys())
 
 
 class _URL:
@@ -81,6 +82,11 @@ class _URL:
     # generate a URL that matches the input URL, if desired.
     _password_token_seen: bool = False
 
+    # Indicates, for an empty path component, whether or not a slash (/)
+    # character was used. This enables :func:`_serialize_url` to
+    # generate a URL that matches the input URL, if desired.
+    _empty_path_slash: bool = True
+
     def __init__(self) -> None:
         self.path = []
 
@@ -88,7 +94,7 @@ class _URL:
         return isinstance(self.path, str)
 
     def is_special(self) -> bool:
-        return self.scheme in _DEFAULT_PORTS
+        return self.scheme in _SPECIAL_SCHEMES
 
 
 _SCHEME_CHARS = _ASCII_ALPHANUMERIC + "+-."
@@ -102,7 +108,17 @@ def _shorten_path(url: _URL) -> None:
     url.path = path[:-1]
 
 
+def by_threes(iterable):
+    a, b = tee(iterable)
+    b, c = tee(iterable)
+    next(b, None)
+    next(c, None)
+    next(c, None)
+    return zip_longest(a, b, c)
+
+
 # https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#utf-8-percent-encode
+# Extended to handled cases where % is to be percent-encoded.
 def _percent_encode_after_encoding(
     input: str,
     *,
@@ -122,13 +138,24 @@ def _percent_encode_after_encoding(
             encoder=encoder,
             output=encode_output,
         )
-        for byte in encode_output:
+        for three_bytes in by_threes(encode_output):
+            byte = three_bytes[0]
             if space_as_plus and byte == b" ":
                 output += "+"
                 continue
             isomorph = chr(ord(byte))
             if isomorph not in percent_encode_set:
                 output += isomorph
+            elif isomorph == "%":
+                if (
+                    three_bytes[1] is None
+                    or chr(ord(three_bytes[1])) not in _ASCII_HEX_DIGIT
+                    or three_bytes[2] is None
+                    or chr(ord(three_bytes[2])) not in _ASCII_HEX_DIGIT
+                ):
+                    output += "%25"
+                else:
+                    output += "%"
             else:
                 output += f"%{byte[0]:X}"
         if potential_error is not None:
@@ -432,12 +459,32 @@ def _is_single_dot_path_segment(input: str) -> bool:
     )
 
 
+# Wrapper for _utf_8_percent_encode that ensures that, if percent symbols need
+# to be escaped, they are escaped in an idempotent way (i.e. if they are
+# already part of an escape sequence, they are not re-encoded).
+def _idempotent_utf_8_percent_encode(*, input: str, pointer: int, encode_set: _PercentEncodeSet) -> str:
+    code_point = input[pointer]
+    if code_point == "%" and "%" in encode_set:
+        if (
+            pointer + 2 >= len(input)
+            or input[pointer + 1] not in _ASCII_HEX_DIGIT
+            or input[pointer + 2] not in _ASCII_HEX_DIGIT
+        ):
+            return "%25"
+        return "%"
+    return _utf_8_percent_encode(code_point, encode_set)
+
+
 def _parse_url(
     input: str,
     *,
     base_url: str = None,
     encoding: str = "utf-8",
     userinfo_percent_encode_set: _PercentEncodeSet = _USERINFO_PERCENT_ENCODE_SET,
+    path_percent_encode_set: _PercentEncodeSet = _PATH_PERCENT_ENCODE_SET,
+    query_percent_encode_set: _PercentEncodeSet = _QUERY_PERCENT_ENCODE_SET,
+    special_query_percent_encode_set: _PercentEncodeSet = _SPECIAL_QUERY_PERCENT_ENCODE_SET,
+    fragment_percent_encode_set: _PercentEncodeSet = _FRAGMENT_PERCENT_ENCODE_SET,
 ) -> _URL:
     """Return a :class:`_URL` object built from *url*, *base_url* and
     *encoding*, following the URL parsing algorithm defined in the `URL living
@@ -618,20 +665,11 @@ def _parse_url(
                     if code_point == ":" and not url._password_token_seen:
                         url._password_token_seen = True
                         continue
-                    if code_point == "%" and "%" in userinfo_percent_encode_set:
-                        if (
-                            i + 2 >= buffer_length
-                            or buffer[i + 1] not in _ASCII_HEX_DIGIT
-                            or buffer[i + 2] not in _ASCII_HEX_DIGIT
-                        ):
-                            encoded_code_points = "%25"
-                        else:
-                            encoded_code_points = "%"
-                    else:
-                        encoded_code_points = _utf_8_percent_encode(
-                            code_point,
-                            userinfo_percent_encode_set,
-                        )
+                    encoded_code_points = _idempotent_utf_8_percent_encode(
+                        input=buffer,
+                        pointer=i,
+                        encode_set=userinfo_percent_encode_set,
+                    )
                     if url._password_token_seen:
                         url.password += encoded_code_points
                     else:
@@ -783,6 +821,8 @@ def _parse_url(
                         and _is_windows_drive_letter(buffer)
                     ):
                         buffer = buffer[0] + ":" + buffer[2:]
+                    if not url.path and not buffer and c is not None and c in "?#" and input[pointer-1] not in "/\\":
+                        url._empty_path_slash = False
                     url.path.append(buffer)
                 buffer = ""
                 if c == "?":
@@ -793,7 +833,11 @@ def _parse_url(
                     state = _State.FRAGMENT
             else:
                 assert isinstance(c, str)
-                buffer += _utf_8_percent_encode(c, _PATH_PERCENT_ENCODE_SET)
+                buffer += _idempotent_utf_8_percent_encode(
+                    input=input,
+                    pointer=pointer,
+                    encode_set=path_percent_encode_set,
+                )
 
         elif state == _State.OPAQUE_PATH:
             assert isinstance(url.path, str)
@@ -818,15 +862,15 @@ def _parse_url(
             ):
                 encoding = "utf-8"
             if c == "#" or c is None:
-                query_percent_encode_set = (
-                    _SPECIAL_QUERY_PERCENT_ENCODE_SET
+                percent_encode_set = (
+                    special_query_percent_encode_set
                     if url.is_special()
-                    else _QUERY_PERCENT_ENCODE_SET
+                    else query_percent_encode_set
                 )
                 url.query += _percent_encode_after_encoding(
                     buffer,
                     encoding=encoding,
-                    percent_encode_set=query_percent_encode_set,
+                    percent_encode_set=percent_encode_set,
                 )
                 buffer = ""
                 if c == "#":
@@ -840,10 +884,7 @@ def _parse_url(
             assert isinstance(url.fragment, str)
             if c is not None:
                 assert isinstance(c, str)
-                url.fragment += _utf_8_percent_encode(
-                    c,
-                    _FRAGMENT_PERCENT_ENCODE_SET,
-                )
+                url.fragment += _idempotent_utf_8_percent_encode(input=input, pointer=pointer, encode_set=fragment_percent_encode_set)
 
         if pointer >= input_length:
             break
@@ -912,10 +953,12 @@ def _serialize_host(host: Union[str, int, List[int]]) -> str:
 
 
 # https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#url-path-serializer
-def _serialize_url_path(url: _URL) -> str:
+def _serialize_url_path(url: _URL, *, canonicalize: bool = None) -> str:
     if url.has_opaque_path():
         assert isinstance(url.path, str)
         return url.path
+    if len(url.path) <= 1 and not url._empty_path_slash and not canonicalize:
+        return ""
     output = ""
     for segment in url.path:
         output += f"/{segment}"
@@ -968,7 +1011,7 @@ def _serialize_url(
             output += url.username
             if url.password:
                 output += f":{url.password}"
-            elif url._password_token_seen:
+            elif not canonicalize and url._password_token_seen:
                 output += ":"
             output += "@"
         output += _serialize_host(url.host)
@@ -976,7 +1019,7 @@ def _serialize_url(
             output += f":{url.port}"
     elif not url.has_opaque_path() and len(url.path) > 1 and not url.path[0]:
         output += "/."
-    output += _serialize_url_path(url)
+    output += _serialize_url_path(url, canonicalize=canonicalize)
     if url.query is not None:
         output += f"?{url.query}"
     if not exclude_fragment and url.fragment is not None:
