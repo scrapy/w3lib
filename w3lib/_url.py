@@ -107,10 +107,20 @@ class _URL:
     # generate a URL that matches the input URL, if desired.
     _password_token_seen: bool = False
 
+    # Indicates, for an empty port component, whether or not a colon (:)
+    # character was used. This enables :func:`_serialize_url` to
+    # generate a URL that matches the input URL, if desired.
+    _port_token_seen: bool = False
+
+    # Indicates whether or not a default port was specified in the input URL.
+    # This enables :func:`_serialize_url` to generate a URL that matches the
+    # input URL, if desired.
+    _default_port_seen: bool = False
+
     # Indicates, for an empty path component, whether or not a slash (/)
     # character was used. This enables :func:`_serialize_url` to
     # generate a URL that matches the input URL, if desired.
-    _empty_path_slash: bool = True
+    _path_token_seen: bool = False
 
     def __init__(self) -> None:
         self.path = []
@@ -411,7 +421,11 @@ def _parse_ipv4(input: str) -> int:
 
 
 # https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#concept-host-parser
-def _parse_host(input: str, *, is_special: bool = True) -> Union[str, int, List[int]]:
+def _parse_host(
+    input: str,
+    *,
+    is_special: bool = True,
+) -> Union[str, int, List[int]]:
     if input.startswith("["):
         if not input.endswith("]"):
             raise ValueError
@@ -420,6 +434,8 @@ def _parse_host(input: str, *, is_special: bool = True) -> Union[str, int, List[
         return _parse_opaque_host(input)
     domain = _percent_decode_string(input).decode()
     ascii_domain = domain.encode("idna").decode()
+    if len(ascii_domain) > 253:
+        raise ValueError
     for code_point in ascii_domain:
         if code_point in _FORBIDDEN_DOMAIN_CODE_POINTS:
             raise ValueError
@@ -719,6 +735,7 @@ def _parse_url(
                 url.host = host
                 buffer = ""
                 state = _State.PORT
+                url._port_token_seen = True
             elif c is None or c in "/?#" or url.is_special() and c == "\\":
                 pointer -= 1
                 if url.is_special() and not buffer:
@@ -744,6 +761,7 @@ def _parse_url(
                     if port > 2**16 - 1:
                         raise ValueError
                     url.port = None if _DEFAULT_PORTS.get(url.scheme) == port else port
+                    url._default_port_seen = url.port is None
                     buffer = ""
                 state = _State.PATH_START
                 pointer -= 1
@@ -855,7 +873,7 @@ def _parse_url(
                         and c in "?#"
                         and input[pointer - 1] not in "/\\"
                     ):
-                        url._empty_path_slash = False
+                        url._path_token_seen = True
                     url.path.append(buffer)
                 buffer = ""
                 if c == "?":
@@ -992,7 +1010,7 @@ def _serialize_url_path(url: _URL, *, canonicalize: bool = None) -> str:
     if url.has_opaque_path():
         assert isinstance(url.path, str)
         return url.path
-    if len(url.path) <= 1 and not url._empty_path_slash and not canonicalize:
+    if len(url.path) <= 1 and url._path_token_seen and not canonicalize:
         return ""
     output = ""
     for segment in url.path:
@@ -1052,6 +1070,11 @@ def _serialize_url(
         output += _serialize_host(url.host)
         if url.port is not None:
             output += f":{url.port}"
+        elif not canonicalize:
+            if url._default_port_seen:
+                output += f":{_DEFAULT_PORTS[url.scheme]}"
+            elif url._port_token_seen:
+                output += ":"
     elif not url.has_opaque_path() and len(url.path) > 1 and not url.path[0]:
         output += "/."
     output += _serialize_url_path(url, canonicalize=canonicalize)

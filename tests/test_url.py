@@ -62,6 +62,33 @@ UNSET = object()
 SAFE_URL_ENCODING_CASES = (
     (UNSET, "", ValueError),
     (UNSET, "https://example.com", "https://example.com"),
+    (UNSET, "https://example.com/©", "https://example.com/%C2%A9"),
+    # Paths are always UTF-8-encoded.
+    ("iso-8859-1", "https://example.com/©", "https://example.com/%C2%A9"),
+    # Queries are UTF-8-encoded if the scheme is not special, ws or wss.
+    ("iso-8859-1", "a://example.com?©", "a://example.com?%C2%A9"),
+    *(
+        ("iso-8859-1", f"{scheme}://example.com?©", f"{scheme}://example.com?%C2%A9")
+        for scheme in ("ws", "wss")
+    ),
+    *(
+        ("iso-8859-1", f"{scheme}://example.com?©", f"{scheme}://example.com?%A9")
+        for scheme in _SPECIAL_SCHEMES
+        if scheme not in {"ws", "wss"}
+    ),
+    # Fragments are always UTF-8-encoded.
+    ("iso-8859-1", "https://example.com#©", "https://example.com#%C2%A9"),
+)
+
+INVALID_SCHEME_FOLLOW_UPS = "".join(
+    chr(value)
+    for value in range(0x81)
+    if (
+        chr(value) not in _ASCII_ALPHANUMERIC
+        and chr(value) not in "+-."
+        and chr(value) not in _C0_CONTROL_OR_SPACE  # stripped
+        and chr(value) != ":"  # separator
+    )
 )
 
 SAFE_URL_URL_INVALID_SCHEME_CASES = tuple(
@@ -82,16 +109,7 @@ SAFE_URL_URL_INVALID_SCHEME_CASES = tuple(
         ),
         # The follow-up scheme letters can also be ASCII numbers, plus, hyphen,
         # or period.
-        *(
-            f"a{chr(value)}"
-            for value in range(0x81)
-            if (
-                chr(value) not in _ASCII_ALPHANUMERIC
-                and chr(value) not in "+-."
-                and chr(value) not in _C0_CONTROL_OR_SPACE  # stripped
-                and chr(value) != ":"  # separator
-            )
-        ),
+        f"a{INVALID_SCHEME_FOLLOW_UPS}",
     )
 )
 
@@ -226,14 +244,26 @@ SAFE_URL_URL_CASES = (
     ("https://\x80:\x80@example.com", "https://%C2%80:%C2%80@example.com"),
     # Host
     ("https://example.com", "https://example.com"),
+    ("https://.example", ValueError),
     ("https://\x80.example", ValueError),
     ("https://%80.example", ValueError),
+    (f"https://{'a'*63}.example", f"https://{'a'*63}.example"),
+    (f"https://{'a'*64}.example", ValueError),
+    (
+        f"https://{'a'*63}.{'a'*63}.{'a'*63}.{'a'*53}.example",
+        f"https://{'a'*63}.{'a'*63}.{'a'*63}.{'a'*53}.example",
+    ),
+    (f"https://{'a'*63}.{'a'*63}.{'a'*63}.{'a'*54}.example", ValueError),
     ("https://ñ.example", "https://xn--ida.example"),
     ("http://192.168.0.0", "http://192.168.0.0"),
     ("http://192.168.0.256", ValueError),
     ("http://192.168.0.0.0", ValueError),
     ("http://[2a01:5cc0:1:2::4]", "http://[2a01:5cc0:1:2::4]"),
     ("http://[2a01:5cc0:1:2:3:4]", ValueError),
+    # Port
+    ("https://example.com:", "https://example.com:"),
+    ("https://example.com:1", "https://example.com:1"),
+    ("https://example.com:443", "https://example.com:443"),
     # Path
     ("https://example.com/", "https://example.com/"),
     ("https://example.com/a", "https://example.com/a"),
@@ -248,6 +278,7 @@ SAFE_URL_URL_CASES = (
         f"https://example.com/{PATH_ENCODED}",
     ),
     ("https://example.com/ñ", "https://example.com/%C3%B1"),
+    ("https://example.com/ñ%C3%B1", "https://example.com/%C3%B1%C3%B1"),
     # Query
     ("https://example.com?", "https://example.com?"),
     ("https://example.com/?", "https://example.com/?"),
@@ -277,6 +308,7 @@ SAFE_URL_URL_CASES = (
         for scheme in _SPECIAL_SCHEMES
     ),
     ("https://example.com?ñ", "https://example.com?%C3%B1"),
+    ("https://example.com?ñ%C3%B1", "https://example.com?%C3%B1%C3%B1"),
     # Fragment
     ("https://example.com#", "https://example.com#"),
     ("https://example.com/#", "https://example.com/#"),
@@ -292,6 +324,12 @@ SAFE_URL_URL_CASES = (
         f"a://example.com#{FRAGMENT_ENCODED}",
     ),
     ("https://example.com#ñ", "https://example.com#%C3%B1"),
+    ("https://example.com#ñ%C3%B1", "https://example.com#%C3%B1%C3%B1"),
+    # All fields, UTF-8 wherever possible.
+    (
+        "https://ñ:ñ@ñ.example:1/ñ?ñ#ñ",
+        "https://%C3%B1:%C3%B1@xn--ida.example:1/%C3%B1?%C3%B1#%C3%B1",
+    ),
 )
 
 
@@ -342,6 +380,13 @@ def _test_safe_url_string(url, *, encoding=UNSET, output):
 
 KNOWN_SAFE_URL_STRING_ENCODING_ISSUES = {
     (UNSET, ""),  # Invalid URL
+    # UTF-8 encoding is not enforced in non-special URLs, or in URLs with the
+    # ws or wss schemas.
+    ("iso-8859-1", "a://example.com?\xa9"),
+    ("iso-8859-1", "ws://example.com?\xa9"),
+    ("iso-8859-1", "wss://example.com?\xa9"),
+    # UTF-8 encoding is not enforced on the fragment.
+    ("iso-8859-1", "https://example.com#\xa9"),
 }
 
 
@@ -369,12 +414,16 @@ KNOWN_SAFE_URL_STRING_URL_ISSUES = {
     # are not escaped.
     f"https://{USERNAME_TO_ENCODE}:{PASSWORD_TO_ENCODE}@example.com",
     "https://@\\example.com",  # Invalid URL
-    "http://[2a01:5cc0:1:2::4]",  # https://github.com/scrapy/w3lib/issues/193
+    "https://.example",  # Invalid URL
     "https://\x80.example",  # Invalid domain name (non-visible character)
     "https://%80.example",  # Invalid domain name (non-visible character)
+    f"https://{'a'*64}.example",  # Invalid URL
+    f"https://{'a'*63}.{'a'*63}.{'a'*63}.{'a'*54}.example",  # Invalid URL
     "http://192.168.0.256",  # Invalid IP address
     "http://192.168.0.0.0",  # Invalid IP address / domain name
+    "http://[2a01:5cc0:1:2::4]",  # https://github.com/scrapy/w3lib/issues/193
     "http://[2a01:5cc0:1:2:3:4]",  # Invalid IPv6
+    "https://example.com:",  # Removes the :
     # Does not convert \ to /
     "https://example.com\\a",
     "https://example.com\\a\\b",
@@ -436,120 +485,10 @@ def test_tee():
 
 
 class UrlTests(unittest.TestCase):
-    def test_safe_url_string(self):
-        # Motoko Kusanagi (Cyborg from Ghost in the Shell)
-        motoko = "\u8349\u8599 \u7d20\u5b50"
-        self.assertEqual(
-            safe_url_string(motoko),  # note the %20 for space
-            "%E8%8D%89%E8%96%99%20%E7%B4%A0%E5%AD%90",
-        )
-        self.assertEqual(
-            safe_url_string(motoko), safe_url_string(safe_url_string(motoko))
-        )
-        self.assertEqual(safe_url_string("©"), "%C2%A9")  # copyright symbol
-        # page-encoding does not affect URL path
-        self.assertEqual(safe_url_string("©", "iso-8859-1"), "%C2%A9")
-        # path_encoding does
-        self.assertEqual(safe_url_string("©", path_encoding="iso-8859-1"), "%A9")
-        self.assertEqual(
-            safe_url_string("http://www.example.org/"), "http://www.example.org/"
-        )
-
-        alessi = "/ecommerce/oggetto/Te \xf2/tea-strainer/1273"
-
-        self.assertEqual(
-            safe_url_string(alessi), "/ecommerce/oggetto/Te%20%C3%B2/tea-strainer/1273"
-        )
-
-        self.assertEqual(
-            safe_url_string(
-                "http://www.example.com/test?p(29)url(http://www.another.net/page)"
-            ),
-            "http://www.example.com/test?p(29)url(http://www.another.net/page)",
-        )
-        self.assertEqual(
-            safe_url_string(
-                "http://www.example.com/Brochures_&_Paint_Cards&PageSize=200"
-            ),
-            "http://www.example.com/Brochures_&_Paint_Cards&PageSize=200",
-        )
-
-        # page-encoding does not affect URL path
-        # we still end up UTF-8 encoding characters before percent-escaping
-        safeurl = safe_url_string("http://www.example.com/£")
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/%C2%A3")
-
-        safeurl = safe_url_string("http://www.example.com/£", encoding="utf-8")
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/%C2%A3")
-
-        safeurl = safe_url_string("http://www.example.com/£", encoding="latin-1")
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/%C2%A3")
-
+    def test_safe_url_string_path_encoding(self):
         safeurl = safe_url_string("http://www.example.com/£", path_encoding="latin-1")
         self.assertTrue(isinstance(safeurl, str))
         self.assertEqual(safeurl, "http://www.example.com/%A3")
-
-        self.assertTrue(isinstance(safe_url_string(b"http://example.com/"), str))
-
-    def test_safe_url_string_remove_ascii_tab_and_newlines(self):
-        self.assertEqual(
-            safe_url_string("http://example.com/test\n.html"),
-            "http://example.com/test.html",
-        )
-        self.assertEqual(
-            safe_url_string("http://example.com/test\t.html"),
-            "http://example.com/test.html",
-        )
-        self.assertEqual(
-            safe_url_string("http://example.com/test\r.html"),
-            "http://example.com/test.html",
-        )
-        self.assertEqual(
-            safe_url_string("http://example.com/test\r.html\n"),
-            "http://example.com/test.html",
-        )
-        self.assertEqual(
-            safe_url_string("http://example.com/test\r\n.html\t"),
-            "http://example.com/test.html",
-        )
-        self.assertEqual(
-            safe_url_string("http://example.com/test\a\n.html"),
-            "http://example.com/test%07.html",
-        )
-
-    def test_safe_url_string_unsafe_chars(self):
-        safeurl = safe_url_string(
-            r"http://localhost:8001/unwise{,},|,\,^,[,],`?|=[]&[]=|"
-        )
-        self.assertEqual(
-            safeurl, r"http://localhost:8001/unwise%7B,%7D,|,%5C,%5E,[,],%60?|=[]&[]=|"
-        )
-
-    def test_safe_url_string_quote_path(self):
-        safeurl = safe_url_string('http://google.com/"hello"', quote_path=True)
-        self.assertEqual(safeurl, "http://google.com/%22hello%22")
-
-        safeurl = safe_url_string('http://google.com/"hello"', quote_path=False)
-        self.assertEqual(safeurl, 'http://google.com/"hello"')
-
-        safeurl = safe_url_string('http://google.com/"hello"')
-        self.assertEqual(safeurl, "http://google.com/%22hello%22")
-
-    def test_safe_url_string_with_query(self):
-        safeurl = safe_url_string("http://www.example.com/£?unit=µ")
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/%C2%A3?unit=%C2%B5")
-
-        safeurl = safe_url_string("http://www.example.com/£?unit=µ", encoding="utf-8")
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/%C2%A3?unit=%C2%B5")
-
-        safeurl = safe_url_string("http://www.example.com/£?unit=µ", encoding="latin-1")
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/%C2%A3?unit=%B5")
 
         safeurl = safe_url_string(
             "http://www.example.com/£?unit=µ", path_encoding="latin-1"
@@ -565,15 +504,9 @@ class UrlTests(unittest.TestCase):
         self.assertTrue(isinstance(safeurl, str))
         self.assertEqual(safeurl, "http://www.example.com/%A3?unit=%B5")
 
-    def test_safe_url_string_misc(self):
-        # mixing Unicode and percent-escaped sequences
-        safeurl = safe_url_string("http://www.example.com/£?unit=%C2%B5")
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/%C2%A3?unit=%C2%B5")
-
-        safeurl = safe_url_string("http://www.example.com/%C2%A3?unit=µ")
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/%C2%A3?unit=%C2%B5")
+    def test_safe_url_string_quote_path_false(self):
+        safeurl = safe_url_string('http://google.com/"hello"', quote_path=False)
+        self.assertEqual(safeurl, 'http://google.com/"hello"')
 
     def test_safe_url_string_bytes_input(self):
         safeurl = safe_url_string(b"http://www.example.com/")
@@ -610,184 +543,6 @@ class UrlTests(unittest.TestCase):
         )
         self.assertTrue(isinstance(safeurl, str))
         self.assertEqual(safeurl, "http://www.example.com/country/%D0%EE%F1%F1%E8%FF")
-
-    def test_safe_url_idna(self):
-        # adapted from:
-        # https://ssl.icu-project.org/icu-bin/idnbrowser
-        # http://unicode.org/faq/idn.html
-        # + various others
-        websites = (
-            (
-                "http://www.färgbolaget.nu",
-                "http://www.xn--frgbolaget-q5a.nu",
-            ),
-            (
-                "http://www.räksmörgås.se",
-                "http://www.xn--rksmrgs-5wao1o.se",
-            ),
-            (
-                "http://www.brændendekærlighed.com",
-                "http://www.xn--brndendekrlighed-vobh.com",
-            ),
-            ("http://www.예비교사.com", "http://www.xn--9d0bm53a3xbzui.com"),
-            ("http://理容ナカムラ.com", "http://xn--lck1c3crb1723bpq4a.com"),
-            ("http://あーるいん.com", "http://xn--l8je6s7a45b.com"),
-            # --- real websites ---
-            # in practice, this redirect (301) to http://www.buecher.de/?q=b%C3%BCcher
-            (
-                "http://www.bücher.de",
-                "http://www.xn--bcher-kva.de",
-            ),
-            # Japanese
-            (
-                "http://はじめよう.みんな",
-                "http://xn--p8j9a0d9c9a.xn--q9jyb4c",
-            ),
-            # Russian
-            ("http://кто.рф", "http://xn--j1ail.xn--p1ai"),
-            (
-                "http://кто.рф",
-                "http://xn--j1ail.xn--p1ai",
-            ),
-            # Korean
-            ("http://내도메인.한국", "http://xn--220b31d95hq8o.xn--3e0b707e"),
-            (
-                "http://맨체스터시티축구단.한국",
-                "http://xn--2e0b17htvgtvj9haj53ccob62ni8d.xn--3e0b707e",
-            ),
-            # Arabic
-            ("http://nic.شبكة", "http://nic.xn--ngbc5azd"),
-            # Chinese
-            ("https://www.贷款.在线", "https://www.xn--0kwr83e.xn--3ds443g"),
-            ("https://www2.xn--0kwr83e.在线", "https://www2.xn--0kwr83e.xn--3ds443g"),
-            ("https://www3.贷款.xn--3ds443g", "https://www3.xn--0kwr83e.xn--3ds443g"),
-        )
-        for idn_input, safe_result in websites:
-            safeurl = safe_url_string(idn_input)
-            self.assertEqual(safeurl, safe_result)
-
-        # make sure the safe URL is unchanged when made safe a 2nd time
-        for _, safe_result in websites:
-            safeurl = safe_url_string(safe_result)
-            self.assertEqual(safeurl, safe_result)
-
-    def test_safe_url_idna_encoding_failure(self):
-        # missing DNS label
-        self.assertEqual(
-            safe_url_string("http://.example.com/résumé?q=résumé"),
-            "http://.example.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9",
-        )
-
-        # DNS label too long
-        self.assertEqual(
-            safe_url_string(f"http://www.{'example' * 11}.com/résumé?q=résumé"),
-            f"http://www.{'example' * 11}.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9",
-        )
-
-    def test_safe_url_port_number(self):
-        self.assertEqual(
-            safe_url_string("http://www.example.com:80/résumé?q=résumé"),
-            "http://www.example.com:80/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9",
-        )
-        self.assertEqual(
-            safe_url_string("http://www.example.com:/résumé?q=résumé"),
-            "http://www.example.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9",
-        )
-
-    def test_safe_url_string_preserve_nonfragment_hash(self):
-        # don't decode `%23` to `#`
-        self.assertEqual(
-            safe_url_string("http://www.example.com/path/to/%23/foo/bar"),
-            "http://www.example.com/path/to/%23/foo/bar",
-        )
-        self.assertEqual(
-            safe_url_string("http://www.example.com/path/to/%23/foo/bar#frag"),
-            "http://www.example.com/path/to/%23/foo/bar#frag",
-        )
-        self.assertEqual(
-            safe_url_string(
-                "http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2Fpath%2Fto%2F%23%2Fbar%2Ffoo"
-            ),
-            "http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2Fpath%2Fto%2F%23%2Fbar%2Ffoo",
-        )
-        self.assertEqual(
-            safe_url_string(
-                "http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2F%2Fpath%2Fto%2F%23%2Fbar%2Ffoo#frag"
-            ),
-            "http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2F%2Fpath%2Fto%2F%23%2Fbar%2Ffoo#frag",
-        )
-
-    def test_safe_url_string_encode_idna_domain_with_port(self):
-        self.assertEqual(
-            safe_url_string("http://新华网.中国:80"), "http://xn--xkrr14bows.xn--fiqs8s:80"
-        )
-
-    def test_safe_url_string_encode_idna_domain_with_username_password_and_port_number(
-        self,
-    ):
-        self.assertEqual(
-            safe_url_string("ftp://admin:admin@新华网.中国:21"),
-            "ftp://admin:admin@xn--xkrr14bows.xn--fiqs8s:21",
-        )
-        self.assertEqual(
-            safe_url_string("http://Åsa:abc123@➡.ws:81/admin"),
-            "http://%C3%85sa:abc123@xn--hgi.ws:81/admin",
-        )
-        self.assertEqual(
-            safe_url_string("http://japão:não@️i❤️.ws:8000/"),
-            "http://jap%C3%A3o:n%C3%A3o@xn--i-7iq.ws:8000/",
-        )
-
-    def test_safe_url_string_encode_idna_domain_with_username_and_empty_password_and_port_number(
-        self,
-    ):
-        self.assertEqual(
-            safe_url_string("ftp://admin:@新华网.中国:21"),
-            "ftp://admin:@xn--xkrr14bows.xn--fiqs8s:21",
-        )
-        self.assertEqual(
-            safe_url_string("ftp://admin@新华网.中国:21"),
-            "ftp://admin@xn--xkrr14bows.xn--fiqs8s:21",
-        )
-
-    def test_safe_url_string_userinfo_unsafe_chars(
-        self,
-    ):
-        self.assertEqual(
-            safe_url_string("ftp://admin:|%@example.com"),
-            "ftp://admin:%7C%25@example.com",
-        )
-
-    def test_safe_url_string_user_and_pass_percentage_encoded(self):
-        self.assertEqual(
-            safe_url_string("http://%25user:%25pass@host"),
-            "http://%25user:%25pass@host",
-        )
-
-        self.assertEqual(
-            safe_url_string("http://%user:%pass@host"),
-            "http://%25user:%25pass@host",
-        )
-
-        self.assertEqual(
-            safe_url_string("http://%26user:%26pass@host"),
-            "http://&user:&pass@host",
-        )
-
-        self.assertEqual(
-            safe_url_string("http://%2525user:%2525pass@host"),
-            "http://%2525user:%2525pass@host",
-        )
-
-        self.assertEqual(
-            safe_url_string("http://%2526user:%2526pass@host"),
-            "http://%2526user:%2526pass@host",
-        )
-
-        self.assertEqual(
-            safe_url_string("http://%25%26user:%25%26pass@host"),
-            "http://%25&user:%25&pass@host",
-        )
 
     def test_safe_download_url(self):
         self.assertEqual(
