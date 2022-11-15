@@ -4,9 +4,10 @@
 
 from collections import deque
 from enum import auto, Enum
-from itertools import chain, tee, zip_longest
+from itertools import chain, zip_longest
 from math import floor
-from typing import List, Optional, Tuple, Union
+from platform import python_implementation
+from typing import Iterable, Iterator, List, Optional, Tuple, TypeVar, Union
 
 from ._encoding import (
     _encode_or_fail,
@@ -26,6 +27,30 @@ from ._infra import (
     _is_surrogate_code_point_id,
 )
 from ._util import _PercentEncodeSet
+
+T = TypeVar("T")
+
+if python_implementation() != "PyPy":
+    from itertools import tee  # pylint: disable=ungrouped-imports
+else:
+    # https://foss.heptapod.net/pypy/pypy/-/issues/3852
+    def tee(__iterable: Iterable[T], __n: int = 2) -> Tuple[Iterator[T], ...]:
+        it = iter(__iterable)
+        deques: List[deque] = [deque() for i in range(__n)]
+
+        def gen(mydeque: deque) -> Iterator:
+            while True:
+                if not mydeque:  # when the local deque is empty
+                    try:
+                        newval = next(it)  # fetch a new value and
+                    except StopIteration:
+                        return
+                    for d in deques:  # load it to all the deques
+                        d.append(newval)
+                yield mydeque.popleft()
+
+        return tuple(gen(d) for d in deques)
+
 
 _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE = {
     ord(char): None for char in _ASCII_TAB_OR_NEWLINE
@@ -108,9 +133,8 @@ def _shorten_path(url: _URL) -> None:
     url.path = path[:-1]
 
 
-def by_threes(iterable):
-    a, b = tee(iterable)
-    b, c = tee(iterable)
+def by_threes(iterable: deque) -> Iterator:
+    a, b, c = tee(iterable, 3)
     next(b, None)
     next(c, None)
     next(c, None)
@@ -204,7 +228,9 @@ def _parse_ipv6(input: str) -> List[int]:
             compress = piece_index
             continue
         value = length = 0
-        while length < 4 and pointer < input_lenght and input[pointer] in _ASCII_HEX_DIGIT:
+        while (
+            length < 4 and pointer < input_lenght and input[pointer] in _ASCII_HEX_DIGIT
+        ):
             value = value * 0x10 + int(input[pointer], base=16)
             pointer += 1
             length += 1
@@ -462,7 +488,9 @@ def _is_single_dot_path_segment(input: str) -> bool:
 # Wrapper for _utf_8_percent_encode that ensures that, if percent symbols need
 # to be escaped, they are escaped in an idempotent way (i.e. if they are
 # already part of an escape sequence, they are not re-encoded).
-def _idempotent_utf_8_percent_encode(*, input: str, pointer: int, encode_set: _PercentEncodeSet) -> str:
+def _idempotent_utf_8_percent_encode(
+    *, input: str, pointer: int, encode_set: _PercentEncodeSet
+) -> str:
     code_point = input[pointer]
     if code_point == "%" and "%" in encode_set:
         if (
@@ -660,7 +688,6 @@ def _parse_url(
                 if at_sign_seen:
                     buffer = "%40" + buffer
                 at_sign_seen = True
-                buffer_length = len(buffer)
                 for i, code_point in enumerate(buffer):
                     if code_point == ":" and not url._password_token_seen:
                         url._password_token_seen = True
@@ -821,7 +848,13 @@ def _parse_url(
                         and _is_windows_drive_letter(buffer)
                     ):
                         buffer = buffer[0] + ":" + buffer[2:]
-                    if not url.path and not buffer and c is not None and c in "?#" and input[pointer-1] not in "/\\":
+                    if (
+                        not url.path
+                        and not buffer
+                        and c is not None
+                        and c in "?#"
+                        and input[pointer - 1] not in "/\\"
+                    ):
                         url._empty_path_slash = False
                     url.path.append(buffer)
                 buffer = ""
@@ -884,7 +917,9 @@ def _parse_url(
             assert isinstance(url.fragment, str)
             if c is not None:
                 assert isinstance(c, str)
-                url.fragment += _idempotent_utf_8_percent_encode(input=input, pointer=pointer, encode_set=fragment_percent_encode_set)
+                url.fragment += _idempotent_utf_8_percent_encode(
+                    input=input, pointer=pointer, encode_set=fragment_percent_encode_set
+                )
 
         if pointer >= input_length:
             break

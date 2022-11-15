@@ -1,5 +1,9 @@
 import os
 import unittest
+from collections import deque
+from collections.abc import Iterator
+from itertools import tee
+from platform import python_implementation
 from urllib.parse import urlparse
 
 import pytest
@@ -163,10 +167,7 @@ FRAGMENT_SAFE = _ASCII_ALPHANUMERIC + "-_.!~*'()" + ":@&=+$," + "/" + ";" + "?"
 FRAGMENT_TO_ENCODE = "".join(
     chr(value)
     for value in range(0x80)
-    if (
-        chr(value) not in _C0_CONTROL_OR_SPACE
-        and chr(value) not in FRAGMENT_SAFE
-    )
+    if (chr(value) not in _C0_CONTROL_OR_SPACE and chr(value) not in FRAGMENT_SAFE)
 )
 FRAGMENT_ENCODED = "".join(f"%{ord(char):X}" for char in FRAGMENT_TO_ENCODE)
 
@@ -183,22 +184,26 @@ SAFE_URL_URL_CASES = (
     ("", ValueError),
     *SAFE_URL_URL_STRIP_CASES,
     # Remove all ASCII tab or newline from input.
-    *(
+    (
         (
-            (
-                f"{char}h{char}ttps{char}:{char}/{char}/{char}a{char}:{char}a"
-                f"{char}@{char}exam{char}ple.com{char}:{char}1{char}/{char}a"
-                f"{char}?{char}a{char}#{char}a{char}"
-            ),
-            "https://a:a@example.com:1/a?a#a",
-        )
-        for char in _ASCII_TAB_OR_NEWLINE
+            f"{_ASCII_TAB_OR_NEWLINE}h{_ASCII_TAB_OR_NEWLINE}ttps"
+            f"{_ASCII_TAB_OR_NEWLINE}:{_ASCII_TAB_OR_NEWLINE}/"
+            f"{_ASCII_TAB_OR_NEWLINE}/{_ASCII_TAB_OR_NEWLINE}a"
+            f"{_ASCII_TAB_OR_NEWLINE}b{_ASCII_TAB_OR_NEWLINE}:"
+            f"{_ASCII_TAB_OR_NEWLINE}a{_ASCII_TAB_OR_NEWLINE}b"
+            f"{_ASCII_TAB_OR_NEWLINE}@{_ASCII_TAB_OR_NEWLINE}exam"
+            f"{_ASCII_TAB_OR_NEWLINE}ple.com{_ASCII_TAB_OR_NEWLINE}:"
+            f"{_ASCII_TAB_OR_NEWLINE}1{_ASCII_TAB_OR_NEWLINE}2"
+            f"{_ASCII_TAB_OR_NEWLINE}/{_ASCII_TAB_OR_NEWLINE}a"
+            f"{_ASCII_TAB_OR_NEWLINE}b{_ASCII_TAB_OR_NEWLINE}?"
+            f"{_ASCII_TAB_OR_NEWLINE}a{_ASCII_TAB_OR_NEWLINE}b"
+            f"{_ASCII_TAB_OR_NEWLINE}#{_ASCII_TAB_OR_NEWLINE}a"
+            f"{_ASCII_TAB_OR_NEWLINE}b{_ASCII_TAB_OR_NEWLINE}"
+        ),
+        "https://ab:ab@example.com:12/ab?ab#ab",
     ),
     # Scheme
-    *(
-        (f"{scheme}://example.com", f"{scheme.lower()}://example.com")
-        for scheme in _ASCII_ALPHA
-    ),
+    (f"{_ASCII_ALPHA}://example.com", f"{_ASCII_ALPHA.lower()}://example.com"),
     (
         f"a{SCHEME_NON_FIRST}://example.com",
         f"a{SCHEME_NON_FIRST.lower()}://example.com",
@@ -274,6 +279,9 @@ SAFE_URL_URL_CASES = (
     ("https://example.com?ñ", "https://example.com?%C3%B1"),
     # Fragment
     ("https://example.com#", "https://example.com#"),
+    ("https://example.com/#", "https://example.com/#"),
+    ("https://example.com?#", "https://example.com?#"),
+    ("https://example.com/?#", "https://example.com/?#"),
     ("https://example.com#a", "https://example.com#a"),
     (
         f"a://example.com#{FRAGMENT_SAFE}",
@@ -283,6 +291,7 @@ SAFE_URL_URL_CASES = (
         f"a://example.com#{FRAGMENT_TO_ENCODE}",
         f"a://example.com#{FRAGMENT_ENCODED}",
     ),
+    ("https://example.com#ñ", "https://example.com#%C3%B1"),
 )
 
 
@@ -366,10 +375,36 @@ KNOWN_SAFE_URL_STRING_URL_ISSUES = {
     "http://192.168.0.256",  # Invalid IP address
     "http://192.168.0.0.0",  # Invalid IP address / domain name
     "http://[2a01:5cc0:1:2:3:4]",  # Invalid IPv6
-    # Does not convert \\ to /
+    # Does not convert \ to /
     "https://example.com\\a",
     "https://example.com\\a\\b",
-    "https://example.com/a/b",  # Encodes the last /
+    # Encodes \ and / after the first one in the path
+    "https://example.com/a/b",
+    "https://example.com/a\\b",
+    # Some path characters that RFC 2396 and RFC 3986 require escaping (%[]|)
+    # are not escaped.
+    f"https://example.com/{PATH_TO_ENCODE}",
+    # ? is removed
+    "https://example.com?",
+    "https://example.com/?",
+    # Some query characters that RFC 2396 and RFC 3986 require escaping (%[]|)
+    # are not escaped.
+    f"a://example.com?{QUERY_TO_ENCODE}",
+    # Some special query characters that RFC 2396 and RFC 3986 require escaping
+    # (%[]|) or that the URL living standard requires escaping (') are not
+    # escaped.
+    *(
+        f"{scheme}://example.com?{SPECIAL_QUERY_TO_ENCODE}"
+        for scheme in _SPECIAL_SCHEMES
+    ),
+    # ? and # are removed
+    "https://example.com#",
+    "https://example.com/#",
+    "https://example.com?#",
+    "https://example.com/?#",
+    # Some fragment characters that RFC 2396 and RFC 3986 require escaping
+    # (#%[]|) are not escaped.
+    f"a://example.com#{FRAGMENT_TO_ENCODE}",
 }
 
 
@@ -384,6 +419,20 @@ KNOWN_SAFE_URL_STRING_URL_ISSUES = {
 )
 def test_safe_url_string_url(url, output):
     _test_safe_url_string(url, output=output)
+
+
+# If this is ever fixed upstream, decide what to do with our workaround. We
+# currently provide a tee Python implementation for PyPy, which we should
+# probably stop doing on PyPy versions where the bug is no longer present, but
+# we still may want the implementation on other PyPy versions.
+@pytest.mark.xfail(
+    python_implementation() == "PyPy",
+    reason="https://foss.heptapod.net/pypy/pypy/-/issues/3852",
+    strict=True,
+)
+def test_tee():
+    iterator1, _ = tee(deque([b""]))
+    assert isinstance(iterator1, Iterator)
 
 
 class UrlTests(unittest.TestCase):
