@@ -9,6 +9,8 @@ from math import floor
 from platform import python_implementation
 from typing import Iterable, Iterator, List, Optional, Tuple, TypeVar, Union
 
+import idna
+
 from ._encoding import (
     _encode_or_fail,
     _get_encoder,
@@ -96,7 +98,7 @@ class _URL:
     scheme: str = ""
     username: str = ""
     password: str = ""
-    host: Union[None, int, List[int], str] = None
+    hostname: Union[None, int, List[int], str] = None
     port: Optional[int] = None
     path: Union[str, List[str]]
     query: Optional[str] = None
@@ -433,7 +435,9 @@ def _parse_host(
     if not is_special:
         return _parse_opaque_host(input)
     domain = _percent_decode_string(input).decode()
-    ascii_domain = domain.encode("idna").decode()
+    be_strict = False
+    ascii_domain_bytes = idna.encode(domain, strict=True, uts46=True, std3_rules=be_strict)
+    ascii_domain = ascii_domain_bytes.decode()
     if len(ascii_domain) > 253:
         raise ValueError
     for code_point in ascii_domain:
@@ -600,7 +604,7 @@ def _parse_url(
                         state = _State.SPECIAL_RELATIVE_OR_AUTHORITY
                     else:
                         state = _State.SPECIAL_AUTHORITY_SLASHES
-                elif input[pointer + 1] == "/":
+                elif pointer + 1 < len(input) and input[pointer + 1] == "/":
                     state = _State.PATH_OR_AUTHORITY
                     pointer += 1
                 else:
@@ -630,7 +634,7 @@ def _parse_url(
                 pointer -= 1
 
         elif state == _State.SPECIAL_RELATIVE_OR_AUTHORITY:
-            if c == "/" and input[pointer + 1 : 1] == "/":
+            if c == "/" and input[pointer + 1] == "/":
                 state = _State.SPECIAL_AUTHORITY_IGNORE_SLASHES
                 pointer += 1
             else:
@@ -654,7 +658,7 @@ def _parse_url(
             else:
                 url.username = base.username
                 url.password = base.password
-                url.host = base.host
+                url.hostname = base.hostname
                 url.port = base.port
                 url.path = base.path
                 url.query = base.query
@@ -680,7 +684,7 @@ def _parse_url(
             else:
                 url.username = base.username
                 url.password = base.password
-                url.host = base.host
+                url.hostname = base.hostname
                 url.port = base.port
                 state = _State.PATH
                 pointer -= 1
@@ -694,8 +698,7 @@ def _parse_url(
                 pointer -= 1
 
         elif state == _State.SPECIAL_AUTHORITY_IGNORE_SLASHES:
-            if c is not None and c not in "/\\":
-                assert isinstance(c, str)
+            if c is None or c not in "/\\":
                 state = _State.AUTHORITY
                 pointer -= 1
 
@@ -732,7 +735,7 @@ def _parse_url(
                 if not buffer:
                     raise ValueError
                 host = _parse_host(buffer, is_special=url.is_special())
-                url.host = host
+                url.hostname = host
                 buffer = ""
                 state = _State.PORT
                 url._port_token_seen = True
@@ -741,7 +744,7 @@ def _parse_url(
                 if url.is_special() and not buffer:
                     raise ValueError
                 host = _parse_host(buffer, is_special=url.is_special())
-                url.host = host
+                url.hostname = host
                 buffer = ""
                 state = _State.PATH_START
             else:
@@ -770,12 +773,12 @@ def _parse_url(
 
         elif state == _State.FILE:
             url.scheme = "file"
-            url.host = ""
+            url.hostname = ""
             if c is not None and c in "/\\":
                 assert isinstance(c, str)
                 state = _State.FILE_SLASH
             elif base is not None and base.scheme == "file":
-                url.host = base.host
+                url.hostname = base.hostname
                 url.path = base.path
                 url.query = base.query
                 if c == "?":
@@ -804,7 +807,7 @@ def _parse_url(
                 state = _State.FILE_HOST
             else:
                 if base is not None and base.scheme == "file":
-                    url.host = base.host
+                    url.hostname = base.hostname
                     if not _starts_with_windows_drive_letter(
                         input[pointer:]
                     ) and _is_windows_drive_letter(base.path[0]):
@@ -818,13 +821,13 @@ def _parse_url(
                 if _is_windows_drive_letter(buffer):
                     state = _State.PATH
                 elif not buffer:
-                    url.host = ""
+                    url.hostname = ""
                     state = _State.PATH_START
                 else:
                     host = _parse_host(buffer, is_special=False)
                     if host == "localhost":
                         host = ""
-                    url.host = host
+                    url.hostname = host
                     buffer = ""
                     state = _State.PATH_START
             else:
@@ -1058,7 +1061,7 @@ def _serialize_url(
             string.
     """
     output = url.scheme + ":"
-    if url.host is not None:
+    if url.hostname is not None:
         output += "//"
         if url.username or url.password:
             output += url.username
@@ -1067,7 +1070,7 @@ def _serialize_url(
             elif not canonicalize and url._password_token_seen:
                 output += ":"
             output += "@"
-        output += _serialize_host(url.host)
+        output += _serialize_host(url.hostname)
         if url.port is not None:
             output += f":{url.port}"
         elif not canonicalize:

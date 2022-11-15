@@ -17,6 +17,9 @@ setup(
     zip_safe=False,
     platforms=["Any"],
     python_requires=">=3.7",
+    install_requires=[
+        "idna",
+    ],
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: BSD License",

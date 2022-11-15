@@ -1,8 +1,10 @@
+import json
 import os
 import unittest
 from collections import deque
 from collections.abc import Iterator
 from itertools import tee
+from pathlib import Path
 from platform import python_implementation
 from urllib.parse import urlparse
 
@@ -16,7 +18,9 @@ from w3lib._infra import (
 )
 from w3lib._url import (
     _C0_CONTROL_PERCENT_ENCODE_SET,
+    _parse_url,
     _percent_encode_after_encoding,
+    _serialize_url,
     _SPECIAL_SCHEMES,
 )
 from w3lib.url import (
@@ -35,6 +39,56 @@ from w3lib.url import (
     url_query_parameter,
     url_query_cleaner,
 )
+
+URL_TEST_DATA_FILE_PATH = Path(__file__).parent / "url-test-data.json"
+URL_TEST_DATA_KNOWN_ISSUES = (
+    # https://github.com/web-platform-tests/wpt/issues/36970
+    "file://example%/",
+    "file://%43%3A",
+    "file://%43%7C",
+    "file://C%7C",
+    "file://%43%7C/",
+    "file://\xad/p",
+    "file://%C2%AD/p",
+    "file://xn--/p",
+    # https://github.com/kjd/idna/issues/135
+    "http://./",  # Empty label error due to VerifyDnsLength=True
+    "http://../",  # Empty label error due to VerifyDnsLength=True
+    "http://!\"$&'()*+,-.;=_`{}~/",  # Hyphen error due to CheckHyphens=True
+    "wss://!\"$&'()*+,-.;=_`{}~/",  # Hyphen error due to CheckHyphens=True
+    "http://foo.09..",  # Empty label error due to VerifyDnsLength=True
+    # https://github.com/kjd/idna/issues/136
+    "ftp://%e2%98%83",
+    "https://%e2%98%83",
+)
+
+
+@pytest.mark.parametrize(
+    "input,base,failure,href,protocol,username,password,hostname",
+    (
+        case
+        if case[0] not in URL_TEST_DATA_KNOWN_ISSUES
+        else pytest.param(*case, marks=pytest.mark.xfail(strict=True))
+        for case in (
+            (i["input"], i["base"], i.get("failure"), i.get("href"), i.get("protocol"), i.get("username"), i.get("password"), i.get("hostname"))
+            for i in json.load(open(URL_TEST_DATA_FILE_PATH))
+            if not isinstance(i, str)
+        )
+    ),
+)
+def test_parse_url(input, base, failure, href, protocol, username, password, hostname):
+    if failure:
+        with pytest.raises(ValueError):
+            _parse_url(input, base_url=base)
+        return
+
+    url = _parse_url(input, base_url=base)
+    assert url.scheme == (protocol[:-1] if protocol else None)
+    assert url.username == username
+    assert url.password == password
+    assert url.hostname == hostname
+    # assert _serialize_url(url) == href
+    # TODO: Cover additional fields
 
 
 @pytest.mark.parametrize(
