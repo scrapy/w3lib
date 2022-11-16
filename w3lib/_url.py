@@ -97,7 +97,7 @@ class _URL:
     scheme: str = ""
     username: str = ""
     password: str = ""
-    hostname: Union[None, int, List[int], str] = None
+    hostname: Union[int, List[int], str] = ""
     port: Optional[int] = None
     path: Union[str, List[str]]
     query: Optional[str] = None
@@ -192,7 +192,7 @@ def _percent_encode_after_encoding(
                 else:
                     output += "%"
             else:
-                output += f"%{byte[0]:X}"
+                output += f"%{byte[0]:02X}"
         if potential_error is not None:
             assert isinstance(potential_error, _PotentialError)
             assert isinstance(potential_error.code_point, (bytes, str))
@@ -665,9 +665,10 @@ def _parse_url(
         elif state == _State.RELATIVE:
             assert isinstance(base, _URL)
             url.scheme = base.scheme
-            if c == "/":
-                state = _State.RELATIVE
-            elif url.is_special() and c == "\\":
+            if (
+                c == "/"
+                or url.is_special() and c == "\\"
+            ):
                 state = _State.RELATIVE_SLASH
             else:
                 url.username = base.username

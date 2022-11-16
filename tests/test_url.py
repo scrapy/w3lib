@@ -20,6 +20,7 @@ from w3lib._url import (
     _C0_CONTROL_PERCENT_ENCODE_SET,
     _parse_url,
     _percent_encode_after_encoding,
+    _serialize_host,
     # _serialize_url,
     _SPECIAL_SCHEMES,
 )
@@ -79,7 +80,7 @@ def test_parse_url(input, base, failure, href, protocol, username, password, hos
     assert url.scheme == (protocol[:-1] if protocol else None)
     assert url.username == username
     assert url.password == password
-    # assert url.hostname == hostname
+    assert _serialize_host(url.hostname) == hostname
     # TODO: Cover additional fields
     # assert _serialize_url(url) == href
 
@@ -182,9 +183,9 @@ USERNAME_TO_ENCODE = "".join(
         and chr(value) not in ":/?#\\"
     )
 )
-USERNAME_ENCODED = "".join(f"%{ord(char):X}" for char in USERNAME_TO_ENCODE)
+USERNAME_ENCODED = "".join(f"%{ord(char):02X}" for char in USERNAME_TO_ENCODE)
 PASSWORD_TO_ENCODE = USERNAME_TO_ENCODE + ":"
-PASSWORD_ENCODED = "".join(f"%{ord(char):X}" for char in PASSWORD_TO_ENCODE)
+PASSWORD_ENCODED = "".join(f"%{ord(char):02X}" for char in PASSWORD_TO_ENCODE)
 
 # Path characters that do not need escaping.
 # Removed for RFC 2396 and RFC 3986: %[\]^|
@@ -198,7 +199,7 @@ PATH_TO_ENCODE = "".join(
         and chr(value) not in "?#\\"
     )
 )
-PATH_ENCODED = "".join(f"%{ord(char):X}" for char in PATH_TO_ENCODE)
+PATH_ENCODED = "".join(f"%{ord(char):02X}" for char in PATH_TO_ENCODE)
 
 # Query characters that do not need escaping.
 # Removed for RFC 2396 and RFC 3986: %[\]^`{|}
@@ -213,7 +214,7 @@ QUERY_TO_ENCODE = "".join(
         and chr(value) not in "#"
     )
 )
-QUERY_ENCODED = "".join(f"%{ord(char):X}" for char in QUERY_TO_ENCODE)
+QUERY_ENCODED = "".join(f"%{ord(char):02X}" for char in QUERY_TO_ENCODE)
 SPECIAL_QUERY_SAFE = QUERY_SAFE.replace("'", "")
 SPECIAL_QUERY_TO_ENCODE = "".join(
     chr(value)
@@ -224,7 +225,7 @@ SPECIAL_QUERY_TO_ENCODE = "".join(
         and chr(value) not in "#"
     )
 )
-SPECIAL_QUERY_ENCODED = "".join(f"%{ord(char):X}" for char in SPECIAL_QUERY_TO_ENCODE)
+SPECIAL_QUERY_ENCODED = "".join(f"%{ord(char):02X}" for char in SPECIAL_QUERY_TO_ENCODE)
 
 # Fragment characters that do not need escaping.
 # Removed for RFC 2396 and RFC 3986: #%[\\]^{|}
@@ -234,7 +235,7 @@ FRAGMENT_TO_ENCODE = "".join(
     for value in range(0x80)
     if (chr(value) not in _C0_CONTROL_OR_SPACE and chr(value) not in FRAGMENT_SAFE)
 )
-FRAGMENT_ENCODED = "".join(f"%{ord(char):X}" for char in FRAGMENT_TO_ENCODE)
+FRAGMENT_ENCODED = "".join(f"%{ord(char):02X}" for char in FRAGMENT_TO_ENCODE)
 
 
 # Test cases for URL-to-safe-URL conversions with only a URL as input parameter
