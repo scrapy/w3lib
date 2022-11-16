@@ -9,8 +9,7 @@ from math import floor
 from platform import python_implementation
 from typing import Iterable, Iterator, List, Optional, Tuple, TypeVar, Union
 
-import idna
-
+from . import _utr46
 from ._encoding import (
     _encode_or_fail,
     _get_encoder,
@@ -422,6 +421,25 @@ def _parse_ipv4(input: str) -> int:
     return ipv4
 
 
+# https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#concept-domain-to-ascii
+def _domain_to_ascii(domain: str, *, be_strict: bool = False) -> str:
+    result = _utr46._to_ascii(
+        domain,
+        use_std3_ascii_rules=be_strict,
+        check_hyphens=False,
+        check_bidi=True,
+        check_joiners=True,
+        transitional_processing=False,
+        verify_dns_length=be_strict,
+    )
+    if not result:
+        raise ValueError(
+            f"Domain name {domain!r} is an empty string after conversion to "
+            f"ASCII, which makes for an invalid domain name."
+        )
+    return result
+
+
 # https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#concept-host-parser
 def _parse_host(
     input: str,
@@ -435,11 +453,7 @@ def _parse_host(
     if not is_special:
         return _parse_opaque_host(input)
     domain = _percent_decode_string(input).decode()
-    be_strict = False
-    ascii_domain_bytes = idna.encode(domain, strict=True, uts46=True, std3_rules=be_strict)
-    ascii_domain = ascii_domain_bytes.decode()
-    if len(ascii_domain) > 253:
-        raise ValueError
+    ascii_domain = _domain_to_ascii(domain)
     for code_point in ascii_domain:
         if code_point in _FORBIDDEN_DOMAIN_CODE_POINTS:
             raise ValueError
@@ -824,7 +838,7 @@ def _parse_url(
                     url.hostname = ""
                     state = _State.PATH_START
                 else:
-                    host = _parse_host(buffer, is_special=False)
+                    host = _parse_host(buffer, is_special=url.is_special())
                     if host == "localhost":
                         host = ""
                     url.hostname = host
