@@ -1,7 +1,7 @@
 # https://encoding.spec.whatwg.org/
 
 import codecs
-from functools import cache
+from functools import lru_cache
 from typing import AnyStr, Callable, Dict, Tuple
 
 from ._infra import _ASCII_WHITESPACE
@@ -413,7 +413,7 @@ _LABEL_ENCODINGS = {
 
 
 # https://encoding.spec.whatwg.org/commit-snapshots/3721bec25c59f5506744dfeb8e3af7783e2f0f52/#get-an-encoder
-@cache
+@lru_cache(maxsize=None)
 def _get_encoder(encoding: str) -> EncodeFunction:
     codec_info = codecs.lookup(encoding)
     return codec_info.encode
@@ -423,7 +423,7 @@ _UTF_8_ENCODER = _get_encoder("utf-8")
 
 
 # https://encoding.spec.whatwg.org/commit-snapshots/3721bec25c59f5506744dfeb8e3af7783e2f0f52/#concept-encoding-get
-@cache
+@lru_cache(maxsize=None)
 def _get_encoding(label: str) -> str:
     label = label.strip(_ASCII_WHITESPACE).lower()
     try:
@@ -445,7 +445,7 @@ _OUTPUT_ENCODING_UTF8_ENCODINGS = (
 
 
 # https://encoding.spec.whatwg.org/commit-snapshots/3721bec25c59f5506744dfeb8e3af7783e2f0f52/#output-encodings
-@cache
+@lru_cache(maxsize=None)
 def _get_output_encoding(encoding: str) -> str:
     encoding = _get_encoding(encoding)
     if encoding in _OUTPUT_ENCODING_UTF8_ENCODINGS:

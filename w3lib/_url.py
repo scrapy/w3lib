@@ -67,7 +67,7 @@ _SPECIAL_SCHEMES = set(_DEFAULT_PORTS.keys())
 
 
 class _URL:
-    scheme: str = ""
+    _scheme: str = ""
     username: str = ""
     password: str = ""
     hostname: Union[int, List[int], str] = ""
@@ -98,12 +98,19 @@ class _URL:
 
     def __init__(self) -> None:
         self.path = []
+        self.is_special = False
 
     def has_opaque_path(self) -> bool:
         return isinstance(self.path, str)
 
-    def is_special(self) -> bool:
-        return self.scheme in _SPECIAL_SCHEMES
+    @property
+    def scheme(self) -> str:
+        return self._scheme
+
+    @scheme.setter
+    def scheme(self, value: str) -> None:
+        self._scheme = value
+        self.is_special = value in _SPECIAL_SCHEMES
 
 
 _SCHEME_CHARS = _ASCII_ALPHANUMERIC + "+-."
@@ -567,7 +574,7 @@ def _parse_url(
                 buffer = ""
                 if url.scheme == "file":
                     state = _State.FILE
-                elif url.is_special():
+                elif url.is_special:
                     if base is not None and base.scheme == url.scheme:
                         state = _State.SPECIAL_RELATIVE_OR_AUTHORITY
                     else:
@@ -619,7 +626,7 @@ def _parse_url(
         elif state == _State.RELATIVE:
             assert isinstance(base, _URL)
             url.scheme = base.scheme
-            if c == "/" or url.is_special() and c == "\\":
+            if c == "/" or url.is_special and c == "\\":
                 state = _State.RELATIVE_SLASH
             else:
                 url.username = base.username
@@ -642,7 +649,7 @@ def _parse_url(
 
         elif state == _State.RELATIVE_SLASH:
             assert isinstance(base, _URL)
-            if url.is_special() and c is not None and c in "/\\":
+            if url.is_special and c is not None and c in "/\\":
                 assert isinstance(c, str)
                 state = _State.SPECIAL_AUTHORITY_IGNORE_SLASHES
             elif c == "/":
@@ -687,7 +694,7 @@ def _parse_url(
                     else:
                         url.username += encoded_code_points
                 buffer = ""
-            elif c is None or c in "/?#" or url.is_special() and c == "\\":
+            elif c is None or c in "/?#" or url.is_special and c == "\\":
                 if at_sign_seen and not buffer:
                     raise ValueError
                 pointer -= len(buffer) + 1
@@ -700,16 +707,16 @@ def _parse_url(
             if c == ":" and not inside_brackets:
                 if not buffer:
                     raise ValueError
-                host = _parse_host(buffer, is_special=url.is_special())
+                host = _parse_host(buffer, is_special=url.is_special)
                 url.hostname = host
                 buffer = ""
                 state = _State.PORT
                 url._port_token_seen = True
-            elif c is None or c in "/?#" or url.is_special() and c == "\\":
+            elif c is None or c in "/?#" or url.is_special and c == "\\":
                 pointer -= 1
-                if url.is_special() and not buffer:
+                if url.is_special and not buffer:
                     raise ValueError
-                host = _parse_host(buffer, is_special=url.is_special())
+                host = _parse_host(buffer, is_special=url.is_special)
                 url.hostname = host
                 buffer = ""
                 state = _State.PATH_START
@@ -724,7 +731,7 @@ def _parse_url(
             if c is not None and c in _ASCII_DIGIT:
                 assert isinstance(c, str)
                 buffer += c
-            elif c is None or c in "/?#" or url.is_special() and c == "\\":
+            elif c is None or c in "/?#" or url.is_special and c == "\\":
                 if buffer:
                     port = int(buffer)
                     if port > 2**16 - 1:
@@ -790,7 +797,7 @@ def _parse_url(
                     url.hostname = ""
                     state = _State.PATH_START
                 else:
-                    host = _parse_host(buffer, is_special=url.is_special())
+                    host = _parse_host(buffer, is_special=url.is_special)
                     if host == "localhost":
                         host = ""
                     url.hostname = host
@@ -801,7 +808,7 @@ def _parse_url(
                 buffer += c
 
         elif state == _State.PATH_START:
-            if url.is_special():
+            if url.is_special:
                 state = _State.PATH
                 if c is not None and c not in "/\\":
                     assert isinstance(c, str)
@@ -820,13 +827,13 @@ def _parse_url(
 
         elif state == _State.PATH:
             assert isinstance(url.path, list)
-            if c is None or c == "/" or (url.is_special() and c == "\\") or c in "?#":
+            if c is None or c == "/" or (url.is_special and c == "\\") or c in "?#":
                 if _is_double_dot_path_segment(buffer):
                     _shorten_path(url)
-                    if c != "/" and not (url.is_special() and c == "\\"):
+                    if c != "/" and not (url.is_special and c == "\\"):
                         url.path.append("")
                 elif _is_single_dot_path_segment(buffer):
-                    if c != "/" and not (url.is_special() and c == "\\"):
+                    if c != "/" and not (url.is_special and c == "\\"):
                         url.path.append("")
                 else:
                     if (
@@ -878,13 +885,13 @@ def _parse_url(
         elif state == _State.QUERY:
             assert isinstance(url.query, str)
             if encoding != "utf-8" and (
-                not url.is_special() or url.scheme in ("ws", "wss")
+                not url.is_special or url.scheme in ("ws", "wss")
             ):
                 encoding = "utf-8"
             if c == "#" or c is None:
                 percent_encode_set = (
                     special_query_percent_encode_set
-                    if url.is_special()
+                    if url.is_special
                     else query_percent_encode_set
                 )
                 url.query += _percent_encode_after_encoding(
