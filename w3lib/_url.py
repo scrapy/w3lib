@@ -19,8 +19,6 @@ from ._infra import (
     _ASCII_TAB_OR_NEWLINE,
     _C0_CONTROL,
     _C0_CONTROL_OR_SPACE,
-    _is_noncharacter_code_point_id,
-    _is_surrogate_code_point_id,
 )
 from ._util import _PercentEncodeSet
 
