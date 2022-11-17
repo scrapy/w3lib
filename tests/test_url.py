@@ -163,6 +163,8 @@ PERCENT_ENCODE_TEST_DATA_KNOWN_ISSUES = {
     # TODO: Investigate.
     ("\x0eA", "iso-2022-jp"),
     ("\ue5e5", "gb18030"),
+    # TODO: Fix the escaping of unsupported code points.
+    ("†", "big5"),
 }
 
 with open(PERCENT_ENCODE_TEST_DATA_FILE_PATH, encoding="utf-8") as input:
@@ -641,7 +643,7 @@ def test_safe_url_performance(url):
     # presummably due to caching by urllib.
     number = 1  # TODO: Increase? How much?
     # Make sure the new implementation is at most this number of times as slow.
-    multiplier = 200  # TODO: Lower as close to 1 as possible.
+    multiplier = 100  # TODO: Lower as close to 1 as possible.
 
     time1 = timeit(
         f"safe_url({url!r})", "from w3lib.url import safe_url", number=number

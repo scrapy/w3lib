@@ -11,10 +11,8 @@ from typing import Iterable, Iterator, List, Optional, Tuple, TypeVar, Union
 
 from . import _utr46
 from ._encoding import (
-    _encode_or_fail,
     _get_encoder,
     _get_output_encoding,
-    _PotentialError,
 )
 from ._infra import (
     _ASCII_ALPHA,
@@ -144,7 +142,7 @@ def _shorten_path(url: _URL) -> None:
     url.path = path[:-1]
 
 
-def by_threes(iterable: deque) -> Iterator:
+def by_threes(iterable: Iterable) -> Iterator:
     a, b, c = tee(iterable, 3)
     next(b, None)
     next(c, None)
@@ -162,41 +160,30 @@ def _percent_encode_after_encoding(
     space_as_plus: bool = False,
 ) -> str:
     encoder = _get_encoder(encoding)
-    input_queue = deque(input)
     output = ""
-    potential_error: Union[int, _PotentialError, None] = 0
-
-    while potential_error is not None:
-        encode_output: deque = deque()
-        potential_error = _encode_or_fail(
-            input=input_queue,
-            encoder=encoder,
-            output=encode_output,
-        )
-        for three_bytes in by_threes(encode_output):
-            byte = three_bytes[0]
-            if space_as_plus and byte == b" ":
-                output += "+"
-                continue
-            isomorph = chr(ord(byte))
-            if isomorph not in percent_encode_set:
-                output += isomorph
-            elif isomorph == "%":
-                if (
-                    three_bytes[1] is None
-                    or chr(ord(three_bytes[1])) not in _ASCII_HEX_DIGIT
-                    or three_bytes[2] is None
-                    or chr(ord(three_bytes[2])) not in _ASCII_HEX_DIGIT
-                ):
-                    output += "%25"
-                else:
-                    output += "%"
+    # TODO: Use an alternative to xmlcharrefreplace that returns %26%23NNN%3B
+    # instead of &#NNN;
+    encode_output, _ = encoder(input, "xmlcharrefreplace")
+    for three_bytes in by_threes(encode_output):
+        byte = three_bytes[0]
+        if space_as_plus and byte == b" ":
+            output += "+"
+            continue
+        isomorph = chr(byte)
+        if isomorph not in percent_encode_set:
+            output += isomorph
+        elif isomorph == "%":
+            if (
+                three_bytes[1] is None
+                or chr(three_bytes[1]) not in _ASCII_HEX_DIGIT
+                or three_bytes[2] is None
+                or chr(three_bytes[2]) not in _ASCII_HEX_DIGIT
+            ):
+                output += "%25"
             else:
-                output += f"%{byte[0]:02X}"
-        if potential_error is not None:
-            assert isinstance(potential_error, _PotentialError)
-            assert isinstance(potential_error.code_point, (bytes, str))
-            output += f"%26%23{ord(potential_error.code_point)}%3B"
+                output += "%"
+        else:
+            output += f"%{byte:02X}"
 
     return output
 
