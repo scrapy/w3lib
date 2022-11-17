@@ -2,12 +2,10 @@
 
 # https://url.spec.whatwg.org/
 
-from collections import deque
 from enum import auto, Enum
-from itertools import chain, zip_longest
+from itertools import chain
 from math import floor
-from platform import python_implementation
-from typing import Iterable, Iterator, List, Optional, Tuple, TypeVar, Union
+from typing import List, Optional, Tuple, Union
 
 from . import _utr46
 from ._encoding import (
@@ -26,29 +24,6 @@ from ._infra import (
     _is_surrogate_code_point_id,
 )
 from ._util import _PercentEncodeSet
-
-T = TypeVar("T")
-
-if python_implementation() != "PyPy":
-    from itertools import tee  # pylint: disable=ungrouped-imports
-else:
-    # https://foss.heptapod.net/pypy/pypy/-/issues/3852
-    def tee(__iterable: Iterable[T], __n: int = 2) -> Tuple[Iterator[T], ...]:
-        it = iter(__iterable)
-        deques: List[deque] = [deque() for i in range(__n)]
-
-        def gen(mydeque: deque) -> Iterator:
-            while True:
-                if not mydeque:  # when the local deque is empty
-                    try:
-                        newval = next(it)  # fetch a new value and
-                    except StopIteration:
-                        return
-                    for d in deques:  # load it to all the deques
-                        d.append(newval)
-                yield mydeque.popleft()
-
-        return tuple(gen(d) for d in deques)
 
 
 _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE = {
@@ -142,14 +117,6 @@ def _shorten_path(url: _URL) -> None:
     url.path = path[:-1]
 
 
-def by_threes(iterable: Iterable) -> Iterator:
-    a, b, c = tee(iterable, 3)
-    next(b, None)
-    next(c, None)
-    next(c, None)
-    return zip_longest(a, b, c)
-
-
 # https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#utf-8-percent-encode
 # Extended to handled cases where % is to be percent-encoded.
 def _percent_encode_after_encoding(
@@ -164,9 +131,9 @@ def _percent_encode_after_encoding(
     # TODO: Use an alternative to xmlcharrefreplace that returns %26%23NNN%3B
     # instead of &#NNN;
     encode_output, _ = encoder(input, "xmlcharrefreplace")
-    for three_bytes in by_threes(encode_output):
-        byte = three_bytes[0]
-        if space_as_plus and byte == b" ":
+    for i in range(len(encode_output)):  # pylint: disable=consider-using-enumerate
+        byte = encode_output[i]
+        if space_as_plus and byte == 0x20:
             output += "+"
             continue
         isomorph = chr(byte)
@@ -174,10 +141,9 @@ def _percent_encode_after_encoding(
             output += isomorph
         elif isomorph == "%":
             if (
-                three_bytes[1] is None
-                or chr(three_bytes[1]) not in _ASCII_HEX_DIGIT
-                or three_bytes[2] is None
-                or chr(three_bytes[2]) not in _ASCII_HEX_DIGIT
+                len(encode_output) <= i + 2
+                or chr(encode_output[i + 1]) not in _ASCII_HEX_DIGIT
+                or chr(encode_output[i + 2]) not in _ASCII_HEX_DIGIT
             ):
                 output += "%25"
             else:
