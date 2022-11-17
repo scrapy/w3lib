@@ -24,6 +24,7 @@ from w3lib._url import (
     _serialize_host,
     # _serialize_url,
     _serialize_url_path,
+    _SPECIAL_QUERY_PERCENT_ENCODE_SET,
     _SPECIAL_SCHEMES,
 )
 from w3lib.url import (
@@ -154,18 +155,51 @@ def test_parse_url(
     # assert _serialize_url(url) == href
 
 
+PERCENT_ENCODE_TEST_DATA_FILE_PATH = (
+    Path(__file__).parent / "percent-encoding-test-data.json"
+)
+PERCENT_ENCODE_TEST_DATA_KNOWN_ISSUES = {
+    # TODO: Investigate.
+    ("\x0eA", "iso-2022-jp"),
+    ("\ue5e5", "gb18030"),
+}
+
+with open(PERCENT_ENCODE_TEST_DATA_FILE_PATH, encoding="utf-8") as input:
+    PERCENT_ENCODE_TEST_DATA = json.load(input)
+
+
 @pytest.mark.parametrize(
-    "input,output",
+    "input,output,encoding,percent_encode_set",
     (
-        ("", ""),
-        ("a", "a"),
+        ("", "", "utf-8", _C0_CONTROL_PERCENT_ENCODE_SET),
+        ("a", "a", "utf-8", _C0_CONTROL_PERCENT_ENCODE_SET),
+        *(
+            (input, output, encoding, _SPECIAL_QUERY_PERCENT_ENCODE_SET)
+            if (input, encoding) not in PERCENT_ENCODE_TEST_DATA_KNOWN_ISSUES
+            else pytest.param(
+                input,
+                output,
+                encoding,
+                _SPECIAL_QUERY_PERCENT_ENCODE_SET,
+                marks=pytest.mark.xfail(strict=True),
+            )
+            for input, _output in (
+                (
+                    i["input"],
+                    i["output"],
+                )
+                for i in PERCENT_ENCODE_TEST_DATA
+                if not isinstance(i, str)
+            )
+            for encoding, output in _output.items()
+        ),
     ),
 )
-def test_percent_encode_after_encoding(input, output):
+def test_percent_encode_after_encoding(input, output, encoding, percent_encode_set):
     actual = _percent_encode_after_encoding(
         input,
-        encoding="utf-8",
-        percent_encode_set=_C0_CONTROL_PERCENT_ENCODE_SET,
+        encoding=encoding,
+        percent_encode_set=percent_encode_set,
     )
     assert actual == output
 
