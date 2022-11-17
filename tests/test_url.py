@@ -53,7 +53,7 @@ with open(URL_TEST_DATA_FILE_PATH, encoding="utf-8") as input:
 
 
 @pytest.mark.parametrize(
-    "input,base,failure,href,protocol,username,password,hostname,port,pathname",
+    "input,base,failure,href,protocol,username,password,hostname,port,pathname,search,hash",
     (
         case
         if case[0] not in URL_TEST_DATA_KNOWN_ISSUES
@@ -70,6 +70,8 @@ with open(URL_TEST_DATA_FILE_PATH, encoding="utf-8") as input:
                 i.get("hostname"),
                 i.get("port"),
                 i.get("pathname"),
+                i.get("search"),
+                i.get("hash"),
             )
             for i in URL_TEST_DATA
             if not isinstance(i, str)
@@ -77,7 +79,18 @@ with open(URL_TEST_DATA_FILE_PATH, encoding="utf-8") as input:
     ),
 )
 def test_parse_url(
-    input, base, failure, href, protocol, username, password, hostname, port, pathname
+    input,
+    base,
+    failure,
+    href,
+    protocol,
+    username,
+    password,
+    hostname,
+    port,
+    pathname,
+    search,
+    hash,
 ):
     if failure:
         with pytest.raises(ValueError):
@@ -93,7 +106,13 @@ def test_parse_url(
     # TODO: Find out why we do not always get right whether path is supposed to
     # be / or an empty string.
     assert (_serialize_url_path(url) or "/") == (pathname or "/")
-    # TODO: Cover additional fields
+    # TODO: Find out why we do not always get right whether query is supposed
+    # to be an empty string or None.
+    assert (url.query or "") == (search[1:] if search else "")
+    # TODO: Find out why we do not always get right whether fragment is
+    # supposed to be an empty string or None.
+    assert (url.fragment or "") == (hash[1:] if hash else "")
+    # TODO: Address the TODOs above.
     # assert _serialize_url(url) == href
 
 
