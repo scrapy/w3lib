@@ -432,25 +432,6 @@ def _starts_with_windows_drive_letter(input: str) -> bool:
     )
 
 
-_ASCII_URL_CODE_POINTS = _ASCII_ALPHANUMERIC + "!$&'()*+,-./:;=?@_~"
-
-
-# https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#url-code-points
-def _is_url_code_point(code_point: str) -> bool:
-    if code_point in _ASCII_URL_CODE_POINTS:
-        return True
-    code_point_id = ord(code_point)
-    if code_point_id < 0xA0:
-        return False
-    if code_point_id > 0x10FFFD:
-        return False
-    if _is_surrogate_code_point_id(code_point_id):
-        return False
-    if _is_noncharacter_code_point_id(code_point_id):
-        return False
-    return True
-
-
 # https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#double-dot-path-segment
 def _is_double_dot_path_segment(input: str) -> bool:
     return input in (

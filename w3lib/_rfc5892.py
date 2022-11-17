@@ -10,6 +10,8 @@ intranges_contain = lru_cache(maxsize=None)(_intranges_contain)
 
 
 def _check_contextj_rules(label: str) -> None:
+    if label.isascii():
+        return
     for i, code_point in enumerate(label):
         value = ord(code_point)
         if not intranges_contain(value, codepoint_classes["CONTEXTJ"]):

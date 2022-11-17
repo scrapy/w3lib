@@ -256,7 +256,7 @@ def _process(
 
 
 def _convert_label(label: str) -> str:
-    if not any(ord(code_point) >= 0x80 for code_point in label):
+    if label.isascii():
         return label
     return f"xn--{label.encode('punycode').decode()}"
 
