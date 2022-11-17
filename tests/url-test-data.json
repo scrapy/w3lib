@@ -1,5 +1,5 @@
 [
-    "# Source: https://github.com/web-platform-tests/wpt/blob/master/url/resources/urltestdata.json",
+    "# Source: https://github.com/web-platform-tests/wpt/blob/77d95d52351ebf51bc80ee21eea455de31a5e356/url/resources/urltestdata.json",
 
     "# Based on http://trac.webkit.org/browser/trunk/LayoutTests/fast/url/script-tests/segments.js",
     {

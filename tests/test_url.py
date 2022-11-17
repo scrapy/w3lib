@@ -18,6 +18,7 @@ from w3lib._infra import (
 )
 from w3lib._url import (
     _C0_CONTROL_PERCENT_ENCODE_SET,
+    _domain_to_ascii,
     _parse_url,
     _percent_encode_after_encoding,
     _serialize_host,
@@ -41,6 +42,43 @@ from w3lib.url import (
     url_query_parameter,
     url_query_cleaner,
 )
+
+
+TO_ASCII_TEST_DATA_FILE_PATH = Path(__file__).parent / "to-ascii-test-data.json"
+TO_ASCII_TEST_DATA_KNOWN_ISSUES = (
+    # TODO: Investigate.
+    "xn--a-yoc",
+    "a%C2%ADb",
+    "%C2%AD",
+)
+
+with open(TO_ASCII_TEST_DATA_FILE_PATH, encoding="utf-8") as input:
+    TO_ASCII_TEST_DATA = json.load(input)
+
+
+@pytest.mark.parametrize(
+    "input,output",
+    (
+        case
+        if case[0] not in TO_ASCII_TEST_DATA_KNOWN_ISSUES
+        else pytest.param(*case, marks=pytest.mark.xfail(strict=True))
+        for case in (
+            (
+                i["input"],
+                i["output"],
+            )
+            for i in TO_ASCII_TEST_DATA
+            if not isinstance(i, str)
+        )
+    ),
+)
+def test_domain_to_ascii(input, output):
+    if output is not None:
+        assert _domain_to_ascii(input) == output
+        return
+    with pytest.raises(ValueError):
+        _domain_to_ascii(input)
+
 
 URL_TEST_DATA_FILE_PATH = Path(__file__).parent / "url-test-data.json"
 URL_TEST_DATA_KNOWN_ISSUES = (
