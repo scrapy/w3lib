@@ -10,3 +10,4 @@ include NEWS
 include README.rst
 include pytest.ini
 include tox.ini
+include w3lib/idna.txt
