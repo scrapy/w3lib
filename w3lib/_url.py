@@ -514,7 +514,8 @@ def _is_double_dot_path_segment(input: str) -> bool:
 # https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#single-dot-path-segment
 def _is_single_dot_path_segment(input: str) -> bool:
     return input in (
-        "." "%2e",
+        ".",
+        "%2e",
         "%2E",
     )
 
@@ -665,10 +666,7 @@ def _parse_url(
         elif state == _State.RELATIVE:
             assert isinstance(base, _URL)
             url.scheme = base.scheme
-            if (
-                c == "/"
-                or url.is_special() and c == "\\"
-            ):
+            if c == "/" or url.is_special() and c == "\\":
                 state = _State.RELATIVE_SLASH
             else:
                 url.username = base.username

@@ -22,6 +22,7 @@ from w3lib._url import (
     _percent_encode_after_encoding,
     _serialize_host,
     # _serialize_url,
+    _serialize_url_path,
     _SPECIAL_SCHEMES,
 )
 from w3lib.url import (
@@ -42,14 +43,17 @@ from w3lib.url import (
 )
 
 URL_TEST_DATA_FILE_PATH = Path(__file__).parent / "url-test-data.json"
-URL_TEST_DATA_KNOWN_ISSUES = ()
+URL_TEST_DATA_KNOWN_ISSUES = (
+    # https://github.com/web-platform-tests/wpt/issues/37010
+    "http://example.com/\ud800\U000107fe\udfff\ufdd0\ufdcf\ufdefﷰ\ufffe\uffff?\ud800\U000107fe\udfff\ufdd0\ufdcf\ufdefﷰ\ufffe\uffff",
+)
 
 with open(URL_TEST_DATA_FILE_PATH, encoding="utf-8") as input:
     URL_TEST_DATA = json.load(input)
 
 
 @pytest.mark.parametrize(
-    "input,base,failure,href,protocol,username,password,hostname",
+    "input,base,failure,href,protocol,username,password,hostname,port,pathname",
     (
         case
         if case[0] not in URL_TEST_DATA_KNOWN_ISSUES
@@ -64,13 +68,17 @@ with open(URL_TEST_DATA_FILE_PATH, encoding="utf-8") as input:
                 i.get("username"),
                 i.get("password"),
                 i.get("hostname"),
+                i.get("port"),
+                i.get("pathname"),
             )
             for i in URL_TEST_DATA
             if not isinstance(i, str)
         )
     ),
 )
-def test_parse_url(input, base, failure, href, protocol, username, password, hostname):
+def test_parse_url(
+    input, base, failure, href, protocol, username, password, hostname, port, pathname
+):
     if failure:
         with pytest.raises(ValueError):
             _parse_url(input, base_url=base)
@@ -81,6 +89,10 @@ def test_parse_url(input, base, failure, href, protocol, username, password, hos
     assert url.username == username
     assert url.password == password
     assert _serialize_host(url.hostname) == hostname
+    assert url.port == (None if not port else int(port))
+    # TODO: Find out why we do not always get right whether path is supposed to
+    # be / or an empty string.
+    assert (_serialize_url_path(url) or "/") == (pathname or "/")
     # TODO: Cover additional fields
     # assert _serialize_url(url) == href
 
