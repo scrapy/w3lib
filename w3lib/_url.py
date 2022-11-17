@@ -540,7 +540,7 @@ def _parse_url(
     url = _URL()
     state = SCHEME_START
     buffer = ""
-    at_sign_seen = inside_brackets = False
+    at_sign_seen = inside_brackets = skip_authority_shortcut = False
     pointer = 0
 
     input = input.strip(_C0_CONTROL_OR_SPACE)
@@ -556,7 +556,7 @@ def _parse_url(
         if state == SCHEME_START:
             if c is not None and c in _ASCII_ALPHA:
                 assert isinstance(c, str)
-                buffer += c.lower()
+                buffer += c
                 state = SCHEME
             else:
                 state = NO_SCHEME
@@ -565,9 +565,9 @@ def _parse_url(
         elif state == SCHEME:
             if c is not None and c in _SCHEME_CHARS:
                 assert isinstance(c, str)
-                buffer += c.lower()
+                buffer += c
             elif c == ":":
-                url.scheme = buffer
+                url.scheme = buffer.lower()
                 buffer = ""
                 if url.scheme == "file":
                     state = FILE
@@ -673,7 +673,14 @@ def _parse_url(
                 pointer -= 1
 
         elif state == AUTHORITY:
-            if c == "@":
+            if not skip_authority_shortcut:
+                at_sign_index = input.find("@", pointer)
+                if at_sign_index == -1:
+                    state = HOST
+                else:
+                    skip_authority_shortcut = True
+                pointer -= 1
+            elif c == "@":
                 if at_sign_seen:
                     buffer = "%40" + buffer
                 at_sign_seen = True

@@ -1,11 +1,7 @@
 import json
 import os
 import unittest
-from collections import deque
-from collections.abc import Iterator
-from itertools import tee
 from pathlib import Path
-from platform import python_implementation
 from timeit import timeit
 from urllib.parse import urlparse
 
@@ -643,7 +639,7 @@ def test_safe_url_performance(url):
     # presummably due to caching by urllib.
     number = 1  # TODO: Increase? How much?
     # Make sure the new implementation is at most this number of times as slow.
-    multiplier = 75  # TODO: Lower as close to 1 as possible.
+    multiplier = 45  # TODO: Lower as close to 1 as possible.
 
     time1 = timeit(
         f"safe_url({url!r})", "from w3lib.url import safe_url", number=number
@@ -655,20 +651,6 @@ def test_safe_url_performance(url):
     )
 
     assert time1 <= time2 * multiplier
-
-
-# If this is ever fixed upstream, decide what to do with our workaround. We
-# currently provide a tee Python implementation for PyPy, which we should
-# probably stop doing on PyPy versions where the bug is no longer present, but
-# we still may want the implementation on other PyPy versions.
-@pytest.mark.xfail(
-    python_implementation() == "PyPy",
-    reason="https://foss.heptapod.net/pypy/pypy/-/issues/3852",
-    strict=True,
-)
-def test_tee():
-    iterator1, _ = tee(deque([b""]))
-    assert isinstance(iterator1, Iterator)
 
 
 class UrlTests(unittest.TestCase):
