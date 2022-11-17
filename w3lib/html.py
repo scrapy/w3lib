@@ -91,7 +91,7 @@ def replace_entities(
                     return bytes((number,)).decode("cp1252")
                 else:
                     return chr(number)
-            except ValueError:
+            except (ValueError, OverflowError):
                 pass
 
         return "" if remove_illegal and groups.get("semicolon") else m.group(0)
