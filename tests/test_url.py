@@ -643,7 +643,7 @@ def test_safe_url_performance(url):
     # presummably due to caching by urllib.
     number = 1  # TODO: Increase? How much?
     # Make sure the new implementation is at most this number of times as slow.
-    multiplier = 90  # TODO: Lower as close to 1 as possible.
+    multiplier = 75  # TODO: Lower as close to 1 as possible.
 
     time1 = timeit(
         f"safe_url({url!r})", "from w3lib.url import safe_url", number=number

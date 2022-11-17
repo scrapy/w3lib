@@ -2,7 +2,6 @@
 
 # https://url.spec.whatwg.org/
 
-from enum import auto, Enum
 from itertools import chain
 from math import floor
 from typing import List, Optional, Tuple, Union
@@ -30,28 +29,26 @@ _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE = {
     ord(char): None for char in _ASCII_TAB_OR_NEWLINE
 }
 
-
-class _State(Enum):
-    SCHEME_START = auto()
-    SCHEME = auto()
-    NO_SCHEME = auto()
-    SPECIAL_RELATIVE_OR_AUTHORITY = auto()
-    PATH_OR_AUTHORITY = auto()
-    RELATIVE = auto()
-    RELATIVE_SLASH = auto()
-    SPECIAL_AUTHORITY_SLASHES = auto()
-    SPECIAL_AUTHORITY_IGNORE_SLASHES = auto()
-    AUTHORITY = auto()
-    HOST = auto()
-    PORT = auto()
-    FILE = auto()
-    FILE_SLASH = auto()
-    FILE_HOST = auto()
-    PATH_START = auto()
-    PATH = auto()
-    OPAQUE_PATH = auto()
-    QUERY = auto()
-    FRAGMENT = auto()
+SCHEME_START = 0
+SCHEME = 1
+NO_SCHEME = 2
+SPECIAL_RELATIVE_OR_AUTHORITY = 3
+PATH_OR_AUTHORITY = 4
+RELATIVE = 5
+RELATIVE_SLASH = 6
+SPECIAL_AUTHORITY_SLASHES = 7
+SPECIAL_AUTHORITY_IGNORE_SLASHES = 8
+AUTHORITY = 9
+HOST = 10
+PORT = 11
+FILE = 12
+FILE_SLASH = 13
+FILE_HOST = 14
+PATH_START = 15
+PATH = 16
+OPAQUE_PATH = 17
+QUERY = 18
+FRAGMENT = 19
 
 
 # https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#default-port
@@ -541,7 +538,7 @@ def _parse_url(
     encoding = _get_output_encoding(encoding)
 
     url = _URL()
-    state = _State.SCHEME_START
+    state = SCHEME_START
     buffer = ""
     at_sign_seen = inside_brackets = False
     pointer = 0
@@ -556,16 +553,16 @@ def _parse_url(
         except IndexError:
             c = None
 
-        if state == _State.SCHEME_START:
+        if state == SCHEME_START:
             if c is not None and c in _ASCII_ALPHA:
                 assert isinstance(c, str)
                 buffer += c.lower()
-                state = _State.SCHEME
+                state = SCHEME
             else:
-                state = _State.NO_SCHEME
+                state = NO_SCHEME
                 pointer -= 1
 
-        elif state == _State.SCHEME:
+        elif state == SCHEME:
             if c is not None and c in _SCHEME_CHARS:
                 assert isinstance(c, str)
                 buffer += c.lower()
@@ -573,24 +570,24 @@ def _parse_url(
                 url.scheme = buffer
                 buffer = ""
                 if url.scheme == "file":
-                    state = _State.FILE
+                    state = FILE
                 elif url.is_special:
                     if base is not None and base.scheme == url.scheme:
-                        state = _State.SPECIAL_RELATIVE_OR_AUTHORITY
+                        state = SPECIAL_RELATIVE_OR_AUTHORITY
                     else:
-                        state = _State.SPECIAL_AUTHORITY_SLASHES
+                        state = SPECIAL_AUTHORITY_SLASHES
                 elif pointer + 1 < len(input) and input[pointer + 1] == "/":
-                    state = _State.PATH_OR_AUTHORITY
+                    state = PATH_OR_AUTHORITY
                     pointer += 1
                 else:
                     url.path = ""
-                    state = _State.OPAQUE_PATH
+                    state = OPAQUE_PATH
             else:
                 buffer = ""
-                state = _State.NO_SCHEME
+                state = NO_SCHEME
                 pointer = -1
 
-        elif state == _State.NO_SCHEME:
+        elif state == NO_SCHEME:
             if base is None:
                 raise ValueError
             if base.has_opaque_path():
@@ -600,34 +597,34 @@ def _parse_url(
                 url.path = base.path
                 url.query = base.query
                 url.fragment = ""
-                state = _State.FRAGMENT
+                state = FRAGMENT
             else:
                 if base.scheme != "file":
-                    state = _State.RELATIVE
+                    state = RELATIVE
                 else:
-                    state = _State.FILE
+                    state = FILE
                 pointer -= 1
 
-        elif state == _State.SPECIAL_RELATIVE_OR_AUTHORITY:
+        elif state == SPECIAL_RELATIVE_OR_AUTHORITY:
             if c == "/" and input[pointer + 1] == "/":
-                state = _State.SPECIAL_AUTHORITY_IGNORE_SLASHES
+                state = SPECIAL_AUTHORITY_IGNORE_SLASHES
                 pointer += 1
             else:
-                state = _State.RELATIVE
+                state = RELATIVE
                 pointer -= 1
 
-        elif state == _State.PATH_OR_AUTHORITY:
+        elif state == PATH_OR_AUTHORITY:
             if c == "/":
-                state = _State.AUTHORITY
+                state = AUTHORITY
             else:
-                state = _State.PATH
+                state = PATH
                 pointer -= 1
 
-        elif state == _State.RELATIVE:
+        elif state == RELATIVE:
             assert isinstance(base, _URL)
             url.scheme = base.scheme
             if c == "/" or url.is_special and c == "\\":
-                state = _State.RELATIVE_SLASH
+                state = RELATIVE_SLASH
             else:
                 url.username = base.username
                 url.password = base.password
@@ -637,45 +634,45 @@ def _parse_url(
                 url.query = base.query
                 if c == "?":
                     url.query = ""
-                    state = _State.QUERY
+                    state = QUERY
                 elif c == "#":
                     url.fragment = ""
-                    state = _State.FRAGMENT
+                    state = FRAGMENT
                 elif pointer < input_length:
                     url.query = None
                     _shorten_path(url)
-                    state = _State.PATH
+                    state = PATH
                     pointer -= 1
 
-        elif state == _State.RELATIVE_SLASH:
+        elif state == RELATIVE_SLASH:
             assert isinstance(base, _URL)
             if url.is_special and c is not None and c in "/\\":
                 assert isinstance(c, str)
-                state = _State.SPECIAL_AUTHORITY_IGNORE_SLASHES
+                state = SPECIAL_AUTHORITY_IGNORE_SLASHES
             elif c == "/":
-                state = _State.AUTHORITY
+                state = AUTHORITY
             else:
                 url.username = base.username
                 url.password = base.password
                 url.hostname = base.hostname
                 url.port = base.port
-                state = _State.PATH
+                state = PATH
                 pointer -= 1
 
-        elif state == _State.SPECIAL_AUTHORITY_SLASHES:
+        elif state == SPECIAL_AUTHORITY_SLASHES:
             if c == "/" and input[pointer + 1] == "/":
-                state = _State.SPECIAL_AUTHORITY_IGNORE_SLASHES
+                state = SPECIAL_AUTHORITY_IGNORE_SLASHES
                 pointer += 1
             else:
-                state = _State.SPECIAL_AUTHORITY_IGNORE_SLASHES
+                state = SPECIAL_AUTHORITY_IGNORE_SLASHES
                 pointer -= 1
 
-        elif state == _State.SPECIAL_AUTHORITY_IGNORE_SLASHES:
+        elif state == SPECIAL_AUTHORITY_IGNORE_SLASHES:
             if c is None or c not in "/\\":
-                state = _State.AUTHORITY
+                state = AUTHORITY
                 pointer -= 1
 
-        elif state == _State.AUTHORITY:
+        elif state == AUTHORITY:
             if c == "@":
                 if at_sign_seen:
                     buffer = "%40" + buffer
@@ -699,18 +696,18 @@ def _parse_url(
                     raise ValueError
                 pointer -= len(buffer) + 1
                 buffer = ""
-                state = _State.HOST
+                state = HOST
             else:
                 buffer += c
 
-        elif state == _State.HOST:
+        elif state == HOST:
             if c == ":" and not inside_brackets:
                 if not buffer:
                     raise ValueError
                 host = _parse_host(buffer, is_special=url.is_special)
                 url.hostname = host
                 buffer = ""
-                state = _State.PORT
+                state = PORT
                 url._port_token_seen = True
             elif c is None or c in "/?#" or url.is_special and c == "\\":
                 pointer -= 1
@@ -719,7 +716,7 @@ def _parse_url(
                 host = _parse_host(buffer, is_special=url.is_special)
                 url.hostname = host
                 buffer = ""
-                state = _State.PATH_START
+                state = PATH_START
             else:
                 if c == "[":
                     inside_brackets = True
@@ -727,7 +724,7 @@ def _parse_url(
                     inside_brackets = False
                 buffer += c
 
-        elif state == _State.PORT:
+        elif state == PORT:
             if c is not None and c in _ASCII_DIGIT:
                 assert isinstance(c, str)
                 buffer += c
@@ -739,27 +736,27 @@ def _parse_url(
                     url.port = None if _DEFAULT_PORTS.get(url.scheme) == port else port
                     url._default_port_seen = url.port is None
                     buffer = ""
-                state = _State.PATH_START
+                state = PATH_START
                 pointer -= 1
             else:
                 raise ValueError
 
-        elif state == _State.FILE:
+        elif state == FILE:
             url.scheme = "file"
             url.hostname = ""
             if c is not None and c in "/\\":
                 assert isinstance(c, str)
-                state = _State.FILE_SLASH
+                state = FILE_SLASH
             elif base is not None and base.scheme == "file":
                 url.hostname = base.hostname
                 url.path = base.path
                 url.query = base.query
                 if c == "?":
                     url.query = ""
-                    state = _State.QUERY
+                    state = QUERY
                 elif c == "#":
                     url.fragment = ""
-                    state = _State.FRAGMENT
+                    state = FRAGMENT
                 elif c is not None:
                     assert isinstance(c, str)
                     url.query = None
@@ -767,17 +764,17 @@ def _parse_url(
                         _shorten_path(url)
                     else:
                         url.path = []
-                    state = _State.PATH
+                    state = PATH
                     pointer -= 1
             else:
-                state = _State.PATH
+                state = PATH
                 pointer -= 1
 
-        elif state == _State.FILE_SLASH:
+        elif state == FILE_SLASH:
             assert isinstance(url.path, list)
             if c is not None and c in "/\\":
                 assert isinstance(c, str)
-                state = _State.FILE_HOST
+                state = FILE_HOST
             else:
                 if base is not None and base.scheme == "file":
                     url.hostname = base.hostname
@@ -785,47 +782,47 @@ def _parse_url(
                         input[pointer:]
                     ) and _is_windows_drive_letter(base.path[0]):
                         url.path.append(base.path[0])
-                state = _State.PATH
+                state = PATH
                 pointer -= 1
 
-        elif state == _State.FILE_HOST:
+        elif state == FILE_HOST:
             if c is None or c in "/\\?#":
                 pointer -= 1
                 if _is_windows_drive_letter(buffer):
-                    state = _State.PATH
+                    state = PATH
                 elif not buffer:
                     url.hostname = ""
-                    state = _State.PATH_START
+                    state = PATH_START
                 else:
                     host = _parse_host(buffer, is_special=url.is_special)
                     if host == "localhost":
                         host = ""
                     url.hostname = host
                     buffer = ""
-                    state = _State.PATH_START
+                    state = PATH_START
             else:
                 assert isinstance(c, str)
                 buffer += c
 
-        elif state == _State.PATH_START:
+        elif state == PATH_START:
             if url.is_special:
-                state = _State.PATH
+                state = PATH
                 if c is not None and c not in "/\\":
                     assert isinstance(c, str)
                     pointer -= 1
             elif c == "?":
                 url.query = ""
-                state = _State.QUERY
+                state = QUERY
             elif c == "#":
                 url.fragment = ""
-                state = _State.FRAGMENT
+                state = FRAGMENT
             elif c is not None:
                 assert isinstance(c, str)
-                state = _State.PATH
+                state = PATH
                 if c != "/":
                     pointer -= 1
 
-        elif state == _State.PATH:
+        elif state == PATH:
             assert isinstance(url.path, list)
             if c is None or c == "/" or (url.is_special and c == "\\") or c in "?#":
                 if _is_double_dot_path_segment(buffer):
@@ -854,10 +851,10 @@ def _parse_url(
                 buffer = ""
                 if c == "?":
                     url.query = ""
-                    state = _State.QUERY
+                    state = QUERY
                 elif c == "#":
                     url.fragment = ""
-                    state = _State.FRAGMENT
+                    state = FRAGMENT
             else:
                 assert isinstance(c, str)
                 buffer += _idempotent_utf_8_percent_encode(
@@ -866,14 +863,14 @@ def _parse_url(
                     encode_set=path_percent_encode_set,
                 )
 
-        elif state == _State.OPAQUE_PATH:
+        elif state == OPAQUE_PATH:
             assert isinstance(url.path, str)
             if c == "?":
                 url.query = ""
-                state = _State.QUERY
+                state = QUERY
             elif c == "#":
                 url.fragment = ""
-                state = _State.FRAGMENT
+                state = FRAGMENT
             elif c is not None:
                 assert isinstance(c, str)
                 encoded = _utf_8_percent_encode(
@@ -882,7 +879,7 @@ def _parse_url(
                 )
                 url.path += encoded
 
-        elif state == _State.QUERY:
+        elif state == QUERY:
             assert isinstance(url.query, str)
             if encoding != "utf-8" and (
                 not url.is_special or url.scheme in ("ws", "wss")
@@ -902,12 +899,12 @@ def _parse_url(
                 buffer = ""
                 if c == "#":
                     url.fragment = ""
-                    state = _State.FRAGMENT
+                    state = FRAGMENT
             elif c is not None:
                 assert isinstance(c, str)
                 buffer += c
 
-        elif state == _State.FRAGMENT:
+        elif state == FRAGMENT:
             assert isinstance(url.fragment, str)
             if c is not None:
                 assert isinstance(c, str)
