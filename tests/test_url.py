@@ -6,6 +6,7 @@ from collections.abc import Iterator
 from itertools import tee
 from pathlib import Path
 from platform import python_implementation
+from timeit import timeit
 from urllib.parse import urlparse
 
 import pytest
@@ -509,7 +510,7 @@ def _test_safe_url_func(url, *, encoding=UNSET, output, func):
 
 
 def _test_safe_url(url, *, encoding=UNSET, output):
-    return _test_safe_url_func(
+    _test_safe_url_func(
         url,
         encoding=encoding,
         output=output,
@@ -623,6 +624,35 @@ KNOWN_SAFE_URL_STRING_URL_ISSUES = {
 )
 def test_safe_url_string_url(url, output):
     _test_safe_url_string(url, output=output)
+
+
+@pytest.mark.parametrize(
+    "url",
+    tuple(
+        case[0]
+        for case in SAFE_URL_URL_CASES
+        if (
+            case[0] not in KNOWN_SAFE_URL_STRING_URL_ISSUES and isinstance(case[1], str)
+        )
+    ),
+)
+def test_safe_url_performance(url):
+    # As you increase number, safe_url_string starts gaining by far,
+    # presummably due to caching by urllib.
+    number = 1  # TODO: Increase? How much?
+    # Make sure the new implementation is at most this number of times as slow.
+    multiplier = 200  # TODO: Lower as close to 1 as possible.
+
+    time1 = timeit(
+        f"safe_url({url!r})", "from w3lib.url import safe_url", number=number
+    )
+    time2 = timeit(
+        f"safe_url_string({url!r})",
+        "from w3lib.url import safe_url_string",
+        number=number,
+    )
+
+    assert time1 <= time2 * multiplier
 
 
 # If this is ever fixed upstream, decide what to do with our workaround. We
