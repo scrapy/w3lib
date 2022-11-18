@@ -2,9 +2,9 @@
 
 # https://url.spec.whatwg.org/
 
-from itertools import chain
 from math import floor
 from typing import List, Optional, Tuple, Union
+from urllib.parse import unquote
 
 from . import _utr46
 from ._encoding import (
@@ -277,45 +277,6 @@ def _parse_opaque_host(input: str) -> str:
     return _utf_8_percent_encode(input, _C0_CONTROL_PERCENT_ENCODE_SET)
 
 
-_ASCII_HEX_BYTES = tuple(
-    chain(
-        range(0x30, 0x39 + 1),
-        range(0x41, 0x46 + 1),
-        range(0x61, 0x66 + 1),
-    )
-)
-
-
-# https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#percent-decode
-def _percent_decode(input: bytes) -> bytes:
-    output = b""
-    pointer = 0
-    input_length = len(input)
-    while pointer < input_length:
-        byte = input[pointer]
-        if byte != 0x25 or (
-            byte == 0x25
-            and (
-                pointer + 2 >= input_length
-                or input[pointer + 1] not in _ASCII_HEX_BYTES
-                or input[pointer + 2] not in _ASCII_HEX_BYTES
-            )
-        ):
-            output += b"%c" % byte
-        else:
-            byte_hex = b"%c%c" % (input[pointer + 1], input[pointer + 2])
-            byte_point = int(byte_hex, base=16)
-            output += b"%c" % byte_point
-            pointer += 2
-        pointer += 1
-    return output
-
-
-# https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#string-percent-decode
-def _percent_decode_string(input: str) -> bytes:
-    return _percent_decode(input.encode())
-
-
 # https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#ipv4-number-parser
 def _parse_ipv4_number(input: str) -> Tuple[int, bool]:
     if not input:
@@ -407,7 +368,7 @@ def _parse_host(
         return _parse_ipv6(input[1:-1])
     if not is_special:
         return _parse_opaque_host(input)
-    domain = _percent_decode_string(input).decode()
+    domain = unquote(input)
     ascii_domain = _domain_to_ascii(domain)
     for code_point in ascii_domain:
         if code_point in _FORBIDDEN_DOMAIN_CODE_POINTS:
