@@ -35,8 +35,10 @@ from urllib.parse import (
 )
 from urllib.parse import _coerce_args  # type: ignore
 from urllib.request import pathname2url, url2pathname
-from w3lib.util import to_unicode
-from w3lib._types import AnyUnicodeError, StrOrBytes
+
+from .util import to_unicode
+from ._types import AnyUnicodeError, StrOrBytes
+from ._url import _SPECIAL_SCHEMES
 
 
 # error handling function for bytes-to-Unicode decoding errors with URLs
@@ -54,16 +56,33 @@ RFC3986_RESERVED = RFC3986_GEN_DELIMS + RFC3986_SUB_DELIMS
 RFC3986_UNRESERVED = (string.ascii_letters + string.digits + "-._~").encode("ascii")
 EXTRA_SAFE_CHARS = b"|"  # see https://github.com/scrapy/w3lib/pull/25
 
+RFC3986_USERINFO_SAFE_CHARS = RFC3986_UNRESERVED + RFC3986_SUB_DELIMS + b":"
 _safe_chars = RFC3986_RESERVED + RFC3986_UNRESERVED + EXTRA_SAFE_CHARS + b"%"
 _path_safe_chars = _safe_chars.replace(b"#", b"")
-RFC3986_USERINFO_SAFE_CHARS = RFC3986_UNRESERVED + RFC3986_SUB_DELIMS + b":"
+
+# Characters that are safe in all of:
+#
+# -   RFC 2396 + RFC 2732, as interpreted by Java 8’s java.net.URI class
+# -   RFC 3986
+# -   The URL living standard
+#
+# NOTE: % is currently excluded from these lists of characters, due to
+# limitations of the current safe_url_string implementation, but it should also
+# be escaped as %25 when it is not already being used as part of an escape
+# character.
+_USERINFO_SAFEST_CHARS = RFC3986_USERINFO_SAFE_CHARS.translate(None, b":;=")
+_PATH_SAFEST_CHARS = _safe_chars.translate(None, b"#[]|")
+_QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS
+_SPECIAL_QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS.translate(None, b"'")
+_FRAGMENT_SAFEST_CHARS = _PATH_SAFEST_CHARS
+
 
 _ascii_tab_newline_re = re.compile(
     r"[\t\n\r]"
 )  # see https://infra.spec.whatwg.org/#ascii-tab-or-newline
 
 
-def safe_url_string(
+def safe_url_string(  # pylint: disable=too-many-locals
     url: StrOrBytes,
     encoding: str = "utf8",
     path_encoding: str = "utf8",
@@ -106,11 +125,11 @@ def safe_url_string(
     netloc_bytes = b""
     if username is not None or password is not None:
         if username is not None:
-            safe_username = quote(unquote(username), RFC3986_USERINFO_SAFE_CHARS)
+            safe_username = quote(unquote(username), _USERINFO_SAFEST_CHARS)
             netloc_bytes += safe_username.encode(encoding)
         if password is not None:
             netloc_bytes += b":"
-            safe_password = quote(unquote(password), RFC3986_USERINFO_SAFE_CHARS)
+            safe_password = quote(unquote(password), _USERINFO_SAFEST_CHARS)
             netloc_bytes += safe_password.encode(encoding)
         netloc_bytes += b"@"
     if hostname is not None:
@@ -128,17 +147,22 @@ def safe_url_string(
 
     # default encoding for path component SHOULD be UTF-8
     if quote_path:
-        path = quote(parts.path.encode(path_encoding), _path_safe_chars)
+        path = quote(parts.path.encode(path_encoding), _PATH_SAFEST_CHARS)
     else:
         path = parts.path
+
+    if parts.scheme in _SPECIAL_SCHEMES:
+        query = quote(parts.query.encode(encoding), _SPECIAL_QUERY_SAFEST_CHARS)
+    else:
+        query = quote(parts.query.encode(encoding), _QUERY_SAFEST_CHARS)
 
     return urlunsplit(
         (
             parts.scheme,
             netloc,
             path,
-            quote(parts.query.encode(encoding), _safe_chars),
-            quote(parts.fragment.encode(encoding), _safe_chars),
+            query,
+            quote(parts.fragment.encode(encoding), _FRAGMENT_SAFEST_CHARS),
         )
     )
 
