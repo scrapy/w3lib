@@ -70,10 +70,10 @@ _path_safe_chars = _safe_chars.replace(b"#", b"")
 # limitations of the current safe_url_string implementation, but it should also
 # be escaped as %25 when it is not already being used as part of an escape
 # character.
-_USERINFO_SAFEST_CHARS = RFC3986_USERINFO_SAFE_CHARS.translate(None, b":;=")
-_PATH_SAFEST_CHARS = _safe_chars.translate(None, b"#[]|")
+_USERINFO_SAFEST_CHARS = RFC3986_USERINFO_SAFE_CHARS.translate(None, delete=b":;=")
+_PATH_SAFEST_CHARS = _safe_chars.translate(None, delete=b"#[]|")
 _QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS
-_SPECIAL_QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS.translate(None, b"'")
+_SPECIAL_QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS.translate(None, delete=b"'")
 _FRAGMENT_SAFEST_CHARS = _PATH_SAFEST_CHARS
 
 
