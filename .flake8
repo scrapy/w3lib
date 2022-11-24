@@ -10,4 +10,5 @@ ignore =
     W504,
 
     # black disagrees with flake8, and inserts whitespace
-    E203,  # whitespace before ':'
+    # E203: whitespace before ':'
+    E203,
