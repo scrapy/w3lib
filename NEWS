@@ -1,6 +1,63 @@
 w3lib release notes
 ===================
 
+2.1.0 (to be released)
+----------------------
+
+-   Dropped Python 3.6 support, and made Python 3.11 support official. (#195,
+    #200)
+
+-   :func:`~w3lib.url.safe_url_string` now generates safer URLs.
+
+    To make URLs safer for the `URL living standard`_:
+
+    .. _URL living standard: https://url.spec.whatwg.org/
+
+    -   ``;=`` are percent-encoded in the URL username.
+
+    -   ``;:=`` are percent-encoded in the URL password.
+
+    -   ``'`` is percent-encoded in the URL query if the URL scheme is `special
+        <https://url.spec.whatwg.org/#special-scheme>`__.
+
+    To make URLs safer for `RFC 2396`_ and `RFC 3986`_, ``|[]`` are
+    percent-encoded in URL paths, queries, and fragments.
+
+    .. _RFC 2396: https://www.ietf.org/rfc/rfc2396.txt
+    .. _RFC 3986: https://www.ietf.org/rfc/rfc3986.txt
+
+    (#80, #203)
+
+-   :func:`~w3lib.encoding.html_to_unicode` now checks for the `byte order
+    mark`_ before inspecting the ``Content-Type`` header when determining the
+    content encoding, in line with the `URL living standard`_. (#189, #191)
+
+    .. _byte order mark: https://en.wikipedia.org/wiki/Byte_order_mark
+
+-   :func:`~w3lib.url.canonicalize_url` now strips spaces from the input URL,
+    to be more in line with the `URL living standard`_. (#132, #136)
+
+-   :func:`~w3lib.html.get_base_url` now ignores HTML comments. (#70, #77)
+
+-   Fixed :func:`~w3lib.url.safe_url_string` re-encoding percent signs on
+    the URL username and password even when they were being used as part of an
+    escape sequence. (#187, #196)
+
+-   Fixed :func:`~w3lib.http.basic_auth_header` using the wrong flavor of
+    base64 encoding, which could prevent authentication in rare cases. (#181,
+    #192)
+
+-   Fixed :func:`~w3lib.html.replace_entities` raising :exc:`OverflowError` in
+    some cases due to `a bug in CPython
+    <https://github.com/python/cpython/issues/76763>`__. (#199, #202)
+
+-   Fixed typing issues. (#190)
+
+-   Made CI and test improvements. (#197, #198)
+
+-   Adopted a Code of Conduct. (#194)
+
+
 2.0.1 (2022-08-11)
 ------------------
 Minor documentation fix (release date is set in the changelog).
@@ -129,8 +186,6 @@ Other improvements and bug fixes:
   see also https://github.com/scrapy/scrapy/issues/2377)
 - ``url_query_cleaner()``: support new ``keep_fragments`` argument
   (defaulting to ``False``)
-
-.. _RFC 3986: https://tools.ietf.org/html/rfc3986#section-3.2
 
 1.15.0 (2016-07-29)
 -------------------
