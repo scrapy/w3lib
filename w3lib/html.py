@@ -66,7 +66,7 @@ def replace_entities(
 
     """
 
-    def convert_entity(m: Match) -> str:
+    def convert_entity(m: Match[str]) -> str:
         groups = m.groupdict()
         number = None
         if groups.get("dec"):
@@ -205,7 +205,7 @@ def remove_tags(
         else:
             return tag not in keep
 
-    def remove_tag(m: Match) -> str:
+    def remove_tag(m: Match[str]) -> str:
         tag = m.group(1)
         return "" if will_remove(tag) else m.group(0)
 
@@ -278,7 +278,9 @@ def unquote_markup(
 
     """
 
-    def _get_fragments(txt: str, pattern: Pattern) -> Iterable[Union[str, Match]]:
+    def _get_fragments(
+        txt: str, pattern: Pattern[str]
+    ) -> Iterable[Union[str, Match[str]]]:
         offset = 0
         for match in pattern.finditer(txt):
             match_s, match_e = match.span(1)

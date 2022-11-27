@@ -136,7 +136,7 @@ def _c18n_encoding(encoding: str) -> str:
     encoding aliases
     """
     normed = encodings.normalize_encoding(encoding).lower()
-    return encodings.aliases.aliases.get(normed, normed)
+    return cast(str, encodings.aliases.aliases.get(normed, normed))
 
 
 def resolve_encoding(encoding_alias: str) -> Optional[str]:
