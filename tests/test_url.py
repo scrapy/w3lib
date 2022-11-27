@@ -1,5 +1,6 @@
 import os
 import unittest
+from typing import Any, Union, Type, Callable, cast, Tuple, List
 from urllib.parse import urlparse
 
 import pytest
@@ -10,6 +11,7 @@ from w3lib._infra import (
     _ASCII_TAB_OR_NEWLINE,
     _C0_CONTROL_OR_SPACE,
 )
+from w3lib._types import StrOrBytes
 from w3lib._url import _SPECIAL_SCHEMES
 from w3lib.url import (
     add_or_replace_parameter,
@@ -34,7 +36,7 @@ UNSET = object()
 # input parameters.
 #
 # (encoding, input URL, output URL or exception)
-SAFE_URL_ENCODING_CASES = (
+SAFE_URL_ENCODING_CASES: List[Tuple[Any, StrOrBytes, Union[str, Type[Exception]]]] = [
     (UNSET, "", ValueError),
     (UNSET, "https://example.com", "https://example.com"),
     (UNSET, "https://example.com/©", "https://example.com/%C2%A9"),
@@ -53,7 +55,7 @@ SAFE_URL_ENCODING_CASES = (
     ),
     # Fragments are always UTF-8-encoded.
     ("iso-8859-1", "https://example.com#©", "https://example.com#%C2%A9"),
-)
+]
 
 INVALID_SCHEME_FOLLOW_UPS = "".join(
     chr(value)
@@ -315,16 +317,22 @@ SAFE_URL_URL_CASES = (
 )
 
 
-def _test_safe_url_func(url, *, encoding=UNSET, output, func):
+def _test_safe_url_func(
+    url: StrOrBytes,
+    *,
+    encoding: Any = UNSET,
+    output: Union[str, Type[Exception]],
+    func: Callable[..., str],
+) -> None:
     kwargs = {}
     if encoding is not UNSET:
         kwargs["encoding"] = encoding
     try:
-        is_exception = issubclass(output, Exception)
+        is_exception = issubclass(cast(Type[Exception], output), Exception)
     except TypeError:
         is_exception = False
     if is_exception:
-        with pytest.raises(output):
+        with pytest.raises(cast(Type[Exception], output)):
             func(url, **kwargs)
         return
     actual = func(url, **kwargs)
@@ -332,7 +340,9 @@ def _test_safe_url_func(url, *, encoding=UNSET, output, func):
     assert func(actual, **kwargs) == output  # Idempotency
 
 
-def _test_safe_url_string(url, *, encoding=UNSET, output):
+def _test_safe_url_string(
+    url: StrOrBytes, *, encoding: Any = UNSET, output: Union[str, Type[Exception]]
+) -> None:
     return _test_safe_url_func(
         url,
         encoding=encoding,
@@ -362,7 +372,9 @@ KNOWN_SAFE_URL_STRING_ENCODING_ISSUES = {
         for case in SAFE_URL_ENCODING_CASES
     ),
 )
-def test_safe_url_string_encoding(encoding, url, output):
+def test_safe_url_string_encoding(
+    encoding: Any, url: StrOrBytes, output: Union[str, Type[Exception]]
+) -> None:
     _test_safe_url_string(url, encoding=encoding, output=output)
 
 
@@ -421,7 +433,9 @@ KNOWN_SAFE_URL_STRING_URL_ISSUES = {
         for case in SAFE_URL_URL_CASES
     ),
 )
-def test_safe_url_string_url(url, output):
+def test_safe_url_string_url(
+    url: StrOrBytes, output: Union[str, Type[Exception]]
+) -> None:
     _test_safe_url_string(url, output=output)
 
 
