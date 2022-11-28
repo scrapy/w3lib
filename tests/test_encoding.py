@@ -1,5 +1,6 @@
 import codecs
 import unittest
+from typing import Optional, Union, List, Any
 
 from w3lib.encoding import (
     html_body_declared_encoding,
@@ -121,11 +122,11 @@ class UnicodeDecodingTestCase(unittest.TestCase):
         self.assertEqual(to_unicode(b"\xc2\xc2\xa3", "utf-8"), "\ufffd\xa3")
 
 
-def ct(charset):
+def ct(charset: Optional[str]) -> Optional[str]:
     return "Content-Type: text/html; charset=" + charset if charset else None
 
 
-def norm_encoding(enc):
+def norm_encoding(enc: str) -> str:
     return codecs.lookup(enc).name
 
 
@@ -138,7 +139,13 @@ class HtmlConversionTests(unittest.TestCase):
         self.assertTrue(isinstance(body_unicode, str))
         self.assertEqual(body_unicode, unicode_string)
 
-    def _assert_encoding(self, content_type, body, expected_encoding, expected_unicode):
+    def _assert_encoding(
+        self,
+        content_type: Optional[str],
+        body: bytes,
+        expected_encoding: str,
+        expected_unicode: Union[str, List[str]],
+    ) -> None:
         assert not isinstance(body, str)
         encoding, body_unicode = html_to_unicode(ct(content_type), body)
         self.assertTrue(isinstance(body_unicode, str))
@@ -149,7 +156,7 @@ class HtmlConversionTests(unittest.TestCase):
         else:
             self.assertTrue(
                 body_unicode in expected_unicode,
-                "%s is not in %s" % (body_unicode, expected_unicode),
+                f"{body_unicode} is not in {expected_unicode}",
             )
 
     def test_content_type_and_conversion(self):
@@ -210,8 +217,12 @@ class HtmlConversionTests(unittest.TestCase):
         assert "<span>value</span>" in body_unicode, repr(body_unicode)
 
     def _assert_encoding_detected(
-        self, content_type, expected_encoding, body, **kwargs
-    ):
+        self,
+        content_type: Optional[str],
+        expected_encoding: str,
+        body: bytes,
+        **kwargs: Any,
+    ) -> None:
         assert not isinstance(body, str)
         encoding, body_unicode = html_to_unicode(ct(content_type), body, **kwargs)
         self.assertTrue(isinstance(body_unicode, str))
@@ -220,13 +231,12 @@ class HtmlConversionTests(unittest.TestCase):
     def test_BOM(self):
         # utf-16 cases already tested, as is the BOM detection function
 
-        # http header takes precedence, irrespective of BOM
+        # BOM takes precedence, ahead of the http header
         bom_be_str = codecs.BOM_UTF16_BE + "hi".encode("utf-16-be")
-        expected = "\ufffd\ufffd\x00h\x00i"
-        self._assert_encoding("utf-8", bom_be_str, "utf-8", expected)
+        expected = "hi"
+        self._assert_encoding("utf-8", bom_be_str, "utf-16-be", expected)
 
-        # BOM is stripped when it agrees with the encoding, or used to
-        # determine encoding
+        # BOM is stripped when present
         bom_utf8_str = codecs.BOM_UTF8 + b"hi"
         self._assert_encoding("utf-8", bom_utf8_str, "utf-8", "hi")
         self._assert_encoding(None, bom_utf8_str, "utf-8", "hi")
@@ -280,7 +290,9 @@ class HtmlConversionTests(unittest.TestCase):
         self._assert_encoding_detected(None, "utf-8", codecs.BOM_UTF8 + body)
 
     def test_autodetect(self):
-        asciif = lambda x: "ascii"
+        def asciif(x):
+            return "ascii"
+
         body = b"""<meta charset="utf-8">"""
         # body encoding takes precedence
         self._assert_encoding_detected(None, "utf-8", body, auto_detect_fun=asciif)

@@ -32,12 +32,14 @@ from urllib.parse import (
     urlsplit,
     urlunparse,
     urlunsplit,
+    unquote,
 )
 from urllib.parse import _coerce_args  # type: ignore
 from urllib.request import pathname2url, url2pathname
 
-from w3lib.util import to_unicode
-from w3lib._types import AnyUnicodeError, StrOrBytes
+from .util import to_unicode
+from ._types import AnyUnicodeError, StrOrBytes
+from ._url import _SPECIAL_SCHEMES
 
 
 _REMOVE_SEPARATOR = 'separator' not in getfullargspec(_parse_qs)[0]
@@ -72,15 +74,33 @@ RFC3986_RESERVED = RFC3986_GEN_DELIMS + RFC3986_SUB_DELIMS
 RFC3986_UNRESERVED = (string.ascii_letters + string.digits + "-._~").encode("ascii")
 EXTRA_SAFE_CHARS = b"|"  # see https://github.com/scrapy/w3lib/pull/25
 
+RFC3986_USERINFO_SAFE_CHARS = RFC3986_UNRESERVED + RFC3986_SUB_DELIMS + b":"
 _safe_chars = RFC3986_RESERVED + RFC3986_UNRESERVED + EXTRA_SAFE_CHARS + b"%"
 _path_safe_chars = _safe_chars.replace(b"#", b"")
+
+# Characters that are safe in all of:
+#
+# -   RFC 2396 + RFC 2732, as interpreted by Java 8’s java.net.URI class
+# -   RFC 3986
+# -   The URL living standard
+#
+# NOTE: % is currently excluded from these lists of characters, due to
+# limitations of the current safe_url_string implementation, but it should also
+# be escaped as %25 when it is not already being used as part of an escape
+# character.
+_USERINFO_SAFEST_CHARS = RFC3986_USERINFO_SAFE_CHARS.translate(None, delete=b":;=")
+_PATH_SAFEST_CHARS = _safe_chars.translate(None, delete=b"#[]|")
+_QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS
+_SPECIAL_QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS.translate(None, delete=b"'")
+_FRAGMENT_SAFEST_CHARS = _PATH_SAFEST_CHARS
+
 
 _ascii_tab_newline_re = re.compile(
     r"[\t\n\r]"
 )  # see https://infra.spec.whatwg.org/#ascii-tab-or-newline
 
 
-def safe_url_string(
+def safe_url_string(  # pylint: disable=too-many-locals
     url: StrOrBytes,
     encoding: str = "utf8",
     path_encoding: str = "utf8",
@@ -114,28 +134,53 @@ def safe_url_string(
     decoded = to_unicode(url, encoding=encoding, errors="percentencode")
     parts = urlsplit(_ascii_tab_newline_re.sub("", decoded))
 
-    # IDNA encoding can fail for too long labels (>63 characters)
-    # or missing labels (e.g. http://.example.com)
-    try:
-        netloc_bytes = parts.netloc.encode("idna")
-    except UnicodeError:
-        netloc = parts.netloc
-    else:
-        netloc = netloc_bytes.decode()
+    username, password, hostname, port = (
+        parts.username,
+        parts.password,
+        parts.hostname,
+        parts.port,
+    )
+    netloc_bytes = b""
+    if username is not None or password is not None:
+        if username is not None:
+            safe_username = quote(unquote(username), _USERINFO_SAFEST_CHARS)
+            netloc_bytes += safe_username.encode(encoding)
+        if password is not None:
+            netloc_bytes += b":"
+            safe_password = quote(unquote(password), _USERINFO_SAFEST_CHARS)
+            netloc_bytes += safe_password.encode(encoding)
+        netloc_bytes += b"@"
+    if hostname is not None:
+        try:
+            netloc_bytes += hostname.encode("idna")
+        except UnicodeError:
+            # IDNA encoding can fail for too long labels (>63 characters) or
+            # missing labels (e.g. http://.example.com)
+            netloc_bytes += hostname.encode(encoding)
+    if port is not None:
+        netloc_bytes += b":"
+        netloc_bytes += str(port).encode(encoding)
+
+    netloc = netloc_bytes.decode()
 
     # default encoding for path component SHOULD be UTF-8
     if quote_path:
-        path = quote(parts.path.encode(path_encoding), _path_safe_chars)
+        path = quote(parts.path.encode(path_encoding), _PATH_SAFEST_CHARS)
     else:
         path = parts.path
+
+    if parts.scheme in _SPECIAL_SCHEMES:
+        query = quote(parts.query.encode(encoding), _SPECIAL_QUERY_SAFEST_CHARS)
+    else:
+        query = quote(parts.query.encode(encoding), _QUERY_SAFEST_CHARS)
 
     return urlunsplit(
         (
             parts.scheme,
-            netloc.rstrip(":"),
+            netloc,
             path,
-            quote(parts.query.encode(encoding), _safe_chars),
-            quote(parts.fragment.encode(encoding), _safe_chars),
+            query,
+            quote(parts.fragment.encode(encoding), _FRAGMENT_SAFEST_CHARS),
         )
     )
 
@@ -277,9 +322,9 @@ def url_query_cleaner(
             querylist.append(ksv)
             seen.add(k)
     url = "?".join([base, sep.join(querylist)]) if querylist else base
-    if keep_fragments:
+    if keep_fragments and fragment:
         url += "#" + fragment
-    return cast(str, url)
+    return url
 
 
 def _add_or_replace_parameters(url: str, params: Dict[str, str], *, separator: str = '&') -> str:
@@ -344,9 +389,7 @@ def path_to_file_uri(path: str) -> str:
     http://en.wikipedia.org/wiki/File_URI_scheme
     """
     x = pathname2url(os.path.abspath(path))
-    if os.name == "nt":
-        x = x.replace("|", ":")  # http://bugs.python.org/issue5861
-    return "file:///%s" % x.lstrip("/")
+    return f"file:///{x.lstrip('/')}"
 
 
 def file_uri_to_path(uri: str) -> str:
@@ -371,6 +414,7 @@ def any_to_uri(uri_or_path: str) -> str:
 _char = set(map(chr, range(127)))
 
 # RFC 2045 token.
+# pylint: disable=consider-using-f-string
 _token = r"[{}]+".format(
     re.escape(
         "".join(
@@ -386,6 +430,7 @@ _token = r"[{}]+".format(
 )
 
 # RFC 822 quoted-string, without surrounding quotation marks.
+# pylint: disable=consider-using-f-string
 _quoted_string = r"(?:[{}]|(?:\\[{}]))*".format(
     re.escape("".join(_char - {'"', "\\", "\r"})), re.escape("".join(_char))
 )
@@ -450,7 +495,7 @@ def parse_data_uri(uri: StrOrBytes) -> ParseDataURIResult:
         if m:
             attribute, value, value_quoted = m.groups()
             if value_quoted:
-                value = re.sub(br"\\(.)", rb"\1", value_quoted)
+                value = re.sub(rb"\\(.)", rb"\1", value_quoted)
             media_type_params[attribute.decode()] = value.decode()
             uri = uri[m.end() :]
         else:
@@ -545,6 +590,8 @@ def canonicalize_url(
     # UTF-8 can handle all Unicode characters,
     # so we should be covered regarding URL normalization,
     # if not for proper URL expected by remote website.
+    if isinstance(url, str):
+        url = url.strip()
     try:
         scheme, netloc, path, params, query, fragment = _safe_ParseResult(
             parse_url(url), encoding=encoding or "utf8"
@@ -651,7 +698,7 @@ def parse_qsl_to_bytes(
     # (at https://hg.python.org/cpython/rev/c38ac7ab8d9a)
     # except for the unquote(s, encoding, errors) calls replaced
     # with unquote_to_bytes(s)
-    coerce_args = cast(Callable[..., Tuple[str, Callable]], _coerce_args)
+    coerce_args = cast(Callable[..., Tuple[str, Callable[..., bytes]]], _coerce_args)
     qs, _coerce_result = coerce_args(qs)
     pairs = qs.split(separator)
     r = []
@@ -672,5 +719,5 @@ def parse_qsl_to_bytes(
             value: StrOrBytes = nv[1].replace("+", " ")
             value = unquote_to_bytes(value)
             value = _coerce_result(value)
-            r.append((cast(bytes, name), cast(bytes, value)))
+            r.append((name, value))
     return r

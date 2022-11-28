@@ -1,11 +1,13 @@
 """
 Functions for handling encoding of web pages
 """
-import re, codecs, encodings
-from sys import version_info
+import re
+import codecs
+import encodings
 from typing import Callable, Match, Optional, Tuple, Union, cast
+
 from w3lib._types import AnyUnicodeError, StrOrBytes
-from w3lib.util import to_native_str
+import w3lib.util
 
 _HEADER_ENCODING_RE = re.compile(r"charset=([\w-]+)", re.I)
 
@@ -46,6 +48,7 @@ _CONTENT2_RE = _TEMPLATE % ("charset", r"(?P<charset2>[\w-]+)")
 _XML_ENCODING_RE = _TEMPLATE % ("encoding", r"(?P<xmlcharset>[\w-]+)")
 
 # check for meta tags, or xml decl. and stop search if a body tag is encountered
+# pylint: disable=consider-using-f-string
 _BODY_ENCODING_PATTERN = (
     r"<\s*(?:meta%s(?:(?:\s+%s|\s+%s){2}|\s+%s)|\?xml\s[^>]+%s|body)"
     % (_SKIP_ATTRS, _HTTPEQUIV_RE, _CONTENT_RE, _CONTENT2_RE, _XML_ENCODING_RE)
@@ -93,7 +96,7 @@ def html_body_declared_encoding(html_body_str: StrOrBytes) -> Optional[str]:
             or match.group("xmlcharset")
         )
         if encoding:
-            return resolve_encoding(to_native_str(encoding))
+            return resolve_encoding(w3lib.util.to_unicode(encoding))
 
     return None
 
@@ -133,7 +136,7 @@ def _c18n_encoding(encoding: str) -> str:
     encoding aliases
     """
     normed = encodings.normalize_encoding(encoding).lower()
-    return encodings.aliases.aliases.get(normed, normed)
+    return cast(str, encodings.aliases.aliases.get(normed, normed))
 
 
 def resolve_encoding(encoding_alias: str) -> Optional[str]:
@@ -163,7 +166,7 @@ _BOM_TABLE = [
     (codecs.BOM_UTF16_LE, "utf-16-le"),
     (codecs.BOM_UTF8, "utf-8"),
 ]
-_FIRST_CHARS = set(c[0] for (c, _) in _BOM_TABLE)
+_FIRST_CHARS = {c[0] for (c, _) in _BOM_TABLE}
 
 
 def read_bom(data: bytes) -> Union[Tuple[None, None], Tuple[str, bytes]]:
@@ -208,16 +211,14 @@ def to_unicode(data_str: bytes, encoding: str) -> str:
     Characters that cannot be converted will be converted to ``\\ufffd`` (the
     unicode replacement character).
     """
-    return data_str.decode(
-        encoding, "replace" if version_info[0:2] >= (3, 3) else "w3lib_replace"
-    )
+    return data_str.decode(encoding, "replace")
 
 
 def html_to_unicode(
     content_type_header: Optional[str],
     html_body_str: bytes,
     default_encoding: str = "utf8",
-    auto_detect_fun: Optional[Callable[[bytes], str]] = None,
+    auto_detect_fun: Optional[Callable[[bytes], Optional[str]]] = None,
 ) -> Tuple[str, str]:
     r'''Convert raw html bytes to unicode
 
@@ -226,8 +227,8 @@ def html_to_unicode(
 
     It will try in order:
 
-    * http content type header
     * BOM (byte-order mark)
+    * http content type header
     * meta or xml tag declarations
     * auto-detection, if the `auto_detect_fun` keyword argument is not ``None``
     * default encoding in keyword arg (which defaults to utf8)
@@ -280,27 +281,16 @@ def html_to_unicode(
     >>>
 
     '''
-
-    enc = http_content_type_encoding(content_type_header)
     bom_enc, bom = read_bom(html_body_str)
-    if enc is not None:
-        # remove BOM if it agrees with the encoding
-        if enc == bom_enc:
-            bom = cast(bytes, bom)
-            html_body_str = html_body_str[len(bom) :]
-        elif enc == "utf-16" or enc == "utf-32":
-            # read endianness from BOM, or default to big endian
-            # tools.ietf.org/html/rfc2781 section 4.3
-            if bom_enc is not None and bom_enc.startswith(enc):
-                enc = bom_enc
-                bom = cast(bytes, bom)
-                html_body_str = html_body_str[len(bom) :]
-            else:
-                enc += "-be"
-        return enc, to_unicode(html_body_str, enc)
     if bom_enc is not None:
         bom = cast(bytes, bom)
         return bom_enc, to_unicode(html_body_str[len(bom) :], bom_enc)
+
+    enc = http_content_type_encoding(content_type_header)
+    if enc is not None:
+        if enc == "utf-16" or enc == "utf-32":
+            enc += "-be"
+        return enc, to_unicode(html_body_str, enc)
     enc = html_body_declared_encoding(html_body_str)
     if enc is None and (auto_detect_fun is not None):
         enc = auto_detect_fun(html_body_str)

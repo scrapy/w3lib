@@ -1,0 +1,14 @@
+[flake8]
+ignore =
+    # Refers to the max-line length. Let's suppress the error and simply
+    # let black take care on how it wants to format the lines.
+    E501,
+
+    # Refers to "line break before/after binary operator".
+    # Similar to above, let black take care of the formatting.
+    W503,
+    W504,
+
+    # black disagrees with flake8, and inserts whitespace
+    # E203: whitespace before ':'
+    E203,

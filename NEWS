@@ -1,6 +1,109 @@
 w3lib release notes
 ===================
 
+2.1.0 (2022-11-28)
+------------------
+
+-   Dropped Python 3.6 support, and made Python 3.11 support official. (#195,
+    #200)
+
+-   :func:`~w3lib.url.safe_url_string` now generates safer URLs.
+
+    To make URLs safer for the `URL living standard`_:
+
+    .. _URL living standard: https://url.spec.whatwg.org/
+
+    -   ``;=`` are percent-encoded in the URL username.
+
+    -   ``;:=`` are percent-encoded in the URL password.
+
+    -   ``'`` is percent-encoded in the URL query if the URL scheme is `special
+        <https://url.spec.whatwg.org/#special-scheme>`__.
+
+    To make URLs safer for `RFC 2396`_ and `RFC 3986`_, ``|[]`` are
+    percent-encoded in URL paths, queries, and fragments.
+
+    .. _RFC 2396: https://www.ietf.org/rfc/rfc2396.txt
+    .. _RFC 3986: https://www.ietf.org/rfc/rfc3986.txt
+
+    (#80, #203)
+
+-   :func:`~w3lib.encoding.html_to_unicode` now checks for the `byte order
+    mark`_ before inspecting the ``Content-Type`` header when determining the
+    content encoding, in line with the `URL living standard`_. (#189, #191)
+
+    .. _byte order mark: https://en.wikipedia.org/wiki/Byte_order_mark
+
+-   :func:`~w3lib.url.canonicalize_url` now strips spaces from the input URL,
+    to be more in line with the `URL living standard`_. (#132, #136)
+
+-   :func:`~w3lib.html.get_base_url` now ignores HTML comments. (#70, #77)
+
+-   Fixed :func:`~w3lib.url.safe_url_string` re-encoding percent signs on
+    the URL username and password even when they were being used as part of an
+    escape sequence. (#187, #196)
+
+-   Fixed :func:`~w3lib.http.basic_auth_header` using the wrong flavor of
+    base64 encoding, which could prevent authentication in rare cases. (#181,
+    #192)
+
+-   Fixed :func:`~w3lib.html.replace_entities` raising :exc:`OverflowError` in
+    some cases due to `a bug in CPython
+    <https://github.com/python/cpython/issues/76763>`__. (#199, #202)
+
+-   Improved typing and fixed typing issues. (#190, #206)
+
+-   Made CI and test improvements. (#197, #198)
+
+-   Adopted a Code of Conduct. (#194)
+
+
+2.0.1 (2022-08-11)
+------------------
+Minor documentation fix (release date is set in the changelog).
+
+2.0.0 (2022-08-11)
+------------------
+
+Backwards incompatible changes:
+
+- Python 2 is no longer supported; Python 3.6+ is required now (#168, #175).
+- :func:`w3lib.url.safe_url_string` and :func:`w3lib.url.canonicalize_url`
+  no longer convert "%23" to "#" when it appears in the URL path. This is a bug
+  fix. It's listed as a backward-incomatible change because in some cases the
+  output of :func:`w3lib.url.canonicalize_url` is going to change, and so, if
+  this output is used to generate URL fingerprints, new fingerprints might be
+  incompatible with those created with the previous w3lib versions
+  (#141).
+
+Deprecation removals (#169):
+
+- The ``w3lib.form`` module is removed.
+- The ``w3lib.html.remove_entities`` function is removed.
+- The ``w3lib.url.urljoin_rfc`` function is removed.
+
+The following functions are deprecated, and will be removed in future releases
+(#170):
+
+- ``w3lib.util.str_to_unicode``
+- ``w3lib.util.unicode_to_str``
+- ``w3lib.util.to_native_str``
+
+Other improvements and bug fixes:
+
+- Type annotations are added (#172, #184).
+- Added support for Python 3.9 and 3.10 (#168, #176).
+- Fixed :func:`w3lib.html.get_meta_refresh` for ``<meta>`` tags where
+  ``http-equiv`` is written after ``content`` (#179).
+- Fixed :func:`w3lib.url.safe_url_string` for IDNA domains with ports (#174).
+- :func:`w3lib.url.url_query_cleaner` no longer adds an unneeded ``#`` when
+  ``keep_fragments=True`` is passed, and the URL doesn't have a fragment
+  (#159).
+- Removed a workaround for an ancient pathname2url bug (#142)
+- CI is migrated to GitHub Actions (#166, #177); other CI improvements (#160,
+  #182).
+- The code is formatted using black (#173).
+
 1.22.0 (2020-05-13)
 -------------------
 
@@ -83,8 +186,6 @@ w3lib release notes
   see also https://github.com/scrapy/scrapy/issues/2377)
 - ``url_query_cleaner()``: support new ``keep_fragments`` argument
   (defaulting to ``False``)
-
-.. _RFC 3986: https://tools.ietf.org/html/rfc3986#section-3.2
 
 1.15.0 (2016-07-29)
 -------------------

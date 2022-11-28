@@ -21,6 +21,11 @@ _meta_refresh_re = re.compile(
     r'<meta\s[^>]*http-equiv[^>]*refresh[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)',
     re.DOTALL | re.IGNORECASE,
 )
+_meta_refresh_re2 = re.compile(
+    r'<meta\s[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)[^>]*?\shttp-equiv\s*=[^>]*refresh',
+    re.DOTALL | re.IGNORECASE,
+)
+
 _cdata_re = re.compile(
     r"((?P<cdata_s><!\[CDATA\[)(?P<cdata_d>.*?)(?P<cdata_e>\]\]>))", re.DOTALL
 )
@@ -61,7 +66,7 @@ def replace_entities(
 
     """
 
-    def convert_entity(m: Match) -> str:
+    def convert_entity(m: Match[str]) -> str:
         groups = m.groupdict()
         number = None
         if groups.get("dec"):
@@ -86,7 +91,7 @@ def replace_entities(
                     return bytes((number,)).decode("cp1252")
                 else:
                     return chr(number)
-            except ValueError:
+            except (ValueError, OverflowError):
                 pass
 
         return "" if remove_illegal and groups.get("semicolon") else m.group(0)
@@ -200,7 +205,7 @@ def remove_tags(
         else:
             return tag not in keep
 
-    def remove_tag(m: Match) -> str:
+    def remove_tag(m: Match[str]) -> str:
         tag = m.group(1)
         return "" if will_remove(tag) else m.group(0)
 
@@ -228,9 +233,7 @@ def remove_tags_with_content(
 
     utext = to_unicode(text, encoding)
     if which_ones:
-        tags = "|".join(
-            [r"<%s\b.*?</%s>|<%s\s*/>" % (tag, tag, tag) for tag in which_ones]
-        )
+        tags = "|".join([rf"<{tag}\b.*?</{tag}>|<{tag}\s*/>" for tag in which_ones])
         retags = re.compile(tags, re.DOTALL | re.IGNORECASE)
         utext = retags.sub("", utext)
     return utext
@@ -275,7 +278,9 @@ def unquote_markup(
 
     """
 
-    def _get_fragments(txt: str, pattern: Pattern) -> Iterable[Union[str, Match]]:
+    def _get_fragments(
+        txt: str, pattern: Pattern[str]
+    ) -> Iterable[Union[str, Match[str]]]:
         offset = 0
         for match in pattern.finditer(txt):
             match_s, match_e = match.span(1)
@@ -308,7 +313,7 @@ def get_base_url(
 
     """
 
-    utext = to_unicode(text, encoding)
+    utext: str = remove_comments(text, encoding=encoding)
     m = _baseurl_re.search(utext)
     if m:
         return urljoin(
@@ -340,7 +345,7 @@ def get_meta_refresh(
         raise
     utext = remove_tags_with_content(utext, ignore_tags)
     utext = remove_comments(replace_entities(utext))
-    m = _meta_refresh_re.search(utext)
+    m = _meta_refresh_re.search(utext) or _meta_refresh_re2.search(utext)
     if m:
         interval = float(m.group("int"))
         url = safe_url_string(m.group("url").strip(" \"'"), encoding)
