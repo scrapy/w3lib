@@ -1,8 +1,8 @@
 w3lib release notes
 ===================
 
-2.1.0 (to be released)
-----------------------
+2.1.0 (2022-11-28)
+------------------
 
 -   Dropped Python 3.6 support, and made Python 3.11 support official. (#195,
     #200)
