@@ -317,6 +317,8 @@ SAFE_URL_URL_CASES = (
 )
 
 
+# encoding is actually either str or literally UNSET, but typing.Literal
+# doesn't support literals of arbitrary types
 def _test_safe_url_func(
     url: StrOrBytes,
     *,
