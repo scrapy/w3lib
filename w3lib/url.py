@@ -302,7 +302,7 @@ def url_query_cleaner(
     url = "?".join([base, sep.join(querylist)]) if querylist else base
     if keep_fragments and fragment:
         url += "#" + fragment
-    return cast(str, url)
+    return url
 
 
 def _add_or_replace_parameters(url: str, params: Dict[str, str]) -> str:
@@ -663,7 +663,7 @@ def parse_qsl_to_bytes(
     # (at https://hg.python.org/cpython/rev/c38ac7ab8d9a)
     # except for the unquote(s, encoding, errors) calls replaced
     # with unquote_to_bytes(s)
-    coerce_args = cast(Callable[..., Tuple[str, Callable]], _coerce_args)
+    coerce_args = cast(Callable[..., Tuple[str, Callable[..., bytes]]], _coerce_args)
     qs, _coerce_result = coerce_args(qs)
     pairs = [s2 for s1 in qs.split("&") for s2 in s1.split(";")]
     r = []
@@ -684,5 +684,5 @@ def parse_qsl_to_bytes(
             value: StrOrBytes = nv[1].replace("+", " ")
             value = unquote_to_bytes(value)
             value = _coerce_result(value)
-            r.append((cast(bytes, name), cast(bytes, value)))
+            r.append((name, value))
     return r

@@ -1,5 +1,7 @@
 import os
 import unittest
+from inspect import isclass
+from typing import Optional, Union, Type, Callable, Tuple, List
 from urllib.parse import urlparse
 
 import pytest
@@ -10,6 +12,7 @@ from w3lib._infra import (
     _ASCII_TAB_OR_NEWLINE,
     _C0_CONTROL_OR_SPACE,
 )
+from w3lib._types import StrOrBytes
 from w3lib._url import _SPECIAL_SCHEMES
 from w3lib.url import (
     add_or_replace_parameter,
@@ -27,17 +30,16 @@ from w3lib.url import (
     url_query_cleaner,
 )
 
-
-UNSET = object()
-
 # Test cases for URL-to-safe-URL conversions with a URL and an encoding as
 # input parameters.
 #
 # (encoding, input URL, output URL or exception)
-SAFE_URL_ENCODING_CASES = (
-    (UNSET, "", ValueError),
-    (UNSET, "https://example.com", "https://example.com"),
-    (UNSET, "https://example.com/©", "https://example.com/%C2%A9"),
+SAFE_URL_ENCODING_CASES: List[
+    Tuple[Optional[str], StrOrBytes, Union[str, Type[Exception]]]
+] = [
+    (None, "", ValueError),
+    (None, "https://example.com", "https://example.com"),
+    (None, "https://example.com/©", "https://example.com/%C2%A9"),
     # Paths are always UTF-8-encoded.
     ("iso-8859-1", "https://example.com/©", "https://example.com/%C2%A9"),
     # Queries are UTF-8-encoded if the scheme is not special, ws or wss.
@@ -53,7 +55,7 @@ SAFE_URL_ENCODING_CASES = (
     ),
     # Fragments are always UTF-8-encoded.
     ("iso-8859-1", "https://example.com#©", "https://example.com#%C2%A9"),
-)
+]
 
 INVALID_SCHEME_FOLLOW_UPS = "".join(
     chr(value)
@@ -315,15 +317,17 @@ SAFE_URL_URL_CASES = (
 )
 
 
-def _test_safe_url_func(url, *, encoding=UNSET, output, func):
+def _test_safe_url_func(
+    url: StrOrBytes,
+    *,
+    encoding: Optional[str] = None,
+    output: Union[str, Type[Exception]],
+    func: Callable[..., str],
+) -> None:
     kwargs = {}
-    if encoding is not UNSET:
+    if encoding is not None:
         kwargs["encoding"] = encoding
-    try:
-        is_exception = issubclass(output, Exception)
-    except TypeError:
-        is_exception = False
-    if is_exception:
+    if isclass(output) and issubclass(output, Exception):
         with pytest.raises(output):
             func(url, **kwargs)
         return
@@ -332,7 +336,12 @@ def _test_safe_url_func(url, *, encoding=UNSET, output, func):
     assert func(actual, **kwargs) == output  # Idempotency
 
 
-def _test_safe_url_string(url, *, encoding=UNSET, output):
+def _test_safe_url_string(
+    url: StrOrBytes,
+    *,
+    encoding: Optional[str] = None,
+    output: Union[str, Type[Exception]],
+) -> None:
     return _test_safe_url_func(
         url,
         encoding=encoding,
@@ -342,7 +351,7 @@ def _test_safe_url_string(url, *, encoding=UNSET, output):
 
 
 KNOWN_SAFE_URL_STRING_ENCODING_ISSUES = {
-    (UNSET, ""),  # Invalid URL
+    (None, ""),  # Invalid URL
     # UTF-8 encoding is not enforced in non-special URLs, or in URLs with the
     # ws or wss schemas.
     ("iso-8859-1", "a://example.com?\xa9"),
@@ -362,7 +371,9 @@ KNOWN_SAFE_URL_STRING_ENCODING_ISSUES = {
         for case in SAFE_URL_ENCODING_CASES
     ),
 )
-def test_safe_url_string_encoding(encoding, url, output):
+def test_safe_url_string_encoding(
+    encoding: Optional[str], url: StrOrBytes, output: Union[str, Type[Exception]]
+) -> None:
     _test_safe_url_string(url, encoding=encoding, output=output)
 
 
@@ -421,7 +432,9 @@ KNOWN_SAFE_URL_STRING_URL_ISSUES = {
         for case in SAFE_URL_URL_CASES
     ),
 )
-def test_safe_url_string_url(url, output):
+def test_safe_url_string_url(
+    url: StrOrBytes, output: Union[str, Type[Exception]]
+) -> None:
     _test_safe_url_string(url, output=output)
 
 
