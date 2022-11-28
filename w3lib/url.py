@@ -77,9 +77,18 @@ _SPECIAL_QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS.translate(None, delete=b"'")
 _FRAGMENT_SAFEST_CHARS = _PATH_SAFEST_CHARS
 
 
-_ascii_tab_newline_re = re.compile(
-    r"[\t\n\r]"
-)  # see https://infra.spec.whatwg.org/#ascii-tab-or-newline
+_ASCII_TAB_OR_NEWLINE = "\t\n\r"
+_C0_CONTROL = "".join(chr(n) for n in range(32))
+_C0_CONTROL_OR_SPACE = _C0_CONTROL + " "
+_ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE = {
+    ord(char): None for char in _ASCII_TAB_OR_NEWLINE
+}
+
+
+def _strip(url: str) -> str:
+    return url.strip(_C0_CONTROL_OR_SPACE).translate(
+        _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE
+    )
 
 
 def safe_url_string(  # pylint: disable=too-many-locals
@@ -114,7 +123,7 @@ def safe_url_string(  # pylint: disable=too-many-locals
     #   - if the supplied (or default) encoding chokes,
     #     percent-encode offending bytes
     decoded = to_unicode(url, encoding=encoding, errors="percentencode")
-    parts = urlsplit(_ascii_tab_newline_re.sub("", decoded))
+    parts = urlsplit(_strip(decoded))
 
     username, password, hostname, port = (
         parts.username,
@@ -563,7 +572,7 @@ def canonicalize_url(
     # so we should be covered regarding URL normalization,
     # if not for proper URL expected by remote website.
     if isinstance(url, str):
-        url = url.strip()
+        url = _strip(url)
     try:
         scheme, netloc, path, params, query, fragment = _safe_ParseResult(
             parse_url(url), encoding=encoding or "utf8"
