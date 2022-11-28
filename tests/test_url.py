@@ -1,7 +1,7 @@
 import os
 import unittest
 from inspect import isclass
-from typing import Any, Optional, Union, Type, Callable, cast, Tuple, List
+from typing import Any, Optional, Union, Type, Callable, Tuple, List
 from urllib.parse import urlparse
 
 import pytest
