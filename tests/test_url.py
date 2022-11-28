@@ -1,5 +1,6 @@
 import os
 import unittest
+from inspect import isclass
 from typing import Any, Optional, Union, Type, Callable, cast, Tuple, List
 from urllib.parse import urlparse
 
@@ -326,12 +327,8 @@ def _test_safe_url_func(
     kwargs = {}
     if encoding is not None:
         kwargs["encoding"] = encoding
-    try:
-        is_exception = issubclass(cast(Type[Exception], output), Exception)
-    except TypeError:
-        is_exception = False
-    if is_exception:
-        with pytest.raises(cast(Type[Exception], output)):
+    if isclass(output) and issubclass(output, Exception):
+        with pytest.raises(output):
             func(url, **kwargs)
         return
     actual = func(url, **kwargs)
