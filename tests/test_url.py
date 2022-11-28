@@ -1,6 +1,6 @@
 import os
 import unittest
-from typing import Any, Union, Type, Callable, cast, Tuple, List
+from typing import Any, Optional, Union, Type, Callable, cast, Tuple, List
 from urllib.parse import urlparse
 
 import pytest
@@ -29,17 +29,16 @@ from w3lib.url import (
     url_query_cleaner,
 )
 
-
-UNSET = object()
-
 # Test cases for URL-to-safe-URL conversions with a URL and an encoding as
 # input parameters.
 #
 # (encoding, input URL, output URL or exception)
-SAFE_URL_ENCODING_CASES: List[Tuple[Any, StrOrBytes, Union[str, Type[Exception]]]] = [
-    (UNSET, "", ValueError),
-    (UNSET, "https://example.com", "https://example.com"),
-    (UNSET, "https://example.com/©", "https://example.com/%C2%A9"),
+SAFE_URL_ENCODING_CASES: List[
+    Tuple[Optional[str], StrOrBytes, Union[str, Type[Exception]]]
+] = [
+    (None, "", ValueError),
+    (None, "https://example.com", "https://example.com"),
+    (None, "https://example.com/©", "https://example.com/%C2%A9"),
     # Paths are always UTF-8-encoded.
     ("iso-8859-1", "https://example.com/©", "https://example.com/%C2%A9"),
     # Queries are UTF-8-encoded if the scheme is not special, ws or wss.
@@ -317,17 +316,15 @@ SAFE_URL_URL_CASES = (
 )
 
 
-# encoding is actually either str or literally UNSET, but typing.Literal
-# doesn't support literals of arbitrary types
 def _test_safe_url_func(
     url: StrOrBytes,
     *,
-    encoding: Any = UNSET,
+    encoding: Optional[str] = None,
     output: Union[str, Type[Exception]],
     func: Callable[..., str],
 ) -> None:
     kwargs = {}
-    if encoding is not UNSET:
+    if encoding is not None:
         kwargs["encoding"] = encoding
     try:
         is_exception = issubclass(cast(Type[Exception], output), Exception)
@@ -343,7 +340,10 @@ def _test_safe_url_func(
 
 
 def _test_safe_url_string(
-    url: StrOrBytes, *, encoding: Any = UNSET, output: Union[str, Type[Exception]]
+    url: StrOrBytes,
+    *,
+    encoding: Optional[str] = None,
+    output: Union[str, Type[Exception]],
 ) -> None:
     return _test_safe_url_func(
         url,
@@ -354,7 +354,7 @@ def _test_safe_url_string(
 
 
 KNOWN_SAFE_URL_STRING_ENCODING_ISSUES = {
-    (UNSET, ""),  # Invalid URL
+    (None, ""),  # Invalid URL
     # UTF-8 encoding is not enforced in non-special URLs, or in URLs with the
     # ws or wss schemas.
     ("iso-8859-1", "a://example.com?\xa9"),
