@@ -1,7 +1,7 @@
 import os
 import unittest
 from inspect import isclass
-from typing import Any, Optional, Union, Type, Callable, Tuple, List
+from typing import Optional, Union, Type, Callable, Tuple, List
 from urllib.parse import urlparse
 
 import pytest
@@ -372,7 +372,7 @@ KNOWN_SAFE_URL_STRING_ENCODING_ISSUES = {
     ),
 )
 def test_safe_url_string_encoding(
-    encoding: Any, url: StrOrBytes, output: Union[str, Type[Exception]]
+    encoding: Optional[str], url: StrOrBytes, output: Union[str, Type[Exception]]
 ) -> None:
     _test_safe_url_string(url, encoding=encoding, output=output)
 
