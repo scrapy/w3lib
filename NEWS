@@ -51,7 +51,7 @@ w3lib release notes
     some cases due to `a bug in CPython
     <https://github.com/python/cpython/issues/76763>`__. (#199, #202)
 
--   Fixed typing issues. (#190)
+-   Improved typing and fixed typing issues. (#190, #206)
 
 -   Made CI and test improvements. (#197, #198)
 
