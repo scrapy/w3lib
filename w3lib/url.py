@@ -95,9 +95,29 @@ def safe_url_string(  # pylint: disable=too-many-locals
     path_encoding: str = "utf8",
     quote_path: bool = True,
 ) -> str:
-    """Convert the given URL into a legal URL by escaping unsafe characters
-    according to RFC-3986. Also, ASCII tabs and newlines are removed
-    as per https://url.spec.whatwg.org/#url-parsing.
+    """Return a URL equivalent to *url* that a wide range of web browsers and
+    web servers consider valid.
+
+    *url* is parsed according to the rules of the `URL living standard`_,
+    and during serialization additional characters are percent-encoded to make
+    the URL valid by additional URL standards.
+
+    .. _URL living standard: https://url.spec.whatwg.org/
+
+    The returned URL is valid by *all* of the following URL standards known to
+    be enforced by modern-day web browsers and web servers:
+
+    -   `URL living standard`_
+
+    -   `RFC 3986`_
+
+    -   `RFC 2396`_ and `RFC 2732`_, as interpreted by `Java 8’s java.net.URI
+        class`_.
+
+    .. _Java 8’s java.net.URI class: https://docs.oracle.com/javase/8/docs/api/java/net/URI.html
+    .. _RFC 2396: https://www.ietf.org/rfc/rfc2396.txt
+    .. _RFC 2732: https://www.ietf.org/rfc/rfc2732.txt
+    .. _RFC 3986: https://www.ietf.org/rfc/rfc3986.txt
 
     If a bytes URL is given, it is first converted to `str` using the given
     encoding (which defaults to 'utf-8'). If quote_path is True (default),
@@ -111,10 +131,8 @@ def safe_url_string(  # pylint: disable=too-many-locals
 
     Calling this function on an already "safe" URL will return the URL
     unmodified.
-
-    Always returns a native `str` (bytes in Python2, unicode in Python3).
     """
-    # Python3's urlsplit() chokes on bytes input with non-ASCII chars,
+    # urlsplit() chokes on bytes input with non-ASCII chars,
     # so let's decode (to Unicode) using page encoding:
     #   - it is assumed that a raw bytes input comes from a document
     #     encoded with the supplied encoding (or UTF8 by default)
@@ -538,11 +556,8 @@ def canonicalize_url(
 ) -> str:
     r"""Canonicalize the given url by applying the following procedures:
 
+    - make the URL safe (see :func:`safe_url_string`)
     - sort query arguments, first by key, then by value
-    - percent encode paths ; non-ASCII characters are percent-encoded
-      using UTF-8 (RFC-3986)
-    - percent encode query arguments ; non-ASCII characters are percent-encoded
-      using passed `encoding` (UTF-8 by default)
     - normalize all spaces (in query arguments) '+' (plus symbol)
     - normalize percent encodings case (%2f -> %2F)
     - remove query arguments with blank values (unless `keep_blank_values` is True)
