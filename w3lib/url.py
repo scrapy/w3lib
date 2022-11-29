@@ -37,6 +37,7 @@ from urllib.parse import _coerce_args  # type: ignore
 from urllib.request import pathname2url, url2pathname
 
 from .util import to_unicode
+from ._infra import _ASCII_TAB_OR_NEWLINE, _C0_CONTROL_OR_SPACE
 from ._types import AnyUnicodeError, StrOrBytes
 from ._url import _SPECIAL_SCHEMES
 
@@ -77,9 +78,6 @@ _SPECIAL_QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS.translate(None, delete=b"'")
 _FRAGMENT_SAFEST_CHARS = _PATH_SAFEST_CHARS
 
 
-_ASCII_TAB_OR_NEWLINE = "\t\n\r"
-_C0_CONTROL = "".join(chr(n) for n in range(32))
-_C0_CONTROL_OR_SPACE = _C0_CONTROL + " "
 _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE = {
     ord(char): None for char in _ASCII_TAB_OR_NEWLINE
 }
