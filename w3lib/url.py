@@ -556,7 +556,7 @@ def canonicalize_url(
 ) -> str:
     r"""Canonicalize the given url by applying the following procedures:
 
-    - make the URL safe (see :func:`safe_url_string`)
+    - make the URL safe
     - sort query arguments, first by key, then by value
     - normalize all spaces (in query arguments) '+' (plus symbol)
     - normalize percent encodings case (%2f -> %2F)
