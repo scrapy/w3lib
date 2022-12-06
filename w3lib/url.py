@@ -104,8 +104,8 @@ def safe_url_string(  # pylint: disable=too-many-locals
 
     .. _URL living standard: https://url.spec.whatwg.org/
 
-    The returned URL is valid by *all* of the following URL standards known to
-    be enforced by modern-day web browsers and web servers:
+    The returned URL should be valid by *all* of the following URL standards
+    known to be enforced by modern-day web browsers and web servers:
 
     -   `URL living standard`_
 
