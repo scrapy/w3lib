@@ -90,13 +90,6 @@ SAFE_URL_URL_INVALID_SCHEME_CASES = tuple(
     )
 )
 
-# Remove any leading and trailing C0 control or space from input.
-SAFE_URL_URL_STRIP_CASES = tuple(
-    (f"{char}https://example.com{char}", "https://example.com")
-    for char in _C0_CONTROL_OR_SPACE
-    if char not in _ASCII_TAB_OR_NEWLINE
-)
-
 SCHEME_NON_FIRST = _ASCII_ALPHANUMERIC + "+-."
 
 # Username and password characters that do not need escaping.
@@ -177,7 +170,12 @@ SAFE_URL_URL_CASES = (
     (object(), Exception),
     # Empty string
     ("", ValueError),
-    *SAFE_URL_URL_STRIP_CASES,
+    # Remove any leading and trailing C0 control or space from input.
+    *(
+        (f"{char}https://example.com{char}", "https://example.com")
+        for char in _C0_CONTROL_OR_SPACE
+        if char not in _ASCII_TAB_OR_NEWLINE
+    ),
     # Remove all ASCII tab or newline from input.
     (
         (
@@ -379,7 +377,6 @@ def test_safe_url_string_encoding(
 
 KNOWN_SAFE_URL_STRING_URL_ISSUES = {
     "",  # Invalid URL
-    *(case[0] for case in SAFE_URL_URL_STRIP_CASES),
     *(case[0] for case in SAFE_URL_URL_INVALID_SCHEME_CASES),
     # Userinfo characters that the URL living standard requires escaping (:;=)
     # are not escaped.

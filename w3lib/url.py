@@ -37,6 +37,7 @@ from urllib.parse import _coerce_args  # type: ignore
 from urllib.request import pathname2url, url2pathname
 
 from .util import to_unicode
+from ._infra import _ASCII_TAB_OR_NEWLINE, _C0_CONTROL_OR_SPACE
 from ._types import AnyUnicodeError, StrOrBytes
 from ._url import _SPECIAL_SCHEMES
 
@@ -77,9 +78,15 @@ _SPECIAL_QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS.translate(None, delete=b"'")
 _FRAGMENT_SAFEST_CHARS = _PATH_SAFEST_CHARS
 
 
-_ascii_tab_newline_re = re.compile(
-    r"[\t\n\r]"
-)  # see https://infra.spec.whatwg.org/#ascii-tab-or-newline
+_ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE = {
+    ord(char): None for char in _ASCII_TAB_OR_NEWLINE
+}
+
+
+def _strip(url: str) -> str:
+    return url.strip(_C0_CONTROL_OR_SPACE).translate(
+        _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE
+    )
 
 
 def safe_url_string(  # pylint: disable=too-many-locals
@@ -88,9 +95,29 @@ def safe_url_string(  # pylint: disable=too-many-locals
     path_encoding: str = "utf8",
     quote_path: bool = True,
 ) -> str:
-    """Convert the given URL into a legal URL by escaping unsafe characters
-    according to RFC-3986. Also, ASCII tabs and newlines are removed
-    as per https://url.spec.whatwg.org/#url-parsing.
+    """Return a URL equivalent to *url* that a wide range of web browsers and
+    web servers consider valid.
+
+    *url* is parsed according to the rules of the `URL living standard`_,
+    and during serialization additional characters are percent-encoded to make
+    the URL valid by additional URL standards.
+
+    .. _URL living standard: https://url.spec.whatwg.org/
+
+    The returned URL should be valid by *all* of the following URL standards
+    known to be enforced by modern-day web browsers and web servers:
+
+    -   `URL living standard`_
+
+    -   `RFC 3986`_
+
+    -   `RFC 2396`_ and `RFC 2732`_, as interpreted by `Java 8’s java.net.URI
+        class`_.
+
+    .. _Java 8’s java.net.URI class: https://docs.oracle.com/javase/8/docs/api/java/net/URI.html
+    .. _RFC 2396: https://www.ietf.org/rfc/rfc2396.txt
+    .. _RFC 2732: https://www.ietf.org/rfc/rfc2732.txt
+    .. _RFC 3986: https://www.ietf.org/rfc/rfc3986.txt
 
     If a bytes URL is given, it is first converted to `str` using the given
     encoding (which defaults to 'utf-8'). If quote_path is True (default),
@@ -104,17 +131,15 @@ def safe_url_string(  # pylint: disable=too-many-locals
 
     Calling this function on an already "safe" URL will return the URL
     unmodified.
-
-    Always returns a native `str` (bytes in Python2, unicode in Python3).
     """
-    # Python3's urlsplit() chokes on bytes input with non-ASCII chars,
+    # urlsplit() chokes on bytes input with non-ASCII chars,
     # so let's decode (to Unicode) using page encoding:
     #   - it is assumed that a raw bytes input comes from a document
     #     encoded with the supplied encoding (or UTF8 by default)
     #   - if the supplied (or default) encoding chokes,
     #     percent-encode offending bytes
     decoded = to_unicode(url, encoding=encoding, errors="percentencode")
-    parts = urlsplit(_ascii_tab_newline_re.sub("", decoded))
+    parts = urlsplit(_strip(decoded))
 
     username, password, hostname, port = (
         parts.username,
@@ -531,11 +556,8 @@ def canonicalize_url(
 ) -> str:
     r"""Canonicalize the given url by applying the following procedures:
 
+    - make the URL safe
     - sort query arguments, first by key, then by value
-    - percent encode paths ; non-ASCII characters are percent-encoded
-      using UTF-8 (RFC-3986)
-    - percent encode query arguments ; non-ASCII characters are percent-encoded
-      using passed `encoding` (UTF-8 by default)
     - normalize all spaces (in query arguments) '+' (plus symbol)
     - normalize percent encodings case (%2f -> %2F)
     - remove query arguments with blank values (unless `keep_blank_values` is True)
@@ -563,7 +585,7 @@ def canonicalize_url(
     # so we should be covered regarding URL normalization,
     # if not for proper URL expected by remote website.
     if isinstance(url, str):
-        url = url.strip()
+        url = _strip(url)
     try:
         scheme, netloc, path, params, query, fragment = _safe_ParseResult(
             parse_url(url), encoding=encoding or "utf8"
