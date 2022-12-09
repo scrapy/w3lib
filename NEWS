@@ -1,8 +1,8 @@
 w3lib release notes
 ===================
 
-2.1.1 (TBD)
------------
+2.1.1 (2022-12-09)
+------------------
 
 - :func:`~w3lib.url.safe_url_string`, :func:`~w3lib.url.safe_download_url`
   and :func:`~w3lib.url.canonicalize_url` now strip whitespace and control
