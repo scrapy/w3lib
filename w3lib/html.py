@@ -328,8 +328,8 @@ def get_meta_refresh(
     baseurl: str = "",
     encoding: str = "utf-8",
     ignore_tags: Iterable[str] = ("script", "noscript"),
-) -> Tuple[Optional[float], Optional[str]]:
-    """Return  the http-equiv parameter of the HTML meta element from the given
+) -> Union[Tuple[None, None], Tuple[float, str]]:
+    """Return the http-equiv parameter of the HTML meta element from the given
     HTML text and return a tuple ``(interval, url)`` where interval is an integer
     containing the delay in seconds (or zero if not present) and url is a
     string with the absolute url to redirect.
