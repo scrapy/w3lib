@@ -160,12 +160,12 @@ class RemoveTagsTest(unittest.TestCase):
         assert isinstance(remove_tags(b"no tags"), str)
         assert isinstance(remove_tags(b"no tags", which_ones=("p",)), str)
         assert isinstance(remove_tags(b"<p>one tag</p>"), str)
-        assert isinstance(remove_tags(b"<p>one tag</p>", which_ones=("p")), str)
+        assert isinstance(remove_tags(b"<p>one tag</p>", which_ones=("p",)), str)
         assert isinstance(remove_tags(b"<a>link</a>", which_ones=("b",)), str)
         assert isinstance(remove_tags("no tags"), str)
         assert isinstance(remove_tags("no tags", which_ones=("p",)), str)
         assert isinstance(remove_tags("<p>one tag</p>"), str)
-        assert isinstance(remove_tags("<p>one tag</p>", which_ones=("p")), str)
+        assert isinstance(remove_tags("<p>one tag</p>", which_ones=("p",)), str)
         assert isinstance(remove_tags("<a>link</a>", which_ones=("b",)), str)
 
     def test_remove_tags_without_tags(self):
