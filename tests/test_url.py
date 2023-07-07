@@ -103,7 +103,7 @@ USERNAME_TO_ENCODE = "".join(
     if (
         chr(value) not in _C0_CONTROL_OR_SPACE
         and chr(value) not in USERINFO_SAFE
-        and chr(value) not in ":/?#\\"
+        and chr(value) not in ":/?#\\[]"
     )
 )
 USERNAME_ENCODED = "".join(f"%{ord(char):02X}" for char in USERNAME_TO_ENCODE)
@@ -420,10 +420,6 @@ KNOWN_SAFE_URL_STRING_URL_ISSUES = {
 }
 if sys.version_info < (3, 11, 4):
     KNOWN_SAFE_URL_STRING_URL_ISSUES.add("http://[2a01:5cc0:1:2:3:4]")  # Invalid IPv6
-else:
-    KNOWN_SAFE_URL_STRING_URL_ISSUES.add(
-        f"https://{USERNAME_TO_ENCODE}:{PASSWORD_TO_ENCODE}@example.com"
-    )
 
 
 @pytest.mark.parametrize(
