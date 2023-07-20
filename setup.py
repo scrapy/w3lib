@@ -9,6 +9,11 @@ setup(
     author="Scrapy project",
     author_email="info@scrapy.org",
     url="https://github.com/scrapy/w3lib",
+    project_urls={
+        "Documentation": "https://w3lib.readthedocs.io/en/latest/",
+        "Source Code": "https://github.com/scrapy/w3lib",
+        "Issue Tracker": "https://github.com/scrapy/w3lib/issues",
+    },
     packages=find_packages(exclude=("tests", "tests.*")),
     package_data={
         "w3lib": ["py.typed"],
