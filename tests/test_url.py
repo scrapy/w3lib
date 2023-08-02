@@ -1,3 +1,4 @@
+import sys
 import os
 import unittest
 from inspect import isclass
@@ -102,7 +103,7 @@ USERNAME_TO_ENCODE = "".join(
     if (
         chr(value) not in _C0_CONTROL_OR_SPACE
         and chr(value) not in USERINFO_SAFE
-        and chr(value) not in ":/?#\\"
+        and chr(value) not in ":/?#\\[]"
     )
 )
 USERNAME_ENCODED = "".join(f"%{ord(char):02X}" for char in USERNAME_TO_ENCODE)
@@ -386,7 +387,6 @@ KNOWN_SAFE_URL_STRING_URL_ISSUES = {
     "http://192.168.0.256",  # Invalid IP address
     "http://192.168.0.0.0",  # Invalid IP address / domain name
     "http://[2a01:5cc0:1:2::4]",  # https://github.com/scrapy/w3lib/issues/193
-    "http://[2a01:5cc0:1:2:3:4]",  # Invalid IPv6
     "https://example.com:",  # Removes the :
     # Does not convert \ to /
     "https://example.com\\a",
@@ -418,6 +418,8 @@ KNOWN_SAFE_URL_STRING_URL_ISSUES = {
     # (%) are not escaped.
     f"a://example.com#{FRAGMENT_TO_ENCODE}",
 }
+if sys.version_info < (3, 11, 4):
+    KNOWN_SAFE_URL_STRING_URL_ISSUES.add("http://[2a01:5cc0:1:2:3:4]")  # Invalid IPv6
 
 
 @pytest.mark.parametrize(
