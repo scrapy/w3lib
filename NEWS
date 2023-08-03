@@ -1,6 +1,13 @@
 w3lib release notes
 ===================
 
+2.1.2 (YYYY-MM-DD)
+------------------
+
+- Fix test failures on Python 3.11.4+ (#212, #213).
+- Fix an incorrect type hint (#211).
+- Add project URLs to setup.py (#215).
+
 2.1.1 (2022-12-09)
 ------------------
 
