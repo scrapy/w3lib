@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="w3lib",
-    version="2.1.1",
+    version="2.1.2",
     license="BSD",
     description="Library of web-related functions",
     author="Scrapy project",

@@ -1,7 +1,7 @@
 w3lib release notes
 ===================
 
-2.1.2 (YYYY-MM-DD)
+2.1.2 (2023-08-03)
 ------------------
 
 - Fix test failures on Python 3.11.4+ (#212, #213).
