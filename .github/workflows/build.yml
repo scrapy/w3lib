@@ -18,19 +18,19 @@ jobs:
         - python-version: "3.8"
           env:
             TOXENV: docs
-        - python-version: "3.11"
+        - python-version: "3.12"
           env:
             TOXENV: flake8
-        - python-version: "3.11"
+        - python-version: "3.12"
           env:
             TOXENV: pylint
-        - python-version: "3.11"
+        - python-version: "3.12"
           env:
             TOXENV: security
-        - python-version: "3.11"
+        - python-version: "3.12"
           env:
             TOXENV: black
-        - python-version: "3.11"
+        - python-version: "3.12"
           env:
             TOXENV: typing
 
