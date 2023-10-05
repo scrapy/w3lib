@@ -227,15 +227,15 @@ SAFE_URL_URL_CASES = (
     # domain name labels (63 characters) and the domain name as a whole (253
     # characters). However, all cases are expected to pass because the URL
     # living standard does not require domain names to be within these limits.
-    (f"https://{'a'*63}.example", f"https://{'a'*63}.example"),
-    (f"https://{'a'*64}.example", f"https://{'a'*64}.example"),
+    (f"https://{'a' * 63}.example", f"https://{'a' * 63}.example"),
+    (f"https://{'a' * 64}.example", f"https://{'a' * 64}.example"),
     (
-        f"https://{'a'*63}.{'a'*63}.{'a'*63}.{'a'*53}.example",
-        f"https://{'a'*63}.{'a'*63}.{'a'*63}.{'a'*53}.example",
+        f"https://{'a' * 63}.{'a' * 63}.{'a' * 63}.{'a' * 53}.example",
+        f"https://{'a' * 63}.{'a' * 63}.{'a' * 63}.{'a' * 53}.example",
     ),
     (
-        f"https://{'a'*63}.{'a'*63}.{'a'*63}.{'a'*54}.example",
-        f"https://{'a'*63}.{'a'*63}.{'a'*63}.{'a'*54}.example",
+        f"https://{'a' * 63}.{'a' * 63}.{'a' * 63}.{'a' * 54}.example",
+        f"https://{'a' * 63}.{'a' * 63}.{'a' * 63}.{'a' * 54}.example",
     ),
     ("https://ñ.example", "https://xn--ida.example"),
     ("http://192.168.0.0", "http://192.168.0.0"),
