@@ -32,9 +32,6 @@ jobs:
             TOXENV: security
         - python-version: "3.12"
           env:
-            TOXENV: black
-        - python-version: "3.12"
-          env:
             TOXENV: typing
 
     steps:
