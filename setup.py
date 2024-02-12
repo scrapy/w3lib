@@ -24,7 +24,18 @@ def no_cythonize(extensions, **_ignore):
     return extensions
 
 extensions = [
-    Extension("w3lib._url", ["w3lib/_url.pyx"]),
+    Extension(f"w3lib._{name}", [f"w3lib/_{name}.pyx"])
+    for name in (
+        "encoding",
+        "infra",
+        "rfc2396",
+        "rfc3986",
+        "rfc5892",
+        "types",
+        "url",
+        "util",
+        "utr46",
+    )
 ]
 
 CYTHONIZE = bool(int(os.getenv("CYTHONIZE", 0))) and cythonize is not None
