@@ -1,3 +1,6 @@
+# Include C and Cython files
+include **/*.c **/*.pyx
+
 # Include tests into distribution
 recursive-include tests *.py *.txt
 
