@@ -7,9 +7,7 @@ import codecs
 import os
 import posixpath
 import re
-import string
 from typing import (
-    cast,
     Callable,
     Dict,
     List,
@@ -18,12 +16,15 @@ from typing import (
     Sequence,
     Tuple,
     Union,
+    cast,
 )
+from urllib.parse import _coerce_args  # type: ignore
 from urllib.parse import (
+    ParseResult,
     parse_qs,
     parse_qsl,
-    ParseResult,
     quote,
+    unquote,
     unquote_to_bytes,
     urldefrag,
     urlencode,
@@ -31,37 +32,21 @@ from urllib.parse import (
     urlsplit,
     urlunparse,
     urlunsplit,
-    unquote,
 )
-from urllib.parse import _coerce_args  # type: ignore
 from urllib.request import pathname2url, url2pathname
 
-from ._infra import (
-    _ASCII_TAB_OR_NEWLINE,
-    _C0_CONTROL_OR_SPACE,
-)
-from ._rfc2396 import (
-    _RFC2396_ABS_PATH_PERCENT_ENCODE_SET,
-    _RFC2396_FRAGMENT_PERCENT_ENCODE_SET,
-    _RFC2396_QUERY_PERCENT_ENCODE_SET,
-    _RFC2396_USERINFO_PERCENT_ENCODE_SET,
-)
-from ._rfc3986 import (
-    _RFC3986_FRAGMENT_PERCENT_ENCODE_SET,
-    _RFC3986_QUERY_PERCENT_ENCODE_SET,
-    _RFC3986_PATH_PERCENT_ENCODE_SET,
-    _RFC3986_USERINFO_PERCENT_ENCODE_SET,
-)
+from ._infra import _ASCII_TAB_OR_NEWLINE, _C0_CONTROL_OR_SPACE
 from ._types import AnyUnicodeError, StrOrBytes
 from ._url import (
-    _FRAGMENT_PERCENT_ENCODE_SET,
-    _parse_url,
-    _PATH_PERCENT_ENCODE_SET,
-    _QUERY_PERCENT_ENCODE_SET,
-    _serialize_url,
-    _SPECIAL_QUERY_PERCENT_ENCODE_SET,
+    _FRAGMENT_SAFEST_CHARS,
+    _PATH_SAFEST_CHARS,
+    _QUERY_SAFEST_CHARS,
+    _SPECIAL_QUERY_SAFEST_CHARS,
     _SPECIAL_SCHEMES,
-    _USERINFO_PERCENT_ENCODE_SET,
+    _USERINFO_SAFEST_CHARS,
+    _safe_url,
+    _safe_chars,
+    _path_safe_chars,
 )
 from .util import to_unicode
 
@@ -73,59 +58,6 @@ def _quote_byte(error: UnicodeError) -> Tuple[str, int]:
 
 
 codecs.register_error("percentencode", _quote_byte)
-
-# constants from RFC 3986, Section 2.2 and 2.3
-RFC3986_GEN_DELIMS = b":/?#[]@"
-RFC3986_SUB_DELIMS = b"!$&'()*+,;="
-RFC3986_RESERVED = RFC3986_GEN_DELIMS + RFC3986_SUB_DELIMS
-RFC3986_UNRESERVED = (string.ascii_letters + string.digits + "-._~").encode("ascii")
-EXTRA_SAFE_CHARS = b"|"  # see https://github.com/scrapy/w3lib/pull/25
-
-RFC3986_USERINFO_SAFE_CHARS = RFC3986_UNRESERVED + RFC3986_SUB_DELIMS + b":"
-_safe_chars = RFC3986_RESERVED + RFC3986_UNRESERVED + EXTRA_SAFE_CHARS + b"%"
-_path_safe_chars = _safe_chars.replace(b"#", b"")
-
-# Characters that are safe in all of:
-#
-# -   RFC 2396 + RFC 2732, as interpreted by Java 8’s java.net.URI class
-# -   RFC 3986
-# -   The URL living standard
-#
-# NOTE: % is currently excluded from these lists of characters, due to
-# limitations of the current safe_url_string implementation, but it should also
-# be escaped as %25 when it is not already being used as part of an escape
-# character.
-_USERINFO_SAFEST_CHARS = RFC3986_USERINFO_SAFE_CHARS.translate(None, delete=b":;=")
-_PATH_SAFEST_CHARS = _safe_chars.translate(None, delete=b"#[]|")
-_QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS
-_SPECIAL_QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS.translate(None, delete=b"'")
-_FRAGMENT_SAFEST_CHARS = _PATH_SAFEST_CHARS
-
-_SAFE_USERINFO_PERCENT_ENCODE_SET = (
-    _USERINFO_PERCENT_ENCODE_SET
-    | _RFC3986_USERINFO_PERCENT_ENCODE_SET
-    | _RFC2396_USERINFO_PERCENT_ENCODE_SET
-)
-_SAFE_PATH_PERCENT_ENCODE_SET = (
-    _PATH_PERCENT_ENCODE_SET
-    | _RFC3986_PATH_PERCENT_ENCODE_SET
-    | _RFC2396_ABS_PATH_PERCENT_ENCODE_SET
-)
-_SAFE_QUERY_PERCENT_ENCODE_SET = (
-    _QUERY_PERCENT_ENCODE_SET
-    | _RFC3986_QUERY_PERCENT_ENCODE_SET
-    | _RFC2396_QUERY_PERCENT_ENCODE_SET
-)
-_SAFE_SPECIAL_QUERY_PERCENT_ENCODE_SET = (
-    _SPECIAL_QUERY_PERCENT_ENCODE_SET
-    | _RFC3986_QUERY_PERCENT_ENCODE_SET
-    | _RFC2396_QUERY_PERCENT_ENCODE_SET
-)
-_SAFE_FRAGMENT_PERCENT_ENCODE_SET = (
-    _FRAGMENT_PERCENT_ENCODE_SET
-    | _RFC3986_FRAGMENT_PERCENT_ENCODE_SET
-    | _RFC2396_FRAGMENT_PERCENT_ENCODE_SET
-)
 
 
 def safe_url(
@@ -163,16 +95,7 @@ def safe_url(
     extracted. If *url* does not come from an HTML page, *encoding* should not
     be passed, i.e. it should be left as UTF-8.
     """
-    url = _parse_url(
-        input,
-        encoding=encoding,
-        userinfo_percent_encode_set=_SAFE_USERINFO_PERCENT_ENCODE_SET,
-        path_percent_encode_set=_SAFE_PATH_PERCENT_ENCODE_SET,
-        query_percent_encode_set=_SAFE_QUERY_PERCENT_ENCODE_SET,
-        special_query_percent_encode_set=_SAFE_SPECIAL_QUERY_PERCENT_ENCODE_SET,
-        fragment_percent_encode_set=_SAFE_FRAGMENT_PERCENT_ENCODE_SET,
-    )
-    return _serialize_url(url, canonicalize=False)
+    return _safe_url(input, encoding=encoding)
 
 
 _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE = {

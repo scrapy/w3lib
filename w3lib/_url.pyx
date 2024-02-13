@@ -1,12 +1,13 @@
 # pylint: disable=protected-access,too-many-instance-attributes,too-many-locals,too-many-nested-blocks,too-many-statements
 
-from cython import cfunc, declare, uchar
-
 import codecs
+import string
 from functools import lru_cache
 from math import floor
 from typing import AnyStr, Callable, Dict, List, Optional, Tuple, Union
 from urllib.parse import unquote
+
+from cython import bint, cfunc, declare, uchar
 
 from . import _utr46
 from ._infra import (
@@ -19,8 +20,19 @@ from ._infra import (
     _C0_CONTROL,
     _C0_CONTROL_OR_SPACE,
 )
+from ._rfc2396 import (
+    _RFC2396_ABS_PATH_PERCENT_ENCODE_SET,
+    _RFC2396_FRAGMENT_PERCENT_ENCODE_SET,
+    _RFC2396_QUERY_PERCENT_ENCODE_SET,
+    _RFC2396_USERINFO_PERCENT_ENCODE_SET,
+)
+from ._rfc3986 import (
+    _RFC3986_FRAGMENT_PERCENT_ENCODE_SET,
+    _RFC3986_PATH_PERCENT_ENCODE_SET,
+    _RFC3986_QUERY_PERCENT_ENCODE_SET,
+    _RFC3986_USERINFO_PERCENT_ENCODE_SET,
+)
 from ._util import _PercentEncodeSet
-
 
 # https://encoding.spec.whatwg.org/
 
@@ -615,6 +627,59 @@ _SPECIAL_QUERY_PERCENT_ENCODE_SET = _QUERY_PERCENT_ENCODE_SET + "'"
 _PATH_PERCENT_ENCODE_SET = _QUERY_PERCENT_ENCODE_SET + "?`{}"
 _USERINFO_PERCENT_ENCODE_SET = _PATH_PERCENT_ENCODE_SET + "/:;=@[\\]^|"
 
+# constants from RFC 3986, Section 2.2 and 2.3
+RFC3986_GEN_DELIMS = b":/?#[]@"
+RFC3986_SUB_DELIMS = b"!$&'()*+,;="
+RFC3986_RESERVED = RFC3986_GEN_DELIMS + RFC3986_SUB_DELIMS
+RFC3986_UNRESERVED = (string.ascii_letters + string.digits + "-._~").encode("ascii")
+EXTRA_SAFE_CHARS = b"|"  # see https://github.com/scrapy/w3lib/pull/25
+
+RFC3986_USERINFO_SAFE_CHARS = RFC3986_UNRESERVED + RFC3986_SUB_DELIMS + b":"
+_safe_chars = RFC3986_RESERVED + RFC3986_UNRESERVED + EXTRA_SAFE_CHARS + b"%"
+_path_safe_chars = _safe_chars.replace(b"#", b"")
+
+# Characters that are safe in all of:
+#
+# -   RFC 2396 + RFC 2732, as interpreted by Java 8’s java.net.URI class
+# -   RFC 3986
+# -   The URL living standard
+#
+# NOTE: % is currently excluded from these lists of characters, due to
+# limitations of the current safe_url_string implementation, but it should also
+# be escaped as %25 when it is not already being used as part of an escape
+# character.
+_USERINFO_SAFEST_CHARS = RFC3986_USERINFO_SAFE_CHARS.translate(None, delete=b":;=")
+_PATH_SAFEST_CHARS = _safe_chars.translate(None, delete=b"#[]|")
+_QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS
+_SPECIAL_QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS.translate(None, delete=b"'")
+_FRAGMENT_SAFEST_CHARS = _PATH_SAFEST_CHARS
+
+_SAFE_USERINFO_PERCENT_ENCODE_SET = (
+    _USERINFO_PERCENT_ENCODE_SET
+    | _RFC3986_USERINFO_PERCENT_ENCODE_SET
+    | _RFC2396_USERINFO_PERCENT_ENCODE_SET
+)
+_SAFE_PATH_PERCENT_ENCODE_SET = (
+    _PATH_PERCENT_ENCODE_SET
+    | _RFC3986_PATH_PERCENT_ENCODE_SET
+    | _RFC2396_ABS_PATH_PERCENT_ENCODE_SET
+)
+_SAFE_QUERY_PERCENT_ENCODE_SET = (
+    _QUERY_PERCENT_ENCODE_SET
+    | _RFC3986_QUERY_PERCENT_ENCODE_SET
+    | _RFC2396_QUERY_PERCENT_ENCODE_SET
+)
+_SAFE_SPECIAL_QUERY_PERCENT_ENCODE_SET = (
+    _SPECIAL_QUERY_PERCENT_ENCODE_SET
+    | _RFC3986_QUERY_PERCENT_ENCODE_SET
+    | _RFC2396_QUERY_PERCENT_ENCODE_SET
+)
+_SAFE_FRAGMENT_PERCENT_ENCODE_SET = (
+    _FRAGMENT_PERCENT_ENCODE_SET
+    | _RFC3986_FRAGMENT_PERCENT_ENCODE_SET
+    | _RFC2396_FRAGMENT_PERCENT_ENCODE_SET
+)
+
 # https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#forbidden-host-code-point
 _FORBIDDEN_HOST_CODE_POINTS = "\x00\t\n\r #/:<>?@[\\]^|"
 _FORBIDDEN_DOMAIN_CODE_POINTS = _FORBIDDEN_HOST_CODE_POINTS + _C0_CONTROL + "%\x7F"
@@ -625,14 +690,14 @@ def _parse_ipv6(input: str) -> List[int]:
     piece_index = 0
     compress = None
     pointer = 0
-    input_lenght = len(input)
-    if pointer < input_lenght and input[pointer] == ":":
-        if pointer + 1 >= input_lenght or input[pointer + 1] != ":":
+    input_length = len(input)
+    if pointer < input_length and input[pointer] == ":":
+        if pointer + 1 >= input_length or input[pointer + 1] != ":":
             raise ValueError
         pointer += 2
         piece_index += 1
         compress = piece_index
-    while pointer < input_lenght:
+    while pointer < input_length:
         if piece_index == 8:
             raise ValueError
         if input[pointer] == ":":
@@ -644,28 +709,28 @@ def _parse_ipv6(input: str) -> List[int]:
             continue
         value = length = 0
         while (
-            length < 4 and pointer < input_lenght and input[pointer] in _ASCII_HEX_DIGIT
+            length < 4 and pointer < input_length and input[pointer] in _ASCII_HEX_DIGIT
         ):
             value = value * 0x10 + int(input[pointer], base=16)
             pointer += 1
             length += 1
-        if pointer < input_lenght and input[pointer] == ".":
+        if pointer < input_length and input[pointer] == ".":
             if length == 0:
                 raise ValueError
             pointer -= length
             if piece_index > 6:
                 raise ValueError
             numbers_seen = 0
-            while pointer < input_lenght:
+            while pointer < input_length:
                 ipv4_piece = None
                 if numbers_seen > 0:
                     if input[pointer] == "." and numbers_seen < 4:
                         pointer += 1
                     else:
                         raise ValueError
-                if pointer >= input_lenght or input[pointer] not in _ASCII_DIGIT:
+                if pointer >= input_length or input[pointer] not in _ASCII_DIGIT:
                     raise ValueError
-                while pointer < input_lenght and input[pointer] in _ASCII_DIGIT:
+                while pointer < input_length and input[pointer] in _ASCII_DIGIT:
                     number = int(input[pointer])
                     if ipv4_piece is None:
                         ipv4_piece = number
@@ -684,11 +749,11 @@ def _parse_ipv6(input: str) -> List[int]:
             if numbers_seen != 4:
                 raise ValueError
             break
-        if pointer < input_lenght and input[pointer] == ":":
+        if pointer < input_length and input[pointer] == ":":
             pointer += 1
-            if pointer >= input_lenght:
+            if pointer >= input_length:
                 raise ValueError
-        elif pointer < input_lenght:
+        elif pointer < input_length:
             raise ValueError
         address[piece_index] = value
         piece_index += 1
@@ -884,6 +949,10 @@ def _idempotent_utf_8_percent_encode(
     return _utf_8_percent_encode(code_point, encode_set)
 
 
+def _preprocess_url(url: str) -> str:
+    return url.strip(_C0_CONTROL_OR_SPACE).translate(_ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE)
+
+
 def _parse_url(
     input: str,
     *,
@@ -932,19 +1001,16 @@ def _parse_url(
     at_sign_seen = inside_brackets = skip_authority_shortcut = False
     pointer = 0
 
-    input = input.strip(_C0_CONTROL_OR_SPACE)
-    input = input.translate(_ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE)
+    input = _preprocess_url(input)
     input_length = len(input)
 
     while True:
-        try:
-            c: Optional[str] = input[pointer]
-        except IndexError:
-            c = None
+        reached_end: bint = pointer >= input_length
+        if not reached_end:
+            c: str = input[pointer]
 
         if state == SCHEME_START:
-            if c is not None and c in _ASCII_ALPHA:
-                assert isinstance(c, str)
+            if not reached_end and c in _ASCII_ALPHA:
                 buffer += c
                 state = SCHEME
             else:
@@ -952,10 +1018,9 @@ def _parse_url(
                 pointer -= 1
 
         elif state == SCHEME:
-            if c is not None and c in _SCHEME_CHARS:
-                assert isinstance(c, str)
+            if not reached_end and c in _SCHEME_CHARS:
                 buffer += c
-            elif c == ":":
+            elif not reached_end and c == ":":
                 url.scheme = buffer.lower()
                 buffer = ""
                 if url.scheme == "file":
@@ -980,7 +1045,7 @@ def _parse_url(
             if base is None:
                 raise ValueError
             if base.has_opaque_path():
-                if c != "#":
+                if not reached_end and c != "#":
                     raise ValueError
                 url.scheme = base.scheme
                 url.path = base.path
@@ -995,7 +1060,7 @@ def _parse_url(
                 pointer -= 1
 
         elif state == SPECIAL_RELATIVE_OR_AUTHORITY:
-            if c == "/" and input[pointer + 1] == "/":
+            if not reached_end and c == "/" and pointer + 1 < input_length and input[pointer + 1] == "/":
                 state = SPECIAL_AUTHORITY_IGNORE_SLASHES
                 pointer += 1
             else:
@@ -1003,16 +1068,15 @@ def _parse_url(
                 pointer -= 1
 
         elif state == PATH_OR_AUTHORITY:
-            if c == "/":
+            if not reached_end and c == "/":
                 state = AUTHORITY
             else:
                 state = PATH
                 pointer -= 1
 
         elif state == RELATIVE:
-            assert isinstance(base, _URL)
             url.scheme = base.scheme
-            if c == "/" or url.is_special and c == "\\":
+            if not reached_end and (c == "/" or url.is_special and c == "\\"):
                 state = RELATIVE_SLASH
             else:
                 url.username = base.username
@@ -1021,24 +1085,22 @@ def _parse_url(
                 url.port = base.port
                 url.path = base.path
                 url.query = base.query
-                if c == "?":
+                if not reached_end and c == "?":
                     url.query = ""
                     state = QUERY
-                elif c == "#":
+                elif not reached_end and c == "#":
                     url.fragment = ""
                     state = FRAGMENT
-                elif pointer < input_length:
+                elif not reached_end:
                     url.query = None
                     _shorten_path(url)
                     state = PATH
                     pointer -= 1
 
         elif state == RELATIVE_SLASH:
-            assert isinstance(base, _URL)
-            if url.is_special and c is not None and c in "/\\":
-                assert isinstance(c, str)
+            if url.is_special and not reached_end and c in "/\\":
                 state = SPECIAL_AUTHORITY_IGNORE_SLASHES
-            elif c == "/":
+            elif not reached_end and c == "/":
                 state = AUTHORITY
             else:
                 url.username = base.username
@@ -1049,7 +1111,7 @@ def _parse_url(
                 pointer -= 1
 
         elif state == SPECIAL_AUTHORITY_SLASHES:
-            if c == "/" and input[pointer + 1] == "/":
+            if not reached_end and c == "/" and pointer + 1 < input_length and input[pointer + 1] == "/":
                 state = SPECIAL_AUTHORITY_IGNORE_SLASHES
                 pointer += 1
             else:
@@ -1057,7 +1119,7 @@ def _parse_url(
                 pointer -= 1
 
         elif state == SPECIAL_AUTHORITY_IGNORE_SLASHES:
-            if c is None or c not in "/\\":
+            if reached_end or c not in "/\\":
                 state = AUTHORITY
                 pointer -= 1
 
@@ -1069,7 +1131,7 @@ def _parse_url(
                 else:
                     skip_authority_shortcut = True
                 pointer -= 1
-            elif c == "@":
+            elif not reached_end and c == "@":
                 if at_sign_seen:
                     buffer = "%40" + buffer
                 at_sign_seen = True
@@ -1087,7 +1149,7 @@ def _parse_url(
                     else:
                         url.username += encoded_code_points
                 buffer = ""
-            elif c is None or c in "/?#" or url.is_special and c == "\\":
+            elif reached_end or c in "/?#" or url.is_special and c == "\\":
                 if at_sign_seen and not buffer:
                     raise ValueError
                 pointer -= len(buffer) + 1
@@ -1097,7 +1159,7 @@ def _parse_url(
                 buffer += c
 
         elif state == HOST:
-            if c == ":" and not inside_brackets:
+            if not reached_end and c == ":" and not inside_brackets:
                 if not buffer:
                     raise ValueError
                 host = _parse_host(buffer, is_special=url.is_special)
@@ -1105,7 +1167,7 @@ def _parse_url(
                 buffer = ""
                 state = PORT
                 url._port_token_seen = True
-            elif c is None or c in "/?#" or url.is_special and c == "\\":
+            elif reached_end or c in "/?#" or url.is_special and c == "\\":
                 pointer -= 1
                 if url.is_special and not buffer:
                     raise ValueError
@@ -1113,7 +1175,7 @@ def _parse_url(
                 url.hostname = host
                 buffer = ""
                 state = PATH_START
-            else:
+            elif not reached_end:
                 if c == "[":
                     inside_brackets = True
                 elif c == "]":
@@ -1121,10 +1183,9 @@ def _parse_url(
                 buffer += c
 
         elif state == PORT:
-            if c is not None and c in _ASCII_DIGIT:
-                assert isinstance(c, str)
+            if not reached_end and c in _ASCII_DIGIT:
                 buffer += c
-            elif c is None or c in "/?#" or url.is_special and c == "\\":
+            elif reached_end or c in "/?#" or url.is_special and c == "\\":
                 if buffer:
                     port = int(buffer)
                     if port > 2**16 - 1:
@@ -1140,21 +1201,19 @@ def _parse_url(
         elif state == FILE:
             url.scheme = "file"
             url.hostname = ""
-            if c is not None and c in "/\\":
-                assert isinstance(c, str)
+            if not reached_end and c in "/\\":
                 state = FILE_SLASH
             elif base is not None and base.scheme == "file":
                 url.hostname = base.hostname
                 url.path = base.path
                 url.query = base.query
-                if c == "?":
+                if not reached_end and c == "?":
                     url.query = ""
                     state = QUERY
-                elif c == "#":
+                elif not reached_end and c == "#":
                     url.fragment = ""
                     state = FRAGMENT
-                elif c is not None:
-                    assert isinstance(c, str)
+                elif not reached_end:
                     url.query = None
                     if not _starts_with_windows_drive_letter(input[pointer:]):
                         _shorten_path(url)
@@ -1167,9 +1226,7 @@ def _parse_url(
                 pointer -= 1
 
         elif state == FILE_SLASH:
-            assert isinstance(url.path, list)
-            if c is not None and c in "/\\":
-                assert isinstance(c, str)
+            if not reached_end and c in "/\\":
                 state = FILE_HOST
             else:
                 if base is not None and base.scheme == "file":
@@ -1182,7 +1239,7 @@ def _parse_url(
                 pointer -= 1
 
         elif state == FILE_HOST:
-            if c is None or c in "/\\?#":
+            if reached_end or c in "/\\?#":
                 pointer -= 1
                 if _is_windows_drive_letter(buffer):
                     state = PATH
@@ -1196,31 +1253,28 @@ def _parse_url(
                     url.hostname = host
                     buffer = ""
                     state = PATH_START
-            else:
-                assert isinstance(c, str)
+            elif not reached_end:
                 buffer += c
 
         elif state == PATH_START:
             if url.is_special:
                 state = PATH
-                if c is not None and c not in "/\\":
-                    assert isinstance(c, str)
+                if not reached_end and c not in "/\\":
                     pointer -= 1
-            elif c == "?":
-                url.query = ""
-                state = QUERY
-            elif c == "#":
-                url.fragment = ""
-                state = FRAGMENT
-            elif c is not None:
-                assert isinstance(c, str)
-                state = PATH
-                if c != "/":
-                    pointer -= 1
+            elif not reached_end:
+                if c == "?":
+                    url.query = ""
+                    state = QUERY
+                elif c == "#":
+                    url.fragment = ""
+                    state = FRAGMENT
+                else:
+                    state = PATH
+                    if c != "/":
+                        pointer -= 1
 
         elif state == PATH:
-            assert isinstance(url.path, list)
-            if c is None or c == "/" or (url.is_special and c == "\\") or c in "?#":
+            if reached_end or c == "/" or (url.is_special and c == "\\") or c in "?#":
                 if _is_double_dot_path_segment(buffer):
                     _shorten_path(url)
                     if c != "/" and not (url.is_special and c == "\\"):
@@ -1238,21 +1292,21 @@ def _parse_url(
                     if (
                         not url.path
                         and not buffer
-                        and c is not None
+                        and not reached_end
                         and c in "?#"
                         and input[pointer - 1] not in "/\\"
                     ):
                         url._path_token_seen = True
                     url.path.append(buffer)
                 buffer = ""
-                if c == "?":
-                    url.query = ""
-                    state = QUERY
-                elif c == "#":
-                    url.fragment = ""
-                    state = FRAGMENT
+                if not reached_end:
+                    if c == "?":
+                        url.query = ""
+                        state = QUERY
+                    elif c == "#":
+                        url.fragment = ""
+                        state = FRAGMENT
             else:
-                assert isinstance(c, str)
                 buffer += _idempotent_utf_8_percent_encode(
                     input=input,
                     pointer=pointer,
@@ -1260,28 +1314,26 @@ def _parse_url(
                 )
 
         elif state == OPAQUE_PATH:
-            assert isinstance(url.path, str)
-            if c == "?":
-                url.query = ""
-                state = QUERY
-            elif c == "#":
-                url.fragment = ""
-                state = FRAGMENT
-            elif c is not None:
-                assert isinstance(c, str)
-                encoded = _utf_8_percent_encode(
-                    c,
-                    _C0_CONTROL_PERCENT_ENCODE_SET,
-                )
-                url.path += encoded
+            if not reached_end:
+                if c == "?":
+                    url.query = ""
+                    state = QUERY
+                elif c == "#":
+                    url.fragment = ""
+                    state = FRAGMENT
+                else:
+                    encoded = _utf_8_percent_encode(
+                        c,
+                        _C0_CONTROL_PERCENT_ENCODE_SET,
+                    )
+                    url.path += encoded
 
         elif state == QUERY:
-            assert isinstance(url.query, str)
             if encoding != "utf-8" and (
                 not url.is_special or url.scheme in ("ws", "wss")
             ):
                 encoding = "utf-8"
-            if c == "#" or c is None:
+            if reached_end or c == "#":
                 percent_encode_set = (
                     special_query_percent_encode_set
                     if url.is_special
@@ -1293,17 +1345,14 @@ def _parse_url(
                     percent_encode_set=percent_encode_set,
                 )
                 buffer = ""
-                if c == "#":
+                if not reached_end and c == "#":
                     url.fragment = ""
                     state = FRAGMENT
-            elif c is not None:
-                assert isinstance(c, str)
+            elif not reached_end:
                 buffer += c
 
         elif state == FRAGMENT:
-            assert isinstance(url.fragment, str)
-            if c is not None:
-                assert isinstance(c, str)
+            if not reached_end:
                 url.fragment += _idempotent_utf_8_percent_encode(
                     input=input, pointer=pointer, encode_set=fragment_percent_encode_set
                 )
@@ -1452,3 +1501,16 @@ def _serialize_url(
     if not exclude_fragment and url.fragment is not None:
         output += f"#{url.fragment}"
     return output
+
+
+def _safe_url(input: str, encoding: str) -> str:
+    url = _parse_url(
+        input,
+        encoding=encoding,
+        userinfo_percent_encode_set=_SAFE_USERINFO_PERCENT_ENCODE_SET,
+        path_percent_encode_set=_SAFE_PATH_PERCENT_ENCODE_SET,
+        query_percent_encode_set=_SAFE_QUERY_PERCENT_ENCODE_SET,
+        special_query_percent_encode_set=_SAFE_SPECIAL_QUERY_PERCENT_ENCODE_SET,
+        fragment_percent_encode_set=_SAFE_FRAGMENT_PERCENT_ENCODE_SET,
+    )
+    return _serialize_url(url, canonicalize=False)

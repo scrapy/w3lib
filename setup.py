@@ -34,7 +34,10 @@ extensions = [
 
 if bool(int(os.getenv("CYTHONIZE", 0))):
     from Cython.Build import cythonize
-    compiler_directives = {"language_level": 3}
+    compiler_directives = {
+        "language_level": 3,
+        "profile": bool(int(os.getenv("CYTHON_PROFILE", 0))),
+    }
     extensions = cythonize(extensions, compiler_directives=compiler_directives)
 else:
     extensions = no_cythonize(extensions)
