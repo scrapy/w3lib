@@ -38,7 +38,7 @@ if bool(int(os.getenv("CYTHONIZE", 0))):
         "language_level": 3,
         "profile": bool(int(os.getenv("CYTHON_PROFILE", 0))),
     }
-    extensions = cythonize(extensions, compiler_directives=compiler_directives)
+    extensions = cythonize(extensions, compiler_directives=compiler_directives, force=bool(int(os.getenv("CYTHON_FORCE", 0))))
 else:
     extensions = no_cythonize(extensions)
 

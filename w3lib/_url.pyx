@@ -577,7 +577,6 @@ def _shorten_path(url: _URL) -> None:
 
 # https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#utf-8-percent-encode
 # Extended to handled cases where % is to be percent-encoded.
-@cfunc
 def _percent_encode_after_encoding(
     input: str,
     *,

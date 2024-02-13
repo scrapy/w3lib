@@ -1,3 +1,5 @@
+import cython
+
 from typing import Union
 
 
@@ -33,7 +35,7 @@ class _PercentEncodeSet:
             )
         self._code_points = code_points
 
-    def __contains__(self, code_point: str) -> bool:
+    def __contains__(self, code_point: cython.Py_UCS4) -> bool:
         return code_point in self._code_points or ord(code_point) > self._greater_than
 
     def __add__(self, code_points: str) -> "_PercentEncodeSet":

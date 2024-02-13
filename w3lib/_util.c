@@ -1477,7 +1477,7 @@ static const char *__pyx_f[] = {
 struct __pyx_obj_5w3lib_5_util___pyx_scope_struct____init__;
 struct __pyx_obj_5w3lib_5_util___pyx_scope_struct_1_genexpr;
 
-/* "w3lib/_util.pyx":18
+/* "w3lib/_util.pyx":20
  *     """
  * 
  *     def __init__(             # <<<<<<<<<<<<<<
@@ -1490,7 +1490,7 @@ struct __pyx_obj_5w3lib_5_util___pyx_scope_struct____init__ {
 };
 
 
-/* "w3lib/_util.pyx":30
+/* "w3lib/_util.pyx":32
  *         if exclude:
  *             code_points = "".join(
  *                 chr(value)             # <<<<<<<<<<<<<<
@@ -2169,6 +2169,11 @@ static void __Pyx_AddTraceback(const char *funcname, int c_line,
 #define __Pyx_HAS_GCC_DIAGNOSTIC
 #endif
 
+/* ObjectAsUCS4.proto */
+#define __Pyx_PyObject_AsPy_UCS4(x)\
+    (likely(PyUnicode_Check(x)) ? __Pyx_PyUnicode_AsPy_UCS4(x) : __Pyx__PyObject_AsPy_UCS4(x))
+static Py_UCS4 __Pyx__PyObject_AsPy_UCS4(PyObject*);
+
 /* CIntToPy.proto */
 static CYTHON_INLINE PyObject* __Pyx_PyInt_From_long(long value);
 
@@ -2323,6 +2328,8 @@ static int __Pyx_InitStrings(__Pyx_StringTabEntry *t);
 
 /* #### Code section: module_declarations ### */
 
+/* Module declarations from "cython" */
+
 /* Module declarations from "w3lib._util" */
 /* #### Code section: typeinfo ### */
 /* #### Code section: before_global_var ### */
@@ -2393,6 +2400,7 @@ static const char __pyx_k_is_coroutine[] = "_is_coroutine";
 static const char __pyx_k_Union_int_str[] = "Union[int, str]";
 static const char __pyx_k_code_points_2[] = "_code_points";
 static const char __pyx_k_init_subclass[] = "__init_subclass__";
+static const char __pyx_k_cython_Py_UCS4[] = "cython.Py_UCS4";
 static const char __pyx_k_greater_than_2[] = "_greater_than";
 static const char __pyx_k_greater_than_3[] = ", greater_than=";
 static const char __pyx_k_new_code_points[] = "new_code_points";
@@ -2414,7 +2422,7 @@ static const char __pyx_k_Set_of_code_points_that_require[] = "Set of code point
 /* #### Code section: decls ### */
 static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_8__init___genexpr(PyObject *__pyx_self, PyObject *__pyx_genexpr_arg_0); /* proto */
 static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet___init__(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_self, PyObject *__pyx_v_code_points, PyObject *__pyx_v_greater_than, PyObject *__pyx_v_exclude); /* proto */
-static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_2__contains__(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_self, PyObject *__pyx_v_code_point); /* proto */
+static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_2__contains__(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_self, Py_UCS4 __pyx_v_code_point); /* proto */
 static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_4__add__(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_self, PyObject *__pyx_v_code_points); /* proto */
 static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_6__sub__(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_self, PyObject *__pyx_v_code_points); /* proto */
 static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_8__or__(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_self, PyObject *__pyx_v_other); /* proto */
@@ -2448,6 +2456,8 @@ typedef struct {
   #endif
   #ifdef __Pyx_Coroutine_USED
   PyTypeObject *__pyx_CoroutineType;
+  #endif
+  #if CYTHON_USE_MODULE_STATE
   #endif
   #if CYTHON_USE_MODULE_STATE
   PyObject *__pyx_type_5w3lib_5_util___pyx_scope_struct____init__;
@@ -2487,6 +2497,7 @@ typedef struct {
   PyObject *__pyx_n_s_code_points_2;
   PyObject *__pyx_n_s_contains;
   PyObject *__pyx_n_s_cp;
+  PyObject *__pyx_kp_s_cython_Py_UCS4;
   PyObject *__pyx_n_s_dict;
   PyObject *__pyx_kp_u_disable;
   PyObject *__pyx_n_s_doc;
@@ -2622,6 +2633,7 @@ static int __pyx_m_clear(PyObject *m) {
   Py_CLEAR(clear_module_state->__pyx_n_s_code_points_2);
   Py_CLEAR(clear_module_state->__pyx_n_s_contains);
   Py_CLEAR(clear_module_state->__pyx_n_s_cp);
+  Py_CLEAR(clear_module_state->__pyx_kp_s_cython_Py_UCS4);
   Py_CLEAR(clear_module_state->__pyx_n_s_dict);
   Py_CLEAR(clear_module_state->__pyx_kp_u_disable);
   Py_CLEAR(clear_module_state->__pyx_n_s_doc);
@@ -2735,6 +2747,7 @@ static int __pyx_m_traverse(PyObject *m, visitproc visit, void *arg) {
   Py_VISIT(traverse_module_state->__pyx_n_s_code_points_2);
   Py_VISIT(traverse_module_state->__pyx_n_s_contains);
   Py_VISIT(traverse_module_state->__pyx_n_s_cp);
+  Py_VISIT(traverse_module_state->__pyx_kp_s_cython_Py_UCS4);
   Py_VISIT(traverse_module_state->__pyx_n_s_dict);
   Py_VISIT(traverse_module_state->__pyx_kp_u_disable);
   Py_VISIT(traverse_module_state->__pyx_n_s_doc);
@@ -2821,6 +2834,8 @@ static int __pyx_m_traverse(PyObject *m, visitproc visit, void *arg) {
 #define __pyx_CoroutineType __pyx_mstate_global->__pyx_CoroutineType
 #endif
 #if CYTHON_USE_MODULE_STATE
+#endif
+#if CYTHON_USE_MODULE_STATE
 #define __pyx_type_5w3lib_5_util___pyx_scope_struct____init__ __pyx_mstate_global->__pyx_type_5w3lib_5_util___pyx_scope_struct____init__
 #define __pyx_type_5w3lib_5_util___pyx_scope_struct_1_genexpr __pyx_mstate_global->__pyx_type_5w3lib_5_util___pyx_scope_struct_1_genexpr
 #endif
@@ -2858,6 +2873,7 @@ static int __pyx_m_traverse(PyObject *m, visitproc visit, void *arg) {
 #define __pyx_n_s_code_points_2 __pyx_mstate_global->__pyx_n_s_code_points_2
 #define __pyx_n_s_contains __pyx_mstate_global->__pyx_n_s_contains
 #define __pyx_n_s_cp __pyx_mstate_global->__pyx_n_s_cp
+#define __pyx_kp_s_cython_Py_UCS4 __pyx_mstate_global->__pyx_kp_s_cython_Py_UCS4
 #define __pyx_n_s_dict __pyx_mstate_global->__pyx_n_s_dict
 #define __pyx_kp_u_disable __pyx_mstate_global->__pyx_kp_u_disable
 #define __pyx_n_s_doc __pyx_mstate_global->__pyx_n_s_doc
@@ -2917,7 +2933,7 @@ static int __pyx_m_traverse(PyObject *m, visitproc visit, void *arg) {
 #define __pyx_codeobj__17 __pyx_mstate_global->__pyx_codeobj__17
 /* #### Code section: module_code ### */
 
-/* "w3lib/_util.pyx":18
+/* "w3lib/_util.pyx":20
  *     """
  * 
  *     def __init__(             # <<<<<<<<<<<<<<
@@ -2968,7 +2984,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
     PyObject **__pyx_pyargnames[] = {&__pyx_n_s_self,&__pyx_n_s_code_points,&__pyx_n_s_greater_than,&__pyx_n_s_exclude,0};
     values[2] = __Pyx_Arg_NewRef_FASTCALL(((PyObject *)((PyObject*)__pyx_kp_u_)));
 
-    /* "w3lib/_util.pyx":23
+    /* "w3lib/_util.pyx":25
  *         *,
  *         greater_than: Union[int, str] = "\x7f",
  *         exclude: bool = False,             # <<<<<<<<<<<<<<
@@ -2993,7 +3009,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
           (void)__Pyx_Arg_NewRef_FASTCALL(values[0]);
           kw_args--;
         }
-        else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 18, __pyx_L3_error)
+        else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 20, __pyx_L3_error)
         else goto __pyx_L5_argtuple_error;
         CYTHON_FALLTHROUGH;
         case  1:
@@ -3001,9 +3017,9 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
           (void)__Pyx_Arg_NewRef_FASTCALL(values[1]);
           kw_args--;
         }
-        else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 18, __pyx_L3_error)
+        else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 20, __pyx_L3_error)
         else {
-          __Pyx_RaiseArgtupleInvalid("__init__", 1, 2, 2, 1); __PYX_ERR(0, 18, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("__init__", 1, 2, 2, 1); __PYX_ERR(0, 20, __pyx_L3_error)
         }
       }
       if (kw_args > 0 && likely(kw_args <= 2)) {
@@ -3011,12 +3027,12 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
         for (index = 2; index < 4 && kw_args > 0; index++) {
           PyObject* value = __Pyx_GetKwValue_FASTCALL(__pyx_kwds, __pyx_kwvalues, *__pyx_pyargnames[index]);
           if (value) { values[index] = __Pyx_Arg_NewRef_FASTCALL(value); kw_args--; }
-          else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 18, __pyx_L3_error)
+          else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 20, __pyx_L3_error)
         }
       }
       if (unlikely(kw_args > 0)) {
         const Py_ssize_t kwd_pos_args = __pyx_nargs;
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values + 0, kwd_pos_args, "__init__") < 0)) __PYX_ERR(0, 18, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values + 0, kwd_pos_args, "__init__") < 0)) __PYX_ERR(0, 20, __pyx_L3_error)
       }
     } else if (unlikely(__pyx_nargs != 2)) {
       goto __pyx_L5_argtuple_error;
@@ -3031,7 +3047,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   }
   goto __pyx_L6_skip;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("__init__", 1, 2, 2, __pyx_nargs); __PYX_ERR(0, 18, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("__init__", 1, 2, 2, __pyx_nargs); __PYX_ERR(0, 20, __pyx_L3_error)
   __pyx_L6_skip:;
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -3045,10 +3061,10 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_code_points), (&PyUnicode_Type), 0, "code_points", 1))) __PYX_ERR(0, 20, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_code_points), (&PyUnicode_Type), 0, "code_points", 1))) __PYX_ERR(0, 22, __pyx_L1_error)
   __pyx_r = __pyx_pf_5w3lib_5_util_17_PercentEncodeSet___init__(__pyx_self, __pyx_v_self, __pyx_v_code_points, __pyx_v_greater_than, __pyx_v_exclude);
 
-  /* "w3lib/_util.pyx":18
+  /* "w3lib/_util.pyx":20
  *     """
  * 
  *     def __init__(             # <<<<<<<<<<<<<<
@@ -3072,7 +3088,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
 }
 static PyObject *__pyx_gb_5w3lib_5_util_17_PercentEncodeSet_8__init___2generator(__pyx_CoroutineObject *__pyx_generator, CYTHON_UNUSED PyThreadState *__pyx_tstate, PyObject *__pyx_sent_value); /* proto */
 
-/* "w3lib/_util.pyx":30
+/* "w3lib/_util.pyx":32
  *         if exclude:
  *             code_points = "".join(
  *                 chr(value)             # <<<<<<<<<<<<<<
@@ -3092,7 +3108,7 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_8__init___genexpr(Py
   if (unlikely(!__pyx_cur_scope)) {
     __pyx_cur_scope = ((struct __pyx_obj_5w3lib_5_util___pyx_scope_struct_1_genexpr *)Py_None);
     __Pyx_INCREF(Py_None);
-    __PYX_ERR(0, 30, __pyx_L1_error)
+    __PYX_ERR(0, 32, __pyx_L1_error)
   } else {
     __Pyx_GOTREF((PyObject *)__pyx_cur_scope);
   }
@@ -3103,7 +3119,7 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_8__init___genexpr(Py
   __Pyx_INCREF(__pyx_cur_scope->__pyx_genexpr_arg_0);
   __Pyx_GIVEREF(__pyx_cur_scope->__pyx_genexpr_arg_0);
   {
-    __pyx_CoroutineObject *gen = __Pyx_Generator_New((__pyx_coroutine_body_t) __pyx_gb_5w3lib_5_util_17_PercentEncodeSet_8__init___2generator, NULL, (PyObject *) __pyx_cur_scope, __pyx_n_s_genexpr, __pyx_n_s_PercentEncodeSet___init___local, __pyx_n_s_w3lib__util); if (unlikely(!gen)) __PYX_ERR(0, 30, __pyx_L1_error)
+    __pyx_CoroutineObject *gen = __Pyx_Generator_New((__pyx_coroutine_body_t) __pyx_gb_5w3lib_5_util_17_PercentEncodeSet_8__init___2generator, NULL, (PyObject *) __pyx_cur_scope, __pyx_n_s_genexpr, __pyx_n_s_PercentEncodeSet___init___local, __pyx_n_s_w3lib__util); if (unlikely(!gen)) __PYX_ERR(0, 32, __pyx_L1_error)
     __Pyx_DECREF(__pyx_cur_scope);
     __Pyx_RefNannyFinishContext();
     return (PyObject *) gen;
@@ -3140,26 +3156,26 @@ static PyObject *__pyx_gb_5w3lib_5_util_17_PercentEncodeSet_8__init___2generator
     return NULL;
   }
   __pyx_L3_first_run:;
-  if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 30, __pyx_L1_error)
-  __pyx_r = PyList_New(0); if (unlikely(!__pyx_r)) __PYX_ERR(0, 30, __pyx_L1_error)
+  if (unlikely(!__pyx_sent_value)) __PYX_ERR(0, 32, __pyx_L1_error)
+  __pyx_r = PyList_New(0); if (unlikely(!__pyx_r)) __PYX_ERR(0, 32, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_r);
 
-  /* "w3lib/_util.pyx":31
+  /* "w3lib/_util.pyx":33
  *             code_points = "".join(
  *                 chr(value)
  *                 for value in range(self._greater_than + 1)             # <<<<<<<<<<<<<<
  *                 if chr(value) not in code_points
  *             )
  */
-  if (unlikely(!__pyx_cur_scope->__pyx_genexpr_arg_0)) { __Pyx_RaiseUnboundLocalError(".0"); __PYX_ERR(0, 31, __pyx_L1_error) }
+  if (unlikely(!__pyx_cur_scope->__pyx_genexpr_arg_0)) { __Pyx_RaiseUnboundLocalError(".0"); __PYX_ERR(0, 33, __pyx_L1_error) }
   if (likely(PyList_CheckExact(__pyx_cur_scope->__pyx_genexpr_arg_0)) || PyTuple_CheckExact(__pyx_cur_scope->__pyx_genexpr_arg_0)) {
     __pyx_t_1 = __pyx_cur_scope->__pyx_genexpr_arg_0; __Pyx_INCREF(__pyx_t_1);
     __pyx_t_2 = 0;
     __pyx_t_3 = NULL;
   } else {
-    __pyx_t_2 = -1; __pyx_t_1 = PyObject_GetIter(__pyx_cur_scope->__pyx_genexpr_arg_0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 31, __pyx_L1_error)
+    __pyx_t_2 = -1; __pyx_t_1 = PyObject_GetIter(__pyx_cur_scope->__pyx_genexpr_arg_0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 33, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_3 = __Pyx_PyObject_GetIterNextFunc(__pyx_t_1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 31, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_GetIterNextFunc(__pyx_t_1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 33, __pyx_L1_error)
   }
   for (;;) {
     if (likely(!__pyx_t_3)) {
@@ -3167,28 +3183,28 @@ static PyObject *__pyx_gb_5w3lib_5_util_17_PercentEncodeSet_8__init___2generator
         {
           Py_ssize_t __pyx_temp = __Pyx_PyList_GET_SIZE(__pyx_t_1);
           #if !CYTHON_ASSUME_SAFE_MACROS
-          if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 31, __pyx_L1_error)
+          if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 33, __pyx_L1_error)
           #endif
           if (__pyx_t_2 >= __pyx_temp) break;
         }
         #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
-        __pyx_t_4 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_4); __pyx_t_2++; if (unlikely((0 < 0))) __PYX_ERR(0, 31, __pyx_L1_error)
+        __pyx_t_4 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_4); __pyx_t_2++; if (unlikely((0 < 0))) __PYX_ERR(0, 33, __pyx_L1_error)
         #else
-        __pyx_t_4 = __Pyx_PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 31, __pyx_L1_error)
+        __pyx_t_4 = __Pyx_PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 33, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_4);
         #endif
       } else {
         {
           Py_ssize_t __pyx_temp = __Pyx_PyTuple_GET_SIZE(__pyx_t_1);
           #if !CYTHON_ASSUME_SAFE_MACROS
-          if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 31, __pyx_L1_error)
+          if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 33, __pyx_L1_error)
           #endif
           if (__pyx_t_2 >= __pyx_temp) break;
         }
         #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
-        __pyx_t_4 = PyTuple_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_4); __pyx_t_2++; if (unlikely((0 < 0))) __PYX_ERR(0, 31, __pyx_L1_error)
+        __pyx_t_4 = PyTuple_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_4); __pyx_t_2++; if (unlikely((0 < 0))) __PYX_ERR(0, 33, __pyx_L1_error)
         #else
-        __pyx_t_4 = __Pyx_PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 31, __pyx_L1_error)
+        __pyx_t_4 = __Pyx_PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 33, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_4);
         #endif
       }
@@ -3198,7 +3214,7 @@ static PyObject *__pyx_gb_5w3lib_5_util_17_PercentEncodeSet_8__init___2generator
         PyObject* exc_type = PyErr_Occurred();
         if (exc_type) {
           if (likely(__Pyx_PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
-          else __PYX_ERR(0, 31, __pyx_L1_error)
+          else __PYX_ERR(0, 33, __pyx_L1_error)
         }
         break;
       }
@@ -3209,37 +3225,37 @@ static PyObject *__pyx_gb_5w3lib_5_util_17_PercentEncodeSet_8__init___2generator
     __Pyx_GIVEREF(__pyx_t_4);
     __pyx_t_4 = 0;
 
-    /* "w3lib/_util.pyx":32
+    /* "w3lib/_util.pyx":34
  *                 chr(value)
  *                 for value in range(self._greater_than + 1)
  *                 if chr(value) not in code_points             # <<<<<<<<<<<<<<
  *             )
  *         self._code_points = code_points
  */
-    __pyx_t_4 = __Pyx_PyObject_CallOneArg(__pyx_builtin_chr, __pyx_cur_scope->__pyx_v_value); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 32, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_PyObject_CallOneArg(__pyx_builtin_chr, __pyx_cur_scope->__pyx_v_value); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 34, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
-    if (unlikely(!__pyx_cur_scope->__pyx_outer_scope->__pyx_v_code_points)) { __Pyx_RaiseClosureNameError("code_points"); __PYX_ERR(0, 32, __pyx_L1_error) }
+    if (unlikely(!__pyx_cur_scope->__pyx_outer_scope->__pyx_v_code_points)) { __Pyx_RaiseClosureNameError("code_points"); __PYX_ERR(0, 34, __pyx_L1_error) }
     if (unlikely(__pyx_cur_scope->__pyx_outer_scope->__pyx_v_code_points == Py_None)) {
       PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
-      __PYX_ERR(0, 32, __pyx_L1_error)
+      __PYX_ERR(0, 34, __pyx_L1_error)
     }
-    __pyx_t_5 = (__Pyx_PyUnicode_ContainsTF(__pyx_t_4, __pyx_cur_scope->__pyx_outer_scope->__pyx_v_code_points, Py_NE)); if (unlikely((__pyx_t_5 < 0))) __PYX_ERR(0, 32, __pyx_L1_error)
+    __pyx_t_5 = (__Pyx_PyUnicode_ContainsTF(__pyx_t_4, __pyx_cur_scope->__pyx_outer_scope->__pyx_v_code_points, Py_NE)); if (unlikely((__pyx_t_5 < 0))) __PYX_ERR(0, 34, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     if (__pyx_t_5) {
 
-      /* "w3lib/_util.pyx":30
+      /* "w3lib/_util.pyx":32
  *         if exclude:
  *             code_points = "".join(
  *                 chr(value)             # <<<<<<<<<<<<<<
  *                 for value in range(self._greater_than + 1)
  *                 if chr(value) not in code_points
  */
-      __pyx_t_4 = __Pyx_PyObject_CallOneArg(__pyx_builtin_chr, __pyx_cur_scope->__pyx_v_value); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 30, __pyx_L1_error)
+      __pyx_t_4 = __Pyx_PyObject_CallOneArg(__pyx_builtin_chr, __pyx_cur_scope->__pyx_v_value); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 32, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_4);
-      if (unlikely(__Pyx_ListComp_Append(__pyx_r, (PyObject*)__pyx_t_4))) __PYX_ERR(0, 30, __pyx_L1_error)
+      if (unlikely(__Pyx_ListComp_Append(__pyx_r, (PyObject*)__pyx_t_4))) __PYX_ERR(0, 32, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-      /* "w3lib/_util.pyx":32
+      /* "w3lib/_util.pyx":34
  *                 chr(value)
  *                 for value in range(self._greater_than + 1)
  *                 if chr(value) not in code_points             # <<<<<<<<<<<<<<
@@ -3248,7 +3264,7 @@ static PyObject *__pyx_gb_5w3lib_5_util_17_PercentEncodeSet_8__init___2generator
  */
     }
 
-    /* "w3lib/_util.pyx":31
+    /* "w3lib/_util.pyx":33
  *             code_points = "".join(
  *                 chr(value)
  *                 for value in range(self._greater_than + 1)             # <<<<<<<<<<<<<<
@@ -3259,7 +3275,7 @@ static PyObject *__pyx_gb_5w3lib_5_util_17_PercentEncodeSet_8__init___2generator
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   CYTHON_MAYBE_UNUSED_VAR(__pyx_cur_scope);
 
-  /* "w3lib/_util.pyx":30
+  /* "w3lib/_util.pyx":32
  *         if exclude:
  *             code_points = "".join(
  *                 chr(value)             # <<<<<<<<<<<<<<
@@ -3286,7 +3302,7 @@ static PyObject *__pyx_gb_5w3lib_5_util_17_PercentEncodeSet_8__init___2generator
   return __pyx_r;
 }
 
-/* "w3lib/_util.pyx":18
+/* "w3lib/_util.pyx":20
  *     """
  * 
  *     def __init__(             # <<<<<<<<<<<<<<
@@ -3311,7 +3327,7 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet___init__(CYTHON_UNUS
   if (unlikely(!__pyx_cur_scope)) {
     __pyx_cur_scope = ((struct __pyx_obj_5w3lib_5_util___pyx_scope_struct____init__ *)Py_None);
     __Pyx_INCREF(Py_None);
-    __PYX_ERR(0, 18, __pyx_L1_error)
+    __PYX_ERR(0, 20, __pyx_L1_error)
   } else {
     __Pyx_GOTREF((PyObject *)__pyx_cur_scope);
   }
@@ -3320,7 +3336,7 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet___init__(CYTHON_UNUS
   __Pyx_GIVEREF(__pyx_cur_scope->__pyx_v_code_points);
   __Pyx_INCREF(__pyx_v_greater_than);
 
-  /* "w3lib/_util.pyx":25
+  /* "w3lib/_util.pyx":27
  *         exclude: bool = False,
  *     ):
  *         if isinstance(greater_than, str):             # <<<<<<<<<<<<<<
@@ -3330,20 +3346,20 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet___init__(CYTHON_UNUS
   __pyx_t_1 = PyUnicode_Check(__pyx_v_greater_than); 
   if (__pyx_t_1) {
 
-    /* "w3lib/_util.pyx":26
+    /* "w3lib/_util.pyx":28
  *     ):
  *         if isinstance(greater_than, str):
  *             greater_than = ord(greater_than)             # <<<<<<<<<<<<<<
  *         self._greater_than = greater_than
  *         if exclude:
  */
-    __pyx_t_2 = __Pyx_PyObject_Ord(__pyx_v_greater_than); if (unlikely(__pyx_t_2 == ((long)(long)(Py_UCS4)-1))) __PYX_ERR(0, 26, __pyx_L1_error)
-    __pyx_t_3 = __Pyx_PyInt_From_long(__pyx_t_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 26, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_Ord(__pyx_v_greater_than); if (unlikely(__pyx_t_2 == ((long)(long)(Py_UCS4)-1))) __PYX_ERR(0, 28, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyInt_From_long(__pyx_t_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 28, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF_SET(__pyx_v_greater_than, __pyx_t_3);
     __pyx_t_3 = 0;
 
-    /* "w3lib/_util.pyx":25
+    /* "w3lib/_util.pyx":27
  *         exclude: bool = False,
  *     ):
  *         if isinstance(greater_than, str):             # <<<<<<<<<<<<<<
@@ -3352,63 +3368,63 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet___init__(CYTHON_UNUS
  */
   }
 
-  /* "w3lib/_util.pyx":27
+  /* "w3lib/_util.pyx":29
  *         if isinstance(greater_than, str):
  *             greater_than = ord(greater_than)
  *         self._greater_than = greater_than             # <<<<<<<<<<<<<<
  *         if exclude:
  *             code_points = "".join(
  */
-  if (__Pyx_PyObject_SetAttrStr(__pyx_v_self, __pyx_n_s_greater_than_2, __pyx_v_greater_than) < 0) __PYX_ERR(0, 27, __pyx_L1_error)
+  if (__Pyx_PyObject_SetAttrStr(__pyx_v_self, __pyx_n_s_greater_than_2, __pyx_v_greater_than) < 0) __PYX_ERR(0, 29, __pyx_L1_error)
 
-  /* "w3lib/_util.pyx":28
+  /* "w3lib/_util.pyx":30
  *             greater_than = ord(greater_than)
  *         self._greater_than = greater_than
  *         if exclude:             # <<<<<<<<<<<<<<
  *             code_points = "".join(
  *                 chr(value)
  */
-  __pyx_t_1 = __Pyx_PyObject_IsTrue(__pyx_v_exclude); if (unlikely((__pyx_t_1 < 0))) __PYX_ERR(0, 28, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_IsTrue(__pyx_v_exclude); if (unlikely((__pyx_t_1 < 0))) __PYX_ERR(0, 30, __pyx_L1_error)
   if (__pyx_t_1) {
 
-    /* "w3lib/_util.pyx":31
+    /* "w3lib/_util.pyx":33
  *             code_points = "".join(
  *                 chr(value)
  *                 for value in range(self._greater_than + 1)             # <<<<<<<<<<<<<<
  *                 if chr(value) not in code_points
  *             )
  */
-    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_self, __pyx_n_s_greater_than_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 31, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_self, __pyx_n_s_greater_than_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 33, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_4 = __Pyx_PyInt_AddObjC(__pyx_t_3, __pyx_int_1, 1, 0, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 31, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_PyInt_AddObjC(__pyx_t_3, __pyx_int_1, 1, 0, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 33, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_builtin_range, __pyx_t_4); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 31, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_builtin_range, __pyx_t_4); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 33, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-    /* "w3lib/_util.pyx":30
+    /* "w3lib/_util.pyx":32
  *         if exclude:
  *             code_points = "".join(
  *                 chr(value)             # <<<<<<<<<<<<<<
  *                 for value in range(self._greater_than + 1)
  *                 if chr(value) not in code_points
  */
-    __pyx_t_4 = __pyx_pf_5w3lib_5_util_17_PercentEncodeSet_8__init___genexpr(((PyObject*)__pyx_cur_scope), __pyx_t_3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 30, __pyx_L1_error)
+    __pyx_t_4 = __pyx_pf_5w3lib_5_util_17_PercentEncodeSet_8__init___genexpr(((PyObject*)__pyx_cur_scope), __pyx_t_3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 32, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-    /* "w3lib/_util.pyx":29
+    /* "w3lib/_util.pyx":31
  *         self._greater_than = greater_than
  *         if exclude:
  *             code_points = "".join(             # <<<<<<<<<<<<<<
  *                 chr(value)
  *                 for value in range(self._greater_than + 1)
  */
-    __pyx_t_3 = __Pyx_Generator_Next(__pyx_t_4); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 29, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_Generator_Next(__pyx_t_4); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 31, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-    __pyx_t_4 = PyUnicode_Join(__pyx_kp_u__2, __pyx_t_3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 29, __pyx_L1_error)
+    __pyx_t_4 = PyUnicode_Join(__pyx_kp_u__2, __pyx_t_3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 31, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_GOTREF(__pyx_cur_scope->__pyx_v_code_points);
@@ -3416,7 +3432,7 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet___init__(CYTHON_UNUS
     __Pyx_GIVEREF(__pyx_t_4);
     __pyx_t_4 = 0;
 
-    /* "w3lib/_util.pyx":28
+    /* "w3lib/_util.pyx":30
  *             greater_than = ord(greater_than)
  *         self._greater_than = greater_than
  *         if exclude:             # <<<<<<<<<<<<<<
@@ -3425,16 +3441,16 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet___init__(CYTHON_UNUS
  */
   }
 
-  /* "w3lib/_util.pyx":34
+  /* "w3lib/_util.pyx":36
  *                 if chr(value) not in code_points
  *             )
  *         self._code_points = code_points             # <<<<<<<<<<<<<<
  * 
- *     def __contains__(self, code_point: str) -> bool:
+ *     def __contains__(self, code_point: cython.Py_UCS4) -> bool:
  */
-  if (__Pyx_PyObject_SetAttrStr(__pyx_v_self, __pyx_n_s_code_points_2, __pyx_cur_scope->__pyx_v_code_points) < 0) __PYX_ERR(0, 34, __pyx_L1_error)
+  if (__Pyx_PyObject_SetAttrStr(__pyx_v_self, __pyx_n_s_code_points_2, __pyx_cur_scope->__pyx_v_code_points) < 0) __PYX_ERR(0, 36, __pyx_L1_error)
 
-  /* "w3lib/_util.pyx":18
+  /* "w3lib/_util.pyx":20
  *     """
  * 
  *     def __init__(             # <<<<<<<<<<<<<<
@@ -3459,10 +3475,10 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet___init__(CYTHON_UNUS
   return __pyx_r;
 }
 
-/* "w3lib/_util.pyx":36
+/* "w3lib/_util.pyx":38
  *         self._code_points = code_points
  * 
- *     def __contains__(self, code_point: str) -> bool:             # <<<<<<<<<<<<<<
+ *     def __contains__(self, code_point: cython.Py_UCS4) -> bool:             # <<<<<<<<<<<<<<
  *         return code_point in self._code_points or ord(code_point) > self._greater_than
  * 
  */
@@ -3484,7 +3500,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ) {
   PyObject *__pyx_v_self = 0;
-  PyObject *__pyx_v_code_point = 0;
+  Py_UCS4 __pyx_v_code_point;
   #if !CYTHON_METH_FASTCALL
   CYTHON_UNUSED Py_ssize_t __pyx_nargs;
   #endif
@@ -3523,7 +3539,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
           (void)__Pyx_Arg_NewRef_FASTCALL(values[0]);
           kw_args--;
         }
-        else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 36, __pyx_L3_error)
+        else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 38, __pyx_L3_error)
         else goto __pyx_L5_argtuple_error;
         CYTHON_FALLTHROUGH;
         case  1:
@@ -3531,14 +3547,14 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
           (void)__Pyx_Arg_NewRef_FASTCALL(values[1]);
           kw_args--;
         }
-        else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 36, __pyx_L3_error)
+        else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 38, __pyx_L3_error)
         else {
-          __Pyx_RaiseArgtupleInvalid("__contains__", 1, 2, 2, 1); __PYX_ERR(0, 36, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("__contains__", 1, 2, 2, 1); __PYX_ERR(0, 38, __pyx_L3_error)
         }
       }
       if (unlikely(kw_args > 0)) {
         const Py_ssize_t kwd_pos_args = __pyx_nargs;
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values + 0, kwd_pos_args, "__contains__") < 0)) __PYX_ERR(0, 36, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values + 0, kwd_pos_args, "__contains__") < 0)) __PYX_ERR(0, 38, __pyx_L3_error)
       }
     } else if (unlikely(__pyx_nargs != 2)) {
       goto __pyx_L5_argtuple_error;
@@ -3547,11 +3563,11 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
       values[1] = __Pyx_Arg_FASTCALL(__pyx_args, 1);
     }
     __pyx_v_self = values[0];
-    __pyx_v_code_point = ((PyObject*)values[1]);
+    __pyx_v_code_point = __Pyx_PyObject_AsPy_UCS4(values[1]); if (unlikely((__pyx_v_code_point == (Py_UCS4)-1) && PyErr_Occurred())) __PYX_ERR(0, 38, __pyx_L3_error)
   }
   goto __pyx_L6_skip;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("__contains__", 1, 2, 2, __pyx_nargs); __PYX_ERR(0, 36, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("__contains__", 1, 2, 2, __pyx_nargs); __PYX_ERR(0, 38, __pyx_L3_error)
   __pyx_L6_skip:;
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -3565,14 +3581,9 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_code_point), (&PyUnicode_Type), 0, "code_point", 1))) __PYX_ERR(0, 36, __pyx_L1_error)
   __pyx_r = __pyx_pf_5w3lib_5_util_17_PercentEncodeSet_2__contains__(__pyx_self, __pyx_v_self, __pyx_v_code_point);
 
   /* function exit code */
-  goto __pyx_L0;
-  __pyx_L1_error:;
-  __pyx_r = NULL;
-  __pyx_L0:;
   {
     Py_ssize_t __pyx_temp;
     for (__pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
@@ -3583,60 +3594,61 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_2__contains__(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_self, PyObject *__pyx_v_code_point) {
+static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_2__contains__(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_self, Py_UCS4 __pyx_v_code_point) {
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
   PyObject *__pyx_t_2 = NULL;
-  int __pyx_t_3;
-  long __pyx_t_4;
+  PyObject *__pyx_t_3 = NULL;
+  int __pyx_t_4;
   PyObject *__pyx_t_5 = NULL;
-  PyObject *__pyx_t_6 = NULL;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__contains__", 1);
 
-  /* "w3lib/_util.pyx":37
+  /* "w3lib/_util.pyx":39
  * 
- *     def __contains__(self, code_point: str) -> bool:
+ *     def __contains__(self, code_point: cython.Py_UCS4) -> bool:
  *         return code_point in self._code_points or ord(code_point) > self._greater_than             # <<<<<<<<<<<<<<
  * 
  *     def __add__(self, code_points: str) -> "_PercentEncodeSet":
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_self, __pyx_n_s_code_points_2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 37, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyUnicode_FromOrdinal(__pyx_v_code_point); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 39, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_3 = (__Pyx_PySequence_ContainsTF(__pyx_v_code_point, __pyx_t_2, Py_EQ)); if (unlikely((__pyx_t_3 < 0))) __PYX_ERR(0, 37, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_self, __pyx_n_s_code_points_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 39, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
+  __pyx_t_4 = (__Pyx_PySequence_ContainsTF(__pyx_t_2, __pyx_t_3, Py_EQ)); if (unlikely((__pyx_t_4 < 0))) __PYX_ERR(0, 39, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  if (!__pyx_t_3) {
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  if (!__pyx_t_4) {
   } else {
-    __pyx_t_2 = __Pyx_PyBool_FromLong(__pyx_t_3); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 37, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_1 = __pyx_t_2;
-    __pyx_t_2 = 0;
+    __pyx_t_3 = __Pyx_PyBool_FromLong(__pyx_t_4); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 39, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_3);
+    __pyx_t_1 = __pyx_t_3;
+    __pyx_t_3 = 0;
     goto __pyx_L3_bool_binop_done;
   }
-  __pyx_t_4 = __Pyx_PyObject_Ord(__pyx_v_code_point); if (unlikely(__pyx_t_4 == ((long)(long)(Py_UCS4)-1))) __PYX_ERR(0, 37, __pyx_L1_error)
-  __pyx_t_2 = __Pyx_PyInt_From_long(__pyx_t_4); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 37, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyInt_From_long(__Pyx_long_cast(__pyx_v_code_point)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 39, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_self, __pyx_n_s_greater_than_2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 39, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_v_self, __pyx_n_s_greater_than_2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 37, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_6 = PyObject_RichCompare(__pyx_t_2, __pyx_t_5, Py_GT); __Pyx_XGOTREF(__pyx_t_6); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 37, __pyx_L1_error)
+  __pyx_t_5 = PyObject_RichCompare(__pyx_t_3, __pyx_t_2, Py_GT); __Pyx_XGOTREF(__pyx_t_5); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 39, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __Pyx_INCREF(__pyx_t_5);
+  __pyx_t_1 = __pyx_t_5;
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  __Pyx_INCREF(__pyx_t_6);
-  __pyx_t_1 = __pyx_t_6;
-  __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
   __pyx_L3_bool_binop_done:;
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "w3lib/_util.pyx":36
+  /* "w3lib/_util.pyx":38
  *         self._code_points = code_points
  * 
- *     def __contains__(self, code_point: str) -> bool:             # <<<<<<<<<<<<<<
+ *     def __contains__(self, code_point: cython.Py_UCS4) -> bool:             # <<<<<<<<<<<<<<
  *         return code_point in self._code_points or ord(code_point) > self._greater_than
  * 
  */
@@ -3645,8 +3657,8 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_2__contains__(CYTHON
   __pyx_L1_error:;
   __Pyx_XDECREF(__pyx_t_1);
   __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_3);
   __Pyx_XDECREF(__pyx_t_5);
-  __Pyx_XDECREF(__pyx_t_6);
   __Pyx_AddTraceback("w3lib._util._PercentEncodeSet.__contains__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
@@ -3655,7 +3667,7 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_2__contains__(CYTHON
   return __pyx_r;
 }
 
-/* "w3lib/_util.pyx":39
+/* "w3lib/_util.pyx":41
  *         return code_point in self._code_points or ord(code_point) > self._greater_than
  * 
  *     def __add__(self, code_points: str) -> "_PercentEncodeSet":             # <<<<<<<<<<<<<<
@@ -3719,7 +3731,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
           (void)__Pyx_Arg_NewRef_FASTCALL(values[0]);
           kw_args--;
         }
-        else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 39, __pyx_L3_error)
+        else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 41, __pyx_L3_error)
         else goto __pyx_L5_argtuple_error;
         CYTHON_FALLTHROUGH;
         case  1:
@@ -3727,14 +3739,14 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
           (void)__Pyx_Arg_NewRef_FASTCALL(values[1]);
           kw_args--;
         }
-        else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 39, __pyx_L3_error)
+        else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 41, __pyx_L3_error)
         else {
-          __Pyx_RaiseArgtupleInvalid("__add__", 1, 2, 2, 1); __PYX_ERR(0, 39, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("__add__", 1, 2, 2, 1); __PYX_ERR(0, 41, __pyx_L3_error)
         }
       }
       if (unlikely(kw_args > 0)) {
         const Py_ssize_t kwd_pos_args = __pyx_nargs;
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values + 0, kwd_pos_args, "__add__") < 0)) __PYX_ERR(0, 39, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values + 0, kwd_pos_args, "__add__") < 0)) __PYX_ERR(0, 41, __pyx_L3_error)
       }
     } else if (unlikely(__pyx_nargs != 2)) {
       goto __pyx_L5_argtuple_error;
@@ -3747,7 +3759,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   }
   goto __pyx_L6_skip;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("__add__", 1, 2, 2, __pyx_nargs); __PYX_ERR(0, 39, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("__add__", 1, 2, 2, __pyx_nargs); __PYX_ERR(0, 41, __pyx_L3_error)
   __pyx_L6_skip:;
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -3761,7 +3773,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_code_points), (&PyUnicode_Type), 0, "code_points", 1))) __PYX_ERR(0, 39, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_code_points), (&PyUnicode_Type), 0, "code_points", 1))) __PYX_ERR(0, 41, __pyx_L1_error)
   __pyx_r = __pyx_pf_5w3lib_5_util_17_PercentEncodeSet_4__add__(__pyx_self, __pyx_v_self, __pyx_v_code_points);
 
   /* function exit code */
@@ -3791,7 +3803,7 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_4__add__(CYTHON_UNUS
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__add__", 1);
 
-  /* "w3lib/_util.pyx":40
+  /* "w3lib/_util.pyx":42
  * 
  *     def __add__(self, code_points: str) -> "_PercentEncodeSet":
  *         return _PercentEncodeSet(             # <<<<<<<<<<<<<<
@@ -3799,57 +3811,57 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_4__add__(CYTHON_UNUS
  *             greater_than=self._greater_than,
  */
   __Pyx_XDECREF(__pyx_r);
-  __Pyx_GetModuleGlobalName(__pyx_t_1, __pyx_n_s_PercentEncodeSet); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 40, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_1, __pyx_n_s_PercentEncodeSet); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 42, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
 
-  /* "w3lib/_util.pyx":41
+  /* "w3lib/_util.pyx":43
  *     def __add__(self, code_points: str) -> "_PercentEncodeSet":
  *         return _PercentEncodeSet(
  *             self._code_points + code_points,             # <<<<<<<<<<<<<<
  *             greater_than=self._greater_than,
  *         )
  */
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_self, __pyx_n_s_code_points_2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 41, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_self, __pyx_n_s_code_points_2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 43, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_3 = PyNumber_Add(__pyx_t_2, __pyx_v_code_points); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 41, __pyx_L1_error)
+  __pyx_t_3 = PyNumber_Add(__pyx_t_2, __pyx_v_code_points); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 43, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "w3lib/_util.pyx":40
+  /* "w3lib/_util.pyx":42
  * 
  *     def __add__(self, code_points: str) -> "_PercentEncodeSet":
  *         return _PercentEncodeSet(             # <<<<<<<<<<<<<<
  *             self._code_points + code_points,
  *             greater_than=self._greater_than,
  */
-  __pyx_t_2 = PyTuple_New(1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 40, __pyx_L1_error)
+  __pyx_t_2 = PyTuple_New(1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 42, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_GIVEREF(__pyx_t_3);
-  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_t_3)) __PYX_ERR(0, 40, __pyx_L1_error);
+  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_t_3)) __PYX_ERR(0, 42, __pyx_L1_error);
   __pyx_t_3 = 0;
 
-  /* "w3lib/_util.pyx":42
+  /* "w3lib/_util.pyx":44
  *         return _PercentEncodeSet(
  *             self._code_points + code_points,
  *             greater_than=self._greater_than,             # <<<<<<<<<<<<<<
  *         )
  * 
  */
-  __pyx_t_3 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 42, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 44, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_v_self, __pyx_n_s_greater_than_2); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 42, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_v_self, __pyx_n_s_greater_than_2); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 44, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  if (PyDict_SetItem(__pyx_t_3, __pyx_n_s_greater_than, __pyx_t_4) < 0) __PYX_ERR(0, 42, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_3, __pyx_n_s_greater_than, __pyx_t_4) < 0) __PYX_ERR(0, 44, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "w3lib/_util.pyx":40
+  /* "w3lib/_util.pyx":42
  * 
  *     def __add__(self, code_points: str) -> "_PercentEncodeSet":
  *         return _PercentEncodeSet(             # <<<<<<<<<<<<<<
  *             self._code_points + code_points,
  *             greater_than=self._greater_than,
  */
-  __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_2, __pyx_t_3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 40, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_2, __pyx_t_3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 42, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
@@ -3858,7 +3870,7 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_4__add__(CYTHON_UNUS
   __pyx_t_4 = 0;
   goto __pyx_L0;
 
-  /* "w3lib/_util.pyx":39
+  /* "w3lib/_util.pyx":41
  *         return code_point in self._code_points or ord(code_point) > self._greater_than
  * 
  *     def __add__(self, code_points: str) -> "_PercentEncodeSet":             # <<<<<<<<<<<<<<
@@ -3880,7 +3892,7 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_4__add__(CYTHON_UNUS
   return __pyx_r;
 }
 
-/* "w3lib/_util.pyx":45
+/* "w3lib/_util.pyx":47
  *         )
  * 
  *     def __sub__(self, code_points: str) -> "_PercentEncodeSet":             # <<<<<<<<<<<<<<
@@ -3944,7 +3956,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
           (void)__Pyx_Arg_NewRef_FASTCALL(values[0]);
           kw_args--;
         }
-        else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 45, __pyx_L3_error)
+        else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 47, __pyx_L3_error)
         else goto __pyx_L5_argtuple_error;
         CYTHON_FALLTHROUGH;
         case  1:
@@ -3952,14 +3964,14 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
           (void)__Pyx_Arg_NewRef_FASTCALL(values[1]);
           kw_args--;
         }
-        else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 45, __pyx_L3_error)
+        else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 47, __pyx_L3_error)
         else {
-          __Pyx_RaiseArgtupleInvalid("__sub__", 1, 2, 2, 1); __PYX_ERR(0, 45, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("__sub__", 1, 2, 2, 1); __PYX_ERR(0, 47, __pyx_L3_error)
         }
       }
       if (unlikely(kw_args > 0)) {
         const Py_ssize_t kwd_pos_args = __pyx_nargs;
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values + 0, kwd_pos_args, "__sub__") < 0)) __PYX_ERR(0, 45, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values + 0, kwd_pos_args, "__sub__") < 0)) __PYX_ERR(0, 47, __pyx_L3_error)
       }
     } else if (unlikely(__pyx_nargs != 2)) {
       goto __pyx_L5_argtuple_error;
@@ -3972,7 +3984,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   }
   goto __pyx_L6_skip;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("__sub__", 1, 2, 2, __pyx_nargs); __PYX_ERR(0, 45, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("__sub__", 1, 2, 2, __pyx_nargs); __PYX_ERR(0, 47, __pyx_L3_error)
   __pyx_L6_skip:;
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -3986,7 +3998,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_code_points), (&PyUnicode_Type), 0, "code_points", 1))) __PYX_ERR(0, 45, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_code_points), (&PyUnicode_Type), 0, "code_points", 1))) __PYX_ERR(0, 47, __pyx_L1_error)
   __pyx_r = __pyx_pf_5w3lib_5_util_17_PercentEncodeSet_6__sub__(__pyx_self, __pyx_v_self, __pyx_v_code_points);
 
   /* function exit code */
@@ -4025,19 +4037,19 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_6__sub__(CYTHON_UNUS
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__sub__", 1);
 
-  /* "w3lib/_util.pyx":46
+  /* "w3lib/_util.pyx":48
  * 
  *     def __sub__(self, code_points: str) -> "_PercentEncodeSet":
  *         new_code_points = self._code_points             # <<<<<<<<<<<<<<
  *         for code_point in code_points:
  *             new_code_points = new_code_points.replace(code_point, "")
  */
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_self, __pyx_n_s_code_points_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 46, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_self, __pyx_n_s_code_points_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 48, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_new_code_points = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "w3lib/_util.pyx":47
+  /* "w3lib/_util.pyx":49
  *     def __sub__(self, code_points: str) -> "_PercentEncodeSet":
  *         new_code_points = self._code_points
  *         for code_point in code_points:             # <<<<<<<<<<<<<<
@@ -4046,21 +4058,21 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_6__sub__(CYTHON_UNUS
  */
   __Pyx_INCREF(__pyx_v_code_points);
   __pyx_t_2 = __pyx_v_code_points;
-  __pyx_t_7 = __Pyx_init_unicode_iteration(__pyx_t_2, (&__pyx_t_4), (&__pyx_t_5), (&__pyx_t_6)); if (unlikely(__pyx_t_7 == ((int)-1))) __PYX_ERR(0, 47, __pyx_L1_error)
+  __pyx_t_7 = __Pyx_init_unicode_iteration(__pyx_t_2, (&__pyx_t_4), (&__pyx_t_5), (&__pyx_t_6)); if (unlikely(__pyx_t_7 == ((int)-1))) __PYX_ERR(0, 49, __pyx_L1_error)
   for (__pyx_t_8 = 0; __pyx_t_8 < __pyx_t_4; __pyx_t_8++) {
     __pyx_t_3 = __pyx_t_8;
     __pyx_v_code_point = __Pyx_PyUnicode_READ(__pyx_t_6, __pyx_t_5, __pyx_t_3);
 
-    /* "w3lib/_util.pyx":48
+    /* "w3lib/_util.pyx":50
  *         new_code_points = self._code_points
  *         for code_point in code_points:
  *             new_code_points = new_code_points.replace(code_point, "")             # <<<<<<<<<<<<<<
  *         return _PercentEncodeSet(
  *             new_code_points,
  */
-    __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_v_new_code_points, __pyx_n_s_replace); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 48, __pyx_L1_error)
+    __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_v_new_code_points, __pyx_n_s_replace); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 50, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
-    __pyx_t_10 = __Pyx_PyUnicode_FromOrdinal(__pyx_v_code_point); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 48, __pyx_L1_error)
+    __pyx_t_10 = __Pyx_PyUnicode_FromOrdinal(__pyx_v_code_point); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 50, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_10);
     __pyx_t_11 = NULL;
     __pyx_t_7 = 0;
@@ -4081,7 +4093,7 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_6__sub__(CYTHON_UNUS
       __pyx_t_1 = __Pyx_PyObject_FastCall(__pyx_t_9, __pyx_callargs+1-__pyx_t_7, 2+__pyx_t_7);
       __Pyx_XDECREF(__pyx_t_11); __pyx_t_11 = 0;
       __Pyx_DECREF(__pyx_t_10); __pyx_t_10 = 0;
-      if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 48, __pyx_L1_error)
+      if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 50, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     }
@@ -4090,7 +4102,7 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_6__sub__(CYTHON_UNUS
   }
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "w3lib/_util.pyx":49
+  /* "w3lib/_util.pyx":51
  *         for code_point in code_points:
  *             new_code_points = new_code_points.replace(code_point, "")
  *         return _PercentEncodeSet(             # <<<<<<<<<<<<<<
@@ -4098,44 +4110,44 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_6__sub__(CYTHON_UNUS
  *             greater_than=self._greater_than,
  */
   __Pyx_XDECREF(__pyx_r);
-  __Pyx_GetModuleGlobalName(__pyx_t_1, __pyx_n_s_PercentEncodeSet); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 49, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_1, __pyx_n_s_PercentEncodeSet); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 51, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
 
-  /* "w3lib/_util.pyx":50
+  /* "w3lib/_util.pyx":52
  *             new_code_points = new_code_points.replace(code_point, "")
  *         return _PercentEncodeSet(
  *             new_code_points,             # <<<<<<<<<<<<<<
  *             greater_than=self._greater_than,
  *         )
  */
-  __pyx_t_9 = PyTuple_New(1); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 49, __pyx_L1_error)
+  __pyx_t_9 = PyTuple_New(1); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 51, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_9);
   __Pyx_INCREF(__pyx_v_new_code_points);
   __Pyx_GIVEREF(__pyx_v_new_code_points);
-  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_9, 0, __pyx_v_new_code_points)) __PYX_ERR(0, 49, __pyx_L1_error);
+  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_9, 0, __pyx_v_new_code_points)) __PYX_ERR(0, 51, __pyx_L1_error);
 
-  /* "w3lib/_util.pyx":51
+  /* "w3lib/_util.pyx":53
  *         return _PercentEncodeSet(
  *             new_code_points,
  *             greater_than=self._greater_than,             # <<<<<<<<<<<<<<
  *         )
  * 
  */
-  __pyx_t_10 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 51, __pyx_L1_error)
+  __pyx_t_10 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 53, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_10);
-  __pyx_t_11 = __Pyx_PyObject_GetAttrStr(__pyx_v_self, __pyx_n_s_greater_than_2); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 51, __pyx_L1_error)
+  __pyx_t_11 = __Pyx_PyObject_GetAttrStr(__pyx_v_self, __pyx_n_s_greater_than_2); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 53, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_11);
-  if (PyDict_SetItem(__pyx_t_10, __pyx_n_s_greater_than, __pyx_t_11) < 0) __PYX_ERR(0, 51, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_10, __pyx_n_s_greater_than, __pyx_t_11) < 0) __PYX_ERR(0, 53, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_11); __pyx_t_11 = 0;
 
-  /* "w3lib/_util.pyx":49
+  /* "w3lib/_util.pyx":51
  *         for code_point in code_points:
  *             new_code_points = new_code_points.replace(code_point, "")
  *         return _PercentEncodeSet(             # <<<<<<<<<<<<<<
  *             new_code_points,
  *             greater_than=self._greater_than,
  */
-  __pyx_t_11 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_9, __pyx_t_10); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 49, __pyx_L1_error)
+  __pyx_t_11 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_9, __pyx_t_10); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 51, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_11);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
@@ -4144,7 +4156,7 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_6__sub__(CYTHON_UNUS
   __pyx_t_11 = 0;
   goto __pyx_L0;
 
-  /* "w3lib/_util.pyx":45
+  /* "w3lib/_util.pyx":47
  *         )
  * 
  *     def __sub__(self, code_points: str) -> "_PercentEncodeSet":             # <<<<<<<<<<<<<<
@@ -4168,7 +4180,7 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_6__sub__(CYTHON_UNUS
   return __pyx_r;
 }
 
-/* "w3lib/_util.pyx":54
+/* "w3lib/_util.pyx":56
  *         )
  * 
  *     def __or__(self, other: "_PercentEncodeSet") -> "_PercentEncodeSet":             # <<<<<<<<<<<<<<
@@ -4232,7 +4244,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
           (void)__Pyx_Arg_NewRef_FASTCALL(values[0]);
           kw_args--;
         }
-        else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 54, __pyx_L3_error)
+        else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 56, __pyx_L3_error)
         else goto __pyx_L5_argtuple_error;
         CYTHON_FALLTHROUGH;
         case  1:
@@ -4240,14 +4252,14 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
           (void)__Pyx_Arg_NewRef_FASTCALL(values[1]);
           kw_args--;
         }
-        else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 54, __pyx_L3_error)
+        else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 56, __pyx_L3_error)
         else {
-          __Pyx_RaiseArgtupleInvalid("__or__", 1, 2, 2, 1); __PYX_ERR(0, 54, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("__or__", 1, 2, 2, 1); __PYX_ERR(0, 56, __pyx_L3_error)
         }
       }
       if (unlikely(kw_args > 0)) {
         const Py_ssize_t kwd_pos_args = __pyx_nargs;
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values + 0, kwd_pos_args, "__or__") < 0)) __PYX_ERR(0, 54, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values + 0, kwd_pos_args, "__or__") < 0)) __PYX_ERR(0, 56, __pyx_L3_error)
       }
     } else if (unlikely(__pyx_nargs != 2)) {
       goto __pyx_L5_argtuple_error;
@@ -4260,7 +4272,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   }
   goto __pyx_L6_skip;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("__or__", 1, 2, 2, __pyx_nargs); __PYX_ERR(0, 54, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("__or__", 1, 2, 2, __pyx_nargs); __PYX_ERR(0, 56, __pyx_L3_error)
   __pyx_L6_skip:;
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -4302,19 +4314,19 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_8__or__(CYTHON_UNUSE
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__or__", 1);
 
-  /* "w3lib/_util.pyx":55
+  /* "w3lib/_util.pyx":57
  * 
  *     def __or__(self, other: "_PercentEncodeSet") -> "_PercentEncodeSet":
  *         greater_than = min(self._greater_than, other._greater_than)             # <<<<<<<<<<<<<<
  *         code_points = "".join(set(self._code_points) | set(other._code_points))
  *         return _PercentEncodeSet(
  */
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_other, __pyx_n_s_greater_than_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 55, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_other, __pyx_n_s_greater_than_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 57, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_self, __pyx_n_s_greater_than_2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 55, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_self, __pyx_n_s_greater_than_2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 57, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_4 = PyObject_RichCompare(__pyx_t_1, __pyx_t_2, Py_LT); __Pyx_XGOTREF(__pyx_t_4); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 55, __pyx_L1_error)
-  __pyx_t_5 = __Pyx_PyObject_IsTrue(__pyx_t_4); if (unlikely((__pyx_t_5 < 0))) __PYX_ERR(0, 55, __pyx_L1_error)
+  __pyx_t_4 = PyObject_RichCompare(__pyx_t_1, __pyx_t_2, Py_LT); __Pyx_XGOTREF(__pyx_t_4); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 57, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyObject_IsTrue(__pyx_t_4); if (unlikely((__pyx_t_5 < 0))) __PYX_ERR(0, 57, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   if (__pyx_t_5) {
     __Pyx_INCREF(__pyx_t_1);
@@ -4331,34 +4343,34 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_8__or__(CYTHON_UNUSE
   __pyx_v_greater_than = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "w3lib/_util.pyx":56
+  /* "w3lib/_util.pyx":58
  *     def __or__(self, other: "_PercentEncodeSet") -> "_PercentEncodeSet":
  *         greater_than = min(self._greater_than, other._greater_than)
  *         code_points = "".join(set(self._code_points) | set(other._code_points))             # <<<<<<<<<<<<<<
  *         return _PercentEncodeSet(
  *             code_points,
  */
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_self, __pyx_n_s_code_points_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 56, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_self, __pyx_n_s_code_points_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 58, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_3 = PySet_New(__pyx_t_1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 56, __pyx_L1_error)
+  __pyx_t_3 = PySet_New(__pyx_t_1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 58, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_other, __pyx_n_s_code_points_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 56, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_other, __pyx_n_s_code_points_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 58, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = PySet_New(__pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 56, __pyx_L1_error)
+  __pyx_t_2 = PySet_New(__pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 58, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = PyNumber_Or(__pyx_t_3, __pyx_t_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 56, __pyx_L1_error)
+  __pyx_t_1 = PyNumber_Or(__pyx_t_3, __pyx_t_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 58, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = PyUnicode_Join(__pyx_kp_u__2, __pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 56, __pyx_L1_error)
+  __pyx_t_2 = PyUnicode_Join(__pyx_kp_u__2, __pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 58, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_v_code_points = ((PyObject*)__pyx_t_2);
   __pyx_t_2 = 0;
 
-  /* "w3lib/_util.pyx":57
+  /* "w3lib/_util.pyx":59
  *         greater_than = min(self._greater_than, other._greater_than)
  *         code_points = "".join(set(self._code_points) | set(other._code_points))
  *         return _PercentEncodeSet(             # <<<<<<<<<<<<<<
@@ -4366,41 +4378,41 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_8__or__(CYTHON_UNUSE
  *             greater_than=greater_than,
  */
   __Pyx_XDECREF(__pyx_r);
-  __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_PercentEncodeSet); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 57, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_PercentEncodeSet); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 59, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
 
-  /* "w3lib/_util.pyx":58
+  /* "w3lib/_util.pyx":60
  *         code_points = "".join(set(self._code_points) | set(other._code_points))
  *         return _PercentEncodeSet(
  *             code_points,             # <<<<<<<<<<<<<<
  *             greater_than=greater_than,
  *         )
  */
-  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 57, __pyx_L1_error)
+  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 59, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_INCREF(__pyx_v_code_points);
   __Pyx_GIVEREF(__pyx_v_code_points);
-  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_v_code_points)) __PYX_ERR(0, 57, __pyx_L1_error);
+  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_v_code_points)) __PYX_ERR(0, 59, __pyx_L1_error);
 
-  /* "w3lib/_util.pyx":59
+  /* "w3lib/_util.pyx":61
  *         return _PercentEncodeSet(
  *             code_points,
  *             greater_than=greater_than,             # <<<<<<<<<<<<<<
  *         )
  * 
  */
-  __pyx_t_3 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 59, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 61, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  if (PyDict_SetItem(__pyx_t_3, __pyx_n_s_greater_than, __pyx_v_greater_than) < 0) __PYX_ERR(0, 59, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_3, __pyx_n_s_greater_than, __pyx_v_greater_than) < 0) __PYX_ERR(0, 61, __pyx_L1_error)
 
-  /* "w3lib/_util.pyx":57
+  /* "w3lib/_util.pyx":59
  *         greater_than = min(self._greater_than, other._greater_than)
  *         code_points = "".join(set(self._code_points) | set(other._code_points))
  *         return _PercentEncodeSet(             # <<<<<<<<<<<<<<
  *             code_points,
  *             greater_than=greater_than,
  */
-  __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_1, __pyx_t_3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 57, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_1, __pyx_t_3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 59, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
@@ -4409,7 +4421,7 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_8__or__(CYTHON_UNUSE
   __pyx_t_4 = 0;
   goto __pyx_L0;
 
-  /* "w3lib/_util.pyx":54
+  /* "w3lib/_util.pyx":56
  *         )
  * 
  *     def __or__(self, other: "_PercentEncodeSet") -> "_PercentEncodeSet":             # <<<<<<<<<<<<<<
@@ -4433,7 +4445,7 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_8__or__(CYTHON_UNUSE
   return __pyx_r;
 }
 
-/* "w3lib/_util.pyx":62
+/* "w3lib/_util.pyx":64
  *         )
  * 
  *     def __and__(self, other: "_PercentEncodeSet") -> "_PercentEncodeSet":             # <<<<<<<<<<<<<<
@@ -4497,7 +4509,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
           (void)__Pyx_Arg_NewRef_FASTCALL(values[0]);
           kw_args--;
         }
-        else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 62, __pyx_L3_error)
+        else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 64, __pyx_L3_error)
         else goto __pyx_L5_argtuple_error;
         CYTHON_FALLTHROUGH;
         case  1:
@@ -4505,14 +4517,14 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
           (void)__Pyx_Arg_NewRef_FASTCALL(values[1]);
           kw_args--;
         }
-        else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 62, __pyx_L3_error)
+        else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 64, __pyx_L3_error)
         else {
-          __Pyx_RaiseArgtupleInvalid("__and__", 1, 2, 2, 1); __PYX_ERR(0, 62, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("__and__", 1, 2, 2, 1); __PYX_ERR(0, 64, __pyx_L3_error)
         }
       }
       if (unlikely(kw_args > 0)) {
         const Py_ssize_t kwd_pos_args = __pyx_nargs;
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values + 0, kwd_pos_args, "__and__") < 0)) __PYX_ERR(0, 62, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values + 0, kwd_pos_args, "__and__") < 0)) __PYX_ERR(0, 64, __pyx_L3_error)
       }
     } else if (unlikely(__pyx_nargs != 2)) {
       goto __pyx_L5_argtuple_error;
@@ -4525,7 +4537,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   }
   goto __pyx_L6_skip;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("__and__", 1, 2, 2, __pyx_nargs); __PYX_ERR(0, 62, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("__and__", 1, 2, 2, __pyx_nargs); __PYX_ERR(0, 64, __pyx_L3_error)
   __pyx_L6_skip:;
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -4567,19 +4579,19 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_10__and__(CYTHON_UNU
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__and__", 1);
 
-  /* "w3lib/_util.pyx":63
+  /* "w3lib/_util.pyx":65
  * 
  *     def __and__(self, other: "_PercentEncodeSet") -> "_PercentEncodeSet":
  *         greater_than = max(self._greater_than, other._greater_than)             # <<<<<<<<<<<<<<
  *         code_points = "".join(set(self._code_points) & set(other._code_points))
  *         return _PercentEncodeSet(
  */
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_other, __pyx_n_s_greater_than_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 63, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_other, __pyx_n_s_greater_than_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 65, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_self, __pyx_n_s_greater_than_2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 63, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_self, __pyx_n_s_greater_than_2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 65, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_4 = PyObject_RichCompare(__pyx_t_1, __pyx_t_2, Py_GT); __Pyx_XGOTREF(__pyx_t_4); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 63, __pyx_L1_error)
-  __pyx_t_5 = __Pyx_PyObject_IsTrue(__pyx_t_4); if (unlikely((__pyx_t_5 < 0))) __PYX_ERR(0, 63, __pyx_L1_error)
+  __pyx_t_4 = PyObject_RichCompare(__pyx_t_1, __pyx_t_2, Py_GT); __Pyx_XGOTREF(__pyx_t_4); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 65, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyObject_IsTrue(__pyx_t_4); if (unlikely((__pyx_t_5 < 0))) __PYX_ERR(0, 65, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   if (__pyx_t_5) {
     __Pyx_INCREF(__pyx_t_1);
@@ -4596,34 +4608,34 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_10__and__(CYTHON_UNU
   __pyx_v_greater_than = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "w3lib/_util.pyx":64
+  /* "w3lib/_util.pyx":66
  *     def __and__(self, other: "_PercentEncodeSet") -> "_PercentEncodeSet":
  *         greater_than = max(self._greater_than, other._greater_than)
  *         code_points = "".join(set(self._code_points) & set(other._code_points))             # <<<<<<<<<<<<<<
  *         return _PercentEncodeSet(
  *             code_points,
  */
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_self, __pyx_n_s_code_points_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 64, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_self, __pyx_n_s_code_points_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 66, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_3 = PySet_New(__pyx_t_1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 64, __pyx_L1_error)
+  __pyx_t_3 = PySet_New(__pyx_t_1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 66, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_other, __pyx_n_s_code_points_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 64, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_other, __pyx_n_s_code_points_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 66, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = PySet_New(__pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 64, __pyx_L1_error)
+  __pyx_t_2 = PySet_New(__pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 66, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = PyNumber_And(__pyx_t_3, __pyx_t_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 64, __pyx_L1_error)
+  __pyx_t_1 = PyNumber_And(__pyx_t_3, __pyx_t_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 66, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = PyUnicode_Join(__pyx_kp_u__2, __pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 64, __pyx_L1_error)
+  __pyx_t_2 = PyUnicode_Join(__pyx_kp_u__2, __pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 66, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_v_code_points = ((PyObject*)__pyx_t_2);
   __pyx_t_2 = 0;
 
-  /* "w3lib/_util.pyx":65
+  /* "w3lib/_util.pyx":67
  *         greater_than = max(self._greater_than, other._greater_than)
  *         code_points = "".join(set(self._code_points) & set(other._code_points))
  *         return _PercentEncodeSet(             # <<<<<<<<<<<<<<
@@ -4631,41 +4643,41 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_10__and__(CYTHON_UNU
  *             greater_than=greater_than,
  */
   __Pyx_XDECREF(__pyx_r);
-  __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_PercentEncodeSet); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 65, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_PercentEncodeSet); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 67, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
 
-  /* "w3lib/_util.pyx":66
+  /* "w3lib/_util.pyx":68
  *         code_points = "".join(set(self._code_points) & set(other._code_points))
  *         return _PercentEncodeSet(
  *             code_points,             # <<<<<<<<<<<<<<
  *             greater_than=greater_than,
  *         )
  */
-  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 65, __pyx_L1_error)
+  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 67, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_INCREF(__pyx_v_code_points);
   __Pyx_GIVEREF(__pyx_v_code_points);
-  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_v_code_points)) __PYX_ERR(0, 65, __pyx_L1_error);
+  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_v_code_points)) __PYX_ERR(0, 67, __pyx_L1_error);
 
-  /* "w3lib/_util.pyx":67
+  /* "w3lib/_util.pyx":69
  *         return _PercentEncodeSet(
  *             code_points,
  *             greater_than=greater_than,             # <<<<<<<<<<<<<<
  *         )
  * 
  */
-  __pyx_t_3 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 67, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 69, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  if (PyDict_SetItem(__pyx_t_3, __pyx_n_s_greater_than, __pyx_v_greater_than) < 0) __PYX_ERR(0, 67, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_3, __pyx_n_s_greater_than, __pyx_v_greater_than) < 0) __PYX_ERR(0, 69, __pyx_L1_error)
 
-  /* "w3lib/_util.pyx":65
+  /* "w3lib/_util.pyx":67
  *         greater_than = max(self._greater_than, other._greater_than)
  *         code_points = "".join(set(self._code_points) & set(other._code_points))
  *         return _PercentEncodeSet(             # <<<<<<<<<<<<<<
  *             code_points,
  *             greater_than=greater_than,
  */
-  __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_1, __pyx_t_3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 65, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_1, __pyx_t_3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 67, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
@@ -4674,7 +4686,7 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_10__and__(CYTHON_UNU
   __pyx_t_4 = 0;
   goto __pyx_L0;
 
-  /* "w3lib/_util.pyx":62
+  /* "w3lib/_util.pyx":64
  *         )
  * 
  *     def __and__(self, other: "_PercentEncodeSet") -> "_PercentEncodeSet":             # <<<<<<<<<<<<<<
@@ -4698,7 +4710,7 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_10__and__(CYTHON_UNU
   return __pyx_r;
 }
 
-/* "w3lib/_util.pyx":70
+/* "w3lib/_util.pyx":72
  *         )
  * 
  *     def __repr__(self) -> str:             # <<<<<<<<<<<<<<
@@ -4759,12 +4771,12 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
           (void)__Pyx_Arg_NewRef_FASTCALL(values[0]);
           kw_args--;
         }
-        else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 70, __pyx_L3_error)
+        else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 72, __pyx_L3_error)
         else goto __pyx_L5_argtuple_error;
       }
       if (unlikely(kw_args > 0)) {
         const Py_ssize_t kwd_pos_args = __pyx_nargs;
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values + 0, kwd_pos_args, "__repr__") < 0)) __PYX_ERR(0, 70, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values + 0, kwd_pos_args, "__repr__") < 0)) __PYX_ERR(0, 72, __pyx_L3_error)
       }
     } else if (unlikely(__pyx_nargs != 1)) {
       goto __pyx_L5_argtuple_error;
@@ -4775,7 +4787,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   }
   goto __pyx_L6_skip;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("__repr__", 1, 1, 1, __pyx_nargs); __PYX_ERR(0, 70, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("__repr__", 1, 1, 1, __pyx_nargs); __PYX_ERR(0, 72, __pyx_L3_error)
   __pyx_L6_skip:;
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -4817,60 +4829,60 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_12__repr__(CYTHON_UN
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__repr__", 1);
 
-  /* "w3lib/_util.pyx":71
+  /* "w3lib/_util.pyx":73
  * 
  *     def __repr__(self) -> str:
  *         cp = "".join(sorted(tuple(self._code_points), key=ord))             # <<<<<<<<<<<<<<
  *         gt = chr(self._greater_than)
  *         return f"_PercentEncodeSet({cp!r}, greater_than={gt!r})"
  */
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_self, __pyx_n_s_code_points_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 71, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_self, __pyx_n_s_code_points_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 73, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_PySequence_Tuple(__pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 71, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PySequence_Tuple(__pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 73, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 71, __pyx_L1_error)
+  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 73, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_GIVEREF(__pyx_t_2);
-  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_t_2)) __PYX_ERR(0, 71, __pyx_L1_error);
+  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_t_2)) __PYX_ERR(0, 73, __pyx_L1_error);
   __pyx_t_2 = 0;
-  __pyx_t_2 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 71, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 73, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_3 = __Pyx_GetBuiltinName(__pyx_n_s_ord); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 71, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_GetBuiltinName(__pyx_n_s_ord); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 73, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  if (PyDict_SetItem(__pyx_t_2, __pyx_n_s_key, __pyx_t_3) < 0) __PYX_ERR(0, 71, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_2, __pyx_n_s_key, __pyx_t_3) < 0) __PYX_ERR(0, 73, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_sorted, __pyx_t_1, __pyx_t_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 71, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_sorted, __pyx_t_1, __pyx_t_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 73, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = PyUnicode_Join(__pyx_kp_u__2, __pyx_t_3); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 71, __pyx_L1_error)
+  __pyx_t_2 = PyUnicode_Join(__pyx_kp_u__2, __pyx_t_3); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 73, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __pyx_v_cp = ((PyObject*)__pyx_t_2);
   __pyx_t_2 = 0;
 
-  /* "w3lib/_util.pyx":72
+  /* "w3lib/_util.pyx":74
  *     def __repr__(self) -> str:
  *         cp = "".join(sorted(tuple(self._code_points), key=ord))
  *         gt = chr(self._greater_than)             # <<<<<<<<<<<<<<
  *         return f"_PercentEncodeSet({cp!r}, greater_than={gt!r})"
  */
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_self, __pyx_n_s_greater_than_2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 72, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_self, __pyx_n_s_greater_than_2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 74, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_builtin_chr, __pyx_t_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 72, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_builtin_chr, __pyx_t_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 74, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_v_gt = __pyx_t_3;
   __pyx_t_3 = 0;
 
-  /* "w3lib/_util.pyx":73
+  /* "w3lib/_util.pyx":75
  *         cp = "".join(sorted(tuple(self._code_points), key=ord))
  *         gt = chr(self._greater_than)
  *         return f"_PercentEncodeSet({cp!r}, greater_than={gt!r})"             # <<<<<<<<<<<<<<
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_3 = PyTuple_New(5); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 73, __pyx_L1_error)
+  __pyx_t_3 = PyTuple_New(5); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 75, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __pyx_t_4 = 0;
   __pyx_t_5 = 127;
@@ -4878,7 +4890,7 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_12__repr__(CYTHON_UN
   __pyx_t_4 += 18;
   __Pyx_GIVEREF(__pyx_kp_u_PercentEncodeSet_2);
   PyTuple_SET_ITEM(__pyx_t_3, 0, __pyx_kp_u_PercentEncodeSet_2);
-  __pyx_t_2 = __Pyx_PyObject_FormatSimpleAndDecref(PyObject_Repr(__pyx_v_cp), __pyx_empty_unicode); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 73, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_FormatSimpleAndDecref(PyObject_Repr(__pyx_v_cp), __pyx_empty_unicode); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 75, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_5 = (__Pyx_PyUnicode_MAX_CHAR_VALUE(__pyx_t_2) > __pyx_t_5) ? __Pyx_PyUnicode_MAX_CHAR_VALUE(__pyx_t_2) : __pyx_t_5;
   __pyx_t_4 += __Pyx_PyUnicode_GET_LENGTH(__pyx_t_2);
@@ -4889,7 +4901,7 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_12__repr__(CYTHON_UN
   __pyx_t_4 += 15;
   __Pyx_GIVEREF(__pyx_kp_u_greater_than_3);
   PyTuple_SET_ITEM(__pyx_t_3, 2, __pyx_kp_u_greater_than_3);
-  __pyx_t_2 = __Pyx_PyObject_FormatSimpleAndDecref(PyObject_Repr(__pyx_v_gt), __pyx_empty_unicode); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 73, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_FormatSimpleAndDecref(PyObject_Repr(__pyx_v_gt), __pyx_empty_unicode); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 75, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_5 = (__Pyx_PyUnicode_MAX_CHAR_VALUE(__pyx_t_2) > __pyx_t_5) ? __Pyx_PyUnicode_MAX_CHAR_VALUE(__pyx_t_2) : __pyx_t_5;
   __pyx_t_4 += __Pyx_PyUnicode_GET_LENGTH(__pyx_t_2);
@@ -4900,14 +4912,14 @@ static PyObject *__pyx_pf_5w3lib_5_util_17_PercentEncodeSet_12__repr__(CYTHON_UN
   __pyx_t_4 += 1;
   __Pyx_GIVEREF(__pyx_kp_u__3);
   PyTuple_SET_ITEM(__pyx_t_3, 4, __pyx_kp_u__3);
-  __pyx_t_2 = __Pyx_PyUnicode_Join(__pyx_t_3, 5, __pyx_t_4, __pyx_t_5); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 73, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyUnicode_Join(__pyx_t_3, 5, __pyx_t_4, __pyx_t_5); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 75, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __pyx_r = ((PyObject*)__pyx_t_2);
   __pyx_t_2 = 0;
   goto __pyx_L0;
 
-  /* "w3lib/_util.pyx":70
+  /* "w3lib/_util.pyx":72
  *         )
  * 
  *     def __repr__(self) -> str:             # <<<<<<<<<<<<<<
@@ -5292,6 +5304,7 @@ static int __Pyx_CreateStringTabAndInitStrings(void) {
     {&__pyx_n_s_code_points_2, __pyx_k_code_points_2, sizeof(__pyx_k_code_points_2), 0, 0, 1, 1},
     {&__pyx_n_s_contains, __pyx_k_contains, sizeof(__pyx_k_contains), 0, 0, 1, 1},
     {&__pyx_n_s_cp, __pyx_k_cp, sizeof(__pyx_k_cp), 0, 0, 1, 1},
+    {&__pyx_kp_s_cython_Py_UCS4, __pyx_k_cython_Py_UCS4, sizeof(__pyx_k_cython_Py_UCS4), 0, 0, 1, 0},
     {&__pyx_n_s_dict, __pyx_k_dict, sizeof(__pyx_k_dict), 0, 0, 1, 1},
     {&__pyx_kp_u_disable, __pyx_k_disable, sizeof(__pyx_k_disable), 0, 1, 0, 0},
     {&__pyx_n_s_doc, __pyx_k_doc, sizeof(__pyx_k_doc), 0, 0, 1, 1},
@@ -5341,9 +5354,9 @@ static int __Pyx_CreateStringTabAndInitStrings(void) {
 }
 /* #### Code section: cached_builtins ### */
 static CYTHON_SMALL_CODE int __Pyx_InitCachedBuiltins(void) {
-  __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_range) __PYX_ERR(0, 31, __pyx_L1_error)
-  __pyx_builtin_chr = __Pyx_GetBuiltinName(__pyx_n_s_chr); if (!__pyx_builtin_chr) __PYX_ERR(0, 32, __pyx_L1_error)
-  __pyx_builtin_sorted = __Pyx_GetBuiltinName(__pyx_n_s_sorted); if (!__pyx_builtin_sorted) __PYX_ERR(0, 71, __pyx_L1_error)
+  __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_range) __PYX_ERR(0, 33, __pyx_L1_error)
+  __pyx_builtin_chr = __Pyx_GetBuiltinName(__pyx_n_s_chr); if (!__pyx_builtin_chr) __PYX_ERR(0, 34, __pyx_L1_error)
+  __pyx_builtin_sorted = __Pyx_GetBuiltinName(__pyx_n_s_sorted); if (!__pyx_builtin_sorted) __PYX_ERR(0, 73, __pyx_L1_error)
   return 0;
   __pyx_L1_error:;
   return -1;
@@ -5354,86 +5367,86 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__Pyx_InitCachedConstants", 0);
 
-  /* "w3lib/_util.pyx":18
+  /* "w3lib/_util.pyx":20
  *     """
  * 
  *     def __init__(             # <<<<<<<<<<<<<<
  *         self,
  *         code_points: str,
  */
-  __pyx_tuple__5 = PyTuple_Pack(6, __pyx_n_s_self, __pyx_n_s_code_points, __pyx_n_s_greater_than, __pyx_n_s_exclude, __pyx_n_s_genexpr, __pyx_n_s_genexpr); if (unlikely(!__pyx_tuple__5)) __PYX_ERR(0, 18, __pyx_L1_error)
+  __pyx_tuple__5 = PyTuple_Pack(6, __pyx_n_s_self, __pyx_n_s_code_points, __pyx_n_s_greater_than, __pyx_n_s_exclude, __pyx_n_s_genexpr, __pyx_n_s_genexpr); if (unlikely(!__pyx_tuple__5)) __PYX_ERR(0, 20, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__5);
   __Pyx_GIVEREF(__pyx_tuple__5);
-  __pyx_codeobj__6 = (PyObject*)__Pyx_PyCode_New(2, 0, 2, 6, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__5, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_w3lib__util_pyx, __pyx_n_s_init, 18, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__6)) __PYX_ERR(0, 18, __pyx_L1_error)
+  __pyx_codeobj__6 = (PyObject*)__Pyx_PyCode_New(2, 0, 2, 6, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__5, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_w3lib__util_pyx, __pyx_n_s_init, 20, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__6)) __PYX_ERR(0, 20, __pyx_L1_error)
 
-  /* "w3lib/_util.pyx":36
+  /* "w3lib/_util.pyx":38
  *         self._code_points = code_points
  * 
- *     def __contains__(self, code_point: str) -> bool:             # <<<<<<<<<<<<<<
+ *     def __contains__(self, code_point: cython.Py_UCS4) -> bool:             # <<<<<<<<<<<<<<
  *         return code_point in self._code_points or ord(code_point) > self._greater_than
  * 
  */
-  __pyx_tuple__7 = PyTuple_Pack(2, __pyx_n_s_self, __pyx_n_s_code_point); if (unlikely(!__pyx_tuple__7)) __PYX_ERR(0, 36, __pyx_L1_error)
+  __pyx_tuple__7 = PyTuple_Pack(2, __pyx_n_s_self, __pyx_n_s_code_point); if (unlikely(!__pyx_tuple__7)) __PYX_ERR(0, 38, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__7);
   __Pyx_GIVEREF(__pyx_tuple__7);
-  __pyx_codeobj__8 = (PyObject*)__Pyx_PyCode_New(2, 0, 0, 2, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__7, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_w3lib__util_pyx, __pyx_n_s_contains, 36, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__8)) __PYX_ERR(0, 36, __pyx_L1_error)
+  __pyx_codeobj__8 = (PyObject*)__Pyx_PyCode_New(2, 0, 0, 2, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__7, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_w3lib__util_pyx, __pyx_n_s_contains, 38, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__8)) __PYX_ERR(0, 38, __pyx_L1_error)
 
-  /* "w3lib/_util.pyx":39
+  /* "w3lib/_util.pyx":41
  *         return code_point in self._code_points or ord(code_point) > self._greater_than
  * 
  *     def __add__(self, code_points: str) -> "_PercentEncodeSet":             # <<<<<<<<<<<<<<
  *         return _PercentEncodeSet(
  *             self._code_points + code_points,
  */
-  __pyx_tuple__9 = PyTuple_Pack(2, __pyx_n_s_self, __pyx_n_s_code_points); if (unlikely(!__pyx_tuple__9)) __PYX_ERR(0, 39, __pyx_L1_error)
+  __pyx_tuple__9 = PyTuple_Pack(2, __pyx_n_s_self, __pyx_n_s_code_points); if (unlikely(!__pyx_tuple__9)) __PYX_ERR(0, 41, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__9);
   __Pyx_GIVEREF(__pyx_tuple__9);
-  __pyx_codeobj__10 = (PyObject*)__Pyx_PyCode_New(2, 0, 0, 2, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__9, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_w3lib__util_pyx, __pyx_n_s_add, 39, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__10)) __PYX_ERR(0, 39, __pyx_L1_error)
+  __pyx_codeobj__10 = (PyObject*)__Pyx_PyCode_New(2, 0, 0, 2, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__9, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_w3lib__util_pyx, __pyx_n_s_add, 41, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__10)) __PYX_ERR(0, 41, __pyx_L1_error)
 
-  /* "w3lib/_util.pyx":45
+  /* "w3lib/_util.pyx":47
  *         )
  * 
  *     def __sub__(self, code_points: str) -> "_PercentEncodeSet":             # <<<<<<<<<<<<<<
  *         new_code_points = self._code_points
  *         for code_point in code_points:
  */
-  __pyx_tuple__11 = PyTuple_Pack(4, __pyx_n_s_self, __pyx_n_s_code_points, __pyx_n_s_new_code_points, __pyx_n_s_code_point); if (unlikely(!__pyx_tuple__11)) __PYX_ERR(0, 45, __pyx_L1_error)
+  __pyx_tuple__11 = PyTuple_Pack(4, __pyx_n_s_self, __pyx_n_s_code_points, __pyx_n_s_new_code_points, __pyx_n_s_code_point); if (unlikely(!__pyx_tuple__11)) __PYX_ERR(0, 47, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__11);
   __Pyx_GIVEREF(__pyx_tuple__11);
-  __pyx_codeobj__12 = (PyObject*)__Pyx_PyCode_New(2, 0, 0, 4, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__11, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_w3lib__util_pyx, __pyx_n_s_sub, 45, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__12)) __PYX_ERR(0, 45, __pyx_L1_error)
+  __pyx_codeobj__12 = (PyObject*)__Pyx_PyCode_New(2, 0, 0, 4, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__11, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_w3lib__util_pyx, __pyx_n_s_sub, 47, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__12)) __PYX_ERR(0, 47, __pyx_L1_error)
 
-  /* "w3lib/_util.pyx":54
+  /* "w3lib/_util.pyx":56
  *         )
  * 
  *     def __or__(self, other: "_PercentEncodeSet") -> "_PercentEncodeSet":             # <<<<<<<<<<<<<<
  *         greater_than = min(self._greater_than, other._greater_than)
  *         code_points = "".join(set(self._code_points) | set(other._code_points))
  */
-  __pyx_tuple__13 = PyTuple_Pack(4, __pyx_n_s_self, __pyx_n_s_other, __pyx_n_s_greater_than, __pyx_n_s_code_points); if (unlikely(!__pyx_tuple__13)) __PYX_ERR(0, 54, __pyx_L1_error)
+  __pyx_tuple__13 = PyTuple_Pack(4, __pyx_n_s_self, __pyx_n_s_other, __pyx_n_s_greater_than, __pyx_n_s_code_points); if (unlikely(!__pyx_tuple__13)) __PYX_ERR(0, 56, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__13);
   __Pyx_GIVEREF(__pyx_tuple__13);
-  __pyx_codeobj__14 = (PyObject*)__Pyx_PyCode_New(2, 0, 0, 4, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__13, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_w3lib__util_pyx, __pyx_n_s_or, 54, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__14)) __PYX_ERR(0, 54, __pyx_L1_error)
+  __pyx_codeobj__14 = (PyObject*)__Pyx_PyCode_New(2, 0, 0, 4, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__13, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_w3lib__util_pyx, __pyx_n_s_or, 56, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__14)) __PYX_ERR(0, 56, __pyx_L1_error)
 
-  /* "w3lib/_util.pyx":62
+  /* "w3lib/_util.pyx":64
  *         )
  * 
  *     def __and__(self, other: "_PercentEncodeSet") -> "_PercentEncodeSet":             # <<<<<<<<<<<<<<
  *         greater_than = max(self._greater_than, other._greater_than)
  *         code_points = "".join(set(self._code_points) & set(other._code_points))
  */
-  __pyx_codeobj__15 = (PyObject*)__Pyx_PyCode_New(2, 0, 0, 4, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__13, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_w3lib__util_pyx, __pyx_n_s_and, 62, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__15)) __PYX_ERR(0, 62, __pyx_L1_error)
+  __pyx_codeobj__15 = (PyObject*)__Pyx_PyCode_New(2, 0, 0, 4, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__13, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_w3lib__util_pyx, __pyx_n_s_and, 64, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__15)) __PYX_ERR(0, 64, __pyx_L1_error)
 
-  /* "w3lib/_util.pyx":70
+  /* "w3lib/_util.pyx":72
  *         )
  * 
  *     def __repr__(self) -> str:             # <<<<<<<<<<<<<<
  *         cp = "".join(sorted(tuple(self._code_points), key=ord))
  *         gt = chr(self._greater_than)
  */
-  __pyx_tuple__16 = PyTuple_Pack(3, __pyx_n_s_self, __pyx_n_s_cp, __pyx_n_s_gt); if (unlikely(!__pyx_tuple__16)) __PYX_ERR(0, 70, __pyx_L1_error)
+  __pyx_tuple__16 = PyTuple_Pack(3, __pyx_n_s_self, __pyx_n_s_cp, __pyx_n_s_gt); if (unlikely(!__pyx_tuple__16)) __PYX_ERR(0, 72, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__16);
   __Pyx_GIVEREF(__pyx_tuple__16);
-  __pyx_codeobj__17 = (PyObject*)__Pyx_PyCode_New(1, 0, 0, 3, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__16, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_w3lib__util_pyx, __pyx_n_s_repr, 70, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__17)) __PYX_ERR(0, 70, __pyx_L1_error)
+  __pyx_codeobj__17 = (PyObject*)__Pyx_PyCode_New(1, 0, 0, 3, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__16, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_w3lib__util_pyx, __pyx_n_s_repr, 72, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__17)) __PYX_ERR(0, 72, __pyx_L1_error)
   __Pyx_RefNannyFinishContext();
   return 0;
   __pyx_L1_error:;
@@ -5496,15 +5509,15 @@ static int __Pyx_modinit_type_init_code(void) {
   __Pyx_RefNannySetupContext("__Pyx_modinit_type_init_code", 0);
   /*--- Type init code ---*/
   #if CYTHON_USE_TYPE_SPECS
-  __pyx_ptype_5w3lib_5_util___pyx_scope_struct____init__ = (PyTypeObject *) __Pyx_PyType_FromModuleAndSpec(__pyx_m, &__pyx_type_5w3lib_5_util___pyx_scope_struct____init___spec, NULL); if (unlikely(!__pyx_ptype_5w3lib_5_util___pyx_scope_struct____init__)) __PYX_ERR(0, 18, __pyx_L1_error)
-  if (__Pyx_fix_up_extension_type_from_spec(&__pyx_type_5w3lib_5_util___pyx_scope_struct____init___spec, __pyx_ptype_5w3lib_5_util___pyx_scope_struct____init__) < 0) __PYX_ERR(0, 18, __pyx_L1_error)
+  __pyx_ptype_5w3lib_5_util___pyx_scope_struct____init__ = (PyTypeObject *) __Pyx_PyType_FromModuleAndSpec(__pyx_m, &__pyx_type_5w3lib_5_util___pyx_scope_struct____init___spec, NULL); if (unlikely(!__pyx_ptype_5w3lib_5_util___pyx_scope_struct____init__)) __PYX_ERR(0, 20, __pyx_L1_error)
+  if (__Pyx_fix_up_extension_type_from_spec(&__pyx_type_5w3lib_5_util___pyx_scope_struct____init___spec, __pyx_ptype_5w3lib_5_util___pyx_scope_struct____init__) < 0) __PYX_ERR(0, 20, __pyx_L1_error)
   #else
   __pyx_ptype_5w3lib_5_util___pyx_scope_struct____init__ = &__pyx_type_5w3lib_5_util___pyx_scope_struct____init__;
   #endif
   #if !CYTHON_COMPILING_IN_LIMITED_API
   #endif
   #if !CYTHON_USE_TYPE_SPECS
-  if (__Pyx_PyType_Ready(__pyx_ptype_5w3lib_5_util___pyx_scope_struct____init__) < 0) __PYX_ERR(0, 18, __pyx_L1_error)
+  if (__Pyx_PyType_Ready(__pyx_ptype_5w3lib_5_util___pyx_scope_struct____init__) < 0) __PYX_ERR(0, 20, __pyx_L1_error)
   #endif
   #if PY_MAJOR_VERSION < 3
   __pyx_ptype_5w3lib_5_util___pyx_scope_struct____init__->tp_print = 0;
@@ -5515,15 +5528,15 @@ static int __Pyx_modinit_type_init_code(void) {
   }
   #endif
   #if CYTHON_USE_TYPE_SPECS
-  __pyx_ptype_5w3lib_5_util___pyx_scope_struct_1_genexpr = (PyTypeObject *) __Pyx_PyType_FromModuleAndSpec(__pyx_m, &__pyx_type_5w3lib_5_util___pyx_scope_struct_1_genexpr_spec, NULL); if (unlikely(!__pyx_ptype_5w3lib_5_util___pyx_scope_struct_1_genexpr)) __PYX_ERR(0, 30, __pyx_L1_error)
-  if (__Pyx_fix_up_extension_type_from_spec(&__pyx_type_5w3lib_5_util___pyx_scope_struct_1_genexpr_spec, __pyx_ptype_5w3lib_5_util___pyx_scope_struct_1_genexpr) < 0) __PYX_ERR(0, 30, __pyx_L1_error)
+  __pyx_ptype_5w3lib_5_util___pyx_scope_struct_1_genexpr = (PyTypeObject *) __Pyx_PyType_FromModuleAndSpec(__pyx_m, &__pyx_type_5w3lib_5_util___pyx_scope_struct_1_genexpr_spec, NULL); if (unlikely(!__pyx_ptype_5w3lib_5_util___pyx_scope_struct_1_genexpr)) __PYX_ERR(0, 32, __pyx_L1_error)
+  if (__Pyx_fix_up_extension_type_from_spec(&__pyx_type_5w3lib_5_util___pyx_scope_struct_1_genexpr_spec, __pyx_ptype_5w3lib_5_util___pyx_scope_struct_1_genexpr) < 0) __PYX_ERR(0, 32, __pyx_L1_error)
   #else
   __pyx_ptype_5w3lib_5_util___pyx_scope_struct_1_genexpr = &__pyx_type_5w3lib_5_util___pyx_scope_struct_1_genexpr;
   #endif
   #if !CYTHON_COMPILING_IN_LIMITED_API
   #endif
   #if !CYTHON_USE_TYPE_SPECS
-  if (__Pyx_PyType_Ready(__pyx_ptype_5w3lib_5_util___pyx_scope_struct_1_genexpr) < 0) __PYX_ERR(0, 30, __pyx_L1_error)
+  if (__Pyx_PyType_Ready(__pyx_ptype_5w3lib_5_util___pyx_scope_struct_1_genexpr) < 0) __PYX_ERR(0, 32, __pyx_L1_error)
   #endif
   #if PY_MAJOR_VERSION < 3
   __pyx_ptype_5w3lib_5_util___pyx_scope_struct_1_genexpr->tp_print = 0;
@@ -5845,184 +5858,186 @@ if (!__Pyx_RefNanny) {
   if (__Pyx_patch_abc() < 0) __PYX_ERR(0, 1, __pyx_L1_error)
   #endif
 
-  /* "w3lib/_util.pyx":1
+  /* "w3lib/_util.pyx":3
+ * import cython
+ * 
  * from typing import Union             # <<<<<<<<<<<<<<
  * 
  * 
  */
-  __pyx_t_2 = PyList_New(1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 1, __pyx_L1_error)
+  __pyx_t_2 = PyList_New(1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 3, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_INCREF(__pyx_n_s_Union);
   __Pyx_GIVEREF(__pyx_n_s_Union);
-  if (__Pyx_PyList_SET_ITEM(__pyx_t_2, 0, __pyx_n_s_Union)) __PYX_ERR(0, 1, __pyx_L1_error);
-  __pyx_t_3 = __Pyx_Import(__pyx_n_s_typing, __pyx_t_2, 0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 1, __pyx_L1_error)
+  if (__Pyx_PyList_SET_ITEM(__pyx_t_2, 0, __pyx_n_s_Union)) __PYX_ERR(0, 3, __pyx_L1_error);
+  __pyx_t_3 = __Pyx_Import(__pyx_n_s_typing, __pyx_t_2, 0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 3, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = __Pyx_ImportFrom(__pyx_t_3, __pyx_n_s_Union); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 1, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_ImportFrom(__pyx_t_3, __pyx_n_s_Union); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 3, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_Union, __pyx_t_2) < 0) __PYX_ERR(0, 1, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_Union, __pyx_t_2) < 0) __PYX_ERR(0, 3, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "w3lib/_util.pyx":4
+  /* "w3lib/_util.pyx":6
  * 
  * 
  * class _PercentEncodeSet:             # <<<<<<<<<<<<<<
  *     """Set of code points that require percent-encoding.
  * 
  */
-  __pyx_t_3 = __Pyx_Py3MetaclassPrepare((PyObject *) NULL, __pyx_empty_tuple, __pyx_n_s_PercentEncodeSet, __pyx_n_s_PercentEncodeSet, (PyObject *) NULL, __pyx_n_s_w3lib__util, __pyx_kp_s_Set_of_code_points_that_require); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 4, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_Py3MetaclassPrepare((PyObject *) NULL, __pyx_empty_tuple, __pyx_n_s_PercentEncodeSet, __pyx_n_s_PercentEncodeSet, (PyObject *) NULL, __pyx_n_s_w3lib__util, __pyx_kp_s_Set_of_code_points_that_require); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 6, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
 
-  /* "w3lib/_util.pyx":18
+  /* "w3lib/_util.pyx":20
  *     """
  * 
  *     def __init__(             # <<<<<<<<<<<<<<
  *         self,
  *         code_points: str,
  */
-  __pyx_t_2 = __Pyx_PyDict_NewPresized(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 18, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyDict_NewPresized(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 20, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  if (PyDict_SetItem(__pyx_t_2, __pyx_n_s_greater_than, ((PyObject*)__pyx_kp_u_)) < 0) __PYX_ERR(0, 18, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_2, __pyx_n_s_exclude, ((PyObject *)Py_False)) < 0) __PYX_ERR(0, 18, __pyx_L1_error)
-  __pyx_t_4 = __Pyx_PyDict_NewPresized(3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 18, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_2, __pyx_n_s_greater_than, ((PyObject*)__pyx_kp_u_)) < 0) __PYX_ERR(0, 20, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_2, __pyx_n_s_exclude, ((PyObject *)Py_False)) < 0) __PYX_ERR(0, 20, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyDict_NewPresized(3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 20, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  if (PyDict_SetItem(__pyx_t_4, __pyx_n_s_code_points, __pyx_n_s_str) < 0) __PYX_ERR(0, 18, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_4, __pyx_n_s_greater_than, __pyx_kp_s_Union_int_str) < 0) __PYX_ERR(0, 18, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_4, __pyx_n_s_exclude, __pyx_n_s_bool) < 0) __PYX_ERR(0, 18, __pyx_L1_error)
-  __pyx_t_5 = __Pyx_CyFunction_New(&__pyx_mdef_5w3lib_5_util_17_PercentEncodeSet_1__init__, 0, __pyx_n_s_PercentEncodeSet___init, NULL, __pyx_n_s_w3lib__util, __pyx_d, ((PyObject *)__pyx_codeobj__6)); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 18, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_4, __pyx_n_s_code_points, __pyx_n_s_str) < 0) __PYX_ERR(0, 20, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_4, __pyx_n_s_greater_than, __pyx_kp_s_Union_int_str) < 0) __PYX_ERR(0, 20, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_4, __pyx_n_s_exclude, __pyx_n_s_bool) < 0) __PYX_ERR(0, 20, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_CyFunction_New(&__pyx_mdef_5w3lib_5_util_17_PercentEncodeSet_1__init__, 0, __pyx_n_s_PercentEncodeSet___init, NULL, __pyx_n_s_w3lib__util, __pyx_d, ((PyObject *)__pyx_codeobj__6)); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 20, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_CyFunction_SetDefaultsKwDict(__pyx_t_5, __pyx_t_2);
   __Pyx_CyFunction_SetAnnotationsDict(__pyx_t_5, __pyx_t_4);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-  if (__Pyx_SetNameInClass(__pyx_t_3, __pyx_n_s_init, __pyx_t_5) < 0) __PYX_ERR(0, 18, __pyx_L1_error)
+  if (__Pyx_SetNameInClass(__pyx_t_3, __pyx_n_s_init, __pyx_t_5) < 0) __PYX_ERR(0, 20, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "w3lib/_util.pyx":36
+  /* "w3lib/_util.pyx":38
  *         self._code_points = code_points
  * 
- *     def __contains__(self, code_point: str) -> bool:             # <<<<<<<<<<<<<<
+ *     def __contains__(self, code_point: cython.Py_UCS4) -> bool:             # <<<<<<<<<<<<<<
  *         return code_point in self._code_points or ord(code_point) > self._greater_than
  * 
  */
-  __pyx_t_5 = __Pyx_PyDict_NewPresized(2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 36, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyDict_NewPresized(2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 38, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  if (PyDict_SetItem(__pyx_t_5, __pyx_n_s_code_point, __pyx_n_s_str) < 0) __PYX_ERR(0, 36, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_5, __pyx_n_s_return, __pyx_n_s_bool) < 0) __PYX_ERR(0, 36, __pyx_L1_error)
-  __pyx_t_4 = __Pyx_CyFunction_New(&__pyx_mdef_5w3lib_5_util_17_PercentEncodeSet_3__contains__, 0, __pyx_n_s_PercentEncodeSet___contains, NULL, __pyx_n_s_w3lib__util, __pyx_d, ((PyObject *)__pyx_codeobj__8)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 36, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_5, __pyx_n_s_code_point, __pyx_kp_s_cython_Py_UCS4) < 0) __PYX_ERR(0, 38, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_5, __pyx_n_s_return, __pyx_n_s_bool) < 0) __PYX_ERR(0, 38, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_CyFunction_New(&__pyx_mdef_5w3lib_5_util_17_PercentEncodeSet_3__contains__, 0, __pyx_n_s_PercentEncodeSet___contains, NULL, __pyx_n_s_w3lib__util, __pyx_d, ((PyObject *)__pyx_codeobj__8)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 38, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_CyFunction_SetAnnotationsDict(__pyx_t_4, __pyx_t_5);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  if (__Pyx_SetNameInClass(__pyx_t_3, __pyx_n_s_contains, __pyx_t_4) < 0) __PYX_ERR(0, 36, __pyx_L1_error)
+  if (__Pyx_SetNameInClass(__pyx_t_3, __pyx_n_s_contains, __pyx_t_4) < 0) __PYX_ERR(0, 38, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "w3lib/_util.pyx":39
+  /* "w3lib/_util.pyx":41
  *         return code_point in self._code_points or ord(code_point) > self._greater_than
  * 
  *     def __add__(self, code_points: str) -> "_PercentEncodeSet":             # <<<<<<<<<<<<<<
  *         return _PercentEncodeSet(
  *             self._code_points + code_points,
  */
-  __pyx_t_4 = __Pyx_PyDict_NewPresized(2); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 39, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyDict_NewPresized(2); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 41, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  if (PyDict_SetItem(__pyx_t_4, __pyx_n_s_code_points, __pyx_n_s_str) < 0) __PYX_ERR(0, 39, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_4, __pyx_n_s_return, __pyx_kp_s_PercentEncodeSet_3) < 0) __PYX_ERR(0, 39, __pyx_L1_error)
-  __pyx_t_5 = __Pyx_CyFunction_New(&__pyx_mdef_5w3lib_5_util_17_PercentEncodeSet_5__add__, 0, __pyx_n_s_PercentEncodeSet___add, NULL, __pyx_n_s_w3lib__util, __pyx_d, ((PyObject *)__pyx_codeobj__10)); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 39, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_4, __pyx_n_s_code_points, __pyx_n_s_str) < 0) __PYX_ERR(0, 41, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_4, __pyx_n_s_return, __pyx_kp_s_PercentEncodeSet_3) < 0) __PYX_ERR(0, 41, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_CyFunction_New(&__pyx_mdef_5w3lib_5_util_17_PercentEncodeSet_5__add__, 0, __pyx_n_s_PercentEncodeSet___add, NULL, __pyx_n_s_w3lib__util, __pyx_d, ((PyObject *)__pyx_codeobj__10)); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 41, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_CyFunction_SetAnnotationsDict(__pyx_t_5, __pyx_t_4);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-  if (__Pyx_SetNameInClass(__pyx_t_3, __pyx_n_s_add, __pyx_t_5) < 0) __PYX_ERR(0, 39, __pyx_L1_error)
+  if (__Pyx_SetNameInClass(__pyx_t_3, __pyx_n_s_add, __pyx_t_5) < 0) __PYX_ERR(0, 41, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "w3lib/_util.pyx":45
+  /* "w3lib/_util.pyx":47
  *         )
  * 
  *     def __sub__(self, code_points: str) -> "_PercentEncodeSet":             # <<<<<<<<<<<<<<
  *         new_code_points = self._code_points
  *         for code_point in code_points:
  */
-  __pyx_t_5 = __Pyx_PyDict_NewPresized(2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 45, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyDict_NewPresized(2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 47, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  if (PyDict_SetItem(__pyx_t_5, __pyx_n_s_code_points, __pyx_n_s_str) < 0) __PYX_ERR(0, 45, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_5, __pyx_n_s_return, __pyx_kp_s_PercentEncodeSet_3) < 0) __PYX_ERR(0, 45, __pyx_L1_error)
-  __pyx_t_4 = __Pyx_CyFunction_New(&__pyx_mdef_5w3lib_5_util_17_PercentEncodeSet_7__sub__, 0, __pyx_n_s_PercentEncodeSet___sub, NULL, __pyx_n_s_w3lib__util, __pyx_d, ((PyObject *)__pyx_codeobj__12)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 45, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_5, __pyx_n_s_code_points, __pyx_n_s_str) < 0) __PYX_ERR(0, 47, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_5, __pyx_n_s_return, __pyx_kp_s_PercentEncodeSet_3) < 0) __PYX_ERR(0, 47, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_CyFunction_New(&__pyx_mdef_5w3lib_5_util_17_PercentEncodeSet_7__sub__, 0, __pyx_n_s_PercentEncodeSet___sub, NULL, __pyx_n_s_w3lib__util, __pyx_d, ((PyObject *)__pyx_codeobj__12)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 47, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_CyFunction_SetAnnotationsDict(__pyx_t_4, __pyx_t_5);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  if (__Pyx_SetNameInClass(__pyx_t_3, __pyx_n_s_sub, __pyx_t_4) < 0) __PYX_ERR(0, 45, __pyx_L1_error)
+  if (__Pyx_SetNameInClass(__pyx_t_3, __pyx_n_s_sub, __pyx_t_4) < 0) __PYX_ERR(0, 47, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "w3lib/_util.pyx":54
+  /* "w3lib/_util.pyx":56
  *         )
  * 
  *     def __or__(self, other: "_PercentEncodeSet") -> "_PercentEncodeSet":             # <<<<<<<<<<<<<<
  *         greater_than = min(self._greater_than, other._greater_than)
  *         code_points = "".join(set(self._code_points) | set(other._code_points))
  */
-  __pyx_t_4 = __Pyx_PyDict_NewPresized(2); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 54, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyDict_NewPresized(2); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 56, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  if (PyDict_SetItem(__pyx_t_4, __pyx_n_s_other, __pyx_kp_s_PercentEncodeSet_3) < 0) __PYX_ERR(0, 54, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_4, __pyx_n_s_return, __pyx_kp_s_PercentEncodeSet_3) < 0) __PYX_ERR(0, 54, __pyx_L1_error)
-  __pyx_t_5 = __Pyx_CyFunction_New(&__pyx_mdef_5w3lib_5_util_17_PercentEncodeSet_9__or__, 0, __pyx_n_s_PercentEncodeSet___or, NULL, __pyx_n_s_w3lib__util, __pyx_d, ((PyObject *)__pyx_codeobj__14)); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 54, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_4, __pyx_n_s_other, __pyx_kp_s_PercentEncodeSet_3) < 0) __PYX_ERR(0, 56, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_4, __pyx_n_s_return, __pyx_kp_s_PercentEncodeSet_3) < 0) __PYX_ERR(0, 56, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_CyFunction_New(&__pyx_mdef_5w3lib_5_util_17_PercentEncodeSet_9__or__, 0, __pyx_n_s_PercentEncodeSet___or, NULL, __pyx_n_s_w3lib__util, __pyx_d, ((PyObject *)__pyx_codeobj__14)); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 56, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_CyFunction_SetAnnotationsDict(__pyx_t_5, __pyx_t_4);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-  if (__Pyx_SetNameInClass(__pyx_t_3, __pyx_n_s_or, __pyx_t_5) < 0) __PYX_ERR(0, 54, __pyx_L1_error)
+  if (__Pyx_SetNameInClass(__pyx_t_3, __pyx_n_s_or, __pyx_t_5) < 0) __PYX_ERR(0, 56, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "w3lib/_util.pyx":62
+  /* "w3lib/_util.pyx":64
  *         )
  * 
  *     def __and__(self, other: "_PercentEncodeSet") -> "_PercentEncodeSet":             # <<<<<<<<<<<<<<
  *         greater_than = max(self._greater_than, other._greater_than)
  *         code_points = "".join(set(self._code_points) & set(other._code_points))
  */
-  __pyx_t_5 = __Pyx_PyDict_NewPresized(2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 62, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyDict_NewPresized(2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 64, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  if (PyDict_SetItem(__pyx_t_5, __pyx_n_s_other, __pyx_kp_s_PercentEncodeSet_3) < 0) __PYX_ERR(0, 62, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_5, __pyx_n_s_return, __pyx_kp_s_PercentEncodeSet_3) < 0) __PYX_ERR(0, 62, __pyx_L1_error)
-  __pyx_t_4 = __Pyx_CyFunction_New(&__pyx_mdef_5w3lib_5_util_17_PercentEncodeSet_11__and__, 0, __pyx_n_s_PercentEncodeSet___and, NULL, __pyx_n_s_w3lib__util, __pyx_d, ((PyObject *)__pyx_codeobj__15)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 62, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_5, __pyx_n_s_other, __pyx_kp_s_PercentEncodeSet_3) < 0) __PYX_ERR(0, 64, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_5, __pyx_n_s_return, __pyx_kp_s_PercentEncodeSet_3) < 0) __PYX_ERR(0, 64, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_CyFunction_New(&__pyx_mdef_5w3lib_5_util_17_PercentEncodeSet_11__and__, 0, __pyx_n_s_PercentEncodeSet___and, NULL, __pyx_n_s_w3lib__util, __pyx_d, ((PyObject *)__pyx_codeobj__15)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 64, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_CyFunction_SetAnnotationsDict(__pyx_t_4, __pyx_t_5);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  if (__Pyx_SetNameInClass(__pyx_t_3, __pyx_n_s_and, __pyx_t_4) < 0) __PYX_ERR(0, 62, __pyx_L1_error)
+  if (__Pyx_SetNameInClass(__pyx_t_3, __pyx_n_s_and, __pyx_t_4) < 0) __PYX_ERR(0, 64, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "w3lib/_util.pyx":70
+  /* "w3lib/_util.pyx":72
  *         )
  * 
  *     def __repr__(self) -> str:             # <<<<<<<<<<<<<<
  *         cp = "".join(sorted(tuple(self._code_points), key=ord))
  *         gt = chr(self._greater_than)
  */
-  __pyx_t_4 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 70, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 72, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  if (PyDict_SetItem(__pyx_t_4, __pyx_n_s_return, __pyx_n_s_str) < 0) __PYX_ERR(0, 70, __pyx_L1_error)
-  __pyx_t_5 = __Pyx_CyFunction_New(&__pyx_mdef_5w3lib_5_util_17_PercentEncodeSet_13__repr__, 0, __pyx_n_s_PercentEncodeSet___repr, NULL, __pyx_n_s_w3lib__util, __pyx_d, ((PyObject *)__pyx_codeobj__17)); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 70, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_4, __pyx_n_s_return, __pyx_n_s_str) < 0) __PYX_ERR(0, 72, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_CyFunction_New(&__pyx_mdef_5w3lib_5_util_17_PercentEncodeSet_13__repr__, 0, __pyx_n_s_PercentEncodeSet___repr, NULL, __pyx_n_s_w3lib__util, __pyx_d, ((PyObject *)__pyx_codeobj__17)); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 72, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_CyFunction_SetAnnotationsDict(__pyx_t_5, __pyx_t_4);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-  if (__Pyx_SetNameInClass(__pyx_t_3, __pyx_n_s_repr, __pyx_t_5) < 0) __PYX_ERR(0, 70, __pyx_L1_error)
+  if (__Pyx_SetNameInClass(__pyx_t_3, __pyx_n_s_repr, __pyx_t_5) < 0) __PYX_ERR(0, 72, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "w3lib/_util.pyx":4
+  /* "w3lib/_util.pyx":6
  * 
  * 
  * class _PercentEncodeSet:             # <<<<<<<<<<<<<<
  *     """Set of code points that require percent-encoding.
  * 
  */
-  __pyx_t_5 = __Pyx_Py3ClassCreate(((PyObject*)&PyType_Type), __pyx_n_s_PercentEncodeSet, __pyx_empty_tuple, __pyx_t_3, NULL, 0, 0); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 4, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_Py3ClassCreate(((PyObject*)&PyType_Type), __pyx_n_s_PercentEncodeSet, __pyx_empty_tuple, __pyx_t_3, NULL, 0, 0); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 6, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_PercentEncodeSet, __pyx_t_5) < 0) __PYX_ERR(0, 4, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_PercentEncodeSet, __pyx_t_5) < 0) __PYX_ERR(0, 6, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
   /* "w3lib/_util.pyx":1
- * from typing import Union             # <<<<<<<<<<<<<<
+ * import cython             # <<<<<<<<<<<<<<
  * 
- * 
+ * from typing import Union
  */
   __pyx_t_3 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 1, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
@@ -9774,6 +9789,27 @@ bad:
     Py_XDECREF(py_frame);
 }
 #endif
+
+/* ObjectAsUCS4 */
+static Py_UCS4 __Pyx__PyObject_AsPy_UCS4_raise_error(long ival) {
+   if (ival < 0) {
+       if (!PyErr_Occurred())
+           PyErr_SetString(PyExc_OverflowError,
+                           "cannot convert negative value to Py_UCS4");
+   } else {
+       PyErr_SetString(PyExc_OverflowError,
+                       "value too large to convert to Py_UCS4");
+   }
+   return (Py_UCS4)-1;
+}
+static Py_UCS4 __Pyx__PyObject_AsPy_UCS4(PyObject* x) {
+   long ival;
+   ival = __Pyx_PyInt_As_long(x);
+   if (unlikely(!__Pyx_is_valid_index(ival, 1114111 + 1))) {
+       return __Pyx__PyObject_AsPy_UCS4_raise_error(ival);
+   }
+   return (Py_UCS4)ival;
+}
 
 /* CIntToPy */
 static CYTHON_INLINE PyObject* __Pyx_PyInt_From_long(long value) {
