@@ -537,12 +537,18 @@ def test_parse_url(
     search,
     hash,
 ):
+    # TODO: Take into account test scenarios where the base path does not
+    # impact the outcome.
+    if base:
+        raise pytest.skip(
+            "Our implementation does not support indicating a base URL."
+        )
     if failure:
         with pytest.raises(ValueError):
-            _parse_url(input, base_url=base)
+            _parse_url(input)
         return
 
-    url = _parse_url(input, base_url=base)
+    url = _parse_url(input)
     assert url.scheme == (protocol[:-1] if protocol else None)
     assert url.username == username
     assert url.password == password

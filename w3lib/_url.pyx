@@ -7,6 +7,7 @@ from math import floor
 from typing import AnyStr, Callable, Dict, List, Optional, Tuple, Union
 from urllib.parse import unquote
 
+import cython
 from cython import bint, cfunc, declare, uchar
 
 from . import _utr46
@@ -493,21 +494,23 @@ SCHEME = declare(uchar, 1)
 NO_SCHEME = declare(uchar, 2)
 SPECIAL_RELATIVE_OR_AUTHORITY = declare(uchar, 3)
 PATH_OR_AUTHORITY = declare(uchar, 4)
-RELATIVE = declare(uchar, 5)
-RELATIVE_SLASH = declare(uchar, 6)
-SPECIAL_AUTHORITY_SLASHES = declare(uchar, 7)
-SPECIAL_AUTHORITY_IGNORE_SLASHES = declare(uchar, 8)
-AUTHORITY = declare(uchar, 9)
-HOST = declare(uchar, 10)
-PORT = declare(uchar, 11)
-FILE = declare(uchar, 12)
-FILE_SLASH = declare(uchar, 13)
-FILE_HOST = declare(uchar, 14)
-PATH_START = declare(uchar, 15)
-PATH = declare(uchar, 16)
-OPAQUE_PATH = declare(uchar, 17)
-QUERY = declare(uchar, 18)
-FRAGMENT = declare(uchar, 19)
+SPECIAL_AUTHORITY_SLASHES = declare(uchar, 5)
+SPECIAL_AUTHORITY_IGNORE_SLASHES = declare(uchar, 6)
+AUTHORITY = declare(uchar, 7)
+HOST = declare(uchar, 8)
+PORT = declare(uchar, 9)
+FILE = declare(uchar, 10)
+FILE_SLASH = declare(uchar, 11)
+FILE_HOST = declare(uchar, 12)
+PATH_START = declare(uchar, 13)
+PATH = declare(uchar, 14)
+OPAQUE_PATH = declare(uchar, 15)
+QUERY = declare(uchar, 16)
+FRAGMENT = declare(uchar, 17)
+
+HOSTNAME = declare(uchar, 0)
+IPV4 = declare(uchar, 1)
+IPV6 = declare(uchar, 2)
 
 
 # https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#default-port
@@ -523,50 +526,42 @@ _SPECIAL_SCHEMES = set(_DEFAULT_PORTS.keys())
 
 
 class _URL:
-    _scheme: str = ""
-    username: str = ""
-    password: str = ""
-    hostname: Union[int, List[int], str] = ""
-    port: Optional[int] = None
-    path: Union[str, List[str]]
-    query: Optional[str] = None
-    fragment: Optional[str] = None
+    scheme: str
+    username: str
+    password: str
+    _password_token_seen: bool
+    _host_type: uchar
+    hostname: str
+    ipv4: cython.int
+    ipv6: cython.int[8]
+    port: cython.int
+    _port_token_seen: bool
+    path: List[str]
+    _path_token_seen: bool
+    opaque_path: str
+    query: str
+    _query_token_seen: bool
+    fragment: str
+    _fragment_token_seen: bool
 
-    # Indicates whether a color (:) separating a username from a password
-    # existed in the parsed URL. This enables :func:`_serialize_url` to
-    # generate a URL that matches the input URL, if desired.
-    _password_token_seen: bool = False
-
-    # Indicates, for an empty port component, whether or not a colon (:)
-    # character was used. This enables :func:`_serialize_url` to
-    # generate a URL that matches the input URL, if desired.
-    _port_token_seen: bool = False
-
-    # Indicates whether or not a default port was specified in the input URL.
-    # This enables :func:`_serialize_url` to generate a URL that matches the
-    # input URL, if desired.
-    _default_port_seen: bool = False
-
-    # Indicates, for an empty path component, whether or not a slash (/)
-    # character was used. This enables :func:`_serialize_url` to
-    # generate a URL that matches the input URL, if desired.
-    _path_token_seen: bool = False
-
-    def __init__(self) -> None:
+    def __init__(self):
+        self.scheme = ""
+        self.username = ""
+        self.password = ""
+        self._password_token_seen = False
+        self._host_type = HOSTNAME
+        self.hostname = ""
+        self.ipv4 = -1
+        self.ipv6 = [0, 0, 0, 0, 0, 0, 0, 0]
+        self.port = -1
+        self._port_token_seen = False
         self.path = []
-        self.is_special = False
-
-    def has_opaque_path(self) -> bool:
-        return isinstance(self.path, str)
-
-    @property
-    def scheme(self) -> str:
-        return self._scheme
-
-    @scheme.setter
-    def scheme(self, value: str) -> None:
-        self._scheme = value
-        self.is_special = value in _SPECIAL_SCHEMES
+        self._path_token_seen = False
+        self.opaque_path = ""
+        self.query = ""
+        self._query_token_seen = False
+        self.fragment = ""
+        self._fragment_token_seen = False
 
 
 _SCHEME_CHARS = _ASCII_ALPHANUMERIC + "+-."
@@ -873,23 +868,30 @@ def _domain_to_ascii(domain: str, *, be_strict: bool = False) -> str:
 # https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#concept-host-parser
 def _parse_host(
     input: str,
-    *,
-    is_special: bool = True,
-) -> Union[str, int, List[int]]:
+    url: _URL,
+) -> _URL:
     if input.startswith("["):
         if not input.endswith("]"):
             raise ValueError
-        return _parse_ipv6(input[1:-1])
-    if not is_special:
-        return _parse_opaque_host(input)
+        url.ipv6 = _parse_ipv6(input[1:-1])
+        url._host_type = IPV6
+        return url
+    if url.scheme not in _SPECIAL_SCHEMES:
+        url.hostname = _parse_opaque_host(input)
+        url._host_type = HOSTNAME
+        return url
     domain = unquote(input)
     ascii_domain = _domain_to_ascii(domain)
     for code_point in ascii_domain:
         if code_point in _FORBIDDEN_DOMAIN_CODE_POINTS:
             raise ValueError
     if _ends_in_number(ascii_domain):
-        return _parse_ipv4(ascii_domain)
-    return ascii_domain
+        url.ipv4 = _parse_ipv4(ascii_domain)
+        url._host_type = IPV4
+        return url
+    url.hostname = ascii_domain
+    url._host_type = HOSTNAME
+    return url
 
 
 # https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#windows-drive-letter
@@ -955,27 +957,13 @@ def _preprocess_url(url: str) -> str:
 
 def _parse_url(
     input: str,
-    *,
-    base_url: str = None,
     encoding: str = "utf-8",
-    userinfo_percent_encode_set: _PercentEncodeSet = _USERINFO_PERCENT_ENCODE_SET,
-    path_percent_encode_set: _PercentEncodeSet = _PATH_PERCENT_ENCODE_SET,
-    query_percent_encode_set: _PercentEncodeSet = _QUERY_PERCENT_ENCODE_SET,
-    special_query_percent_encode_set: _PercentEncodeSet = _SPECIAL_QUERY_PERCENT_ENCODE_SET,
-    fragment_percent_encode_set: _PercentEncodeSet = _FRAGMENT_PERCENT_ENCODE_SET,
 ) -> _URL:
-    """Return a :class:`_URL` object built from *url*, *base_url* and
-    *encoding*, following the URL parsing algorithm defined in the `URL living
-    standard`_.
+    """Return a :class:`_URL` object built from *url* and *encoding*, following
+    the URL parsing algorithm defined in the `URL living standard`_, with
+    additional logic to support older standards as well.
 
     .. _URL living standard: https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#url-parsing
-
-    Additional parameters allow to deviate from the standard for specific use
-    cases:
-
-    -   *userinfo_percent_encode_set* allows customizing which characters found
-        in the user authroization part of the input URL need to be
-        percent-encoded.
     """
 
     # Additional deviations from the standard are implemented but not covered
@@ -988,14 +976,10 @@ def _parse_url(
     #     from the parsed URL (e.g. ``a://a@example.com``) and when it was
     #     explicitly an empty string (e.g. ``a://a:@example.com``), so that its
     #     output can match the original parsed URL if desired.
-
-    if base_url is not None:
-        base = _parse_url(base_url, encoding=encoding)
-    else:
-        base = None
     encoding = _get_output_encoding(encoding)
 
     url = _URL()
+    url.path = []
     state = SCHEME_START
     buffer = ""
     at_sign_seen = inside_brackets = skip_authority_shortcut = False
@@ -1025,16 +1009,13 @@ def _parse_url(
                 buffer = ""
                 if url.scheme == "file":
                     state = FILE
-                elif url.is_special:
-                    if base is not None and base.scheme == url.scheme:
-                        state = SPECIAL_RELATIVE_OR_AUTHORITY
-                    else:
-                        state = SPECIAL_AUTHORITY_SLASHES
+                elif url.scheme in _SPECIAL_SCHEMES:
+                    state = SPECIAL_AUTHORITY_SLASHES
                 elif pointer + 1 < len(input) and input[pointer + 1] == "/":
                     state = PATH_OR_AUTHORITY
                     pointer += 1
                 else:
-                    url.path = ""
+                    url.opaque_path = ""
                     state = OPAQUE_PATH
             else:
                 buffer = ""
@@ -1042,71 +1023,19 @@ def _parse_url(
                 pointer = -1
 
         elif state == NO_SCHEME:
-            if base is None:
-                raise ValueError
-            if base.has_opaque_path():
-                if not reached_end and c != "#":
-                    raise ValueError
-                url.scheme = base.scheme
-                url.path = base.path
-                url.query = base.query
-                url.fragment = ""
-                state = FRAGMENT
-            else:
-                if base.scheme != "file":
-                    state = RELATIVE
-                else:
-                    state = FILE
-                pointer -= 1
+            raise ValueError("No URL scheme")
 
         elif state == SPECIAL_RELATIVE_OR_AUTHORITY:
             if not reached_end and c == "/" and pointer + 1 < input_length and input[pointer + 1] == "/":
                 state = SPECIAL_AUTHORITY_IGNORE_SLASHES
                 pointer += 1
             else:
-                state = RELATIVE
-                pointer -= 1
+                raise ValueError("URL is relative")
 
         elif state == PATH_OR_AUTHORITY:
             if not reached_end and c == "/":
                 state = AUTHORITY
             else:
-                state = PATH
-                pointer -= 1
-
-        elif state == RELATIVE:
-            url.scheme = base.scheme
-            if not reached_end and (c == "/" or url.is_special and c == "\\"):
-                state = RELATIVE_SLASH
-            else:
-                url.username = base.username
-                url.password = base.password
-                url.hostname = base.hostname
-                url.port = base.port
-                url.path = base.path
-                url.query = base.query
-                if not reached_end and c == "?":
-                    url.query = ""
-                    state = QUERY
-                elif not reached_end and c == "#":
-                    url.fragment = ""
-                    state = FRAGMENT
-                elif not reached_end:
-                    url.query = None
-                    _shorten_path(url)
-                    state = PATH
-                    pointer -= 1
-
-        elif state == RELATIVE_SLASH:
-            if url.is_special and not reached_end and c in "/\\":
-                state = SPECIAL_AUTHORITY_IGNORE_SLASHES
-            elif not reached_end and c == "/":
-                state = AUTHORITY
-            else:
-                url.username = base.username
-                url.password = base.password
-                url.hostname = base.hostname
-                url.port = base.port
                 state = PATH
                 pointer -= 1
 
@@ -1142,14 +1071,14 @@ def _parse_url(
                     encoded_code_points = _idempotent_utf_8_percent_encode(
                         input=buffer,
                         pointer=i,
-                        encode_set=userinfo_percent_encode_set,
+                        encode_set=_SAFE_USERINFO_PERCENT_ENCODE_SET,
                     )
                     if url._password_token_seen:
                         url.password += encoded_code_points
                     else:
                         url.username += encoded_code_points
                 buffer = ""
-            elif reached_end or c in "/?#" or url.is_special and c == "\\":
+            elif reached_end or c in "/?#" or url.scheme in _SPECIAL_SCHEMES and c == "\\":
                 if at_sign_seen and not buffer:
                     raise ValueError
                 pointer -= len(buffer) + 1
@@ -1162,17 +1091,15 @@ def _parse_url(
             if not reached_end and c == ":" and not inside_brackets:
                 if not buffer:
                     raise ValueError
-                host = _parse_host(buffer, is_special=url.is_special)
-                url.hostname = host
+                url = _parse_host(buffer, url)
                 buffer = ""
                 state = PORT
                 url._port_token_seen = True
-            elif reached_end or c in "/?#" or url.is_special and c == "\\":
+            elif reached_end or c in "/?#" or url.scheme in _SPECIAL_SCHEMES and c == "\\":
                 pointer -= 1
-                if url.is_special and not buffer:
+                if url.scheme in _SPECIAL_SCHEMES and not buffer:
                     raise ValueError
-                host = _parse_host(buffer, is_special=url.is_special)
-                url.hostname = host
+                url = _parse_host(buffer, url)
                 buffer = ""
                 state = PATH_START
             elif not reached_end:
@@ -1185,13 +1112,12 @@ def _parse_url(
         elif state == PORT:
             if not reached_end and c in _ASCII_DIGIT:
                 buffer += c
-            elif reached_end or c in "/?#" or url.is_special and c == "\\":
+            elif reached_end or c in "/?#" or url.scheme in _SPECIAL_SCHEMES and c == "\\":
                 if buffer:
-                    port = int(buffer)
+                    port: cython.int = int(buffer)
                     if port > 2**16 - 1:
-                        raise ValueError
-                    url.port = None if _DEFAULT_PORTS.get(url.scheme) == port else port
-                    url._default_port_seen = url.port is None
+                        raise ValueError(f"Port {port} is too high.")
+                    url.port = port
                     buffer = ""
                 state = PATH_START
                 pointer -= 1
@@ -1203,24 +1129,6 @@ def _parse_url(
             url.hostname = ""
             if not reached_end and c in "/\\":
                 state = FILE_SLASH
-            elif base is not None and base.scheme == "file":
-                url.hostname = base.hostname
-                url.path = base.path
-                url.query = base.query
-                if not reached_end and c == "?":
-                    url.query = ""
-                    state = QUERY
-                elif not reached_end and c == "#":
-                    url.fragment = ""
-                    state = FRAGMENT
-                elif not reached_end:
-                    url.query = None
-                    if not _starts_with_windows_drive_letter(input[pointer:]):
-                        _shorten_path(url)
-                    else:
-                        url.path = []
-                    state = PATH
-                    pointer -= 1
             else:
                 state = PATH
                 pointer -= 1
@@ -1229,12 +1137,6 @@ def _parse_url(
             if not reached_end and c in "/\\":
                 state = FILE_HOST
             else:
-                if base is not None and base.scheme == "file":
-                    url.hostname = base.hostname
-                    if not _starts_with_windows_drive_letter(
-                        input[pointer:]
-                    ) and _is_windows_drive_letter(base.path[0]):
-                        url.path.append(base.path[0])
                 state = PATH
                 pointer -= 1
 
@@ -1247,26 +1149,25 @@ def _parse_url(
                     url.hostname = ""
                     state = PATH_START
                 else:
-                    host = _parse_host(buffer, is_special=url.is_special)
-                    if host == "localhost":
-                        host = ""
-                    url.hostname = host
+                    url = _parse_host(buffer, url)
+                    if url.hostname == "localhost":
+                        url.hostname = ""
                     buffer = ""
                     state = PATH_START
             elif not reached_end:
                 buffer += c
 
         elif state == PATH_START:
-            if url.is_special:
+            if url.scheme in _SPECIAL_SCHEMES:
                 state = PATH
                 if not reached_end and c not in "/\\":
                     pointer -= 1
             elif not reached_end:
                 if c == "?":
-                    url.query = ""
+                    url._query_token_seen = True
                     state = QUERY
                 elif c == "#":
-                    url.fragment = ""
+                    url._fragment_token_seen = True
                     state = FRAGMENT
                 else:
                     state = PATH
@@ -1274,13 +1175,13 @@ def _parse_url(
                         pointer -= 1
 
         elif state == PATH:
-            if reached_end or c == "/" or (url.is_special and c == "\\") or c in "?#":
+            if reached_end or c == "/" or (url.scheme in _SPECIAL_SCHEMES and c == "\\") or c in "?#":
                 if _is_double_dot_path_segment(buffer):
                     _shorten_path(url)
-                    if c != "/" and not (url.is_special and c == "\\"):
+                    if c != "/" and not (url.scheme in _SPECIAL_SCHEMES and c == "\\"):
                         url.path.append("")
                 elif _is_single_dot_path_segment(buffer):
-                    if c != "/" and not (url.is_special and c == "\\"):
+                    if c != "/" and not (url.scheme in _SPECIAL_SCHEMES and c == "\\"):
                         url.path.append("")
                 else:
                     if (
@@ -1301,43 +1202,43 @@ def _parse_url(
                 buffer = ""
                 if not reached_end:
                     if c == "?":
-                        url.query = ""
+                        url._query_token_seen = True
                         state = QUERY
                     elif c == "#":
-                        url.fragment = ""
+                        url._fragment_token_seen = True
                         state = FRAGMENT
             else:
                 buffer += _idempotent_utf_8_percent_encode(
                     input=input,
                     pointer=pointer,
-                    encode_set=path_percent_encode_set,
+                    encode_set=_SAFE_PATH_PERCENT_ENCODE_SET,
                 )
 
         elif state == OPAQUE_PATH:
             if not reached_end:
                 if c == "?":
-                    url.query = ""
+                    url._query_token_seen = True
                     state = QUERY
                 elif c == "#":
-                    url.fragment = ""
+                    url._fragment_token_seen = True
                     state = FRAGMENT
                 else:
                     encoded = _utf_8_percent_encode(
                         c,
                         _C0_CONTROL_PERCENT_ENCODE_SET,
                     )
-                    url.path += encoded
+                    url.opaque_path += encoded
 
         elif state == QUERY:
             if encoding != "utf-8" and (
-                not url.is_special or url.scheme in ("ws", "wss")
+                not url.scheme in _SPECIAL_SCHEMES or url.scheme in ("ws", "wss")
             ):
                 encoding = "utf-8"
             if reached_end or c == "#":
                 percent_encode_set = (
-                    special_query_percent_encode_set
-                    if url.is_special
-                    else query_percent_encode_set
+                    _SAFE_SPECIAL_QUERY_PERCENT_ENCODE_SET
+                    if url.scheme in _SPECIAL_SCHEMES
+                    else _SAFE_QUERY_PERCENT_ENCODE_SET
                 )
                 url.query += _percent_encode_after_encoding(
                     buffer,
@@ -1346,7 +1247,7 @@ def _parse_url(
                 )
                 buffer = ""
                 if not reached_end and c == "#":
-                    url.fragment = ""
+                    url._fragment_token_seen = True
                     state = FRAGMENT
             elif not reached_end:
                 buffer += c
@@ -1354,7 +1255,7 @@ def _parse_url(
         elif state == FRAGMENT:
             if not reached_end:
                 url.fragment += _idempotent_utf_8_percent_encode(
-                    input=input, pointer=pointer, encode_set=fragment_percent_encode_set
+                    input=input, pointer=pointer, encode_set=_SAFE_FRAGMENT_PERCENT_ENCODE_SET
                 )
 
         if pointer >= input_length:
@@ -1415,20 +1316,20 @@ def _serialize_ipv6(address: List[int]) -> str:
 
 
 # https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#concept-host-serializer
-def _serialize_host(host: Union[str, int, List[int]]) -> str:
-    if isinstance(host, int):
-        return _serialize_ipv4(host)
-    if isinstance(host, list):
-        return f"[{_serialize_ipv6(host)}]"
-    return host
+def _serialize_host(url: _URL) -> str:
+    if url._host_type == IPV4:
+        return _serialize_ipv4(url.ipv4)
+    if url._host_type == IPV6:
+        return f"[{_serialize_ipv6(url.ipv6)}]"
+    return url.hostname
 
 
 # https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#url-path-serializer
-def _serialize_url_path(url: _URL, *, canonicalize: bool = None) -> str:
-    if url.has_opaque_path():
+def _serialize_url_path(url: _URL) -> str:
+    if url.opaque_path:
         assert isinstance(url.path, str)
         return url.path
-    if len(url.path) <= 1 and url._path_token_seen and not canonicalize:
+    if len(url.path) <= 1 and url._path_token_seen:
         return ""
     output = ""
     for segment in url.path:
@@ -1437,80 +1338,41 @@ def _serialize_url_path(url: _URL, *, canonicalize: bool = None) -> str:
 
 
 # https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#url-serializing
-def _serialize_url(
-    url: _URL,
-    *,
-    exclude_fragment: bool = False,
-    canonicalize: Optional[bool] = None,
-) -> str:
+def _serialize_url(url: _URL) -> str:
     """Return a string representation of *url* following the URL serialization
     algorithm defined in the `URL living standard`_.
 
     .. _URL living standard: https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#concept-url-serializer
-
-    If *exclude_fragment* is ``True``, the returned URL does not include
-    :attr:`_URL.fragment`.
-
-    Additional parameters allow to deviate from the standard for specific use
-    cases:
-
-    -   *canonicalize*:
-
-        -   ``None``: Do not deviate from the standard algorithm to apply or
-            prevent URL canonicalization.
-
-        -   ``True``: Deviate from the standard as needed to make sure that
-            functionally-equivalent URLs are always rendered the same way.
-
-            This value has no effect at the moment, i.e. it applies the same
-            level of canonicalization as the standard algorithm.
-
-        -   ``False``: Deviate from the standard as needed to make sure that
-            the returned URL string is as close as possible to the original URL
-            string that was parsed into *url*, as long as the returned URL
-            string is still a valid URL.
-
-            At the moment, this ensures that the password separator (:) is
-            included into the returned URL string as long as it was present on
-            the original URL string, even if :attr:`_URL.password` is an empty
-            string.
     """
     output = url.scheme + ":"
-    if url.hostname is not None:
+    if url.hostname or url._host_type != HOSTNAME:
         output += "//"
         if url.username or url.password:
             output += url.username
             if url.password:
                 output += f":{url.password}"
-            elif not canonicalize and url._password_token_seen:
+            elif url._password_token_seen:
                 output += ":"
             output += "@"
-        output += _serialize_host(url.hostname)
-        if url.port is not None:
+        output += _serialize_host(url)
+        if url.port > -1:
             output += f":{url.port}"
-        elif not canonicalize:
-            if url._default_port_seen:
-                output += f":{_DEFAULT_PORTS[url.scheme]}"
-            elif url._port_token_seen:
-                output += ":"
-    elif not url.has_opaque_path() and len(url.path) > 1 and not url.path[0]:
+        elif url._port_token_seen:
+            output += ":"
+    elif not url.opaque_path and len(url.path) > 1 and not url.path[0]:
         output += "/."
-    output += _serialize_url_path(url, canonicalize=canonicalize)
-    if url.query is not None:
+    output += _serialize_url_path(url)
+    if url.query:
         output += f"?{url.query}"
-    if not exclude_fragment and url.fragment is not None:
+    elif url._query_token_seen:
+        output += "?"
+    if url.fragment:
         output += f"#{url.fragment}"
+    elif url._fragment_token_seen:
+        output += "#"
     return output
 
 
 def _safe_url(input: str, encoding: str) -> str:
-    url = _parse_url(
-        input,
-        encoding=encoding,
-        userinfo_percent_encode_set=_SAFE_USERINFO_PERCENT_ENCODE_SET,
-        path_percent_encode_set=_SAFE_PATH_PERCENT_ENCODE_SET,
-        query_percent_encode_set=_SAFE_QUERY_PERCENT_ENCODE_SET,
-        special_query_percent_encode_set=_SAFE_SPECIAL_QUERY_PERCENT_ENCODE_SET,
-        fragment_percent_encode_set=_SAFE_FRAGMENT_PERCENT_ENCODE_SET,
-    )
-    return _serialize_url(url, canonicalize=False)
+    url = _parse_url(input, encoding)
+    return _serialize_url(url)
