@@ -1,11 +1,6 @@
 import os
 from setuptools import setup, find_packages, Extension
 
-try:
-    from Cython.Build import cythonize
-except ImportError:
-    cythonize = None
-
 
 # https://cython.readthedocs.io/en/latest/src/userguide/source_files_and_compilation.html#distributing-cython-modules
 def no_cythonize(extensions, **_ignore):
@@ -26,7 +21,6 @@ def no_cythonize(extensions, **_ignore):
 extensions = [
     Extension(f"w3lib._{name}", [f"w3lib/_{name}.pyx"])
     for name in (
-        "encoding",
         "infra",
         "rfc2396",
         "rfc3986",
@@ -38,10 +32,9 @@ extensions = [
     )
 ]
 
-CYTHONIZE = bool(int(os.getenv("CYTHONIZE", 0))) and cythonize is not None
-
-if CYTHONIZE:
-    compiler_directives = {"language_level": 3, "embedsignature": True}
+if bool(int(os.getenv("CYTHONIZE", 0))):
+    from Cython.Build import cythonize
+    compiler_directives = {"language_level": 3}
     extensions = cythonize(extensions, compiler_directives=compiler_directives)
 else:
     extensions = no_cythonize(extensions)
