@@ -576,7 +576,6 @@ KNOWN_SAFE_URL_STRING_URL_ISSUES = {
     "http://192.168.0.256",  # Invalid IP address
     "http://192.168.0.0.0",  # Invalid IP address / domain name
     "http://[2a01:5cc0:1:2::4]",  # https://github.com/scrapy/w3lib/issues/193
-    "http://[2a01:5cc0:1:2:3:4]",  # Invalid IPv6
     "https://example.com:",  # Removes the :
     # Does not convert \ to /
     "https://example.com\\a",
