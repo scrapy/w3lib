@@ -1,5 +1,6 @@
 import unittest
 
+from w3lib._infra import _C0_CONTROL_OR_SPACE
 from w3lib.html import (
     get_base_url,
     get_meta_refresh,
@@ -65,6 +66,10 @@ class RemoveEntitiesTest(unittest.TestCase):
         self.assertEqual(replace_entities("x&#x2264;y"), "x\u2264y")
         self.assertEqual(replace_entities("x&#157;y"), "xy")
         self.assertEqual(replace_entities("x&#157;y", remove_illegal=False), "x&#157;y")
+        self.assertEqual(replace_entities("&#82179209091;"), "")
+        self.assertEqual(
+            replace_entities("&#82179209091;", remove_illegal=False), "&#82179209091;"
+        )
 
     def test_browser_hack(self):
         # check browser hack for numeric character references in the 80-9F range
@@ -156,12 +161,12 @@ class RemoveTagsTest(unittest.TestCase):
         assert isinstance(remove_tags(b"no tags"), str)
         assert isinstance(remove_tags(b"no tags", which_ones=("p",)), str)
         assert isinstance(remove_tags(b"<p>one tag</p>"), str)
-        assert isinstance(remove_tags(b"<p>one tag</p>", which_ones=("p")), str)
+        assert isinstance(remove_tags(b"<p>one tag</p>", which_ones=("p",)), str)
         assert isinstance(remove_tags(b"<a>link</a>", which_ones=("b",)), str)
         assert isinstance(remove_tags("no tags"), str)
         assert isinstance(remove_tags("no tags", which_ones=("p",)), str)
         assert isinstance(remove_tags("<p>one tag</p>"), str)
-        assert isinstance(remove_tags("<p>one tag</p>", which_ones=("p")), str)
+        assert isinstance(remove_tags("<p>one tag</p>", which_ones=("p",)), str)
         assert isinstance(remove_tags("<a>link</a>", which_ones=("b",)), str)
 
     def test_remove_tags_without_tags(self):

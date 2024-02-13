@@ -1,8 +1,11 @@
 import json
 import os
+import sys
 import unittest
+from inspect import isclass
 from pathlib import Path
 from timeit import timeit
+from typing import Optional, Union, Type, Callable, Tuple, List
 from urllib.parse import urlparse
 
 import pytest
@@ -13,6 +16,7 @@ from w3lib._infra import (
     _ASCII_TAB_OR_NEWLINE,
     _C0_CONTROL_OR_SPACE,
 )
+from w3lib._types import StrOrBytes
 from w3lib._url import (
     _C0_CONTROL_PERCENT_ENCODE_SET,
     _domain_to_ascii,
@@ -40,6 +44,411 @@ from w3lib.url import (
     url_query_parameter,
     url_query_cleaner,
 )
+
+# Test cases for URL-to-safe-URL conversions with a URL and an encoding as
+# input parameters.
+#
+# (encoding, input URL, output URL or exception)
+SAFE_URL_ENCODING_CASES: List[
+    Tuple[Optional[str], StrOrBytes, Union[str, Type[Exception]]]
+] = [
+    (None, "", ValueError),
+    (None, "https://example.com", "https://example.com"),
+    (None, "https://example.com/©", "https://example.com/%C2%A9"),
+    # Paths are always UTF-8-encoded.
+    ("iso-8859-1", "https://example.com/©", "https://example.com/%C2%A9"),
+    # Queries are UTF-8-encoded if the scheme is not special, ws or wss.
+    ("iso-8859-1", "a://example.com?©", "a://example.com?%C2%A9"),
+    *(
+        ("iso-8859-1", f"{scheme}://example.com?©", f"{scheme}://example.com?%C2%A9")
+        for scheme in ("ws", "wss")
+    ),
+    *(
+        ("iso-8859-1", f"{scheme}://example.com?©", f"{scheme}://example.com?%A9")
+        for scheme in _SPECIAL_SCHEMES
+        if scheme not in {"ws", "wss"}
+    ),
+    # Fragments are always UTF-8-encoded.
+    ("iso-8859-1", "https://example.com#©", "https://example.com#%C2%A9"),
+]
+
+INVALID_SCHEME_FOLLOW_UPS = "".join(
+    chr(value)
+    for value in range(0x81)
+    if (
+        chr(value) not in _ASCII_ALPHANUMERIC
+        and chr(value) not in "+-."
+        and chr(value) not in _C0_CONTROL_OR_SPACE  # stripped
+        and chr(value) != ":"  # separator
+    )
+)
+
+SAFE_URL_URL_INVALID_SCHEME_CASES = tuple(
+    (f"{scheme}://example.com", ValueError)
+    for scheme in (
+        # A scheme is required.
+        "",
+        # The first scheme letter must be an ASCII alpha.
+        # Note: 0x80 is included below to also test non-ASCII example.
+        *(
+            chr(value)
+            for value in range(0x81)
+            if (
+                chr(value) not in _ASCII_ALPHA
+                and chr(value) not in _C0_CONTROL_OR_SPACE  # stripped
+                and chr(value) != ":"  # separator
+            )
+        ),
+        # The follow-up scheme letters can also be ASCII numbers, plus, hyphen,
+        # or period.
+        f"a{INVALID_SCHEME_FOLLOW_UPS}",
+    )
+)
+
+SCHEME_NON_FIRST = _ASCII_ALPHANUMERIC + "+-."
+
+# Username and password characters that do not need escaping.
+# Removed for RFC 2396 and RFC 3986: %
+# Removed for the URL living standard: :;=
+USERINFO_SAFE = _ASCII_ALPHANUMERIC + "-_.!~*'()" + "&+$,"
+USERNAME_TO_ENCODE = "".join(
+    chr(value)
+    for value in range(0x80)
+    if (
+        chr(value) not in _C0_CONTROL_OR_SPACE
+        and chr(value) not in USERINFO_SAFE
+        and chr(value) not in ":/?#\\[]"
+    )
+)
+USERNAME_ENCODED = "".join(f"%{ord(char):02X}" for char in USERNAME_TO_ENCODE)
+PASSWORD_TO_ENCODE = USERNAME_TO_ENCODE + ":"
+PASSWORD_ENCODED = "".join(f"%{ord(char):02X}" for char in PASSWORD_TO_ENCODE)
+
+# Path characters that do not need escaping.
+# Removed for RFC 2396 and RFC 3986: %[\]^|
+PATH_SAFE = _ASCII_ALPHANUMERIC + "-_.!~*'()" + ":@&=+$," + "/" + ";"
+PATH_TO_ENCODE = "".join(
+    chr(value)
+    for value in range(0x80)
+    if (
+        chr(value) not in _C0_CONTROL_OR_SPACE
+        and chr(value) not in PATH_SAFE
+        and chr(value) not in "?#\\"
+    )
+)
+PATH_ENCODED = "".join(f"%{ord(char):02X}" for char in PATH_TO_ENCODE)
+
+# Query characters that do not need escaping.
+# Removed for RFC 2396 and RFC 3986: %[\]^`{|}
+# Removed for the URL living standard: ' (special)
+QUERY_SAFE = _ASCII_ALPHANUMERIC + "-_.!~*'()" + ":@&=+$," + "/" + ";" + "?"
+QUERY_TO_ENCODE = "".join(
+    chr(value)
+    for value in range(0x80)
+    if (
+        chr(value) not in _C0_CONTROL_OR_SPACE
+        and chr(value) not in QUERY_SAFE
+        and chr(value) not in "#"
+    )
+)
+QUERY_ENCODED = "".join(f"%{ord(char):02X}" for char in QUERY_TO_ENCODE)
+SPECIAL_QUERY_SAFE = QUERY_SAFE.replace("'", "")
+SPECIAL_QUERY_TO_ENCODE = "".join(
+    chr(value)
+    for value in range(0x80)
+    if (
+        chr(value) not in _C0_CONTROL_OR_SPACE
+        and chr(value) not in SPECIAL_QUERY_SAFE
+        and chr(value) not in "#"
+    )
+)
+SPECIAL_QUERY_ENCODED = "".join(f"%{ord(char):02X}" for char in SPECIAL_QUERY_TO_ENCODE)
+
+# Fragment characters that do not need escaping.
+# Removed for RFC 2396 and RFC 3986: #%[\\]^{|}
+FRAGMENT_SAFE = _ASCII_ALPHANUMERIC + "-_.!~*'()" + ":@&=+$," + "/" + ";" + "?"
+FRAGMENT_TO_ENCODE = "".join(
+    chr(value)
+    for value in range(0x80)
+    if (chr(value) not in _C0_CONTROL_OR_SPACE and chr(value) not in FRAGMENT_SAFE)
+)
+FRAGMENT_ENCODED = "".join(f"%{ord(char):02X}" for char in FRAGMENT_TO_ENCODE)
+
+
+# Test cases for URL-to-safe-URL conversions with only a URL as input parameter
+# (i.e. no encoding or base URL).
+#
+# (input URL, output URL or exception)
+SAFE_URL_URL_CASES = (
+    # Invalid input type
+    (1, Exception),
+    (object(), Exception),
+    # Empty string
+    ("", ValueError),
+    # Remove any leading and trailing C0 control or space from input.
+    *(
+        (f"{char}https://example.com{char}", "https://example.com")
+        for char in _C0_CONTROL_OR_SPACE
+        if char not in _ASCII_TAB_OR_NEWLINE
+    ),
+    # Remove all ASCII tab or newline from input.
+    (
+        (
+            f"{_ASCII_TAB_OR_NEWLINE}h{_ASCII_TAB_OR_NEWLINE}ttps"
+            f"{_ASCII_TAB_OR_NEWLINE}:{_ASCII_TAB_OR_NEWLINE}/"
+            f"{_ASCII_TAB_OR_NEWLINE}/{_ASCII_TAB_OR_NEWLINE}a"
+            f"{_ASCII_TAB_OR_NEWLINE}b{_ASCII_TAB_OR_NEWLINE}:"
+            f"{_ASCII_TAB_OR_NEWLINE}a{_ASCII_TAB_OR_NEWLINE}b"
+            f"{_ASCII_TAB_OR_NEWLINE}@{_ASCII_TAB_OR_NEWLINE}exam"
+            f"{_ASCII_TAB_OR_NEWLINE}ple.com{_ASCII_TAB_OR_NEWLINE}:"
+            f"{_ASCII_TAB_OR_NEWLINE}1{_ASCII_TAB_OR_NEWLINE}2"
+            f"{_ASCII_TAB_OR_NEWLINE}/{_ASCII_TAB_OR_NEWLINE}a"
+            f"{_ASCII_TAB_OR_NEWLINE}b{_ASCII_TAB_OR_NEWLINE}?"
+            f"{_ASCII_TAB_OR_NEWLINE}a{_ASCII_TAB_OR_NEWLINE}b"
+            f"{_ASCII_TAB_OR_NEWLINE}#{_ASCII_TAB_OR_NEWLINE}a"
+            f"{_ASCII_TAB_OR_NEWLINE}b{_ASCII_TAB_OR_NEWLINE}"
+        ),
+        "https://ab:ab@example.com:12/ab?ab#ab",
+    ),
+    # Scheme
+    (f"{_ASCII_ALPHA}://example.com", f"{_ASCII_ALPHA.lower()}://example.com"),
+    (
+        f"a{SCHEME_NON_FIRST}://example.com",
+        f"a{SCHEME_NON_FIRST.lower()}://example.com",
+    ),
+    *SAFE_URL_URL_INVALID_SCHEME_CASES,
+    # Authority
+    ("https://a@example.com", "https://a@example.com"),
+    ("https://a:@example.com", "https://a:@example.com"),
+    ("https://a:a@example.com", "https://a:a@example.com"),
+    ("https://a%3A@example.com", "https://a%3A@example.com"),
+    (
+        f"https://{USERINFO_SAFE}:{USERINFO_SAFE}@example.com",
+        f"https://{USERINFO_SAFE}:{USERINFO_SAFE}@example.com",
+    ),
+    (
+        f"https://{USERNAME_TO_ENCODE}:{PASSWORD_TO_ENCODE}@example.com",
+        f"https://{USERNAME_ENCODED}:{PASSWORD_ENCODED}@example.com",
+    ),
+    ("https://@\\example.com", ValueError),
+    ("https://\x80:\x80@example.com", "https://%C2%80:%C2%80@example.com"),
+    # Host
+    ("https://example.com", "https://example.com"),
+    ("https://.example", "https://.example"),
+    ("https://\x80.example", ValueError),
+    ("https://%80.example", ValueError),
+    # The 4 cases below test before and after crossing DNS length limits on
+    # domain name labels (63 characters) and the domain name as a whole (253
+    # characters). However, all cases are expected to pass because the URL
+    # living standard does not require domain names to be within these limits.
+    (f"https://{'a' * 63}.example", f"https://{'a' * 63}.example"),
+    (f"https://{'a' * 64}.example", f"https://{'a' * 64}.example"),
+    (
+        f"https://{'a' * 63}.{'a' * 63}.{'a' * 63}.{'a' * 53}.example",
+        f"https://{'a' * 63}.{'a' * 63}.{'a' * 63}.{'a' * 53}.example",
+    ),
+    (
+        f"https://{'a' * 63}.{'a' * 63}.{'a' * 63}.{'a' * 54}.example",
+        f"https://{'a' * 63}.{'a' * 63}.{'a' * 63}.{'a' * 54}.example",
+    ),
+    ("https://ñ.example", "https://xn--ida.example"),
+    ("http://192.168.0.0", "http://192.168.0.0"),
+    ("http://192.168.0.256", ValueError),
+    ("http://192.168.0.0.0", ValueError),
+    ("http://[2a01:5cc0:1:2::4]", "http://[2a01:5cc0:1:2::4]"),
+    ("http://[2a01:5cc0:1:2:3:4]", ValueError),
+    # Port
+    ("https://example.com:", "https://example.com:"),
+    ("https://example.com:1", "https://example.com:1"),
+    ("https://example.com:443", "https://example.com:443"),
+    # Path
+    ("https://example.com/", "https://example.com/"),
+    ("https://example.com/a", "https://example.com/a"),
+    ("https://example.com\\a", "https://example.com/a"),
+    ("https://example.com/a\\b", "https://example.com/a/b"),
+    (
+        f"https://example.com/{PATH_SAFE}",
+        f"https://example.com/{PATH_SAFE}",
+    ),
+    (
+        f"https://example.com/{PATH_TO_ENCODE}",
+        f"https://example.com/{PATH_ENCODED}",
+    ),
+    ("https://example.com/ñ", "https://example.com/%C3%B1"),
+    ("https://example.com/ñ%C3%B1", "https://example.com/%C3%B1%C3%B1"),
+    # Query
+    ("https://example.com?", "https://example.com?"),
+    ("https://example.com/?", "https://example.com/?"),
+    ("https://example.com?a", "https://example.com?a"),
+    ("https://example.com?a=", "https://example.com?a="),
+    ("https://example.com?a=b", "https://example.com?a=b"),
+    (
+        f"a://example.com?{QUERY_SAFE}",
+        f"a://example.com?{QUERY_SAFE}",
+    ),
+    (
+        f"a://example.com?{QUERY_TO_ENCODE}",
+        f"a://example.com?{QUERY_ENCODED}",
+    ),
+    *(
+        (
+            f"{scheme}://example.com?{SPECIAL_QUERY_SAFE}",
+            f"{scheme}://example.com?{SPECIAL_QUERY_SAFE}",
+        )
+        for scheme in _SPECIAL_SCHEMES
+    ),
+    *(
+        (
+            f"{scheme}://example.com?{SPECIAL_QUERY_TO_ENCODE}",
+            f"{scheme}://example.com?{SPECIAL_QUERY_ENCODED}",
+        )
+        for scheme in _SPECIAL_SCHEMES
+    ),
+    ("https://example.com?ñ", "https://example.com?%C3%B1"),
+    ("https://example.com?ñ%C3%B1", "https://example.com?%C3%B1%C3%B1"),
+    # Fragment
+    ("https://example.com#", "https://example.com#"),
+    ("https://example.com/#", "https://example.com/#"),
+    ("https://example.com?#", "https://example.com?#"),
+    ("https://example.com/?#", "https://example.com/?#"),
+    ("https://example.com#a", "https://example.com#a"),
+    (
+        f"a://example.com#{FRAGMENT_SAFE}",
+        f"a://example.com#{FRAGMENT_SAFE}",
+    ),
+    (
+        f"a://example.com#{FRAGMENT_TO_ENCODE}",
+        f"a://example.com#{FRAGMENT_ENCODED}",
+    ),
+    ("https://example.com#ñ", "https://example.com#%C3%B1"),
+    ("https://example.com#ñ%C3%B1", "https://example.com#%C3%B1%C3%B1"),
+    # All fields, UTF-8 wherever possible.
+    (
+        "https://ñ:ñ@ñ.example:1/ñ?ñ#ñ",
+        "https://%C3%B1:%C3%B1@xn--ida.example:1/%C3%B1?%C3%B1#%C3%B1",
+    ),
+)
+
+
+def _test_safe_url_func(
+    url: StrOrBytes,
+    *,
+    encoding: Optional[str] = None,
+    output: Union[str, Type[Exception]],
+    func: Callable[..., str],
+) -> None:
+    kwargs = {}
+    if encoding is not None:
+        kwargs["encoding"] = encoding
+    if isclass(output) and issubclass(output, Exception):
+        with pytest.raises(output):
+            func(url, **kwargs)
+        return
+    actual = func(url, **kwargs)
+    assert actual == output
+    assert func(actual, **kwargs) == output  # Idempotency
+
+
+def _test_safe_url_string(
+    url: StrOrBytes,
+    *,
+    encoding: Optional[str] = None,
+    output: Union[str, Type[Exception]],
+) -> None:
+    return _test_safe_url_func(
+        url,
+        encoding=encoding,
+        output=output,
+        func=safe_url_string,
+    )
+
+
+KNOWN_SAFE_URL_STRING_ENCODING_ISSUES = {
+    (None, ""),  # Invalid URL
+    # UTF-8 encoding is not enforced in non-special URLs, or in URLs with the
+    # ws or wss schemas.
+    ("iso-8859-1", "a://example.com?\xa9"),
+    ("iso-8859-1", "ws://example.com?\xa9"),
+    ("iso-8859-1", "wss://example.com?\xa9"),
+    # UTF-8 encoding is not enforced on the fragment.
+    ("iso-8859-1", "https://example.com#\xa9"),
+}
+
+
+@pytest.mark.parametrize(
+    "encoding,url,output",
+    tuple(
+        case
+        if case[:2] not in KNOWN_SAFE_URL_STRING_ENCODING_ISSUES
+        else pytest.param(*case, marks=pytest.mark.xfail(strict=True))
+        for case in SAFE_URL_ENCODING_CASES
+    ),
+)
+def test_safe_url_string_encoding(
+    encoding: Optional[str], url: StrOrBytes, output: Union[str, Type[Exception]]
+) -> None:
+    _test_safe_url_string(url, encoding=encoding, output=output)
+
+
+KNOWN_SAFE_URL_STRING_URL_ISSUES = {
+    "",  # Invalid URL
+    *(case[0] for case in SAFE_URL_URL_INVALID_SCHEME_CASES),
+    # Userinfo characters that the URL living standard requires escaping (:;=)
+    # are not escaped.
+    "https://@\\example.com",  # Invalid URL
+    "https://\x80.example",  # Invalid domain name (non-visible character)
+    "https://%80.example",  # Invalid domain name (non-visible character)
+    "http://192.168.0.256",  # Invalid IP address
+    "http://192.168.0.0.0",  # Invalid IP address / domain name
+    "http://[2a01:5cc0:1:2::4]",  # https://github.com/scrapy/w3lib/issues/193
+    "https://example.com:",  # Removes the :
+    # Does not convert \ to /
+    "https://example.com\\a",
+    "https://example.com\\a\\b",
+    # Encodes \ and / after the first one in the path
+    "https://example.com/a/b",
+    "https://example.com/a\\b",
+    # Some path characters that RFC 2396 and RFC 3986 require escaping (%)
+    # are not escaped.
+    f"https://example.com/{PATH_TO_ENCODE}",
+    # ? is removed
+    "https://example.com?",
+    "https://example.com/?",
+    # Some query characters that RFC 2396 and RFC 3986 require escaping (%)
+    # are not escaped.
+    f"a://example.com?{QUERY_TO_ENCODE}",
+    # Some special query characters that RFC 2396 and RFC 3986 require escaping
+    # (%) are not escaped.
+    *(
+        f"{scheme}://example.com?{SPECIAL_QUERY_TO_ENCODE}"
+        for scheme in _SPECIAL_SCHEMES
+    ),
+    # ? and # are removed
+    "https://example.com#",
+    "https://example.com/#",
+    "https://example.com?#",
+    "https://example.com/?#",
+    # Some fragment characters that RFC 2396 and RFC 3986 require escaping
+    # (%) are not escaped.
+    f"a://example.com#{FRAGMENT_TO_ENCODE}",
+}
+if sys.version_info < (3, 11, 4):
+    KNOWN_SAFE_URL_STRING_URL_ISSUES.add("http://[2a01:5cc0:1:2:3:4]")  # Invalid IPv6
+
+
+@pytest.mark.parametrize(
+    "url,output",
+    tuple(
+        case
+        if case[0] not in KNOWN_SAFE_URL_STRING_URL_ISSUES
+        else pytest.param(*case, marks=pytest.mark.xfail(strict=True))
+        for case in SAFE_URL_URL_CASES
+    ),
+)
+def test_safe_url_string_url(
+    url: StrOrBytes, output: Union[str, Type[Exception]]
+) -> None:
+    _test_safe_url_string(url, output=output)
 
 
 TO_ASCII_TEST_DATA_FILE_PATH = Path(__file__).parent / "to-ascii-test-data.json"
@@ -562,11 +971,7 @@ def test_safe_url_string_encoding(encoding, url, output):
 
 KNOWN_SAFE_URL_STRING_URL_ISSUES = {
     "",  # Invalid URL
-    *(case[0] for case in SAFE_URL_URL_STRIP_CASES),
     *(case[0] for case in SAFE_URL_URL_INVALID_SCHEME_CASES),
-    # %3A gets decoded, going from a "a:" username to a "a" username with an
-    # empty password.
-    "https://a%3A@example.com",
     # Userinfo characters that the URL living standard requires escaping (:;=)
     # are not escaped.
     f"https://{USERNAME_TO_ENCODE}:{PASSWORD_TO_ENCODE}@example.com",
@@ -657,6 +1062,56 @@ class UrlTests(unittest.TestCase):
         safeurl = safe_url_string("http://www.example.com/£", path_encoding="latin-1")
         self.assertTrue(isinstance(safeurl, str))
         self.assertEqual(safeurl, "http://www.example.com/%A3")
+        self.assertTrue(isinstance(safe_url_string(b"http://example.com/"), str))
+
+    def test_safe_url_string_remove_ascii_tab_and_newlines(self):
+        self.assertEqual(
+            safe_url_string("http://example.com/test\n.html"),
+            "http://example.com/test.html",
+        )
+        self.assertEqual(
+            safe_url_string("http://example.com/test\t.html"),
+            "http://example.com/test.html",
+        )
+        self.assertEqual(
+            safe_url_string("http://example.com/test\r.html"),
+            "http://example.com/test.html",
+        )
+        self.assertEqual(
+            safe_url_string("http://example.com/test\r.html\n"),
+            "http://example.com/test.html",
+        )
+        self.assertEqual(
+            safe_url_string("http://example.com/test\r\n.html\t"),
+            "http://example.com/test.html",
+        )
+        self.assertEqual(
+            safe_url_string("http://example.com/test\a\n.html"),
+            "http://example.com/test%07.html",
+        )
+
+    def test_safe_url_string_quote_path(self):
+        safeurl = safe_url_string('http://google.com/"hello"', quote_path=True)
+        self.assertEqual(safeurl, "http://google.com/%22hello%22")
+
+        safeurl = safe_url_string('http://google.com/"hello"', quote_path=False)
+        self.assertEqual(safeurl, 'http://google.com/"hello"')
+
+        safeurl = safe_url_string('http://google.com/"hello"')
+        self.assertEqual(safeurl, "http://google.com/%22hello%22")
+
+    def test_safe_url_string_with_query(self):
+        safeurl = safe_url_string("http://www.example.com/£?unit=µ")
+        self.assertTrue(isinstance(safeurl, str))
+        self.assertEqual(safeurl, "http://www.example.com/%C2%A3?unit=%C2%B5")
+
+        safeurl = safe_url_string("http://www.example.com/£?unit=µ", encoding="utf-8")
+        self.assertTrue(isinstance(safeurl, str))
+        self.assertEqual(safeurl, "http://www.example.com/%C2%A3?unit=%C2%B5")
+
+        safeurl = safe_url_string("http://www.example.com/£?unit=µ", encoding="latin-1")
+        self.assertTrue(isinstance(safeurl, str))
+        self.assertEqual(safeurl, "http://www.example.com/%C2%A3?unit=%B5")
 
         safeurl = safe_url_string(
             "http://www.example.com/£?unit=µ", path_encoding="latin-1"

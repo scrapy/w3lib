@@ -2,7 +2,7 @@ from base64 import b64encode
 from typing import Any, List, MutableMapping, Optional, AnyStr, Sequence, Union, Mapping
 from w3lib.util import to_bytes, to_unicode
 
-HeadersDictInput = Mapping[bytes, Union[Any, Sequence]]
+HeadersDictInput = Mapping[bytes, Union[Any, Sequence[bytes]]]
 HeadersDictOutput = MutableMapping[bytes, List[bytes]]
 
 

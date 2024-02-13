@@ -15,27 +15,27 @@ jobs:
     strategy:
       matrix:
         include:
-        - python-version: "3.7"
+        - python-version: "3.8"
           env:
             TOXENV: docs
-        - python-version: "3.10"
+        - python-version: "3.12"
           env:
             TOXENV: flake8
-        - python-version: "3.10"
+        - python-version: "3.12"
           env:
             TOXENV: pylint
-        - python-version: "3.10"
+        - python-version: "3.12"
           env:
             TOXENV: security
-        - python-version: "3.10"
+        - python-version: "3.12"
           env:
             TOXENV: black
-        - python-version: "3.10"
+        - python-version: "3.12"
           env:
             TOXENV: typing
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4

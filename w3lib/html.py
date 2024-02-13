@@ -66,7 +66,7 @@ def replace_entities(
 
     """
 
-    def convert_entity(m: Match) -> str:
+    def convert_entity(m: Match[str]) -> str:
         groups = m.groupdict()
         number = None
         if groups.get("dec"):
@@ -91,7 +91,7 @@ def replace_entities(
                     return bytes((number,)).decode("cp1252")
                 else:
                     return chr(number)
-            except ValueError:
+            except (ValueError, OverflowError):
                 pass
 
         return "" if remove_illegal and groups.get("semicolon") else m.group(0)
@@ -205,7 +205,7 @@ def remove_tags(
         else:
             return tag not in keep
 
-    def remove_tag(m: Match) -> str:
+    def remove_tag(m: Match[str]) -> str:
         tag = m.group(1)
         return "" if will_remove(tag) else m.group(0)
 
@@ -278,7 +278,9 @@ def unquote_markup(
 
     """
 
-    def _get_fragments(txt: str, pattern: Pattern) -> Iterable[Union[str, Match]]:
+    def _get_fragments(
+        txt: str, pattern: Pattern[str]
+    ) -> Iterable[Union[str, Match[str]]]:
         offset = 0
         for match in pattern.finditer(txt):
             match_s, match_e = match.span(1)
@@ -326,8 +328,8 @@ def get_meta_refresh(
     baseurl: str = "",
     encoding: str = "utf-8",
     ignore_tags: Iterable[str] = ("script", "noscript"),
-) -> Tuple[Optional[float], Optional[str]]:
-    """Return  the http-equiv parameter of the HTML meta element from the given
+) -> Union[Tuple[None, None], Tuple[float, str]]:
+    """Return the http-equiv parameter of the HTML meta element from the given
     HTML text and return a tuple ``(interval, url)`` where interval is an integer
     containing the delay in seconds (or zero if not present) and url is a
     string with the absolute url to redirect.
