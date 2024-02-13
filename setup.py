@@ -1,5 +1,46 @@
-from setuptools import setup, find_packages
+import os
+from setuptools import setup, find_packages, Extension
 
+
+# https://cython.readthedocs.io/en/latest/src/userguide/source_files_and_compilation.html#distributing-cython-modules
+def no_cythonize(extensions, **_ignore):
+    for extension in extensions:
+        sources = []
+        for sfile in extension.sources:
+            path, ext = os.path.splitext(sfile)
+            if ext in (".pyx", ".py"):
+                if extension.language == "c++":
+                    ext = ".cpp"
+                else:
+                    ext = ".c"
+                sfile = path + ext
+            sources.append(sfile)
+        extension.sources[:] = sources
+    return extensions
+
+extensions = [
+    Extension(f"w3lib._{name}", [f"w3lib/_{name}.pyx"])
+    for name in (
+        "infra",
+        "rfc2396",
+        "rfc3986",
+        "rfc5892",
+        "types",
+        "url",
+        "util",
+        "utr46",
+    )
+]
+
+if bool(int(os.getenv("CYTHONIZE", 0))):
+    from Cython.Build import cythonize
+    compiler_directives = {
+        "language_level": 3,
+        "profile": bool(int(os.getenv("CYTHON_PROFILE", 0))),
+    }
+    extensions = cythonize(extensions, compiler_directives=compiler_directives, force=bool(int(os.getenv("CYTHON_FORCE", 0))))
+else:
+    extensions = no_cythonize(extensions)
 
 setup(
     name="w3lib",
@@ -22,6 +63,10 @@ setup(
     zip_safe=False,
     platforms=["Any"],
     python_requires=">=3.8",
+    install_requires=[
+        "idna",
+    ],
+    ext_modules=extensions,
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: BSD License",

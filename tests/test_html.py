@@ -1,5 +1,6 @@
 import unittest
 
+from w3lib._infra import _C0_CONTROL_OR_SPACE
 from w3lib.html import (
     get_base_url,
     get_meta_refresh,

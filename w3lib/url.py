@@ -7,9 +7,7 @@ import codecs
 import os
 import posixpath
 import re
-import string
 from typing import (
-    cast,
     Callable,
     Dict,
     List,
@@ -18,12 +16,15 @@ from typing import (
     Sequence,
     Tuple,
     Union,
+    cast,
 )
+from urllib.parse import _coerce_args  # type: ignore
 from urllib.parse import (
+    ParseResult,
     parse_qs,
     parse_qsl,
-    ParseResult,
     quote,
+    unquote,
     unquote_to_bytes,
     urldefrag,
     urlencode,
@@ -31,15 +32,23 @@ from urllib.parse import (
     urlsplit,
     urlunparse,
     urlunsplit,
-    unquote,
 )
-from urllib.parse import _coerce_args  # type: ignore
 from urllib.request import pathname2url, url2pathname
 
-from .util import to_unicode
 from ._infra import _ASCII_TAB_OR_NEWLINE, _C0_CONTROL_OR_SPACE
 from ._types import AnyUnicodeError, StrOrBytes
-from ._url import _SPECIAL_SCHEMES
+from ._url import (
+    _FRAGMENT_SAFEST_CHARS,
+    _PATH_SAFEST_CHARS,
+    _QUERY_SAFEST_CHARS,
+    _SPECIAL_QUERY_SAFEST_CHARS,
+    _SPECIAL_SCHEMES,
+    _USERINFO_SAFEST_CHARS,
+    _safe_url,
+    _safe_chars,
+    _path_safe_chars,
+)
+from .util import to_unicode
 
 
 # error handling function for bytes-to-Unicode decoding errors with URLs
@@ -50,32 +59,43 @@ def _quote_byte(error: UnicodeError) -> Tuple[str, int]:
 
 codecs.register_error("percentencode", _quote_byte)
 
-# constants from RFC 3986, Section 2.2 and 2.3
-RFC3986_GEN_DELIMS = b":/?#[]@"
-RFC3986_SUB_DELIMS = b"!$&'()*+,;="
-RFC3986_RESERVED = RFC3986_GEN_DELIMS + RFC3986_SUB_DELIMS
-RFC3986_UNRESERVED = (string.ascii_letters + string.digits + "-._~").encode("ascii")
-EXTRA_SAFE_CHARS = b"|"  # see https://github.com/scrapy/w3lib/pull/25
 
-RFC3986_USERINFO_SAFE_CHARS = RFC3986_UNRESERVED + RFC3986_SUB_DELIMS + b":"
-_safe_chars = RFC3986_RESERVED + RFC3986_UNRESERVED + EXTRA_SAFE_CHARS + b"%"
-_path_safe_chars = _safe_chars.replace(b"#", b"")
+def safe_url(
+    input: str,
+    *,
+    encoding: str = "utf-8",
+) -> str:
+    """Return a version of *url* that most web servers can parse.
 
-# Characters that are safe in all of:
-#
-# -   RFC 2396 + RFC 2732, as interpreted by Java 8’s java.net.URI class
-# -   RFC 3986
-# -   The URL living standard
-#
-# NOTE: % is currently excluded from these lists of characters, due to
-# limitations of the current safe_url_string implementation, but it should also
-# be escaped as %25 when it is not already being used as part of an escape
-# character.
-_USERINFO_SAFEST_CHARS = RFC3986_USERINFO_SAFE_CHARS.translate(None, delete=b":;=")
-_PATH_SAFEST_CHARS = _safe_chars.translate(None, delete=b"#[]|")
-_QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS
-_SPECIAL_QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS.translate(None, delete=b"'")
-_FRAGMENT_SAFEST_CHARS = _PATH_SAFEST_CHARS
+    If *url* already matches that criteria, it is returned unmodified.
+
+    URL parsing-then-serializing is handled according to the `URL Living
+    Standard`_, in line with modern web browsers. As the standard changes, so
+    will this function. The current implementation is based on commit a46cb91_
+    of the standard, from 2022-10-26.
+
+    .. _a46cb91: https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/
+    .. _URL Living Standard: https://url.spec.whatwg.org/
+
+    However, unsafe character criteria is stricter than that of the `URL Living
+    Standard`_, so that the returned URL is also valid by additional standards
+    that are known to be used by modern web servers:
+
+    -   `RFC 2396`_ + `RFC 2732`_ + `java.net.URI`_ deviations in Java 8
+
+        .. _RFC 2396: https://www.rfc-editor.org/rfc/rfc2396.txt
+        .. _RFC 2732: https://www.rfc-editor.org/rfc/rfc2732.txt
+        .. _java.net.URI: https://docs.oracle.com/javase/8/docs/api/java/net/URI.html
+
+    -   `RFC 3986`_
+
+        .. _RFC 3986: https://www.rfc-editor.org/rfc/rfc3986.txt
+
+    *encoding* should be the encoding of the HTML page from which *url* was
+    extracted. If *url* does not come from an HTML page, *encoding* should not
+    be passed, i.e. it should be left as UTF-8.
+    """
+    return _safe_url(input, encoding=encoding)
 
 
 _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE = {
