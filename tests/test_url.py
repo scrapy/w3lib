@@ -23,7 +23,6 @@ from w3lib._url import (
     _parse_url,
     _percent_encode_after_encoding,
     _serialize_host,
-    # _serialize_url,
     _serialize_url_path,
     _SPECIAL_QUERY_PERCENT_ENCODE_SET,
     _SPECIAL_SCHEMES,

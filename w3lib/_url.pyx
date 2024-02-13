@@ -529,20 +529,20 @@ class _URL:
     scheme: str
     username: str
     password: str
-    _password_token_seen: bool
+    _password_token_seen: bint
     _host_type: uchar
     hostname: str
     ipv4: cython.int
     ipv6: cython.int[8]
     port: cython.int
-    _port_token_seen: bool
+    _port_token_seen: bint
     path: List[str]
-    _path_token_seen: bool
+    _path_token_seen: bint
     opaque_path: str
     query: str
-    _query_token_seen: bool
+    _query_token_seen: bint
     fragment: str
-    _fragment_token_seen: bool
+    _fragment_token_seen: bint
 
     def __init__(self):
         self.scheme = ""
@@ -577,31 +577,31 @@ def _shorten_path(url: _URL) -> None:
 
 # https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#utf-8-percent-encode
 # Extended to handled cases where % is to be percent-encoded.
+@cfunc
 def _percent_encode_after_encoding(
     input: str,
     *,
     encoding: str,
     percent_encode_set: _PercentEncodeSet,
-    space_as_plus: bool = False,
 ) -> str:
     encoder = _get_encoder(encoding)
     output = ""
     # TODO: Use an alternative to xmlcharrefreplace that returns %26%23NNN%3B
     # instead of &#NNN;
     encode_output, _ = encoder(input, "xmlcharrefreplace")
-    for i in range(len(encode_output)):  # pylint: disable=consider-using-enumerate
+    encode_output_length: cython.int = len(encode_output)
+    for i in range(encode_output_length):  # pylint: disable=consider-using-enumerate
         byte = encode_output[i]
-        if space_as_plus and byte == 0x20:
-            output += "+"
-            continue
         isomorph = chr(byte)
         if isomorph not in percent_encode_set:
             output += isomorph
         elif isomorph == "%":
+            next: cython.int = i + 1
+            next_next: cython.int = i + 2
             if (
-                len(encode_output) <= i + 2
-                or chr(encode_output[i + 1]) not in _ASCII_HEX_DIGIT
-                or chr(encode_output[i + 2]) not in _ASCII_HEX_DIGIT
+                encode_output_length <= next_next
+                or chr(encode_output[next]) not in _ASCII_HEX_DIGIT
+                or chr(encode_output[next_next]) not in _ASCII_HEX_DIGIT
             ):
                 output += "%25"
             else:
@@ -787,7 +787,7 @@ def _parse_opaque_host(input: str) -> str:
 
 
 # https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#ipv4-number-parser
-def _parse_ipv4_number(input: str) -> Tuple[int, bool]:
+def _parse_ipv4_number(input: str) -> Tuple[int, bint]:
     if not input:
         raise ValueError
     validation_error = False
@@ -807,7 +807,7 @@ def _parse_ipv4_number(input: str) -> Tuple[int, bool]:
 
 
 # https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#ends-in-a-number-checker
-def _ends_in_number(input: str) -> bool:
+def _ends_in_number(input: str) -> bint:
     parts = input.split(".")
     if parts and parts[-1] == "":
         if len(parts) == 1:
@@ -847,7 +847,7 @@ def _parse_ipv4(input: str) -> int:
 
 
 # https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#concept-domain-to-ascii
-def _domain_to_ascii(domain: str, *, be_strict: bool = False) -> str:
+def _domain_to_ascii(domain: str, *, be_strict: bint = False) -> str:
     result = _utr46._to_ascii(
         domain,
         use_std3_ascii_rules=be_strict,
@@ -895,12 +895,12 @@ def _parse_host(
 
 
 # https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#windows-drive-letter
-def _is_windows_drive_letter(input: str) -> bool:
+def _is_windows_drive_letter(input: str) -> bint:
     return len(input) == 2 and input[0] in _ASCII_ALPHA and input[1] in ":|"
 
 
 # https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#start-with-a-windows-drive-letter
-def _starts_with_windows_drive_letter(input: str) -> bool:
+def _starts_with_windows_drive_letter(input: str) -> bint:
     input_length = len(input)
     return (
         input_length >= 2
@@ -910,7 +910,7 @@ def _starts_with_windows_drive_letter(input: str) -> bool:
 
 
 # https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#double-dot-path-segment
-def _is_double_dot_path_segment(input: str) -> bool:
+def _is_double_dot_path_segment(input: str) -> bint:
     return input in (
         "..",
         ".%2e",
@@ -925,7 +925,7 @@ def _is_double_dot_path_segment(input: str) -> bool:
 
 
 # https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#single-dot-path-segment
-def _is_single_dot_path_segment(input: str) -> bool:
+def _is_single_dot_path_segment(input: str) -> bint:
     return input in (
         ".",
         "%2e",
@@ -979,19 +979,18 @@ def _parse_url(
     encoding = _get_output_encoding(encoding)
 
     url = _URL()
-    url.path = []
     state = SCHEME_START
     buffer = ""
     at_sign_seen = inside_brackets = skip_authority_shortcut = False
-    pointer = 0
+    pointer: cython.int = 0
 
     input = _preprocess_url(input)
-    input_length = len(input)
+    input_length: cython.int = len(input)
 
     while True:
         reached_end: bint = pointer >= input_length
         if not reached_end:
-            c: str = input[pointer]
+            c = input[pointer]
 
         if state == SCHEME_START:
             if not reached_end and c in _ASCII_ALPHA:
@@ -1011,7 +1010,7 @@ def _parse_url(
                     state = FILE
                 elif url.scheme in _SPECIAL_SCHEMES:
                     state = SPECIAL_AUTHORITY_SLASHES
-                elif pointer + 1 < len(input) and input[pointer + 1] == "/":
+                elif pointer + 1 < input_length and input[pointer + 1] == "/":
                     state = PATH_OR_AUTHORITY
                     pointer += 1
                 else:
