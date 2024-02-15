@@ -1,11 +1,11 @@
 import codecs
 import unittest
-from typing import Optional, Union, List, Any
+from typing import Any, List, Optional, Union
 
 from w3lib.encoding import (
     html_body_declared_encoding,
-    http_content_type_encoding,
     html_to_unicode,
+    http_content_type_encoding,
     read_bom,
     resolve_encoding,
     to_unicode,

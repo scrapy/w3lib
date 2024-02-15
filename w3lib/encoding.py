@@ -1,13 +1,14 @@
 """
 Functions for handling encoding of web pages
 """
-import re
+
 import codecs
 import encodings
+import re
 from typing import Callable, Match, Optional, Tuple, Union, cast
 
-from w3lib._types import AnyUnicodeError, StrOrBytes
 import w3lib.util
+from w3lib._types import AnyUnicodeError, StrOrBytes
 
 _HEADER_ENCODING_RE = re.compile(r"charset=([\w-]+)", re.I)
 
