@@ -1,8 +1,8 @@
-import sys
 import os
+import sys
 import unittest
 from inspect import isclass
-from typing import Optional, Union, Type, Callable, Tuple, List
+from typing import Callable, List, Optional, Tuple, Type, Union
 from urllib.parse import urlparse
 
 import pytest
@@ -27,8 +27,8 @@ from w3lib.url import (
     path_to_file_uri,
     safe_download_url,
     safe_url_string,
-    url_query_parameter,
     url_query_cleaner,
+    url_query_parameter,
 )
 
 # Test cases for URL-to-safe-URL conversions with a URL and an encoding as
@@ -364,9 +364,11 @@ KNOWN_SAFE_URL_STRING_ENCODING_ISSUES = {
 @pytest.mark.parametrize(
     "encoding,url,output",
     tuple(
-        case
-        if case[:2] not in KNOWN_SAFE_URL_STRING_ENCODING_ISSUES
-        else pytest.param(*case, marks=pytest.mark.xfail(strict=True))
+        (
+            case
+            if case[:2] not in KNOWN_SAFE_URL_STRING_ENCODING_ISSUES
+            else pytest.param(*case, marks=pytest.mark.xfail(strict=True))
+        )
         for case in SAFE_URL_ENCODING_CASES
     ),
 )
@@ -425,9 +427,11 @@ if sys.version_info < (3, 11, 4):
 @pytest.mark.parametrize(
     "url,output",
     tuple(
-        case
-        if case[0] not in KNOWN_SAFE_URL_STRING_URL_ISSUES
-        else pytest.param(*case, marks=pytest.mark.xfail(strict=True))
+        (
+            case
+            if case[0] not in KNOWN_SAFE_URL_STRING_URL_ISSUES
+            else pytest.param(*case, marks=pytest.mark.xfail(strict=True))
+        )
         for case in SAFE_URL_URL_CASES
     ),
 )
@@ -713,7 +717,8 @@ class UrlTests(unittest.TestCase):
 
     def test_safe_url_string_encode_idna_domain_with_port(self):
         self.assertEqual(
-            safe_url_string("http://新华网.中国:80"), "http://xn--xkrr14bows.xn--fiqs8s:80"
+            safe_url_string("http://新华网.中国:80"),
+            "http://xn--xkrr14bows.xn--fiqs8s:80",
         )
 
     def test_safe_url_string_encode_idna_domain_with_username_password_and_port_number(

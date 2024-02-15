@@ -1,5 +1,6 @@
 import unittest
 from collections import OrderedDict
+
 from w3lib.http import (
     HeadersDictInput,
     basic_auth_header,

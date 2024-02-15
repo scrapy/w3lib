@@ -20,16 +20,10 @@ jobs:
             TOXENV: docs
         - python-version: "3.12"
           env:
-            TOXENV: flake8
+            TOXENV: pre-commit
         - python-version: "3.12"
           env:
             TOXENV: pylint
-        - python-version: "3.12"
-          env:
-            TOXENV: security
-        - python-version: "3.12"
-          env:
-            TOXENV: black
         - python-version: "3.12"
           env:
             TOXENV: typing

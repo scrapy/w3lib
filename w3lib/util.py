@@ -1,5 +1,5 @@
-from warnings import warn
 from typing import Optional
+from warnings import warn
 
 from w3lib._types import StrOrBytes
 
