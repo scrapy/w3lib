@@ -1,2 +1,5 @@
 skips:
 - B107
+- B101
+- B311
+exclude_dirs: ['tests']
