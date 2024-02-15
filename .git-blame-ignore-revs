@@ -1,1 +1,3 @@
 # This is a list of commits that git blame should ignore
+# running pre-commit on all the code
+47be6dd35faf78f06b6183ea9dad6b5f78f5c756
