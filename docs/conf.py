@@ -252,8 +252,8 @@ texinfo_documents = [
 intersphinx_mapping = {
     "pytest": ("https://docs.pytest.org/en/latest", None),
     "python": ("https://docs.python.org/3", None),
-    "scrapy": ("https://scrapy.readthedocs.io/en/latest", None),
-    "tox": ("https://tox.readthedocs.io/en/latest", None),
+    "scrapy": ("https://docs.scrapy.org/en/latest", None),
+    "tox": ("https://tox.wiki/en/latest", None),
 }
 
 
