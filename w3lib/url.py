@@ -19,6 +19,7 @@ from typing import (
     Tuple,
     Union,
     cast,
+    overload,
 )
 from urllib.parse import _coerce_args  # type: ignore
 from urllib.parse import (
@@ -219,6 +220,24 @@ def safe_download_url(
 
 def is_url(text: str) -> bool:
     return text.partition("://")[0] in ("file", "http", "https")
+
+
+@overload
+def url_query_parameter(
+    url: StrOrBytes,
+    parameter: str,
+    default: None = None,
+    keep_blank_values: Union[bool, int] = 0,
+) -> Optional[str]: ...
+
+
+@overload
+def url_query_parameter(
+    url: StrOrBytes,
+    parameter: str,
+    default: str,
+    keep_blank_values: Union[bool, int] = 0,
+) -> str: ...
 
 
 def url_query_parameter(

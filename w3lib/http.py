@@ -1,10 +1,28 @@
 from base64 import b64encode
-from typing import Any, AnyStr, List, Mapping, MutableMapping, Optional, Sequence, Union
+from typing import (
+    Any,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Sequence,
+    Union,
+    overload,
+)
 
+from w3lib._types import StrOrBytes
 from w3lib.util import to_bytes, to_unicode
 
 HeadersDictInput = Mapping[bytes, Union[Any, Sequence[bytes]]]
 HeadersDictOutput = MutableMapping[bytes, List[bytes]]
+
+
+@overload
+def headers_raw_to_dict(headers_raw: bytes) -> HeadersDictOutput: ...
+
+
+@overload
+def headers_raw_to_dict(headers_raw: None) -> None: ...
 
 
 def headers_raw_to_dict(headers_raw: Optional[bytes]) -> Optional[HeadersDictOutput]:
@@ -52,6 +70,14 @@ def headers_raw_to_dict(headers_raw: Optional[bytes]) -> Optional[HeadersDictOut
     return result_dict
 
 
+@overload
+def headers_dict_to_raw(headers_dict: HeadersDictInput) -> bytes: ...
+
+
+@overload
+def headers_dict_to_raw(headers_dict: None) -> None: ...
+
+
 def headers_dict_to_raw(headers_dict: Optional[HeadersDictInput]) -> Optional[bytes]:
     r"""
     Returns a raw HTTP headers representation of headers
@@ -85,7 +111,7 @@ def headers_dict_to_raw(headers_dict: Optional[HeadersDictInput]) -> Optional[by
 
 
 def basic_auth_header(
-    username: AnyStr, password: AnyStr, encoding: str = "ISO-8859-1"
+    username: StrOrBytes, password: StrOrBytes, encoding: str = "ISO-8859-1"
 ) -> bytes:
     """
     Return an `Authorization` header field value for `HTTP Basic Access Authentication (RFC 2617)`_
