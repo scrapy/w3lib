@@ -27,6 +27,9 @@ jobs:
         - python-version: "3.12"
           env:
             TOXENV: typing
+        - python-version: "3.12"
+          env:
+            TOXENV: twinecheck
 
     steps:
     - uses: actions/checkout@v4
