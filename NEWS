@@ -1,6 +1,26 @@
 w3lib release notes
 ===================
 
+2.2.0 (YYYY-MM-DD)
+------------------
+
+- Dropped Python 3.7 support (#214).
+
+- Added Python 3.12 and PyPy 3.10 support (#218).
+
+- Added the description to the package metadata (#227).
+
+- Improved type hints (#226).
+
+- Added ``.readthedocs.yml`` (#219).
+
+- Updated the intersphinx URLs (#224).
+
+- Added the ``pre-commit`` configuration, code reformatted with ``black``
+  (#220).
+
+- Updated CI configuration (#217, #227).
+
 2.1.2 (2023-08-03)
 ------------------
 
