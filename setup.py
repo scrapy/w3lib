@@ -5,7 +5,7 @@ with open("README.rst", encoding="utf-8") as f:
 
 setup(
     name="w3lib",
-    version="2.1.2",
+    version="2.2.0",
     license="BSD",
     description="Library of web-related functions",
     long_description=long_description,
