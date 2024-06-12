@@ -1,7 +1,7 @@
 w3lib release notes
 ===================
 
-2.2.1 (2024-06-DD)
+2.2.1 (2024-06-12)
 ------------------
 
 - :func:`~w3lib.url.canonicalize_url` no longer applies lowercase to the
