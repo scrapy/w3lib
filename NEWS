@@ -1,6 +1,12 @@
 w3lib release notes
 ===================
 
+2.2.1 (2024-06-12)
+------------------
+
+- :func:`~w3lib.url.canonicalize_url` no longer applies lowercase to the
+  userinfo URL component. (#229, #230)
+
 2.2.0 (2024-06-05)
 ------------------
 
