@@ -1384,6 +1384,11 @@ class CanonicalizeUrlTest(unittest.TestCase):
             canonicalize_url("http://www.EXAMPLE.com/"), "http://www.example.com/"
         )
 
+    def test_userinfo_is_case_sensitive(self):
+        self.assertEqual(
+            canonicalize_url("sftp://UsEr:PaSsWoRd@www.EXAMPLE.com/"), "sftp://UsEr:PaSsWoRd@www.example.com/"
+        )
+
     def test_canonicalize_idns(self):
         self.assertEqual(
             canonicalize_url("http://www.bücher.de?q=bücher"),

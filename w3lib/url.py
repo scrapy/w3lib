@@ -654,9 +654,14 @@ def canonicalize_url(
 
     fragment = "" if not keep_fragments else fragment
 
+    # Apply lowercase to the domain, but not to the userinfo.
+    netloc_parts = netloc.split("@")
+    netloc_parts[-1] = netloc_parts[-1].lower().rstrip(":")
+    netloc = "@".join(netloc_parts)
+
     # every part should be safe already
     return urlunparse(
-        (scheme, netloc.lower().rstrip(":"), path, params, query, fragment)
+        (scheme, netloc, path, params, query, fragment)
     )
 
 
