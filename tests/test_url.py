@@ -1386,7 +1386,8 @@ class CanonicalizeUrlTest(unittest.TestCase):
 
     def test_userinfo_is_case_sensitive(self):
         self.assertEqual(
-            canonicalize_url("sftp://UsEr:PaSsWoRd@www.EXAMPLE.com/"), "sftp://UsEr:PaSsWoRd@www.example.com/"
+            canonicalize_url("sftp://UsEr:PaSsWoRd@www.EXAMPLE.com/"),
+            "sftp://UsEr:PaSsWoRd@www.example.com/",
         )
 
     def test_canonicalize_idns(self):

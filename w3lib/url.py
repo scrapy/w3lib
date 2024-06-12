@@ -660,9 +660,7 @@ def canonicalize_url(
     netloc = "@".join(netloc_parts)
 
     # every part should be safe already
-    return urlunparse(
-        (scheme, netloc, path, params, query, fragment)
-    )
+    return urlunparse((scheme, netloc, path, params, query, fragment))
 
 
 def _unquotepath(path: str) -> bytes:
