@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import os
 import sys
 import unittest
 from inspect import isclass
-from typing import Callable, List, Optional, Tuple, Type, Union
+from typing import Callable
 from urllib.parse import urlparse
 
 import pytest
@@ -35,9 +37,7 @@ from w3lib.url import (
 # input parameters.
 #
 # (encoding, input URL, output URL or exception)
-SAFE_URL_ENCODING_CASES: List[
-    Tuple[Optional[str], StrOrBytes, Union[str, Type[Exception]]]
-] = [
+SAFE_URL_ENCODING_CASES: list[tuple[str | None, StrOrBytes, str | type[Exception]]] = [
     (None, "", ValueError),
     (None, "https://example.com", "https://example.com"),
     (None, "https://example.com/©", "https://example.com/%C2%A9"),
@@ -319,8 +319,8 @@ SAFE_URL_URL_CASES = (
 def _test_safe_url_func(
     url: StrOrBytes,
     *,
-    encoding: Optional[str] = None,
-    output: Union[str, Type[Exception]],
+    encoding: str | None = None,
+    output: str | type[Exception],
     func: Callable[..., str],
 ) -> None:
     kwargs = {}
@@ -338,8 +338,8 @@ def _test_safe_url_func(
 def _test_safe_url_string(
     url: StrOrBytes,
     *,
-    encoding: Optional[str] = None,
-    output: Union[str, Type[Exception]],
+    encoding: str | None = None,
+    output: str | type[Exception],
 ) -> None:
     return _test_safe_url_func(
         url,
@@ -373,7 +373,7 @@ KNOWN_SAFE_URL_STRING_ENCODING_ISSUES = {
     ),
 )
 def test_safe_url_string_encoding(
-    encoding: Optional[str], url: StrOrBytes, output: Union[str, Type[Exception]]
+    encoding: str | None, url: StrOrBytes, output: str | type[Exception]
 ) -> None:
     _test_safe_url_string(url, encoding=encoding, output=output)
 
@@ -439,9 +439,7 @@ if (
         for case in SAFE_URL_URL_CASES
     ),
 )
-def test_safe_url_string_url(
-    url: StrOrBytes, output: Union[str, Type[Exception]]
-) -> None:
+def test_safe_url_string_url(url: StrOrBytes, output: str | type[Exception]) -> None:
     _test_safe_url_string(url, output=output)
 
 

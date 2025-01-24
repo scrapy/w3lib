@@ -2,9 +2,12 @@
 Functions for dealing with markup text
 """
 
+from __future__ import annotations
+
 import re
+from collections.abc import Iterable
 from html.entities import name2codepoint
-from typing import Iterable, Match, Optional, Pattern, Tuple, Union
+from re import Match, Pattern
 from urllib.parse import urljoin
 
 from w3lib._types import StrOrBytes
@@ -99,13 +102,11 @@ def replace_entities(
     return _ent_re.sub(convert_entity, to_unicode(text, encoding))
 
 
-def has_entities(text: StrOrBytes, encoding: Optional[str] = None) -> bool:
+def has_entities(text: StrOrBytes, encoding: str | None = None) -> bool:
     return bool(_ent_re.search(to_unicode(text, encoding)))
 
 
-def replace_tags(
-    text: StrOrBytes, token: str = "", encoding: Optional[str] = None
-) -> str:
+def replace_tags(text: StrOrBytes, token: str = "", encoding: str | None = None) -> str:
     """Replace all markup tags found in the given `text` by the given token.
     By default `token` is an empty string so it just removes all tags.
 
@@ -131,7 +132,7 @@ def replace_tags(
 _REMOVECOMMENTS_RE = re.compile("<!--.*?(?:-->|$)", re.DOTALL)
 
 
-def remove_comments(text: StrOrBytes, encoding: Optional[str] = None) -> str:
+def remove_comments(text: StrOrBytes, encoding: str | None = None) -> str:
     """Remove HTML Comments.
 
     >>> import w3lib.html
@@ -149,7 +150,7 @@ def remove_tags(
     text: StrOrBytes,
     which_ones: Iterable[str] = (),
     keep: Iterable[str] = (),
-    encoding: Optional[str] = None,
+    encoding: str | None = None,
 ) -> str:
     """Remove HTML Tags only.
 
@@ -218,7 +219,7 @@ def remove_tags(
 
 
 def remove_tags_with_content(
-    text: StrOrBytes, which_ones: Iterable[str] = (), encoding: Optional[str] = None
+    text: StrOrBytes, which_ones: Iterable[str] = (), encoding: str | None = None
 ) -> str:
     """Remove tags and their content.
 
@@ -245,7 +246,7 @@ def replace_escape_chars(
     text: StrOrBytes,
     which_ones: Iterable[str] = ("\n", "\t", "\r"),
     replace_by: StrOrBytes = "",
-    encoding: Optional[str] = None,
+    encoding: str | None = None,
 ) -> str:
     """Remove escape characters.
 
@@ -267,7 +268,7 @@ def unquote_markup(
     text: StrOrBytes,
     keep: Iterable[str] = (),
     remove_illegal: bool = True,
-    encoding: Optional[str] = None,
+    encoding: str | None = None,
 ) -> str:
     """
     This function receives markup as a text (always a unicode string or
@@ -280,9 +281,7 @@ def unquote_markup(
 
     """
 
-    def _get_fragments(
-        txt: str, pattern: Pattern[str]
-    ) -> Iterable[Union[str, Match[str]]]:
+    def _get_fragments(txt: str, pattern: Pattern[str]) -> Iterable[str | Match[str]]:
         offset = 0
         for match in pattern.finditer(txt):
             match_s, match_e = match.span(1)
@@ -330,7 +329,7 @@ def get_meta_refresh(
     baseurl: str = "",
     encoding: str = "utf-8",
     ignore_tags: Iterable[str] = ("script", "noscript"),
-) -> Union[Tuple[None, None], Tuple[float, str]]:
+) -> tuple[None, None] | tuple[float, str]:
     """Return the http-equiv parameter of the HTML meta element from the given
     HTML text and return a tuple ``(interval, url)`` where interval is an integer
     containing the delay in seconds (or zero if not present) and url is a

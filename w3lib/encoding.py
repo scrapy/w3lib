@@ -2,10 +2,13 @@
 Functions for handling encoding of web pages
 """
 
+from __future__ import annotations
+
 import codecs
 import encodings
 import re
-from typing import Callable, Match, Optional, Tuple, Union, cast
+from re import Match
+from typing import Callable, cast
 
 import w3lib.util
 from w3lib._types import AnyUnicodeError, StrOrBytes
@@ -13,7 +16,7 @@ from w3lib._types import AnyUnicodeError, StrOrBytes
 _HEADER_ENCODING_RE = re.compile(r"charset=([\w-]+)", re.I)
 
 
-def http_content_type_encoding(content_type: Optional[str]) -> Optional[str]:
+def http_content_type_encoding(content_type: str | None) -> str | None:
     """Extract the encoding in the content-type header
 
     >>> import w3lib.encoding
@@ -59,7 +62,7 @@ _BODY_ENCODING_BYTES_RE = re.compile(
 )
 
 
-def html_body_declared_encoding(html_body_str: StrOrBytes) -> Optional[str]:
+def html_body_declared_encoding(html_body_str: StrOrBytes) -> str | None:
     '''Return the encoding specified in meta tags in the html body,
     or ``None`` if no suitable encoding was found
 
@@ -83,7 +86,7 @@ def html_body_declared_encoding(html_body_str: StrOrBytes) -> Optional[str]:
 
     # html5 suggests the first 1024 bytes are sufficient, we allow for more
     chunk = html_body_str[:4096]
-    match: Union[Optional[Match[bytes]], Optional[Match[str]]]
+    match: Match[bytes] | Match[str] | None
     if isinstance(chunk, bytes):
         match = _BODY_ENCODING_BYTES_RE.search(chunk)
     else:
@@ -139,7 +142,7 @@ def _c18n_encoding(encoding: str) -> str:
     return cast(str, encodings.aliases.aliases.get(normed, normed))
 
 
-def resolve_encoding(encoding_alias: str) -> Optional[str]:
+def resolve_encoding(encoding_alias: str) -> str | None:
     """Return the encoding that `encoding_alias` maps to, or ``None``
     if the encoding cannot be interpreted
 
@@ -169,7 +172,7 @@ _BOM_TABLE = [
 _FIRST_CHARS = {c[0] for (c, _) in _BOM_TABLE}
 
 
-def read_bom(data: bytes) -> Union[Tuple[None, None], Tuple[str, bytes]]:
+def read_bom(data: bytes) -> tuple[None, None] | tuple[str, bytes]:
     r"""Read the byte order mark in the text, if present, and
     return the encoding represented by the BOM and the BOM.
 
@@ -215,11 +218,11 @@ def to_unicode(data_str: bytes, encoding: str) -> str:
 
 
 def html_to_unicode(
-    content_type_header: Optional[str],
+    content_type_header: str | None,
     html_body_str: bytes,
     default_encoding: str = "utf8",
-    auto_detect_fun: Optional[Callable[[bytes], Optional[str]]] = None,
-) -> Tuple[str, str]:
+    auto_detect_fun: Callable[[bytes], str | None] | None = None,
+) -> tuple[str, str]:
     r'''Convert raw html bytes to unicode
 
     This attempts to make a reasonable guess at the content encoding of the
