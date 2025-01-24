@@ -879,6 +879,7 @@ class UrlTests(unittest.TestCase):
             aff_url2,
             "http://www.argos.co.uk/webapp/wcs/stores/servlet/ArgosCreateReferral?storeId=10001&langId=-1&referrer=COJUN&params=adref%3DGarden and DIY->Garden furniture->Garden table and chair sets&referredURL=http://www.argos.co.uk/webapp/wcs/stores/servlet/ProductDisplay%3FstoreId%3D10001%26catalogId%3D1500001501%26productId%3D1500357199%26langId%3D-1",
         )
+        assert aff_url2 is not None
         prod_url = url_query_parameter(aff_url2, "referredURL")
         self.assertEqual(
             prod_url,
@@ -891,6 +892,7 @@ class UrlTests(unittest.TestCase):
             aff_url2,
             "http://www.argos.co.uk/webapp/wcs/stores/servlet/ArgosCreateReferral?storeId=10001&langId=-1&referrer=COJUN&params=adref%3DGarden and DIY->Garden furniture->Children&#39;s garden furniture&referredURL=http://www.argos.co.uk/webapp/wcs/stores/servlet/ProductDisplay%3FstoreId%3D10001%26catalogId%3D1500001501%26productId%3D1500357023%26langId%3D-1",
         )
+        assert aff_url2 is not None
         prod_url = url_query_parameter(aff_url2, "referredURL")
         # fails, prod_url is None now
         self.assertEqual(
