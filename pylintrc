@@ -2,6 +2,7 @@
 persistent=no
 
 [MESSAGES CONTROL]
+enable=useless-suppression
 disable=bad-continuation,
         bad-whitespace,
         consider-using-in,

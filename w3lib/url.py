@@ -433,7 +433,6 @@ def any_to_uri(uri_or_path: str) -> str:
 _char = set(map(chr, range(127)))
 
 # RFC 2045 token.
-# pylint: disable=consider-using-f-string
 _token = r"[{}]+".format(
     re.escape(
         "".join(
@@ -449,7 +448,6 @@ _token = r"[{}]+".format(
 )
 
 # RFC 822 quoted-string, without surrounding quotation marks.
-# pylint: disable=consider-using-f-string
 _quoted_string = r"(?:[{}]|(?:\\[{}]))*".format(
     re.escape("".join(_char - {'"', "\\", "\r"})), re.escape("".join(_char))
 )
