@@ -291,7 +291,7 @@ def html_to_unicode(
 
     enc = http_content_type_encoding(content_type_header)
     if enc is not None:
-        if enc == "utf-16" or enc == "utf-32":
+        if enc in {"utf-16", "utf-32"}:
             enc += "-be"
         return enc, to_unicode(html_body_str, enc)
     enc = html_body_declared_encoding(html_body_str)

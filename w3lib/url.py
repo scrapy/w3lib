@@ -271,8 +271,7 @@ def url_query_parameter(
     )
     if parameter in queryparams:
         return queryparams[parameter][0]
-    else:
-        return default
+    return default
 
 
 def url_query_cleaner(
@@ -329,13 +328,12 @@ def url_query_cleaner(
         k, _, _ = ksv.partition(kvsep)
         if unique and k in seen:
             continue
-        elif remove and k in parameterlist:
+        if remove and k in parameterlist:
             continue
-        elif not remove and k not in parameterlist:
+        if not remove and k not in parameterlist:
             continue
-        else:
-            querylist.append(ksv)
-            seen.add(k)
+        querylist.append(ksv)
+        seen.add(k)
     url = "?".join([base, sep.join(querylist)]) if querylist else base
     if keep_fragments and fragment:
         url += "#" + fragment

@@ -856,6 +856,7 @@ class UrlTests(unittest.TestCase):
             url_query_parameter("product.html?id=", "id", keep_blank_values=1), ""
         )
 
+    @pytest.mark.xfail
     def test_url_query_parameter_2(self):
         """
         This problem was seen several times in the feeds. Sometime affiliate URLs contains
@@ -871,7 +872,6 @@ class UrlTests(unittest.TestCase):
         and the URL extraction will fail, current workaround was made in the spider,
         just a replace for &#39; to %27
         """
-        return  # FIXME: this test should pass but currently doesnt
         # correct case
         aff_url1 = "http://www.anrdoezrs.net/click-2590032-10294381?url=http%3A%2F%2Fwww.argos.co.uk%2Fwebapp%2Fwcs%2Fstores%2Fservlet%2FArgosCreateReferral%3FstoreId%3D10001%26langId%3D-1%26referrer%3DCOJUN%26params%3Dadref%253DGarden+and+DIY-%3EGarden+furniture-%3EGarden+table+and+chair+sets%26referredURL%3Dhttp%3A%2F%2Fwww.argos.co.uk%2Fwebapp%2Fwcs%2Fstores%2Fservlet%2FProductDisplay%253FstoreId%253D10001%2526catalogId%253D1500001501%2526productId%253D1500357199%2526langId%253D-1"
         aff_url2 = url_query_parameter(aff_url1, "url")
@@ -1572,7 +1572,7 @@ class DataURITests(unittest.TestCase):
         self.assertEqual(result.data, b"\xce\x8e\xce\xa3\xce\x8e")
 
     def test_base64(self):
-        result = parse_data_uri("data:text/plain;base64," "SGVsbG8sIHdvcmxkLg%3D%3D")
+        result = parse_data_uri("data:text/plain;base64,SGVsbG8sIHdvcmxkLg%3D%3D")
         self.assertEqual(result.media_type, "text/plain")
         self.assertEqual(result.data, b"Hello, world.")
 
@@ -1585,7 +1585,7 @@ class DataURITests(unittest.TestCase):
         self.assertEqual(result.data, b"Hello, world.")
 
         result = parse_data_uri(
-            "data:text/plain;base64,SGVsb G8sIH\n  " "dvcm   xk Lg%3D\n%3D"
+            "data:text/plain;base64,SGVsb G8sIH\n  dvcm   xk Lg%3D\n%3D"
         )
         self.assertEqual(result.media_type, "text/plain")
         self.assertEqual(result.data, b"Hello, world.")

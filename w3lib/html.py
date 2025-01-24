@@ -80,10 +80,9 @@ def replace_entities(
             entity_name = groups["named"]
             if entity_name.lower() in keep:
                 return m.group(0)
-            else:
-                number = name2codepoint.get(entity_name) or name2codepoint.get(
-                    entity_name.lower()
-                )
+            number = name2codepoint.get(entity_name) or name2codepoint.get(
+                entity_name.lower()
+            )
         if number is not None:
             # Numeric character references in the 80-9F range are typically
             # interpreted by browsers as representing the characters mapped
@@ -92,8 +91,7 @@ def replace_entities(
             try:
                 if 0x80 <= number <= 0x9F:
                     return bytes((number,)).decode("cp1252")
-                else:
-                    return chr(number)
+                return chr(number)
             except (ValueError, OverflowError):
                 pass
 
@@ -205,8 +203,7 @@ def remove_tags(
         tag = tag.lower()
         if which_ones:
             return tag in which_ones
-        else:
-            return tag not in keep
+        return tag not in keep
 
     def remove_tag(m: Match[str]) -> str:
         tag = m.group(1)
@@ -315,13 +312,11 @@ def get_base_url(
     """
 
     utext: str = remove_comments(text, encoding=encoding)
-    m = _baseurl_re.search(utext)
-    if m:
+    if m := _baseurl_re.search(utext):
         return urljoin(
             safe_url_string(baseurl), safe_url_string(m.group(1), encoding=encoding)
         )
-    else:
-        return safe_url_string(baseurl)
+    return safe_url_string(baseurl)
 
 
 def get_meta_refresh(
@@ -346,14 +341,12 @@ def get_meta_refresh(
         raise
     utext = remove_tags_with_content(utext, ignore_tags)
     utext = remove_comments(replace_entities(utext))
-    m = _meta_refresh_re.search(utext) or _meta_refresh_re2.search(utext)
-    if m:
+    if m := _meta_refresh_re.search(utext) or _meta_refresh_re2.search(utext):
         interval = float(m.group("int"))
         url = safe_url_string(m.group("url").strip(" \"'"), encoding)
         url = urljoin(baseurl, url)
         return interval, url
-    else:
-        return None, None
+    return None, None
 
 
 def strip_html5_whitespace(text: str) -> str:
