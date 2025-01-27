@@ -1,40 +1,6 @@
 from __future__ import annotations
 
-from warnings import warn
-
 from w3lib._types import StrOrBytes
-
-
-def str_to_unicode(
-    text: StrOrBytes, encoding: str | None = None, errors: str = "strict"
-) -> str:
-    warn(
-        "The w3lib.utils.str_to_unicode function is deprecated and "
-        "will be removed in a future release.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    if encoding is None:
-        encoding = "utf-8"
-    if isinstance(text, bytes):
-        return text.decode(encoding, errors)
-    return text
-
-
-def unicode_to_str(
-    text: StrOrBytes, encoding: str | None = None, errors: str = "strict"
-) -> bytes:
-    warn(
-        "The w3lib.utils.unicode_to_str function is deprecated and "
-        "will be removed in a future release.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    if encoding is None:
-        encoding = "utf-8"
-    if isinstance(text, str):
-        return text.encode(encoding, errors)
-    return text
 
 
 def to_unicode(
@@ -67,17 +33,3 @@ def to_bytes(
     if encoding is None:
         encoding = "utf-8"
     return text.encode(encoding, errors)
-
-
-def to_native_str(
-    text: StrOrBytes, encoding: str | None = None, errors: str = "strict"
-) -> str:
-    """Return str representation of `text`"""
-    warn(
-        "The w3lib.utils.to_native_str function is deprecated and "
-        "will be removed in a future release. Please use "
-        "w3lib.utils.to_unicode instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return to_unicode(text, encoding, errors)
