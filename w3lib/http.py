@@ -1,20 +1,14 @@
+from __future__ import annotations
+
 from base64 import b64encode
-from typing import (
-    Any,
-    List,
-    Mapping,
-    MutableMapping,
-    Optional,
-    Sequence,
-    Union,
-    overload,
-)
+from collections.abc import Mapping, MutableMapping, Sequence
+from typing import Any, Union, overload
 
 from w3lib._types import StrOrBytes
 from w3lib.util import to_bytes, to_unicode
 
 HeadersDictInput = Mapping[bytes, Union[Any, Sequence[bytes]]]
-HeadersDictOutput = MutableMapping[bytes, List[bytes]]
+HeadersDictOutput = MutableMapping[bytes, list[bytes]]
 
 
 @overload
@@ -25,7 +19,7 @@ def headers_raw_to_dict(headers_raw: bytes) -> HeadersDictOutput: ...
 def headers_raw_to_dict(headers_raw: None) -> None: ...
 
 
-def headers_raw_to_dict(headers_raw: Optional[bytes]) -> Optional[HeadersDictOutput]:
+def headers_raw_to_dict(headers_raw: bytes | None) -> HeadersDictOutput | None:
     r"""
     Convert raw headers (single multi-line bytestring)
     to a dictionary.
@@ -78,7 +72,7 @@ def headers_dict_to_raw(headers_dict: HeadersDictInput) -> bytes: ...
 def headers_dict_to_raw(headers_dict: None) -> None: ...
 
 
-def headers_dict_to_raw(headers_dict: Optional[HeadersDictInput]) -> Optional[bytes]:
+def headers_dict_to_raw(headers_dict: HeadersDictInput | None) -> bytes | None:
     r"""
     Returns a raw HTTP headers representation of headers
 

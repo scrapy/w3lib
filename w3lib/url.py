@@ -3,24 +3,16 @@ This module contains general purpose URL functions not found in the standard
 library.
 """
 
+from __future__ import annotations
+
 import base64
 import codecs
 import os
 import posixpath
 import re
 import string
-from typing import (
-    Callable,
-    Dict,
-    List,
-    NamedTuple,
-    Optional,
-    Sequence,
-    Tuple,
-    Union,
-    cast,
-    overload,
-)
+from collections.abc import Sequence
+from typing import Callable, NamedTuple, cast, overload
 from urllib.parse import _coerce_args  # type: ignore
 from urllib.parse import (
     ParseResult,
@@ -45,7 +37,7 @@ from .util import to_unicode
 
 
 # error handling function for bytes-to-Unicode decoding errors with URLs
-def _quote_byte(error: UnicodeError) -> Tuple[str, int]:
+def _quote_byte(error: UnicodeError) -> tuple[str, int]:
     error = cast(AnyUnicodeError, error)
     return (to_unicode(quote(error.object[error.start : error.end])), error.end)
 
@@ -227,8 +219,8 @@ def url_query_parameter(
     url: StrOrBytes,
     parameter: str,
     default: None = None,
-    keep_blank_values: Union[bool, int] = 0,
-) -> Optional[str]: ...
+    keep_blank_values: bool | int = 0,
+) -> str | None: ...
 
 
 @overload
@@ -236,16 +228,16 @@ def url_query_parameter(
     url: StrOrBytes,
     parameter: str,
     default: str,
-    keep_blank_values: Union[bool, int] = 0,
+    keep_blank_values: bool | int = 0,
 ) -> str: ...
 
 
 def url_query_parameter(
     url: StrOrBytes,
     parameter: str,
-    default: Optional[str] = None,
-    keep_blank_values: Union[bool, int] = 0,
-) -> Optional[str]:
+    default: str | None = None,
+    keep_blank_values: bool | int = 0,
+) -> str | None:
     """Return the value of a url parameter, given the url and parameter name
 
     General case:
@@ -279,13 +271,12 @@ def url_query_parameter(
     )
     if parameter in queryparams:
         return queryparams[parameter][0]
-    else:
-        return default
+    return default
 
 
 def url_query_cleaner(
     url: StrOrBytes,
-    parameterlist: Union[StrOrBytes, Sequence[StrOrBytes]] = (),
+    parameterlist: StrOrBytes | Sequence[StrOrBytes] = (),
     sep: str = "&",
     kvsep: str = "=",
     remove: bool = False,
@@ -337,20 +328,19 @@ def url_query_cleaner(
         k, _, _ = ksv.partition(kvsep)
         if unique and k in seen:
             continue
-        elif remove and k in parameterlist:
+        if remove and k in parameterlist:
             continue
-        elif not remove and k not in parameterlist:
+        if not remove and k not in parameterlist:
             continue
-        else:
-            querylist.append(ksv)
-            seen.add(k)
+        querylist.append(ksv)
+        seen.add(k)
     url = "?".join([base, sep.join(querylist)]) if querylist else base
     if keep_fragments and fragment:
         url += "#" + fragment
     return url
 
 
-def _add_or_replace_parameters(url: str, params: Dict[str, str]) -> str:
+def _add_or_replace_parameters(url: str, params: dict[str, str]) -> str:
     parsed = urlsplit(url)
     current_args = parse_qsl(parsed.query, keep_blank_values=True)
 
@@ -388,7 +378,7 @@ def add_or_replace_parameter(url: str, name: str, new_value: str) -> str:
     return _add_or_replace_parameters(url, {name: new_value})
 
 
-def add_or_replace_parameters(url: str, new_parameters: Dict[str, str]) -> str:
+def add_or_replace_parameters(url: str, new_parameters: dict[str, str]) -> str:
     """Add or remove a parameters to a given url
 
     >>> import w3lib.url
@@ -433,7 +423,6 @@ def any_to_uri(uri_or_path: str) -> str:
 _char = set(map(chr, range(127)))
 
 # RFC 2045 token.
-# pylint: disable=consider-using-f-string
 _token = r"[{}]+".format(
     re.escape(
         "".join(
@@ -449,7 +438,6 @@ _token = r"[{}]+".format(
 )
 
 # RFC 822 quoted-string, without surrounding quotation marks.
-# pylint: disable=consider-using-f-string
 _quoted_string = r"(?:[{}]|(?:\\[{}]))*".format(
     re.escape("".join(_char - {'"', "\\", "\r"})), re.escape("".join(_char))
 )
@@ -473,7 +461,7 @@ class ParseDataURIResult(NamedTuple):
     #: MIME type type and subtype, separated by / (e.g. ``"text/plain"``).
     media_type: str
     #: MIME type parameters (e.g. ``{"charset": "US-ASCII"}``).
-    media_type_parameters: Dict[str, str]
+    media_type_parameters: dict[str, str]
     #: Data, decoded if it was encoded in base64 format.
     data: bytes
 
@@ -550,7 +538,7 @@ __all__ = [
 
 def _safe_ParseResult(
     parts: ParseResult, encoding: str = "utf8", path_encoding: str = "utf8"
-) -> Tuple[str, str, str, str, str, str]:
+) -> tuple[str, str, str, str, str, str]:
     # IDNA encoding can fail for too long labels (>63 characters)
     # or missing labels (e.g. http://.example.com)
     try:
@@ -569,10 +557,10 @@ def _safe_ParseResult(
 
 
 def canonicalize_url(
-    url: Union[StrOrBytes, ParseResult],
+    url: StrOrBytes | ParseResult,
     keep_blank_values: bool = True,
     keep_fragments: bool = False,
-    encoding: Optional[str] = None,
+    encoding: str | None = None,
 ) -> str:
     r"""Canonicalize the given url by applying the following procedures:
 
@@ -676,7 +664,7 @@ def _unquotepath(path: str) -> bytes:
 
 
 def parse_url(
-    url: Union[StrOrBytes, ParseResult], encoding: Optional[str] = None
+    url: StrOrBytes | ParseResult, encoding: str | None = None
 ) -> ParseResult:
     """Return urlparsed url from the given argument (which could be an already
     parsed url)
@@ -688,7 +676,7 @@ def parse_url(
 
 def parse_qsl_to_bytes(
     qs: str, keep_blank_values: bool = False
-) -> List[Tuple[bytes, bytes]]:
+) -> list[tuple[bytes, bytes]]:
     """Parse a query given as a string argument.
 
     Data are returned as a list of name, value pairs as bytes.
@@ -708,7 +696,7 @@ def parse_qsl_to_bytes(
     # (at https://hg.python.org/cpython/rev/c38ac7ab8d9a)
     # except for the unquote(s, encoding, errors) calls replaced
     # with unquote_to_bytes(s)
-    coerce_args = cast(Callable[..., Tuple[str, Callable[..., bytes]]], _coerce_args)
+    coerce_args = cast(Callable[..., tuple[str, Callable[..., bytes]]], _coerce_args)
     qs, _coerce_result = coerce_args(qs)
     pairs = [s2 for s1 in qs.split("&") for s2 in s1.split(";")]
     r = []

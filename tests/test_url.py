@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import os
 import sys
 import unittest
 from inspect import isclass
-from typing import Callable, List, Optional, Tuple, Type, Union
+from typing import Callable
 from urllib.parse import urlparse
 
 import pytest
@@ -35,9 +37,7 @@ from w3lib.url import (
 # input parameters.
 #
 # (encoding, input URL, output URL or exception)
-SAFE_URL_ENCODING_CASES: List[
-    Tuple[Optional[str], StrOrBytes, Union[str, Type[Exception]]]
-] = [
+SAFE_URL_ENCODING_CASES: list[tuple[str | None, StrOrBytes, str | type[Exception]]] = [
     (None, "", ValueError),
     (None, "https://example.com", "https://example.com"),
     (None, "https://example.com/©", "https://example.com/%C2%A9"),
@@ -319,8 +319,8 @@ SAFE_URL_URL_CASES = (
 def _test_safe_url_func(
     url: StrOrBytes,
     *,
-    encoding: Optional[str] = None,
-    output: Union[str, Type[Exception]],
+    encoding: str | None = None,
+    output: str | type[Exception],
     func: Callable[..., str],
 ) -> None:
     kwargs = {}
@@ -338,8 +338,8 @@ def _test_safe_url_func(
 def _test_safe_url_string(
     url: StrOrBytes,
     *,
-    encoding: Optional[str] = None,
-    output: Union[str, Type[Exception]],
+    encoding: str | None = None,
+    output: str | type[Exception],
 ) -> None:
     return _test_safe_url_func(
         url,
@@ -373,7 +373,7 @@ KNOWN_SAFE_URL_STRING_ENCODING_ISSUES = {
     ),
 )
 def test_safe_url_string_encoding(
-    encoding: Optional[str], url: StrOrBytes, output: Union[str, Type[Exception]]
+    encoding: str | None, url: StrOrBytes, output: str | type[Exception]
 ) -> None:
     _test_safe_url_string(url, encoding=encoding, output=output)
 
@@ -439,9 +439,7 @@ if (
         for case in SAFE_URL_URL_CASES
     ),
 )
-def test_safe_url_string_url(
-    url: StrOrBytes, output: Union[str, Type[Exception]]
-) -> None:
+def test_safe_url_string_url(url: StrOrBytes, output: str | type[Exception]) -> None:
     _test_safe_url_string(url, output=output)
 
 
@@ -858,6 +856,7 @@ class UrlTests(unittest.TestCase):
             url_query_parameter("product.html?id=", "id", keep_blank_values=1), ""
         )
 
+    @pytest.mark.xfail
     def test_url_query_parameter_2(self):
         """
         This problem was seen several times in the feeds. Sometime affiliate URLs contains
@@ -873,7 +872,6 @@ class UrlTests(unittest.TestCase):
         and the URL extraction will fail, current workaround was made in the spider,
         just a replace for &#39; to %27
         """
-        return  # FIXME: this test should pass but currently doesnt
         # correct case
         aff_url1 = "http://www.anrdoezrs.net/click-2590032-10294381?url=http%3A%2F%2Fwww.argos.co.uk%2Fwebapp%2Fwcs%2Fstores%2Fservlet%2FArgosCreateReferral%3FstoreId%3D10001%26langId%3D-1%26referrer%3DCOJUN%26params%3Dadref%253DGarden+and+DIY-%3EGarden+furniture-%3EGarden+table+and+chair+sets%26referredURL%3Dhttp%3A%2F%2Fwww.argos.co.uk%2Fwebapp%2Fwcs%2Fstores%2Fservlet%2FProductDisplay%253FstoreId%253D10001%2526catalogId%253D1500001501%2526productId%253D1500357199%2526langId%253D-1"
         aff_url2 = url_query_parameter(aff_url1, "url")
@@ -881,6 +879,7 @@ class UrlTests(unittest.TestCase):
             aff_url2,
             "http://www.argos.co.uk/webapp/wcs/stores/servlet/ArgosCreateReferral?storeId=10001&langId=-1&referrer=COJUN&params=adref%3DGarden and DIY->Garden furniture->Garden table and chair sets&referredURL=http://www.argos.co.uk/webapp/wcs/stores/servlet/ProductDisplay%3FstoreId%3D10001%26catalogId%3D1500001501%26productId%3D1500357199%26langId%3D-1",
         )
+        assert aff_url2 is not None
         prod_url = url_query_parameter(aff_url2, "referredURL")
         self.assertEqual(
             prod_url,
@@ -893,6 +892,7 @@ class UrlTests(unittest.TestCase):
             aff_url2,
             "http://www.argos.co.uk/webapp/wcs/stores/servlet/ArgosCreateReferral?storeId=10001&langId=-1&referrer=COJUN&params=adref%3DGarden and DIY->Garden furniture->Children&#39;s garden furniture&referredURL=http://www.argos.co.uk/webapp/wcs/stores/servlet/ProductDisplay%3FstoreId%3D10001%26catalogId%3D1500001501%26productId%3D1500357023%26langId%3D-1",
         )
+        assert aff_url2 is not None
         prod_url = url_query_parameter(aff_url2, "referredURL")
         # fails, prod_url is None now
         self.assertEqual(
@@ -1574,7 +1574,7 @@ class DataURITests(unittest.TestCase):
         self.assertEqual(result.data, b"\xce\x8e\xce\xa3\xce\x8e")
 
     def test_base64(self):
-        result = parse_data_uri("data:text/plain;base64," "SGVsbG8sIHdvcmxkLg%3D%3D")
+        result = parse_data_uri("data:text/plain;base64,SGVsbG8sIHdvcmxkLg%3D%3D")
         self.assertEqual(result.media_type, "text/plain")
         self.assertEqual(result.data, b"Hello, world.")
 
@@ -1587,7 +1587,7 @@ class DataURITests(unittest.TestCase):
         self.assertEqual(result.data, b"Hello, world.")
 
         result = parse_data_uri(
-            "data:text/plain;base64,SGVsb G8sIH\n  " "dvcm   xk Lg%3D\n%3D"
+            "data:text/plain;base64,SGVsb G8sIH\n  dvcm   xk Lg%3D\n%3D"
         )
         self.assertEqual(result.media_type, "text/plain")
         self.assertEqual(result.data, b"Hello, world.")

@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import codecs
 import unittest
-from typing import Any, List, Optional, Union
+from typing import Any
 
 from w3lib.encoding import (
     html_body_declared_encoding,
@@ -122,7 +124,7 @@ class UnicodeDecodingTestCase(unittest.TestCase):
         self.assertEqual(to_unicode(b"\xc2\xc2\xa3", "utf-8"), "\ufffd\xa3")
 
 
-def ct(charset: Optional[str]) -> Optional[str]:
+def ct(charset: str | None) -> str | None:
     return "Content-Type: text/html; charset=" + charset if charset else None
 
 
@@ -141,10 +143,10 @@ class HtmlConversionTests(unittest.TestCase):
 
     def _assert_encoding(
         self,
-        content_type: Optional[str],
+        content_type: str | None,
         body: bytes,
         expected_encoding: str,
-        expected_unicode: Union[str, List[str]],
+        expected_unicode: str | list[str],
     ) -> None:
         assert not isinstance(body, str)
         encoding, body_unicode = html_to_unicode(ct(content_type), body)
@@ -218,7 +220,7 @@ class HtmlConversionTests(unittest.TestCase):
 
     def _assert_encoding_detected(
         self,
-        content_type: Optional[str],
+        content_type: str | None,
         expected_encoding: str,
         body: bytes,
         **kwargs: Any,

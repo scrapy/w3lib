@@ -1,10 +1,10 @@
-from typing import Optional
+from __future__ import annotations
 
 from w3lib._types import StrOrBytes
 
 
 def to_unicode(
-    text: StrOrBytes, encoding: Optional[str] = None, errors: str = "strict"
+    text: StrOrBytes, encoding: str | None = None, errors: str = "strict"
 ) -> str:
     """Return the unicode representation of a bytes object `text`. If `text`
     is already an unicode object, return it as-is."""
@@ -20,7 +20,7 @@ def to_unicode(
 
 
 def to_bytes(
-    text: StrOrBytes, encoding: Optional[str] = None, errors: str = "strict"
+    text: StrOrBytes, encoding: str | None = None, errors: str = "strict"
 ) -> bytes:
     """Return the binary representation of `text`. If `text`
     is already a bytes object, return it as-is."""
