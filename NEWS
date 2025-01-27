@@ -1,20 +1,22 @@
 w3lib release notes
 ===================
 
-2.3.0 (YYYY-MM-DD)
+2.3.0 (2025-01-27)
 ------------------
 
 - Dropped Python 3.8 support (#232).
-
-- Added Python 3.13 support (#232).
-
-- Fixed running tests with newer point releases of Python 3.10 and 3.11 (#233).
 
 - Removed the following functions, deprecated in 2.0.0:
 
     - ``w3lib.util.str_to_unicode``
     - ``w3lib.util.to_native_str``
     - ``w3lib.util.unicode_to_str``
+
+  (#235).
+
+- Added Python 3.13 support (#232).
+
+- Fixed running tests with newer point releases of Python 3.10 and 3.11 (#233).
 
 - Cleanup and CI improvements (#232, #234).
 
