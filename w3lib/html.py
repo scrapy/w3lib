@@ -5,21 +5,26 @@ Functions for dealing with markup text
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable
 from html.entities import name2codepoint
 from re import Match, Pattern
+from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
-from w3lib._types import StrOrBytes
 from w3lib.url import safe_url_string
 from w3lib.util import to_unicode
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
 
 _ent_re = re.compile(
     r"&((?P<named>[a-z\d]+)|#(?P<dec>\d+)|#x(?P<hex>[a-f\d]+))(?P<semicolon>;?)",
     re.IGNORECASE,
 )
 _tag_re = re.compile(r"<[a-zA-Z\/!].*?>", re.DOTALL)
-_baseurl_re = re.compile(r"<base\s[^>]*href\s*=\s*[\"\']\s*([^\"\'\s]+)\s*[\"\']", re.I)
+_baseurl_re = re.compile(
+    r"<base\s[^>]*href\s*=\s*[\"\']\s*([^\"\'\s]+)\s*[\"\']", re.IGNORECASE
+)
 _meta_refresh_re = re.compile(
     r'<meta\s[^>]*http-equiv[^>]*refresh[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)',
     re.DOTALL | re.IGNORECASE,
@@ -37,12 +42,12 @@ HTML5_WHITESPACE = " \t\n\r\x0c"
 
 
 def replace_entities(
-    text: StrOrBytes,
+    text: str | bytes,
     keep: Iterable[str] = (),
     remove_illegal: bool = True,
     encoding: str = "utf-8",
 ) -> str:
-    """Remove entities from the given `text` by converting them to their
+    r"""Remove entities from the given `text` by converting them to their
     corresponding unicode character.
 
     `text` can be a unicode string or a byte string encoded in the given
@@ -62,7 +67,7 @@ def replace_entities(
 
     >>> import w3lib.html
     >>> w3lib.html.replace_entities(b'Price: &pound;100')
-    'Price: \\xa3100'
+    'Price: \xa3100'
     >>> print(w3lib.html.replace_entities(b'Price: &pound;100'))
     Price: £100
     >>>
@@ -100,12 +105,14 @@ def replace_entities(
     return _ent_re.sub(convert_entity, to_unicode(text, encoding))
 
 
-def has_entities(text: StrOrBytes, encoding: str | None = None) -> bool:
+def has_entities(text: str | bytes, encoding: str | None = None) -> bool:
     return bool(_ent_re.search(to_unicode(text, encoding)))
 
 
-def replace_tags(text: StrOrBytes, token: str = "", encoding: str | None = None) -> str:
-    """Replace all markup tags found in the given `text` by the given token.
+def replace_tags(
+    text: str | bytes, token: str = "", encoding: str | None = None
+) -> str:
+    r"""Replace all markup tags found in the given `text` by the given token.
     By default `token` is an empty string so it just removes all tags.
 
     `text` can be a unicode string or a regular string encoded as `encoding`
@@ -118,8 +125,8 @@ def replace_tags(text: StrOrBytes, token: str = "", encoding: str | None = None)
     >>> import w3lib.html
     >>> w3lib.html.replace_tags('This text contains <a>some tag</a>')
     'This text contains some tag'
-    >>> w3lib.html.replace_tags('<p>Je ne parle pas <b>fran\\xe7ais</b></p>', ' -- ', 'latin-1')
-    ' -- Je ne parle pas  -- fran\\xe7ais --  -- '
+    >>> w3lib.html.replace_tags('<p>Je ne parle pas <b>fran\xe7ais</b></p>', ' -- ', 'latin-1')
+    ' -- Je ne parle pas  -- fran\xe7ais --  -- '
     >>>
 
     """
@@ -130,7 +137,7 @@ def replace_tags(text: StrOrBytes, token: str = "", encoding: str | None = None)
 _REMOVECOMMENTS_RE = re.compile("<!--.*?(?:-->|$)", re.DOTALL)
 
 
-def remove_comments(text: StrOrBytes, encoding: str | None = None) -> str:
+def remove_comments(text: str | bytes, encoding: str | None = None) -> str:
     """Remove HTML Comments.
 
     >>> import w3lib.html
@@ -145,7 +152,7 @@ def remove_comments(text: StrOrBytes, encoding: str | None = None) -> str:
 
 
 def remove_tags(
-    text: StrOrBytes,
+    text: str | bytes,
     which_ones: Iterable[str] = (),
     keep: Iterable[str] = (),
     encoding: str | None = None,
@@ -216,7 +223,7 @@ def remove_tags(
 
 
 def remove_tags_with_content(
-    text: StrOrBytes, which_ones: Iterable[str] = (), encoding: str | None = None
+    text: str | bytes, which_ones: Iterable[str] = (), encoding: str | None = None
 ) -> str:
     """Remove tags and their content.
 
@@ -240,15 +247,15 @@ def remove_tags_with_content(
 
 
 def replace_escape_chars(
-    text: StrOrBytes,
+    text: str | bytes,
     which_ones: Iterable[str] = ("\n", "\t", "\r"),
-    replace_by: StrOrBytes = "",
+    replace_by: str | bytes = "",
     encoding: str | None = None,
 ) -> str:
-    """Remove escape characters.
+    r"""Remove escape characters.
 
     `which_ones` is a tuple of which escape characters we want to remove.
-    By default removes ``\\n``, ``\\t``, ``\\r``.
+    By default removes ``\n``, ``\t``, ``\r``.
 
     `replace_by` is the string to replace the escape characters by.
     It defaults to ``''``, meaning the escape characters are removed.
@@ -262,7 +269,7 @@ def replace_escape_chars(
 
 
 def unquote_markup(
-    text: StrOrBytes,
+    text: str | bytes,
     keep: Iterable[str] = (),
     remove_illegal: bool = True,
     encoding: str | None = None,
@@ -302,7 +309,7 @@ def unquote_markup(
 
 
 def get_base_url(
-    text: StrOrBytes, baseurl: StrOrBytes = "", encoding: str = "utf-8"
+    text: str | bytes, baseurl: str | bytes = "", encoding: str = "utf-8"
 ) -> str:
     """Return the base url if declared in the given HTML `text`,
     relative to the given base url.
@@ -320,7 +327,7 @@ def get_base_url(
 
 
 def get_meta_refresh(
-    text: StrOrBytes,
+    text: str | bytes,
     baseurl: str = "",
     encoding: str = "utf-8",
     ignore_tags: Iterable[str] = ("script", "noscript"),

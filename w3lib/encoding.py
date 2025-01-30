@@ -11,9 +11,9 @@ from re import Match
 from typing import Callable, cast
 
 import w3lib.util
-from w3lib._types import AnyUnicodeError, StrOrBytes
+from w3lib._types import AnyUnicodeError
 
-_HEADER_ENCODING_RE = re.compile(r"charset=([\w-]+)", re.I)
+_HEADER_ENCODING_RE = re.compile(r"charset=([\w-]+)", re.IGNORECASE)
 
 
 def http_content_type_encoding(content_type: str | None) -> str | None:
@@ -52,17 +52,14 @@ _CONTENT2_RE = _TEMPLATE % ("charset", r"(?P<charset2>[\w-]+)")
 _XML_ENCODING_RE = _TEMPLATE % ("encoding", r"(?P<xmlcharset>[\w-]+)")
 
 # check for meta tags, or xml decl. and stop search if a body tag is encountered
-_BODY_ENCODING_PATTERN = (
-    r"<\s*(?:meta%s(?:(?:\s+%s|\s+%s){2}|\s+%s)|\?xml\s[^>]+%s|body)"
-    % (_SKIP_ATTRS, _HTTPEQUIV_RE, _CONTENT_RE, _CONTENT2_RE, _XML_ENCODING_RE)
-)
-_BODY_ENCODING_STR_RE = re.compile(_BODY_ENCODING_PATTERN, re.I | re.VERBOSE)
+_BODY_ENCODING_PATTERN = rf"<\s*(?:meta{_SKIP_ATTRS}(?:(?:\s+{_HTTPEQUIV_RE}|\s+{_CONTENT_RE}){{2}}|\s+{_CONTENT2_RE})|\?xml\s[^>]+{_XML_ENCODING_RE}|body)"
+_BODY_ENCODING_STR_RE = re.compile(_BODY_ENCODING_PATTERN, re.IGNORECASE | re.VERBOSE)
 _BODY_ENCODING_BYTES_RE = re.compile(
-    _BODY_ENCODING_PATTERN.encode("ascii"), re.I | re.VERBOSE
+    _BODY_ENCODING_PATTERN.encode("ascii"), re.IGNORECASE | re.VERBOSE
 )
 
 
-def html_body_declared_encoding(html_body_str: StrOrBytes) -> str | None:
+def html_body_declared_encoding(html_body_str: str | bytes) -> str | None:
     '''Return the encoding specified in meta tags in the html body,
     or ``None`` if no suitable encoding was found
 
@@ -209,9 +206,9 @@ codecs.register_error(
 
 
 def to_unicode(data_str: bytes, encoding: str) -> str:
-    """Convert a str object to unicode using the encoding given
+    r"""Convert a str object to unicode using the encoding given
 
-    Characters that cannot be converted will be converted to ``\\ufffd`` (the
+    Characters that cannot be converted will be converted to ``\ufffd`` (the
     unicode replacement character).
     """
     return data_str.decode(encoding, "replace")
@@ -260,7 +257,7 @@ def html_to_unicode(
     that the header was not present.
 
     This method will not fail, if characters cannot be converted to unicode,
-    ``\\ufffd`` (the unicode replacement character) will be inserted instead.
+    ``\ufffd`` (the unicode replacement character) will be inserted instead.
 
     Returns a tuple of ``(<encoding used>, <unicode_string>)``
 

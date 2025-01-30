@@ -4,6 +4,7 @@ import os
 import sys
 import unittest
 from inspect import isclass
+from pathlib import Path
 from typing import Callable
 from urllib.parse import urlparse
 
@@ -15,7 +16,6 @@ from w3lib._infra import (
     _ASCII_TAB_OR_NEWLINE,
     _C0_CONTROL_OR_SPACE,
 )
-from w3lib._types import StrOrBytes
 from w3lib._url import _SPECIAL_SCHEMES
 from w3lib.url import (
     add_or_replace_parameter,
@@ -37,7 +37,7 @@ from w3lib.url import (
 # input parameters.
 #
 # (encoding, input URL, output URL or exception)
-SAFE_URL_ENCODING_CASES: list[tuple[str | None, StrOrBytes, str | type[Exception]]] = [
+SAFE_URL_ENCODING_CASES: list[tuple[str | None, str | bytes, str | type[Exception]]] = [
     (None, "", ValueError),
     (None, "https://example.com", "https://example.com"),
     (None, "https://example.com/©", "https://example.com/%C2%A9"),
@@ -317,7 +317,7 @@ SAFE_URL_URL_CASES = (
 
 
 def _test_safe_url_func(
-    url: StrOrBytes,
+    url: str | bytes,
     *,
     encoding: str | None = None,
     output: str | type[Exception],
@@ -336,7 +336,7 @@ def _test_safe_url_func(
 
 
 def _test_safe_url_string(
-    url: StrOrBytes,
+    url: str | bytes,
     *,
     encoding: str | None = None,
     output: str | type[Exception],
@@ -373,7 +373,7 @@ KNOWN_SAFE_URL_STRING_ENCODING_ISSUES = {
     ),
 )
 def test_safe_url_string_encoding(
-    encoding: str | None, url: StrOrBytes, output: str | type[Exception]
+    encoding: str | None, url: str | bytes, output: str | type[Exception]
 ) -> None:
     _test_safe_url_string(url, encoding=encoding, output=output)
 
@@ -439,7 +439,7 @@ if (
         for case in SAFE_URL_URL_CASES
     ),
 )
-def test_safe_url_string_url(url: StrOrBytes, output: str | type[Exception]) -> None:
+def test_safe_url_string_url(url: str | bytes, output: str | type[Exception]) -> None:
     _test_safe_url_string(url, output=output)
 
 
@@ -993,7 +993,7 @@ class UrlTests(unittest.TestCase):
     def test_add_or_replace_parameters_does_not_change_input_param(self):
         url = "http://domain/test?arg=original"
         input_param = {"arg": "value"}
-        add_or_replace_parameters(url, input_param)  # noqa
+        add_or_replace_parameters(url, input_param)
         self.assertEqual(input_param, {"arg": "value"})
 
     def test_url_query_cleaner(self):
@@ -1099,7 +1099,7 @@ class UrlTests(unittest.TestCase):
         fn = "test.txt"
         x = path_to_file_uri(fn)
         self.assertTrue(x.startswith("file:///"))
-        self.assertEqual(file_uri_to_path(x).lower(), os.path.abspath(fn).lower())
+        self.assertEqual(file_uri_to_path(x).lower(), str(Path(fn).resolve()).lower())
 
     def test_file_uri_to_path(self):
         if os.name == "nt":
@@ -1580,8 +1580,7 @@ class DataURITests(unittest.TestCase):
 
     def test_base64_spaces(self):
         result = parse_data_uri(
-            "data:text/plain;base64,SGVsb%20G8sIH%0A%20%20"
-            "dvcm%20%20%20xk%20Lg%3D%0A%3D"
+            "data:text/plain;base64,SGVsb%20G8sIH%0A%20%20dvcm%20%20%20xk%20Lg%3D%0A%3D"
         )
         self.assertEqual(result.media_type, "text/plain")
         self.assertEqual(result.data, b"Hello, world.")
