@@ -1,7 +1,0 @@
-[run]
-branch = true
-include = w3lib/*
-
-[report]
-exclude_lines =
-    if TYPE_CHECKING:

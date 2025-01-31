@@ -110,7 +110,7 @@ def basic_auth_header(
 
     >>> import w3lib.http
     >>> w3lib.http.basic_auth_header('someuser', 'somepass')
-    'Basic c29tZXVzZXI6c29tZXBhc3M='
+    b'Basic c29tZXVzZXI6c29tZXBhc3M='
 
     .. _HTTP Basic Access Authentication (RFC 2617): http://www.ietf.org/rfc/rfc2617.txt
 

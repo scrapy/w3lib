@@ -1,3 +1,68 @@
+[tool.bumpversion]
+current_version = "2.3.1"
+commit = true
+tag = true
+tag_name = "v{new_version}"
+
+[[tool.bumpversion.files]]
+filename = "setup.py"
+
+[[tool.bumpversion.files]]
+filename = "w3lib/__init__.py"
+
+[[tool.bumpversion.files]]
+filename = "docs/conf.py"
+
+[tool.coverage.run]
+branch = true
+include = ["w3lib/*"]
+
+[tool.coverage.report]
+exclude_also = [
+    "if TYPE_CHECKING:",
+]
+
+[tool.mypy]
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+# All non-tests functions must be typed.
+module = "w3lib.*"
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+# Allow test functions to be untyped
+module = "tests.*"
+disallow_untyped_defs = false
+
+[tool.pylint.MASTER]
+persistent = "no"
+
+[tool.pylint."MESSAGES CONTROL"]
+enable = [
+    "useless-suppression",
+]
+disable = [
+    "fixme",
+    "import-error",
+    "import-outside-toplevel",
+    "invalid-name",
+    "line-too-long",
+    "missing-class-docstring",
+    "missing-function-docstring",
+    "missing-module-docstring",
+    "raise-missing-from",
+    "redefined-builtin",
+    "redefined-outer-name",
+    "too-many-arguments",
+    "too-many-branches",
+    "too-many-lines",
+    "too-many-positional-arguments",
+    "too-many-public-methods",
+    "unused-argument",
+    "unused-variable",
+]
+
 [tool.ruff.lint]
 extend-select = [
     # flake8-bugbear

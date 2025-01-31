@@ -177,13 +177,13 @@ def read_bom(data: bytes) -> tuple[None, None] | tuple[str, bytes]:
 
     >>> import w3lib.encoding
     >>> w3lib.encoding.read_bom(b'\xfe\xff\x6c\x34')
-    ('utf-16-be', '\xfe\xff')
+    ('utf-16-be', b'\xfe\xff')
     >>> w3lib.encoding.read_bom(b'\xff\xfe\x34\x6c')
-    ('utf-16-le', '\xff\xfe')
+    ('utf-16-le', b'\xff\xfe')
     >>> w3lib.encoding.read_bom(b'\x00\x00\xfe\xff\x00\x00\x6c\x34')
-    ('utf-32-be', '\x00\x00\xfe\xff')
+    ('utf-32-be', b'\x00\x00\xfe\xff')
     >>> w3lib.encoding.read_bom(b'\xff\xfe\x00\x00\x34\x6c\x00\x00')
-    ('utf-32-le', '\xff\xfe\x00\x00')
+    ('utf-32-le', b'\xff\xfe\x00\x00')
     >>> w3lib.encoding.read_bom(b'\x01\x02\x03\x04')
     (None, None)
     >>>
