@@ -11,11 +11,11 @@ import os
 import posixpath
 import re
 import string
-from collections.abc import Sequence
-from typing import Callable, NamedTuple, cast, overload
-from urllib.parse import _coerce_args  # type: ignore
-from urllib.parse import (
+from pathlib import Path
+from typing import TYPE_CHECKING, Callable, NamedTuple, cast, overload
+from urllib.parse import (  # type: ignore[attr-defined]
     ParseResult,
+    _coerce_args,
     parse_qs,
     parse_qsl,
     quote,
@@ -31,9 +31,12 @@ from urllib.parse import (
 from urllib.request import pathname2url, url2pathname
 
 from ._infra import _ASCII_TAB_OR_NEWLINE, _C0_CONTROL_OR_SPACE
-from ._types import AnyUnicodeError, StrOrBytes
+from ._types import AnyUnicodeError
 from ._url import _SPECIAL_SCHEMES
 from .util import to_unicode
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 # error handling function for bytes-to-Unicode decoding errors with URLs
@@ -84,7 +87,7 @@ def _strip(url: str) -> str:
 
 
 def safe_url_string(  # pylint: disable=too-many-locals
-    url: StrOrBytes,
+    url: str | bytes,
     encoding: str = "utf8",
     path_encoding: str = "utf8",
     quote_path: bool = True,
@@ -190,7 +193,7 @@ _parent_dirs = re.compile(r"/?(\.\./)+")
 
 
 def safe_download_url(
-    url: StrOrBytes, encoding: str = "utf8", path_encoding: str = "utf8"
+    url: str | bytes, encoding: str = "utf8", path_encoding: str = "utf8"
 ) -> str:
     """Make a url for download. This will call safe_url_string
     and then strip the fragment, if one exists. The path will
@@ -216,7 +219,7 @@ def is_url(text: str) -> bool:
 
 @overload
 def url_query_parameter(
-    url: StrOrBytes,
+    url: str | bytes,
     parameter: str,
     default: None = None,
     keep_blank_values: bool | int = 0,
@@ -225,7 +228,7 @@ def url_query_parameter(
 
 @overload
 def url_query_parameter(
-    url: StrOrBytes,
+    url: str | bytes,
     parameter: str,
     default: str,
     keep_blank_values: bool | int = 0,
@@ -233,7 +236,7 @@ def url_query_parameter(
 
 
 def url_query_parameter(
-    url: StrOrBytes,
+    url: str | bytes,
     parameter: str,
     default: str | None = None,
     keep_blank_values: bool | int = 0,
@@ -275,8 +278,8 @@ def url_query_parameter(
 
 
 def url_query_cleaner(
-    url: StrOrBytes,
-    parameterlist: StrOrBytes | Sequence[StrOrBytes] = (),
+    url: str | bytes,
+    parameterlist: str | bytes | Sequence[str | bytes] = (),
     sep: str = "&",
     kvsep: str = "=",
     remove: bool = False,
@@ -393,11 +396,11 @@ def add_or_replace_parameters(url: str, new_parameters: dict[str, str]) -> str:
     return _add_or_replace_parameters(url, new_parameters)
 
 
-def path_to_file_uri(path: str) -> str:
+def path_to_file_uri(path: str | os.PathLike[str]) -> str:
     """Convert local filesystem path to legal File URIs as described in:
     http://en.wikipedia.org/wiki/File_URI_scheme
     """
-    x = pathname2url(os.path.abspath(path))
+    x = pathname2url(str(Path(path).resolve()))
     return f"file:///{x.lstrip('/')}"
 
 
@@ -429,7 +432,7 @@ _token = r"[{}]+".format(
             _char
             -
             # Control characters.
-            set(map(chr, range(0, 32)))
+            set(map(chr, range(32)))
             -
             # tspecials and space.
             set('()<>@,;:\\"/[]?= ')
@@ -447,11 +450,9 @@ _quoted_string = r"(?:[{}]|(?:\\[{}]))*".format(
 # order to make a pattern object that can be used to match on bytes.
 
 # RFC 2397 mediatype.
-_mediatype_pattern = re.compile(r"{token}/{token}".format(token=_token).encode())
+_mediatype_pattern = re.compile(rf"{_token}/{_token}".encode())
 _mediatype_parameter_pattern = re.compile(
-    r';({token})=(?:({token})|"({quoted})")'.format(
-        token=_token, quoted=_quoted_string
-    ).encode()
+    rf';({_token})=(?:({_token})|"({_quoted_string})")'.encode()
 )
 
 
@@ -466,7 +467,7 @@ class ParseDataURIResult(NamedTuple):
     data: bytes
 
 
-def parse_data_uri(uri: StrOrBytes) -> ParseDataURIResult:
+def parse_data_uri(uri: str | bytes) -> ParseDataURIResult:
     """Parse a data: URI into :class:`ParseDataURIResult`."""
     if not isinstance(uri, bytes):
         uri = safe_url_string(uri).encode("ascii")
@@ -557,7 +558,7 @@ def _safe_ParseResult(
 
 
 def canonicalize_url(
-    url: StrOrBytes | ParseResult,
+    url: str | bytes | ParseResult,
     keep_blank_values: bool = True,
     keep_fragments: bool = False,
     encoding: str | None = None,
@@ -664,7 +665,7 @@ def _unquotepath(path: str) -> bytes:
 
 
 def parse_url(
-    url: StrOrBytes | ParseResult, encoding: str | None = None
+    url: str | bytes | ParseResult, encoding: str | None = None
 ) -> ParseResult:
     """Return urlparsed url from the given argument (which could be an already
     parsed url)
@@ -711,10 +712,10 @@ def parse_qsl_to_bytes(
             else:
                 continue
         if len(nv[1]) or keep_blank_values:
-            name: StrOrBytes = nv[0].replace("+", " ")
+            name: str | bytes = nv[0].replace("+", " ")
             name = unquote_to_bytes(name)
             name = _coerce_result(name)
-            value: StrOrBytes = nv[1].replace("+", " ")
+            value: str | bytes = nv[1].replace("+", " ")
             value = unquote_to_bytes(value)
             value = _coerce_result(value)
             r.append((name, value))

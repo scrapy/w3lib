@@ -84,8 +84,8 @@ class RemoveEntitiesTest(unittest.TestCase):
             ("&#x41h", "Ah"),
             ("&#65!", "A!"),
             ("&#65x", "Ax"),
-            ("&sup3!", "\u00B3!"),
-            ("&Aacute!", "\u00C1!"),
+            ("&sup3!", "\u00b3!"),
+            ("&Aacute!", "\u00c1!"),
             ("&#9731!", "\u2603!"),
             ("&#153", "\u2122"),
             ("&#x99", "\u2122"),
@@ -325,7 +325,6 @@ class ReplaceEscapeCharsTest(unittest.TestCase):
 
 
 class UnquoteMarkupTest(unittest.TestCase):
-
     sample_txt1 = """<node1>hi, this is sample text with entities: &amp; &copy;
 <![CDATA[although this is inside a cdata! &amp; &quot;]]></node1>"""
     sample_txt2 = (

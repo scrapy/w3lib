@@ -4,7 +4,6 @@ from base64 import b64encode
 from collections.abc import Mapping, MutableMapping, Sequence
 from typing import Any, Union, overload
 
-from w3lib._types import StrOrBytes
 from w3lib.util import to_bytes, to_unicode
 
 HeadersDictInput = Mapping[bytes, Union[Any, Sequence[bytes]]]
@@ -50,7 +49,7 @@ def headers_raw_to_dict(headers_raw: bytes | None) -> HeadersDictOutput | None:
 
     result_dict: HeadersDictOutput = {}
     for header_item in headers_tuples:
-        if not len(header_item) == 2:
+        if len(header_item) != 2:
             continue
 
         item_key = header_item[0].strip()
@@ -99,20 +98,19 @@ def headers_dict_to_raw(headers_dict: HeadersDictInput | None) -> bytes | None:
         if isinstance(value, bytes):
             raw_lines.append(b": ".join([key, value]))
         elif isinstance(value, (list, tuple)):
-            for v in value:
-                raw_lines.append(b": ".join([key, v]))
+            raw_lines.extend(b": ".join([key, v]) for v in value)
     return b"\r\n".join(raw_lines)
 
 
 def basic_auth_header(
-    username: StrOrBytes, password: StrOrBytes, encoding: str = "ISO-8859-1"
+    username: str | bytes, password: str | bytes, encoding: str = "ISO-8859-1"
 ) -> bytes:
     """
     Return an `Authorization` header field value for `HTTP Basic Access Authentication (RFC 2617)`_
 
     >>> import w3lib.http
     >>> w3lib.http.basic_auth_header('someuser', 'somepass')
-    'Basic c29tZXVzZXI6c29tZXBhc3M='
+    b'Basic c29tZXVzZXI6c29tZXBhc3M='
 
     .. _HTTP Basic Access Authentication (RFC 2617): http://www.ietf.org/rfc/rfc2617.txt
 

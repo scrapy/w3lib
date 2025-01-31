@@ -33,7 +33,7 @@ class RequestEncodingTests(unittest.TestCase):
 
     def test_bom(self):
         # cjk water character in unicode
-        water_unicode = "\u6C34"
+        water_unicode = "\u6c34"
         # BOM + water character encoded
         utf16be = b"\xfe\xff\x6c\x34"
         utf16le = b"\xff\xfe\x34\x6c"
@@ -273,8 +273,8 @@ class HtmlConversionTests(unittest.TestCase):
 
         random.seed(42)
         buf = BytesIO()
-        for i in range(150000):
-            buf.write(bytes([random.randint(0, 255)]))
+        for _ in range(150000):
+            buf.write(bytes([random.randint(0, 255)]))  # noqa: S311
         to_unicode(buf.getvalue(), "utf-16-le")
         to_unicode(buf.getvalue(), "utf-16-be")
         to_unicode(buf.getvalue(), "utf-32-le")
