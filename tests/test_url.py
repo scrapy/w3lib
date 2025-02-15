@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import sys
-import unittest
 from inspect import isclass
 from pathlib import Path
 from typing import Callable
@@ -362,15 +361,15 @@ KNOWN_SAFE_URL_STRING_ENCODING_ISSUES = {
 
 
 @pytest.mark.parametrize(
-    "encoding,url,output",
-    tuple(
+    ("encoding", "url", "output"),
+    [
         (
             case
             if case[:2] not in KNOWN_SAFE_URL_STRING_ENCODING_ISSUES
             else pytest.param(*case, marks=pytest.mark.xfail(strict=True))
         )
         for case in SAFE_URL_ENCODING_CASES
-    ),
+    ],
 )
 def test_safe_url_string_encoding(
     encoding: str | None, url: str | bytes, output: str | type[Exception]
@@ -429,178 +428,174 @@ if (
 
 
 @pytest.mark.parametrize(
-    "url,output",
-    tuple(
+    ("url", "output"),
+    [
         (
             case
             if case[0] not in KNOWN_SAFE_URL_STRING_URL_ISSUES
             else pytest.param(*case, marks=pytest.mark.xfail(strict=True))
         )
         for case in SAFE_URL_URL_CASES
-    ),
+    ],
 )
 def test_safe_url_string_url(url: str | bytes, output: str | type[Exception]) -> None:
     _test_safe_url_string(url, output=output)
 
 
-class UrlTests(unittest.TestCase):
+class TestUrl:
     def test_safe_url_string(self):
         # Motoko Kusanagi (Cyborg from Ghost in the Shell)
         motoko = "\u8349\u8599 \u7d20\u5b50"
-        self.assertEqual(
-            safe_url_string(motoko),  # note the %20 for space
-            "%E8%8D%89%E8%96%99%20%E7%B4%A0%E5%AD%90",
-        )
-        self.assertEqual(
-            safe_url_string(motoko), safe_url_string(safe_url_string(motoko))
-        )
-        self.assertEqual(safe_url_string("©"), "%C2%A9")  # copyright symbol
+        # note the %20 for space
+        assert safe_url_string(motoko) == "%E8%8D%89%E8%96%99%20%E7%B4%A0%E5%AD%90"
+        assert safe_url_string(motoko) == safe_url_string(safe_url_string(motoko))
+        # copyright symbol
+        assert safe_url_string("©") == "%C2%A9"
         # page-encoding does not affect URL path
-        self.assertEqual(safe_url_string("©", "iso-8859-1"), "%C2%A9")
+        assert safe_url_string("©", "iso-8859-1") == "%C2%A9"
         # path_encoding does
-        self.assertEqual(safe_url_string("©", path_encoding="iso-8859-1"), "%A9")
-        self.assertEqual(
-            safe_url_string("http://www.example.org/"), "http://www.example.org/"
-        )
+        assert safe_url_string("©", path_encoding="iso-8859-1") == "%A9"
+        assert safe_url_string("http://www.example.org/") == "http://www.example.org/"
 
         alessi = "/ecommerce/oggetto/Te \xf2/tea-strainer/1273"
 
-        self.assertEqual(
-            safe_url_string(alessi), "/ecommerce/oggetto/Te%20%C3%B2/tea-strainer/1273"
+        assert (
+            safe_url_string(alessi)
+            == "/ecommerce/oggetto/Te%20%C3%B2/tea-strainer/1273"
         )
 
-        self.assertEqual(
+        assert (
             safe_url_string(
                 "http://www.example.com/test?p(29)url(http://www.another.net/page)"
-            ),
-            "http://www.example.com/test?p(29)url(http://www.another.net/page)",
+            )
+            == "http://www.example.com/test?p(29)url(http://www.another.net/page)"
         )
-        self.assertEqual(
+        assert (
             safe_url_string(
                 "http://www.example.com/Brochures_&_Paint_Cards&PageSize=200"
-            ),
-            "http://www.example.com/Brochures_&_Paint_Cards&PageSize=200",
+            )
+            == "http://www.example.com/Brochures_&_Paint_Cards&PageSize=200"
         )
 
         # page-encoding does not affect URL path
         # we still end up UTF-8 encoding characters before percent-escaping
         safeurl = safe_url_string("http://www.example.com/£")
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/%C2%A3")
+        assert isinstance(safeurl, str)
+        assert safeurl == "http://www.example.com/%C2%A3"
 
         safeurl = safe_url_string("http://www.example.com/£", encoding="utf-8")
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/%C2%A3")
+        assert isinstance(safeurl, str)
+        assert safeurl == "http://www.example.com/%C2%A3"
 
         safeurl = safe_url_string("http://www.example.com/£", encoding="latin-1")
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/%C2%A3")
+        assert isinstance(safeurl, str)
+        assert safeurl == "http://www.example.com/%C2%A3"
 
         safeurl = safe_url_string("http://www.example.com/£", path_encoding="latin-1")
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/%A3")
+        assert isinstance(safeurl, str)
+        assert safeurl == "http://www.example.com/%A3"
 
-        self.assertTrue(isinstance(safe_url_string(b"http://example.com/"), str))
+        assert isinstance(safe_url_string(b"http://example.com/"), str)
 
     def test_safe_url_string_remove_ascii_tab_and_newlines(self):
-        self.assertEqual(
-            safe_url_string("http://example.com/test\n.html"),
-            "http://example.com/test.html",
+        assert (
+            safe_url_string("http://example.com/test\n.html")
+            == "http://example.com/test.html"
         )
-        self.assertEqual(
-            safe_url_string("http://example.com/test\t.html"),
-            "http://example.com/test.html",
+        assert (
+            safe_url_string("http://example.com/test\t.html")
+            == "http://example.com/test.html"
         )
-        self.assertEqual(
-            safe_url_string("http://example.com/test\r.html"),
-            "http://example.com/test.html",
+        assert (
+            safe_url_string("http://example.com/test\r.html")
+            == "http://example.com/test.html"
         )
-        self.assertEqual(
-            safe_url_string("http://example.com/test\r.html\n"),
-            "http://example.com/test.html",
+        assert (
+            safe_url_string("http://example.com/test\r.html\n")
+            == "http://example.com/test.html"
         )
-        self.assertEqual(
-            safe_url_string("http://example.com/test\r\n.html\t"),
-            "http://example.com/test.html",
+        assert (
+            safe_url_string("http://example.com/test\r\n.html\t")
+            == "http://example.com/test.html"
         )
-        self.assertEqual(
-            safe_url_string("http://example.com/test\a\n.html"),
-            "http://example.com/test%07.html",
+        assert (
+            safe_url_string("http://example.com/test\a\n.html")
+            == "http://example.com/test%07.html"
         )
 
     def test_safe_url_string_quote_path(self):
         safeurl = safe_url_string('http://google.com/"hello"', quote_path=True)
-        self.assertEqual(safeurl, "http://google.com/%22hello%22")
+        assert safeurl == "http://google.com/%22hello%22"
 
         safeurl = safe_url_string('http://google.com/"hello"', quote_path=False)
-        self.assertEqual(safeurl, 'http://google.com/"hello"')
+        assert safeurl == 'http://google.com/"hello"'
 
         safeurl = safe_url_string('http://google.com/"hello"')
-        self.assertEqual(safeurl, "http://google.com/%22hello%22")
+        assert safeurl == "http://google.com/%22hello%22"
 
     def test_safe_url_string_with_query(self):
         safeurl = safe_url_string("http://www.example.com/£?unit=µ")
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/%C2%A3?unit=%C2%B5")
+        assert isinstance(safeurl, str)
+        assert safeurl == "http://www.example.com/%C2%A3?unit=%C2%B5"
 
         safeurl = safe_url_string("http://www.example.com/£?unit=µ", encoding="utf-8")
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/%C2%A3?unit=%C2%B5")
+        assert isinstance(safeurl, str)
+        assert safeurl == "http://www.example.com/%C2%A3?unit=%C2%B5"
 
         safeurl = safe_url_string("http://www.example.com/£?unit=µ", encoding="latin-1")
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/%C2%A3?unit=%B5")
+        assert isinstance(safeurl, str)
+        assert safeurl == "http://www.example.com/%C2%A3?unit=%B5"
 
         safeurl = safe_url_string(
             "http://www.example.com/£?unit=µ", path_encoding="latin-1"
         )
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/%A3?unit=%C2%B5")
+        assert isinstance(safeurl, str)
+        assert safeurl == "http://www.example.com/%A3?unit=%C2%B5"
 
         safeurl = safe_url_string(
             "http://www.example.com/£?unit=µ",
             encoding="latin-1",
             path_encoding="latin-1",
         )
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/%A3?unit=%B5")
+        assert isinstance(safeurl, str)
+        assert safeurl == "http://www.example.com/%A3?unit=%B5"
 
     def test_safe_url_string_misc(self):
         # mixing Unicode and percent-escaped sequences
         safeurl = safe_url_string("http://www.example.com/£?unit=%C2%B5")
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/%C2%A3?unit=%C2%B5")
+        assert isinstance(safeurl, str)
+        assert safeurl == "http://www.example.com/%C2%A3?unit=%C2%B5"
 
         safeurl = safe_url_string("http://www.example.com/%C2%A3?unit=µ")
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/%C2%A3?unit=%C2%B5")
+        assert isinstance(safeurl, str)
+        assert safeurl == "http://www.example.com/%C2%A3?unit=%C2%B5"
 
     def test_safe_url_string_bytes_input(self):
         safeurl = safe_url_string(b"http://www.example.com/")
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/")
+        assert isinstance(safeurl, str)
+        assert safeurl == "http://www.example.com/"
 
         # bytes input is assumed to be UTF-8
         safeurl = safe_url_string(b"http://www.example.com/\xc2\xb5")
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/%C2%B5")
+        assert isinstance(safeurl, str)
+        assert safeurl == "http://www.example.com/%C2%B5"
 
         # page-encoding encoded bytes still end up as UTF-8 sequences in path
         safeurl = safe_url_string(b"http://www.example.com/\xb5", encoding="latin1")
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/%C2%B5")
+        assert isinstance(safeurl, str)
+        assert safeurl == "http://www.example.com/%C2%B5"
 
         safeurl = safe_url_string(
             b"http://www.example.com/\xa3?unit=\xb5", encoding="latin1"
         )
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/%C2%A3?unit=%B5")
+        assert isinstance(safeurl, str)
+        assert safeurl == "http://www.example.com/%C2%A3?unit=%B5"
 
     def test_safe_url_string_bytes_input_nonutf8(self):
         # latin1
         safeurl = safe_url_string(b"http://www.example.com/\xa3?unit=\xb5")
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/%A3?unit=%B5")
+        assert isinstance(safeurl, str)
+        assert safeurl == "http://www.example.com/%A3?unit=%B5"
 
         # cp1251
         # >>> 'Россия'.encode('cp1251')
@@ -608,8 +603,8 @@ class UrlTests(unittest.TestCase):
         safeurl = safe_url_string(
             b"http://www.example.com/country/\xd0\xee\xf1\xf1\xe8\xff"
         )
-        self.assertTrue(isinstance(safeurl, str))
-        self.assertEqual(safeurl, "http://www.example.com/country/%D0%EE%F1%F1%E8%FF")
+        assert isinstance(safeurl, str)
+        assert safeurl == "http://www.example.com/country/%D0%EE%F1%F1%E8%FF"
 
     def test_safe_url_idna(self):
         # adapted from:
@@ -664,197 +659,189 @@ class UrlTests(unittest.TestCase):
         )
         for idn_input, safe_result in websites:
             safeurl = safe_url_string(idn_input)
-            self.assertEqual(safeurl, safe_result)
+            assert safeurl == safe_result
 
         # make sure the safe URL is unchanged when made safe a 2nd time
         for _, safe_result in websites:
             safeurl = safe_url_string(safe_result)
-            self.assertEqual(safeurl, safe_result)
+            assert safeurl == safe_result
 
     def test_safe_url_idna_encoding_failure(self):
         # missing DNS label
-        self.assertEqual(
-            safe_url_string("http://.example.com/résumé?q=résumé"),
-            "http://.example.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9",
+        assert (
+            safe_url_string("http://.example.com/résumé?q=résumé")
+            == "http://.example.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9"
         )
 
         # DNS label too long
-        self.assertEqual(
-            safe_url_string(f"http://www.{'example' * 11}.com/résumé?q=résumé"),
-            f"http://www.{'example' * 11}.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9",
+        assert (
+            safe_url_string(f"http://www.{'example' * 11}.com/résumé?q=résumé")
+            == f"http://www.{'example' * 11}.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9"
         )
 
     def test_safe_url_port_number(self):
-        self.assertEqual(
-            safe_url_string("http://www.example.com:80/résumé?q=résumé"),
-            "http://www.example.com:80/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9",
+        assert (
+            safe_url_string("http://www.example.com:80/résumé?q=résumé")
+            == "http://www.example.com:80/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9"
         )
-        self.assertEqual(
-            safe_url_string("http://www.example.com:/résumé?q=résumé"),
-            "http://www.example.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9",
+        assert (
+            safe_url_string("http://www.example.com:/résumé?q=résumé")
+            == "http://www.example.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9"
         )
 
     def test_safe_url_string_preserve_nonfragment_hash(self):
         # don't decode `%23` to `#`
-        self.assertEqual(
-            safe_url_string("http://www.example.com/path/to/%23/foo/bar"),
-            "http://www.example.com/path/to/%23/foo/bar",
+        assert (
+            safe_url_string("http://www.example.com/path/to/%23/foo/bar")
+            == "http://www.example.com/path/to/%23/foo/bar"
         )
-        self.assertEqual(
-            safe_url_string("http://www.example.com/path/to/%23/foo/bar#frag"),
-            "http://www.example.com/path/to/%23/foo/bar#frag",
+        assert (
+            safe_url_string("http://www.example.com/path/to/%23/foo/bar#frag")
+            == "http://www.example.com/path/to/%23/foo/bar#frag"
         )
-        self.assertEqual(
+        assert (
             safe_url_string(
                 "http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2Fpath%2Fto%2F%23%2Fbar%2Ffoo"
-            ),
-            "http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2Fpath%2Fto%2F%23%2Fbar%2Ffoo",
+            )
+            == "http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2Fpath%2Fto%2F%23%2Fbar%2Ffoo"
         )
-        self.assertEqual(
+        assert (
             safe_url_string(
                 "http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2F%2Fpath%2Fto%2F%23%2Fbar%2Ffoo#frag"
-            ),
-            "http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2F%2Fpath%2Fto%2F%23%2Fbar%2Ffoo#frag",
+            )
+            == "http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2F%2Fpath%2Fto%2F%23%2Fbar%2Ffoo#frag"
         )
 
     def test_safe_url_string_encode_idna_domain_with_port(self):
-        self.assertEqual(
-            safe_url_string("http://新华网.中国:80"),
-            "http://xn--xkrr14bows.xn--fiqs8s:80",
+        assert (
+            safe_url_string("http://新华网.中国:80")
+            == "http://xn--xkrr14bows.xn--fiqs8s:80"
         )
 
     def test_safe_url_string_encode_idna_domain_with_username_password_and_port_number(
         self,
     ):
-        self.assertEqual(
-            safe_url_string("ftp://admin:admin@新华网.中国:21"),
-            "ftp://admin:admin@xn--xkrr14bows.xn--fiqs8s:21",
+        assert (
+            safe_url_string("ftp://admin:admin@新华网.中国:21")
+            == "ftp://admin:admin@xn--xkrr14bows.xn--fiqs8s:21"
         )
-        self.assertEqual(
-            safe_url_string("http://Åsa:abc123@➡.ws:81/admin"),
-            "http://%C3%85sa:abc123@xn--hgi.ws:81/admin",
+        assert (
+            safe_url_string("http://Åsa:abc123@➡.ws:81/admin")
+            == "http://%C3%85sa:abc123@xn--hgi.ws:81/admin"
         )
-        self.assertEqual(
-            safe_url_string("http://japão:não@️i❤️.ws:8000/"),
-            "http://jap%C3%A3o:n%C3%A3o@xn--i-7iq.ws:8000/",
+        assert (
+            safe_url_string("http://japão:não@️i❤️.ws:8000/")
+            == "http://jap%C3%A3o:n%C3%A3o@xn--i-7iq.ws:8000/"
         )
 
     def test_safe_url_string_encode_idna_domain_with_username_and_empty_password_and_port_number(
         self,
     ):
-        self.assertEqual(
-            safe_url_string("ftp://admin:@新华网.中国:21"),
-            "ftp://admin:@xn--xkrr14bows.xn--fiqs8s:21",
+        assert (
+            safe_url_string("ftp://admin:@新华网.中国:21")
+            == "ftp://admin:@xn--xkrr14bows.xn--fiqs8s:21"
         )
-        self.assertEqual(
-            safe_url_string("ftp://admin@新华网.中国:21"),
-            "ftp://admin@xn--xkrr14bows.xn--fiqs8s:21",
+        assert (
+            safe_url_string("ftp://admin@新华网.中国:21")
+            == "ftp://admin@xn--xkrr14bows.xn--fiqs8s:21"
         )
 
     def test_safe_url_string_userinfo_unsafe_chars(
         self,
     ):
-        self.assertEqual(
-            safe_url_string("ftp://admin:|%@example.com"),
-            "ftp://admin:%7C%25@example.com",
+        assert (
+            safe_url_string("ftp://admin:|%@example.com")
+            == "ftp://admin:%7C%25@example.com"
         )
 
     def test_safe_url_string_user_and_pass_percentage_encoded(self):
-        self.assertEqual(
-            safe_url_string("http://%25user:%25pass@host"),
-            "http://%25user:%25pass@host",
+        assert (
+            safe_url_string("http://%25user:%25pass@host")
+            == "http://%25user:%25pass@host"
         )
 
-        self.assertEqual(
-            safe_url_string("http://%user:%pass@host"),
-            "http://%25user:%25pass@host",
+        assert (
+            safe_url_string("http://%user:%pass@host") == "http://%25user:%25pass@host"
         )
 
-        self.assertEqual(
-            safe_url_string("http://%26user:%26pass@host"),
-            "http://&user:&pass@host",
+        assert (
+            safe_url_string("http://%26user:%26pass@host") == "http://&user:&pass@host"
         )
 
-        self.assertEqual(
-            safe_url_string("http://%2525user:%2525pass@host"),
-            "http://%2525user:%2525pass@host",
+        assert (
+            safe_url_string("http://%2525user:%2525pass@host")
+            == "http://%2525user:%2525pass@host"
         )
 
-        self.assertEqual(
-            safe_url_string("http://%2526user:%2526pass@host"),
-            "http://%2526user:%2526pass@host",
+        assert (
+            safe_url_string("http://%2526user:%2526pass@host")
+            == "http://%2526user:%2526pass@host"
         )
 
-        self.assertEqual(
-            safe_url_string("http://%25%26user:%25%26pass@host"),
-            "http://%25&user:%25&pass@host",
+        assert (
+            safe_url_string("http://%25%26user:%25%26pass@host")
+            == "http://%25&user:%25&pass@host"
         )
 
     def test_safe_download_url(self):
-        self.assertEqual(
-            safe_download_url("http://www.example.org"), "http://www.example.org/"
+        assert safe_download_url("http://www.example.org") == "http://www.example.org/"
+        assert (
+            safe_download_url("http://www.example.org/../") == "http://www.example.org/"
         )
-        self.assertEqual(
-            safe_download_url("http://www.example.org/../"), "http://www.example.org/"
+        assert (
+            safe_download_url("http://www.example.org/../../images/../image")
+            == "http://www.example.org/image"
         )
-        self.assertEqual(
-            safe_download_url("http://www.example.org/../../images/../image"),
-            "http://www.example.org/image",
+        assert (
+            safe_download_url("http://www.example.org/dir/")
+            == "http://www.example.org/dir/"
         )
-        self.assertEqual(
-            safe_download_url("http://www.example.org/dir/"),
-            "http://www.example.org/dir/",
-        )
-        self.assertEqual(
-            safe_download_url(b"http://www.example.org/dir/"),
-            "http://www.example.org/dir/",
+        assert (
+            safe_download_url(b"http://www.example.org/dir/")
+            == "http://www.example.org/dir/"
         )
 
         # Encoding related tests
-        self.assertEqual(
+        assert (
             safe_download_url(
                 b"http://www.example.org?\xa3",
                 encoding="latin-1",
                 path_encoding="latin-1",
-            ),
-            "http://www.example.org/?%A3",
+            )
+            == "http://www.example.org/?%A3"
         )
-        self.assertEqual(
+        assert (
             safe_download_url(
                 b"http://www.example.org?\xc2\xa3",
                 encoding="utf-8",
                 path_encoding="utf-8",
-            ),
-            "http://www.example.org/?%C2%A3",
+            )
+            == "http://www.example.org/?%C2%A3"
         )
-        self.assertEqual(
+        assert (
             safe_download_url(
                 b"http://www.example.org/\xc2\xa3?\xc2\xa3",
                 encoding="utf-8",
                 path_encoding="latin-1",
-            ),
-            "http://www.example.org/%A3?%C2%A3",
+            )
+            == "http://www.example.org/%A3?%C2%A3"
         )
 
     def test_is_url(self):
-        self.assertTrue(is_url("http://www.example.org"))
-        self.assertTrue(is_url("https://www.example.org"))
-        self.assertTrue(is_url("file:///some/path"))
-        self.assertFalse(is_url("foo://bar"))
-        self.assertFalse(is_url("foo--bar"))
+        assert is_url("http://www.example.org")
+        assert is_url("https://www.example.org")
+        assert is_url("file:///some/path")
+        assert not is_url("foo://bar")
+        assert not is_url("foo--bar")
 
     def test_url_query_parameter(self):
-        self.assertEqual(
-            url_query_parameter("product.html?id=200&foo=bar", "id"), "200"
+        assert url_query_parameter("product.html?id=200&foo=bar", "id") == "200"
+        assert (
+            url_query_parameter("product.html?id=200&foo=bar", "notthere", "mydefault")
+            == "mydefault"
         )
-        self.assertEqual(
-            url_query_parameter("product.html?id=200&foo=bar", "notthere", "mydefault"),
-            "mydefault",
-        )
-        self.assertEqual(url_query_parameter("product.html?id=", "id"), None)
-        self.assertEqual(
-            url_query_parameter("product.html?id=", "id", keep_blank_values=1), ""
-        )
+        assert url_query_parameter("product.html?id=", "id") is None
+        assert url_query_parameter("product.html?id=", "id", keep_blank_values=1) == ""
 
     @pytest.mark.xfail
     def test_url_query_parameter_2(self):
@@ -875,501 +862,488 @@ class UrlTests(unittest.TestCase):
         # correct case
         aff_url1 = "http://www.anrdoezrs.net/click-2590032-10294381?url=http%3A%2F%2Fwww.argos.co.uk%2Fwebapp%2Fwcs%2Fstores%2Fservlet%2FArgosCreateReferral%3FstoreId%3D10001%26langId%3D-1%26referrer%3DCOJUN%26params%3Dadref%253DGarden+and+DIY-%3EGarden+furniture-%3EGarden+table+and+chair+sets%26referredURL%3Dhttp%3A%2F%2Fwww.argos.co.uk%2Fwebapp%2Fwcs%2Fstores%2Fservlet%2FProductDisplay%253FstoreId%253D10001%2526catalogId%253D1500001501%2526productId%253D1500357199%2526langId%253D-1"
         aff_url2 = url_query_parameter(aff_url1, "url")
-        self.assertEqual(
-            aff_url2,
-            "http://www.argos.co.uk/webapp/wcs/stores/servlet/ArgosCreateReferral?storeId=10001&langId=-1&referrer=COJUN&params=adref%3DGarden and DIY->Garden furniture->Garden table and chair sets&referredURL=http://www.argos.co.uk/webapp/wcs/stores/servlet/ProductDisplay%3FstoreId%3D10001%26catalogId%3D1500001501%26productId%3D1500357199%26langId%3D-1",
+        assert (
+            aff_url2
+            == "http://www.argos.co.uk/webapp/wcs/stores/servlet/ArgosCreateReferral?storeId=10001&langId=-1&referrer=COJUN&params=adref%3DGarden and DIY->Garden furniture->Garden table and chair sets&referredURL=http://www.argos.co.uk/webapp/wcs/stores/servlet/ProductDisplay%3FstoreId%3D10001%26catalogId%3D1500001501%26productId%3D1500357199%26langId%3D-1"
         )
         assert aff_url2 is not None
         prod_url = url_query_parameter(aff_url2, "referredURL")
-        self.assertEqual(
-            prod_url,
-            "http://www.argos.co.uk/webapp/wcs/stores/servlet/ProductDisplay?storeId=10001&catalogId=1500001501&productId=1500357199&langId=-1",
+        assert (
+            prod_url
+            == "http://www.argos.co.uk/webapp/wcs/stores/servlet/ProductDisplay?storeId=10001&catalogId=1500001501&productId=1500357199&langId=-1"
         )
         # weird case
         aff_url1 = "http://www.tkqlhce.com/click-2590032-10294381?url=http%3A%2F%2Fwww.argos.co.uk%2Fwebapp%2Fwcs%2Fstores%2Fservlet%2FArgosCreateReferral%3FstoreId%3D10001%26langId%3D-1%26referrer%3DCOJUN%26params%3Dadref%253DGarden+and+DIY-%3EGarden+furniture-%3EChildren%26%2339%3Bs+garden+furniture%26referredURL%3Dhttp%3A%2F%2Fwww.argos.co.uk%2Fwebapp%2Fwcs%2Fstores%2Fservlet%2FProductDisplay%253FstoreId%253D10001%2526catalogId%253D1500001501%2526productId%253D1500357023%2526langId%253D-1"
         aff_url2 = url_query_parameter(aff_url1, "url")
-        self.assertEqual(
-            aff_url2,
-            "http://www.argos.co.uk/webapp/wcs/stores/servlet/ArgosCreateReferral?storeId=10001&langId=-1&referrer=COJUN&params=adref%3DGarden and DIY->Garden furniture->Children&#39;s garden furniture&referredURL=http://www.argos.co.uk/webapp/wcs/stores/servlet/ProductDisplay%3FstoreId%3D10001%26catalogId%3D1500001501%26productId%3D1500357023%26langId%3D-1",
+        assert (
+            aff_url2
+            == "http://www.argos.co.uk/webapp/wcs/stores/servlet/ArgosCreateReferral?storeId=10001&langId=-1&referrer=COJUN&params=adref%3DGarden and DIY->Garden furniture->Children&#39;s garden furniture&referredURL=http://www.argos.co.uk/webapp/wcs/stores/servlet/ProductDisplay%3FstoreId%3D10001%26catalogId%3D1500001501%26productId%3D1500357023%26langId%3D-1"
         )
         assert aff_url2 is not None
         prod_url = url_query_parameter(aff_url2, "referredURL")
         # fails, prod_url is None now
-        self.assertEqual(
-            prod_url,
-            "http://www.argos.co.uk/webapp/wcs/stores/servlet/ProductDisplay?storeId=10001&catalogId=1500001501&productId=1500357023&langId=-1",
+        assert (
+            prod_url
+            == "http://www.argos.co.uk/webapp/wcs/stores/servlet/ProductDisplay?storeId=10001&catalogId=1500001501&productId=1500357023&langId=-1"
         )
 
     def test_add_or_replace_parameter(self):
         url = "http://domain/test"
-        self.assertEqual(
-            add_or_replace_parameter(url, "arg", "v"), "http://domain/test?arg=v"
-        )
+        assert add_or_replace_parameter(url, "arg", "v") == "http://domain/test?arg=v"
         url = "http://domain/test?arg1=v1&arg2=v2&arg3=v3"
-        self.assertEqual(
-            add_or_replace_parameter(url, "arg4", "v4"),
-            "http://domain/test?arg1=v1&arg2=v2&arg3=v3&arg4=v4",
+        assert (
+            add_or_replace_parameter(url, "arg4", "v4")
+            == "http://domain/test?arg1=v1&arg2=v2&arg3=v3&arg4=v4"
         )
-        self.assertEqual(
-            add_or_replace_parameter(url, "arg3", "nv3"),
-            "http://domain/test?arg1=v1&arg2=v2&arg3=nv3",
+        assert (
+            add_or_replace_parameter(url, "arg3", "nv3")
+            == "http://domain/test?arg1=v1&arg2=v2&arg3=nv3"
         )
 
-        self.assertEqual(
+        assert (
             add_or_replace_parameter(
                 "http://domain/moreInfo.asp?prodID=", "prodID", "20"
-            ),
-            "http://domain/moreInfo.asp?prodID=20",
+            )
+            == "http://domain/moreInfo.asp?prodID=20"
         )
         url = "http://rmc-offers.co.uk/productlist.asp?BCat=2%2C60&CatID=60"
-        self.assertEqual(
-            add_or_replace_parameter(url, "BCat", "newvalue"),
-            "http://rmc-offers.co.uk/productlist.asp?BCat=newvalue&CatID=60",
+        assert (
+            add_or_replace_parameter(url, "BCat", "newvalue")
+            == "http://rmc-offers.co.uk/productlist.asp?BCat=newvalue&CatID=60"
         )
         url = "http://rmc-offers.co.uk/productlist.asp?BCat=2,60&CatID=60"
-        self.assertEqual(
-            add_or_replace_parameter(url, "BCat", "newvalue"),
-            "http://rmc-offers.co.uk/productlist.asp?BCat=newvalue&CatID=60",
+        assert (
+            add_or_replace_parameter(url, "BCat", "newvalue")
+            == "http://rmc-offers.co.uk/productlist.asp?BCat=newvalue&CatID=60"
         )
         url = "http://rmc-offers.co.uk/productlist.asp?"
-        self.assertEqual(
-            add_or_replace_parameter(url, "BCat", "newvalue"),
-            "http://rmc-offers.co.uk/productlist.asp?BCat=newvalue",
+        assert (
+            add_or_replace_parameter(url, "BCat", "newvalue")
+            == "http://rmc-offers.co.uk/productlist.asp?BCat=newvalue"
         )
 
         url = "http://example.com/?version=1&pageurl=http%3A%2F%2Fwww.example.com%2Ftest%2F%23fragment%3Dy&param2=value2"
-        self.assertEqual(
-            add_or_replace_parameter(url, "version", "2"),
-            "http://example.com/?version=2&pageurl=http%3A%2F%2Fwww.example.com%2Ftest%2F%23fragment%3Dy&param2=value2",
+        assert (
+            add_or_replace_parameter(url, "version", "2")
+            == "http://example.com/?version=2&pageurl=http%3A%2F%2Fwww.example.com%2Ftest%2F%23fragment%3Dy&param2=value2"
         )
-        self.assertEqual(
-            add_or_replace_parameter(url, "pageurl", "test"),
-            "http://example.com/?version=1&pageurl=test&param2=value2",
+        assert (
+            add_or_replace_parameter(url, "pageurl", "test")
+            == "http://example.com/?version=1&pageurl=test&param2=value2"
         )
 
         url = "http://domain/test?arg1=v1&arg2=v2&arg1=v3"
-        self.assertEqual(
-            add_or_replace_parameter(url, "arg4", "v4"),
-            "http://domain/test?arg1=v1&arg2=v2&arg1=v3&arg4=v4",
+        assert (
+            add_or_replace_parameter(url, "arg4", "v4")
+            == "http://domain/test?arg1=v1&arg2=v2&arg1=v3&arg4=v4"
         )
-        self.assertEqual(
-            add_or_replace_parameter(url, "arg1", "v3"),
-            "http://domain/test?arg1=v3&arg2=v2",
+        assert (
+            add_or_replace_parameter(url, "arg1", "v3")
+            == "http://domain/test?arg1=v3&arg2=v2"
         )
 
     @pytest.mark.xfail(reason="https://github.com/scrapy/w3lib/issues/164")
     def test_add_or_replace_parameter_fail(self):
-        self.assertEqual(
-            add_or_replace_parameter(
-                "http://domain/test?arg1=v1;arg2=v2", "arg1", "v3"
-            ),
-            "http://domain/test?arg1=v3&arg2=v2",
+        assert (
+            add_or_replace_parameter("http://domain/test?arg1=v1;arg2=v2", "arg1", "v3")
+            == "http://domain/test?arg1=v3&arg2=v2"
         )
 
     def test_add_or_replace_parameters(self):
         url = "http://domain/test"
-        self.assertEqual(
-            add_or_replace_parameters(url, {"arg": "v"}), "http://domain/test?arg=v"
+        assert (
+            add_or_replace_parameters(url, {"arg": "v"}) == "http://domain/test?arg=v"
         )
         url = "http://domain/test?arg1=v1&arg2=v2&arg3=v3"
-        self.assertEqual(
-            add_or_replace_parameters(url, {"arg4": "v4"}),
-            "http://domain/test?arg1=v1&arg2=v2&arg3=v3&arg4=v4",
+        assert (
+            add_or_replace_parameters(url, {"arg4": "v4"})
+            == "http://domain/test?arg1=v1&arg2=v2&arg3=v3&arg4=v4"
         )
-        self.assertEqual(
-            add_or_replace_parameters(url, {"arg4": "v4", "arg3": "v3new"}),
-            "http://domain/test?arg1=v1&arg2=v2&arg3=v3new&arg4=v4",
+        assert (
+            add_or_replace_parameters(url, {"arg4": "v4", "arg3": "v3new"})
+            == "http://domain/test?arg1=v1&arg2=v2&arg3=v3new&arg4=v4"
         )
         url = "http://domain/test?arg1=v1&arg2=v2&arg1=v3"
-        self.assertEqual(
-            add_or_replace_parameters(url, {"arg4": "v4"}),
-            "http://domain/test?arg1=v1&arg2=v2&arg1=v3&arg4=v4",
+        assert (
+            add_or_replace_parameters(url, {"arg4": "v4"})
+            == "http://domain/test?arg1=v1&arg2=v2&arg1=v3&arg4=v4"
         )
-        self.assertEqual(
-            add_or_replace_parameters(url, {"arg1": "v3"}),
-            "http://domain/test?arg1=v3&arg2=v2",
+        assert (
+            add_or_replace_parameters(url, {"arg1": "v3"})
+            == "http://domain/test?arg1=v3&arg2=v2"
         )
 
     def test_add_or_replace_parameters_does_not_change_input_param(self):
         url = "http://domain/test?arg=original"
         input_param = {"arg": "value"}
         add_or_replace_parameters(url, input_param)
-        self.assertEqual(input_param, {"arg": "value"})
+        assert input_param == {"arg": "value"}
 
     def test_url_query_cleaner(self):
-        self.assertEqual("product.html", url_query_cleaner("product.html?"))
-        self.assertEqual("product.html", url_query_cleaner("product.html?&"))
-        self.assertEqual(
-            "product.html?id=200",
-            url_query_cleaner("product.html?id=200&foo=bar&name=wired", ["id"]),
+        assert url_query_cleaner("product.html?") == "product.html"
+        assert url_query_cleaner("product.html?&") == "product.html"
+        assert (
+            url_query_cleaner("product.html?id=200&foo=bar&name=wired", ["id"])
+            == "product.html?id=200"
         )
-        self.assertEqual(
-            "product.html?id=200",
-            url_query_cleaner("product.html?&id=200&&foo=bar&name=wired", ["id"]),
+        assert (
+            url_query_cleaner("product.html?&id=200&&foo=bar&name=wired", ["id"])
+            == "product.html?id=200"
         )
-        self.assertEqual(
-            "product.html", url_query_cleaner("product.html?foo=bar&name=wired", ["id"])
+        assert (
+            url_query_cleaner("product.html?foo=bar&name=wired", ["id"])
+            == "product.html"
         )
-        self.assertEqual(
-            "product.html?id=200&name=wired",
-            url_query_cleaner("product.html?id=200&foo=bar&name=wired", ["id", "name"]),
+        assert (
+            url_query_cleaner("product.html?id=200&foo=bar&name=wired", ["id", "name"])
+            == "product.html?id=200&name=wired"
         )
-        self.assertEqual(
-            "product.html?id",
-            url_query_cleaner("product.html?id&other=3&novalue=", ["id"]),
+        assert (
+            url_query_cleaner("product.html?id&other=3&novalue=", ["id"])
+            == "product.html?id"
         )
         # default is to remove duplicate keys
-        self.assertEqual(
-            "product.html?d=1",
-            url_query_cleaner("product.html?d=1&e=b&d=2&d=3&other=other", ["d"]),
+        assert (
+            url_query_cleaner("product.html?d=1&e=b&d=2&d=3&other=other", ["d"])
+            == "product.html?d=1"
         )
         # unique=False disables duplicate keys filtering
-        self.assertEqual(
-            "product.html?d=1&d=2&d=3",
+        assert (
             url_query_cleaner(
                 "product.html?d=1&e=b&d=2&d=3&other=other", ["d"], unique=False
-            ),
+            )
+            == "product.html?d=1&d=2&d=3"
         )
-        self.assertEqual(
-            "product.html?id=200&foo=bar",
+        assert (
             url_query_cleaner(
                 "product.html?id=200&foo=bar&name=wired#id20", ["id", "foo"]
-            ),
+            )
+            == "product.html?id=200&foo=bar"
         )
-        self.assertEqual(
-            "product.html?foo=bar&name=wired",
+        assert (
             url_query_cleaner(
                 "product.html?id=200&foo=bar&name=wired", ["id"], remove=True
-            ),
+            )
+            == "product.html?foo=bar&name=wired"
         )
-        self.assertEqual(
-            "product.html?name=wired",
+        assert (
             url_query_cleaner(
                 "product.html?id=2&foo=bar&name=wired", ["id", "foo"], remove=True
-            ),
+            )
+            == "product.html?name=wired"
         )
-        self.assertEqual(
-            "product.html?foo=bar&name=wired",
+        assert (
             url_query_cleaner(
                 "product.html?id=2&foo=bar&name=wired", ["id", "footo"], remove=True
-            ),
+            )
+            == "product.html?foo=bar&name=wired"
         )
-        self.assertEqual(
-            "product.html", url_query_cleaner("product.html", ["id"], remove=True)
+        assert url_query_cleaner("product.html", ["id"], remove=True) == "product.html"
+        assert (
+            url_query_cleaner("product.html?&", ["id"], remove=True) == "product.html"
         )
-        self.assertEqual(
-            "product.html", url_query_cleaner("product.html?&", ["id"], remove=True)
+        assert (
+            url_query_cleaner("product.html?foo=bar&name=wired", "foo")
+            == "product.html?foo=bar"
         )
-        self.assertEqual(
-            "product.html?foo=bar",
-            url_query_cleaner("product.html?foo=bar&name=wired", "foo"),
-        )
-        self.assertEqual(
-            "product.html?foobar=wired",
-            url_query_cleaner("product.html?foo=bar&foobar=wired", "foobar"),
+        assert (
+            url_query_cleaner("product.html?foo=bar&foobar=wired", "foobar")
+            == "product.html?foobar=wired"
         )
 
     def test_url_query_cleaner_keep_fragments(self):
-        self.assertEqual(
-            "product.html?id=200#foo",
+        assert (
             url_query_cleaner(
                 "product.html?id=200&foo=bar&name=wired#foo",
                 ["id"],
                 keep_fragments=True,
-            ),
+            )
+            == "product.html?id=200#foo"
         )
-        self.assertEqual(
-            "product.html?id=200",
+        assert (
             url_query_cleaner(
                 "product.html?id=200&foo=bar&name=wired", ["id"], keep_fragments=True
-            ),
+            )
+            == "product.html?id=200"
         )
 
     def test_path_to_file_uri(self):
         if os.name == "nt":
-            self.assertEqual(
-                path_to_file_uri(r"C:\\windows\clock.avi"),
-                "file:///C:/windows/clock.avi",
+            assert (
+                path_to_file_uri(r"C:\\windows\clock.avi")
+                == "file:///C:/windows/clock.avi"
             )
         else:
-            self.assertEqual(
-                path_to_file_uri("/some/path.txt"), "file:///some/path.txt"
-            )
+            assert path_to_file_uri("/some/path.txt") == "file:///some/path.txt"
 
         fn = "test.txt"
         x = path_to_file_uri(fn)
-        self.assertTrue(x.startswith("file:///"))
-        self.assertEqual(file_uri_to_path(x).lower(), str(Path(fn).resolve()).lower())
+        assert x.startswith("file:///")
+        assert file_uri_to_path(x).lower() == str(Path(fn).resolve()).lower()
 
     def test_file_uri_to_path(self):
         if os.name == "nt":
-            self.assertEqual(
-                file_uri_to_path("file:///C:/windows/clock.avi"),
-                r"C:\\windows\clock.avi",
+            assert (
+                file_uri_to_path("file:///C:/windows/clock.avi")
+                == r"C:\\windows\clock.avi"
             )
             uri = "file:///C:/windows/clock.avi"
             uri2 = path_to_file_uri(file_uri_to_path(uri))
-            self.assertEqual(uri, uri2)
+            assert uri == uri2
         else:
-            self.assertEqual(
-                file_uri_to_path("file:///path/to/test.txt"), "/path/to/test.txt"
-            )
-            self.assertEqual(file_uri_to_path("/path/to/test.txt"), "/path/to/test.txt")
+            assert file_uri_to_path("file:///path/to/test.txt") == "/path/to/test.txt"
+            assert file_uri_to_path("/path/to/test.txt") == "/path/to/test.txt"
             uri = "file:///path/to/test.txt"
             uri2 = path_to_file_uri(file_uri_to_path(uri))
-            self.assertEqual(uri, uri2)
+            assert uri == uri2
 
-        self.assertEqual(file_uri_to_path("test.txt"), "test.txt")
+        assert file_uri_to_path("test.txt") == "test.txt"
 
     def test_any_to_uri(self):
         if os.name == "nt":
-            self.assertEqual(
-                any_to_uri(r"C:\\windows\clock.avi"), "file:///C:/windows/clock.avi"
+            assert (
+                any_to_uri(r"C:\\windows\clock.avi") == "file:///C:/windows/clock.avi"
             )
         else:
-            self.assertEqual(any_to_uri("/some/path.txt"), "file:///some/path.txt")
-        self.assertEqual(any_to_uri("file:///some/path.txt"), "file:///some/path.txt")
-        self.assertEqual(
-            any_to_uri("http://www.example.com/some/path.txt"),
-            "http://www.example.com/some/path.txt",
+            assert any_to_uri("/some/path.txt") == "file:///some/path.txt"
+        assert any_to_uri("file:///some/path.txt") == "file:///some/path.txt"
+        assert (
+            any_to_uri("http://www.example.com/some/path.txt")
+            == "http://www.example.com/some/path.txt"
         )
 
 
-class CanonicalizeUrlTest(unittest.TestCase):
+class TestCanonicalizeUrl:
     def test_canonicalize_url(self):
         # simplest case
-        self.assertEqual(
-            canonicalize_url("http://www.example.com/"), "http://www.example.com/"
-        )
+        assert canonicalize_url("http://www.example.com/") == "http://www.example.com/"
 
     def test_return_str(self):
         assert isinstance(canonicalize_url("http://www.example.com"), str)
         assert isinstance(canonicalize_url(b"http://www.example.com"), str)
 
     def test_append_missing_path(self):
-        self.assertEqual(
-            canonicalize_url("http://www.example.com"), "http://www.example.com/"
-        )
+        assert canonicalize_url("http://www.example.com") == "http://www.example.com/"
 
     def test_typical_usage(self):
-        self.assertEqual(
-            canonicalize_url("http://www.example.com/do?a=1&b=2&c=3"),
-            "http://www.example.com/do?a=1&b=2&c=3",
+        assert (
+            canonicalize_url("http://www.example.com/do?a=1&b=2&c=3")
+            == "http://www.example.com/do?a=1&b=2&c=3"
         )
-        self.assertEqual(
-            canonicalize_url("http://www.example.com/do?c=1&b=2&a=3"),
-            "http://www.example.com/do?a=3&b=2&c=1",
+        assert (
+            canonicalize_url("http://www.example.com/do?c=1&b=2&a=3")
+            == "http://www.example.com/do?a=3&b=2&c=1"
         )
-        self.assertEqual(
-            canonicalize_url("http://www.example.com/do?&a=1"),
-            "http://www.example.com/do?a=1",
+        assert (
+            canonicalize_url("http://www.example.com/do?&a=1")
+            == "http://www.example.com/do?a=1"
         )
 
     def test_port_number(self):
-        self.assertEqual(
-            canonicalize_url("http://www.example.com:8888/do?a=1&b=2&c=3"),
-            "http://www.example.com:8888/do?a=1&b=2&c=3",
+        assert (
+            canonicalize_url("http://www.example.com:8888/do?a=1&b=2&c=3")
+            == "http://www.example.com:8888/do?a=1&b=2&c=3"
         )
         # trailing empty ports are removed
-        self.assertEqual(
-            canonicalize_url("http://www.example.com:/do?a=1&b=2&c=3"),
-            "http://www.example.com/do?a=1&b=2&c=3",
+        assert (
+            canonicalize_url("http://www.example.com:/do?a=1&b=2&c=3")
+            == "http://www.example.com/do?a=1&b=2&c=3"
         )
 
     def test_sorting(self):
-        self.assertEqual(
-            canonicalize_url("http://www.example.com/do?c=3&b=5&b=2&a=50"),
-            "http://www.example.com/do?a=50&b=2&b=5&c=3",
+        assert (
+            canonicalize_url("http://www.example.com/do?c=3&b=5&b=2&a=50")
+            == "http://www.example.com/do?a=50&b=2&b=5&c=3"
         )
 
     def test_keep_blank_values(self):
-        self.assertEqual(
+        assert (
             canonicalize_url(
                 "http://www.example.com/do?b=&a=2", keep_blank_values=False
-            ),
-            "http://www.example.com/do?a=2",
+            )
+            == "http://www.example.com/do?a=2"
         )
-        self.assertEqual(
-            canonicalize_url("http://www.example.com/do?b=&a=2"),
-            "http://www.example.com/do?a=2&b=",
+        assert (
+            canonicalize_url("http://www.example.com/do?b=&a=2")
+            == "http://www.example.com/do?a=2&b="
         )
-        self.assertEqual(
+        assert (
             canonicalize_url(
                 "http://www.example.com/do?b=&c&a=2", keep_blank_values=False
-            ),
-            "http://www.example.com/do?a=2",
+            )
+            == "http://www.example.com/do?a=2"
         )
-        self.assertEqual(
-            canonicalize_url("http://www.example.com/do?b=&c&a=2"),
-            "http://www.example.com/do?a=2&b=&c=",
+        assert (
+            canonicalize_url("http://www.example.com/do?b=&c&a=2")
+            == "http://www.example.com/do?a=2&b=&c="
         )
 
-        self.assertEqual(
-            canonicalize_url("http://www.example.com/do?1750,4"),
-            "http://www.example.com/do?1750%2C4=",
+        assert (
+            canonicalize_url("http://www.example.com/do?1750,4")
+            == "http://www.example.com/do?1750%2C4="
         )
 
     def test_spaces(self):
-        self.assertEqual(
-            canonicalize_url("http://www.example.com/do?q=a space&a=1"),
-            "http://www.example.com/do?a=1&q=a+space",
+        assert (
+            canonicalize_url("http://www.example.com/do?q=a space&a=1")
+            == "http://www.example.com/do?a=1&q=a+space"
         )
-        self.assertEqual(
-            canonicalize_url("http://www.example.com/do?q=a+space&a=1"),
-            "http://www.example.com/do?a=1&q=a+space",
+        assert (
+            canonicalize_url("http://www.example.com/do?q=a+space&a=1")
+            == "http://www.example.com/do?a=1&q=a+space"
         )
-        self.assertEqual(
-            canonicalize_url("http://www.example.com/do?q=a%20space&a=1"),
-            "http://www.example.com/do?a=1&q=a+space",
+        assert (
+            canonicalize_url("http://www.example.com/do?q=a%20space&a=1")
+            == "http://www.example.com/do?a=1&q=a+space"
         )
 
     def test_canonicalize_url_unicode_path(self):
-        self.assertEqual(
-            canonicalize_url("http://www.example.com/résumé"),
-            "http://www.example.com/r%C3%A9sum%C3%A9",
+        assert (
+            canonicalize_url("http://www.example.com/résumé")
+            == "http://www.example.com/r%C3%A9sum%C3%A9"
         )
 
     def test_canonicalize_url_unicode_query_string(self):
         # default encoding for path and query is UTF-8
-        self.assertEqual(
-            canonicalize_url("http://www.example.com/résumé?q=résumé"),
-            "http://www.example.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9",
+        assert (
+            canonicalize_url("http://www.example.com/résumé?q=résumé")
+            == "http://www.example.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9"
         )
 
         # passed encoding will affect query string
-        self.assertEqual(
+        assert (
             canonicalize_url(
                 "http://www.example.com/résumé?q=résumé", encoding="latin1"
-            ),
-            "http://www.example.com/r%C3%A9sum%C3%A9?q=r%E9sum%E9",
+            )
+            == "http://www.example.com/r%C3%A9sum%C3%A9?q=r%E9sum%E9"
         )
 
-        self.assertEqual(
+        assert (
             canonicalize_url(
                 "http://www.example.com/résumé?country=Россия", encoding="cp1251"
-            ),
-            "http://www.example.com/r%C3%A9sum%C3%A9?country=%D0%EE%F1%F1%E8%FF",
+            )
+            == "http://www.example.com/r%C3%A9sum%C3%A9?country=%D0%EE%F1%F1%E8%FF"
         )
 
     def test_canonicalize_url_unicode_query_string_wrong_encoding(self):
         # trying to encode with wrong encoding
         # fallback to UTF-8
-        self.assertEqual(
+        assert (
             canonicalize_url(
                 "http://www.example.com/résumé?currency=€", encoding="latin1"
-            ),
-            "http://www.example.com/r%C3%A9sum%C3%A9?currency=%E2%82%AC",
+            )
+            == "http://www.example.com/r%C3%A9sum%C3%A9?currency=%E2%82%AC"
         )
 
-        self.assertEqual(
+        assert (
             canonicalize_url(
                 "http://www.example.com/résumé?country=Россия", encoding="latin1"
-            ),
-            "http://www.example.com/r%C3%A9sum%C3%A9?country=%D0%A0%D0%BE%D1%81%D1%81%D0%B8%D1%8F",
+            )
+            == "http://www.example.com/r%C3%A9sum%C3%A9?country=%D0%A0%D0%BE%D1%81%D1%81%D0%B8%D1%8F"
         )
 
     def test_normalize_percent_encoding_in_paths(self):
-        self.assertEqual(
-            canonicalize_url("http://www.example.com/r%c3%a9sum%c3%a9"),
-            "http://www.example.com/r%C3%A9sum%C3%A9",
+        assert (
+            canonicalize_url("http://www.example.com/r%c3%a9sum%c3%a9")
+            == "http://www.example.com/r%C3%A9sum%C3%A9"
         )
 
         # non-UTF8 encoded sequences: they should be kept untouched, only upper-cased
         # 'latin1'-encoded sequence in path
-        self.assertEqual(
-            canonicalize_url("http://www.example.com/a%a3do"),
-            "http://www.example.com/a%A3do",
+        assert (
+            canonicalize_url("http://www.example.com/a%a3do")
+            == "http://www.example.com/a%A3do"
         )
 
         # 'latin1'-encoded path, UTF-8 encoded query string
-        self.assertEqual(
-            canonicalize_url("http://www.example.com/a%a3do?q=r%c3%a9sum%c3%a9"),
-            "http://www.example.com/a%A3do?q=r%C3%A9sum%C3%A9",
+        assert (
+            canonicalize_url("http://www.example.com/a%a3do?q=r%c3%a9sum%c3%a9")
+            == "http://www.example.com/a%A3do?q=r%C3%A9sum%C3%A9"
         )
 
         # 'latin1'-encoded path and query string
-        self.assertEqual(
-            canonicalize_url("http://www.example.com/a%a3do?q=r%e9sum%e9"),
-            "http://www.example.com/a%A3do?q=r%E9sum%E9",
+        assert (
+            canonicalize_url("http://www.example.com/a%a3do?q=r%e9sum%e9")
+            == "http://www.example.com/a%A3do?q=r%E9sum%E9"
         )
 
         url = "https://example.com/a%23b%2cc#bash"
         canonical = canonicalize_url(url)
         # %23 is not accidentally interpreted as a URL fragment separator
-        self.assertEqual(canonical, "https://example.com/a%23b,c")
-        self.assertEqual(canonical, canonicalize_url(canonical))
+        assert canonical == "https://example.com/a%23b,c"
+        assert canonical == canonicalize_url(canonical)
 
     def test_normalize_percent_encoding_in_query_arguments(self):
-        self.assertEqual(
-            canonicalize_url("http://www.example.com/do?k=b%a3"),
-            "http://www.example.com/do?k=b%A3",
+        assert (
+            canonicalize_url("http://www.example.com/do?k=b%a3")
+            == "http://www.example.com/do?k=b%A3"
         )
 
-        self.assertEqual(
-            canonicalize_url("http://www.example.com/do?k=r%c3%a9sum%c3%a9"),
-            "http://www.example.com/do?k=r%C3%A9sum%C3%A9",
+        assert (
+            canonicalize_url("http://www.example.com/do?k=r%c3%a9sum%c3%a9")
+            == "http://www.example.com/do?k=r%C3%A9sum%C3%A9"
         )
 
     def test_non_ascii_percent_encoding_in_paths(self):
-        self.assertEqual(
-            canonicalize_url("http://www.example.com/a do?a=1"),
-            "http://www.example.com/a%20do?a=1",
+        assert (
+            canonicalize_url("http://www.example.com/a do?a=1")
+            == "http://www.example.com/a%20do?a=1"
         )
 
-        self.assertEqual(
-            canonicalize_url("http://www.example.com/a %20do?a=1"),
-            "http://www.example.com/a%20%20do?a=1",
+        assert (
+            canonicalize_url("http://www.example.com/a %20do?a=1")
+            == "http://www.example.com/a%20%20do?a=1"
         )
 
-        self.assertEqual(
-            canonicalize_url("http://www.example.com/a do£.html?a=1"),
-            "http://www.example.com/a%20do%C2%A3.html?a=1",
+        assert (
+            canonicalize_url("http://www.example.com/a do£.html?a=1")
+            == "http://www.example.com/a%20do%C2%A3.html?a=1"
         )
 
-        self.assertEqual(
-            canonicalize_url(b"http://www.example.com/a do\xc2\xa3.html?a=1"),
-            "http://www.example.com/a%20do%C2%A3.html?a=1",
+        assert (
+            canonicalize_url(b"http://www.example.com/a do\xc2\xa3.html?a=1")
+            == "http://www.example.com/a%20do%C2%A3.html?a=1"
         )
 
     def test_non_ascii_percent_encoding_in_query_arguments(self):
-        self.assertEqual(
-            canonicalize_url("http://www.example.com/do?price=£500&a=5&z=3"),
-            "http://www.example.com/do?a=5&price=%C2%A3500&z=3",
+        assert (
+            canonicalize_url("http://www.example.com/do?price=£500&a=5&z=3")
+            == "http://www.example.com/do?a=5&price=%C2%A3500&z=3"
         )
-        self.assertEqual(
-            canonicalize_url(b"http://www.example.com/do?price=\xc2\xa3500&a=5&z=3"),
-            "http://www.example.com/do?a=5&price=%C2%A3500&z=3",
+        assert (
+            canonicalize_url(b"http://www.example.com/do?price=\xc2\xa3500&a=5&z=3")
+            == "http://www.example.com/do?a=5&price=%C2%A3500&z=3"
         )
-        self.assertEqual(
-            canonicalize_url(b"http://www.example.com/do?price(\xc2\xa3)=500&a=1"),
-            "http://www.example.com/do?a=1&price%28%C2%A3%29=500",
+        assert (
+            canonicalize_url(b"http://www.example.com/do?price(\xc2\xa3)=500&a=1")
+            == "http://www.example.com/do?a=1&price%28%C2%A3%29=500"
         )
 
     def test_urls_with_auth_and_ports(self):
-        self.assertEqual(
-            canonicalize_url("http://user:pass@www.example.com:81/do?now=1"),
-            "http://user:pass@www.example.com:81/do?now=1",
+        assert (
+            canonicalize_url("http://user:pass@www.example.com:81/do?now=1")
+            == "http://user:pass@www.example.com:81/do?now=1"
         )
 
     def test_remove_fragments(self):
-        self.assertEqual(
-            canonicalize_url("http://user:pass@www.example.com/do?a=1#frag"),
-            "http://user:pass@www.example.com/do?a=1",
+        assert (
+            canonicalize_url("http://user:pass@www.example.com/do?a=1#frag")
+            == "http://user:pass@www.example.com/do?a=1"
         )
-        self.assertEqual(
+        assert (
             canonicalize_url(
                 "http://user:pass@www.example.com/do?a=1#frag", keep_fragments=True
-            ),
-            "http://user:pass@www.example.com/do?a=1#frag",
+            )
+            == "http://user:pass@www.example.com/do?a=1#frag"
         )
 
     def test_dont_convert_safe_characters(self):
         # dont convert safe characters to percent encoding representation
-        self.assertEqual(
+        assert (
             canonicalize_url(
                 "http://www.simplybedrooms.com/White-Bedroom-Furniture/Bedroom-Mirror:-Josephine-Cheval-Mirror.html"
-            ),
-            "http://www.simplybedrooms.com/White-Bedroom-Furniture/Bedroom-Mirror:-Josephine-Cheval-Mirror.html",
+            )
+            == "http://www.simplybedrooms.com/White-Bedroom-Furniture/Bedroom-Mirror:-Josephine-Cheval-Mirror.html"
         )
 
     def test_safe_characters_unicode(self):
@@ -1378,74 +1352,70 @@ class CanonicalizeUrlTest(unittest.TestCase):
         # percent-encoded as utf-8, that's why canonicalize_url must always
         # convert the urls to string. the following test asserts that
         # functionality.
-        self.assertEqual(
-            canonicalize_url("http://www.example.com/caf%E9-con-leche.htm"),
-            "http://www.example.com/caf%E9-con-leche.htm",
+        assert (
+            canonicalize_url("http://www.example.com/caf%E9-con-leche.htm")
+            == "http://www.example.com/caf%E9-con-leche.htm"
         )
 
     def test_domains_are_case_insensitive(self):
-        self.assertEqual(
-            canonicalize_url("http://www.EXAMPLE.com/"), "http://www.example.com/"
-        )
+        assert canonicalize_url("http://www.EXAMPLE.com/") == "http://www.example.com/"
 
     def test_userinfo_is_case_sensitive(self):
-        self.assertEqual(
-            canonicalize_url("sftp://UsEr:PaSsWoRd@www.EXAMPLE.com/"),
-            "sftp://UsEr:PaSsWoRd@www.example.com/",
+        assert (
+            canonicalize_url("sftp://UsEr:PaSsWoRd@www.EXAMPLE.com/")
+            == "sftp://UsEr:PaSsWoRd@www.example.com/"
         )
 
     def test_canonicalize_idns(self):
-        self.assertEqual(
-            canonicalize_url("http://www.bücher.de?q=bücher"),
-            "http://www.xn--bcher-kva.de/?q=b%C3%BCcher",
+        assert (
+            canonicalize_url("http://www.bücher.de?q=bücher")
+            == "http://www.xn--bcher-kva.de/?q=b%C3%BCcher"
         )
         # Japanese (+ reordering query parameters)
-        self.assertEqual(
-            canonicalize_url("http://はじめよう.みんな/?query=サ&maxResults=5"),
-            "http://xn--p8j9a0d9c9a.xn--q9jyb4c/?maxResults=5&query=%E3%82%B5",
+        assert (
+            canonicalize_url("http://はじめよう.みんな/?query=サ&maxResults=5")
+            == "http://xn--p8j9a0d9c9a.xn--q9jyb4c/?maxResults=5&query=%E3%82%B5"
         )
 
     def test_quoted_slash_and_question_sign(self):
-        self.assertEqual(
-            canonicalize_url("http://foo.com/AC%2FDC+rocks%3f/?yeah=1"),
-            "http://foo.com/AC%2FDC+rocks%3F/?yeah=1",
+        assert (
+            canonicalize_url("http://foo.com/AC%2FDC+rocks%3f/?yeah=1")
+            == "http://foo.com/AC%2FDC+rocks%3F/?yeah=1"
         )
-        self.assertEqual(
-            canonicalize_url("http://foo.com/AC%2FDC/"), "http://foo.com/AC%2FDC/"
-        )
+        assert canonicalize_url("http://foo.com/AC%2FDC/") == "http://foo.com/AC%2FDC/"
 
     def test_canonicalize_urlparsed(self):
         # canonicalize_url() can be passed an already urlparse'd URL
-        self.assertEqual(
-            canonicalize_url(urlparse("http://www.example.com/résumé?q=résumé")),
-            "http://www.example.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9",
+        assert (
+            canonicalize_url(urlparse("http://www.example.com/résumé?q=résumé"))
+            == "http://www.example.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9"
         )
-        self.assertEqual(
-            canonicalize_url(urlparse("http://www.example.com/caf%e9-con-leche.htm")),
-            "http://www.example.com/caf%E9-con-leche.htm",
+        assert (
+            canonicalize_url(urlparse("http://www.example.com/caf%e9-con-leche.htm"))
+            == "http://www.example.com/caf%E9-con-leche.htm"
         )
-        self.assertEqual(
+        assert (
             canonicalize_url(
                 urlparse("http://www.example.com/a%a3do?q=r%c3%a9sum%c3%a9")
-            ),
-            "http://www.example.com/a%A3do?q=r%C3%A9sum%C3%A9",
+            )
+            == "http://www.example.com/a%A3do?q=r%C3%A9sum%C3%A9"
         )
 
     def test_canonicalize_parse_url(self):
         # parse_url() wraps urlparse and is used in link extractors
-        self.assertEqual(
-            canonicalize_url(parse_url("http://www.example.com/résumé?q=résumé")),
-            "http://www.example.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9",
+        assert (
+            canonicalize_url(parse_url("http://www.example.com/résumé?q=résumé"))
+            == "http://www.example.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9"
         )
-        self.assertEqual(
-            canonicalize_url(parse_url("http://www.example.com/caf%e9-con-leche.htm")),
-            "http://www.example.com/caf%E9-con-leche.htm",
+        assert (
+            canonicalize_url(parse_url("http://www.example.com/caf%e9-con-leche.htm"))
+            == "http://www.example.com/caf%E9-con-leche.htm"
         )
-        self.assertEqual(
+        assert (
             canonicalize_url(
                 parse_url("http://www.example.com/a%a3do?q=r%c3%a9sum%c3%a9")
-            ),
-            "http://www.example.com/a%A3do?q=r%C3%A9sum%C3%A9",
+            )
+            == "http://www.example.com/a%A3do?q=r%C3%A9sum%C3%A9"
         )
 
     def test_canonicalize_url_idempotence(self):
@@ -1458,104 +1428,96 @@ class CanonicalizeUrlTest(unittest.TestCase):
             canonicalized = canonicalize_url(url, encoding=enc)
 
             # if we canonicalize again, we ge the same result
-            self.assertEqual(
-                canonicalize_url(canonicalized, encoding=enc), canonicalized
-            )
+            assert canonicalize_url(canonicalized, encoding=enc) == canonicalized
 
             # without encoding, already canonicalized URL is canonicalized identically
-            self.assertEqual(canonicalize_url(canonicalized), canonicalized)
+            assert canonicalize_url(canonicalized) == canonicalized
 
     def test_canonicalize_url_idna_exceptions(self):
         # missing DNS label
-        self.assertEqual(
-            canonicalize_url("http://.example.com/résumé?q=résumé"),
-            "http://.example.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9",
+        assert (
+            canonicalize_url("http://.example.com/résumé?q=résumé")
+            == "http://.example.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9"
         )
 
         # DNS label too long
-        self.assertEqual(
-            canonicalize_url(f"http://www.{'example' * 11}.com/résumé?q=résumé"),
-            f"http://www.{'example' * 11}.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9",
+        assert (
+            canonicalize_url(f"http://www.{'example' * 11}.com/résumé?q=résumé")
+            == f"http://www.{'example' * 11}.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9"
         )
 
     def test_preserve_nonfragment_hash(self):
         # don't decode `%23` to `#`
-        self.assertEqual(
-            canonicalize_url("http://www.example.com/path/to/%23/foo/bar"),
-            "http://www.example.com/path/to/%23/foo/bar",
+        assert (
+            canonicalize_url("http://www.example.com/path/to/%23/foo/bar")
+            == "http://www.example.com/path/to/%23/foo/bar"
         )
-        self.assertEqual(
-            canonicalize_url("http://www.example.com/path/to/%23/foo/bar#frag"),
-            "http://www.example.com/path/to/%23/foo/bar",
+        assert (
+            canonicalize_url("http://www.example.com/path/to/%23/foo/bar#frag")
+            == "http://www.example.com/path/to/%23/foo/bar"
         )
-        self.assertEqual(
+        assert (
             canonicalize_url(
                 "http://www.example.com/path/to/%23/foo/bar#frag", keep_fragments=True
-            ),
-            "http://www.example.com/path/to/%23/foo/bar#frag",
+            )
+            == "http://www.example.com/path/to/%23/foo/bar#frag"
         )
-        self.assertEqual(
+        assert (
             canonicalize_url(
                 "http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2Fpath%2Fto%2F%23%2Fbar%2Ffoo"
-            ),
-            "http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2Fpath%2Fto%2F%23%2Fbar%2Ffoo",
+            )
+            == "http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2Fpath%2Fto%2F%23%2Fbar%2Ffoo"
         )
-        self.assertEqual(
+        assert (
             canonicalize_url(
                 "http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2F%2Fpath%2Fto%2F%23%2Fbar%2Ffoo#frag"
-            ),
-            "http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2F%2Fpath%2Fto%2F%23%2Fbar%2Ffoo",
+            )
+            == "http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2F%2Fpath%2Fto%2F%23%2Fbar%2Ffoo"
         )
-        self.assertEqual(
+        assert (
             canonicalize_url(
                 "http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2F%2Fpath%2Fto%2F%23%2Fbar%2Ffoo#frag",
                 keep_fragments=True,
-            ),
-            "http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2F%2Fpath%2Fto%2F%23%2Fbar%2Ffoo#frag",
+            )
+            == "http://www.example.com/path/to/%23/foo/bar?url=http%3A%2F%2Fwww.example.com%2F%2Fpath%2Fto%2F%23%2Fbar%2Ffoo#frag"
         )
 
     def test_strip_spaces(self):
-        self.assertEqual(
-            canonicalize_url(" https://example.com"), "https://example.com/"
-        )
-        self.assertEqual(
-            canonicalize_url("https://example.com "), "https://example.com/"
-        )
-        self.assertEqual(
-            canonicalize_url(" https://example.com "), "https://example.com/"
-        )
+        assert canonicalize_url(" https://example.com") == "https://example.com/"
+        assert canonicalize_url("https://example.com ") == "https://example.com/"
+        assert canonicalize_url(" https://example.com ") == "https://example.com/"
 
 
-class DataURITests(unittest.TestCase):
+class TestDataURI:
     def test_default_mediatype_charset(self):
         result = parse_data_uri("data:,A%20brief%20note")
-        self.assertEqual(result.media_type, "text/plain")
-        self.assertEqual(result.media_type_parameters, {"charset": "US-ASCII"})
-        self.assertEqual(result.data, b"A brief note")
+        assert result.media_type == "text/plain"
+        assert result.media_type_parameters == {"charset": "US-ASCII"}
+        assert result.data == b"A brief note"
 
     def test_text_uri(self):
         result = parse_data_uri("data:,A%20brief%20note")
-        self.assertEqual(result.data, b"A brief note")
+        assert result.data == b"A brief note"
 
     def test_bytes_uri(self):
         result = parse_data_uri(b"data:,A%20brief%20note")
-        self.assertEqual(result.data, b"A brief note")
+        assert result.data == b"A brief note"
 
     def test_unicode_uri(self):
         result = parse_data_uri("data:,é")
-        self.assertEqual(result.data, "é".encode())
+        assert result.data == "é".encode()
 
     def test_default_mediatype(self):
         result = parse_data_uri("data:;charset=iso-8859-7,%be%d3%be")
-        self.assertEqual(result.media_type, "text/plain")
-        self.assertEqual(result.media_type_parameters, {"charset": "iso-8859-7"})
-        self.assertEqual(result.data, b"\xbe\xd3\xbe")
+        assert result.media_type == "text/plain"
+        assert result.media_type_parameters == {"charset": "iso-8859-7"}
+        assert result.data == b"\xbe\xd3\xbe"
 
     def test_text_charset(self):
         result = parse_data_uri("data:text/plain;charset=iso-8859-7,%be%d3%be")
-        self.assertEqual(result.media_type, "text/plain")
-        self.assertEqual(result.media_type_parameters, {"charset": "iso-8859-7"})
-        self.assertEqual(result.data, b"\xbe\xd3\xbe")
+        assert result.media_type == "text/plain"
+        assert result.media_type_parameters == {"charset": "iso-8859-7"}
+        assert result.data == b"\xbe\xd3\xbe"
 
     def test_mediatype_parameters(self):
         result = parse_data_uri(
@@ -1566,53 +1528,50 @@ class DataURITests(unittest.TestCase):
             "%CE%8E%CE%A3%CE%8E"
         )
 
-        self.assertEqual(result.media_type, "text/plain")
-        self.assertEqual(
-            result.media_type_parameters,
-            {"charset": "utf-8", "foo": 'foo;bar"', "bar": 'foo;"foo ;/ ,'},
-        )
-        self.assertEqual(result.data, b"\xce\x8e\xce\xa3\xce\x8e")
+        assert result.media_type == "text/plain"
+        assert result.media_type_parameters == {
+            "charset": "utf-8",
+            "foo": 'foo;bar"',
+            "bar": 'foo;"foo ;/ ,',
+        }
+        assert result.data == b"\xce\x8e\xce\xa3\xce\x8e"
 
     def test_base64(self):
         result = parse_data_uri("data:text/plain;base64,SGVsbG8sIHdvcmxkLg%3D%3D")
-        self.assertEqual(result.media_type, "text/plain")
-        self.assertEqual(result.data, b"Hello, world.")
+        assert result.media_type == "text/plain"
+        assert result.data == b"Hello, world."
 
     def test_base64_spaces(self):
         result = parse_data_uri(
             "data:text/plain;base64,SGVsb%20G8sIH%0A%20%20dvcm%20%20%20xk%20Lg%3D%0A%3D"
         )
-        self.assertEqual(result.media_type, "text/plain")
-        self.assertEqual(result.data, b"Hello, world.")
+        assert result.media_type == "text/plain"
+        assert result.data == b"Hello, world."
 
         result = parse_data_uri(
             "data:text/plain;base64,SGVsb G8sIH\n  dvcm   xk Lg%3D\n%3D"
         )
-        self.assertEqual(result.media_type, "text/plain")
-        self.assertEqual(result.data, b"Hello, world.")
+        assert result.media_type == "text/plain"
+        assert result.data == b"Hello, world."
 
     def test_wrong_base64_param(self):
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError, match="invalid data URI"):
             parse_data_uri("data:text/plain;baes64,SGVsbG8sIHdvcmxkLg%3D%3D")
 
     def test_missing_comma(self):
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError, match="invalid data URI"):
             parse_data_uri("data:A%20brief%20note")
 
     def test_missing_scheme(self):
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError, match="invalid URI"):
             parse_data_uri("text/plain,A%20brief%20note")
 
     def test_wrong_scheme(self):
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError, match="not a data URI"):
             parse_data_uri("http://example.com/")
 
     def test_scheme_case_insensitive(self):
         result = parse_data_uri("DATA:,A%20brief%20note")
-        self.assertEqual(result.data, b"A brief note")
+        assert result.data == b"A brief note"
         result = parse_data_uri("DaTa:,A%20brief%20note")
-        self.assertEqual(result.data, b"A brief note")
-
-
-if __name__ == "__main__":
-    unittest.main()
+        assert result.data == b"A brief note"

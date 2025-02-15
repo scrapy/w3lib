@@ -1,17 +1,15 @@
-from unittest import TestCase
-
-from pytest import raises
+import pytest
 
 from w3lib.util import to_bytes, to_unicode
 
 
-class ToBytesTestCase(TestCase):
+class TestToBytes:
     def test_type_error(self):
-        with raises(TypeError):
+        with pytest.raises(TypeError):
             to_bytes(True)  # type: ignore[arg-type]
 
 
-class ToUnicodeTestCase(TestCase):
+class TestToUnicode:
     def test_type_error(self):
-        with raises(TypeError):
+        with pytest.raises(TypeError):
             to_unicode(True)  # type: ignore[arg-type]

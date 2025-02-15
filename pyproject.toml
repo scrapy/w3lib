@@ -15,7 +15,6 @@ filename = "docs/conf.py"
 
 [tool.coverage.run]
 branch = true
-include = ["w3lib/*"]
 
 [tool.coverage.report]
 exclude_also = [
@@ -91,6 +90,8 @@ extend-select = [
     "PIE",
     # pylint
     "PL",
+    # flake8-pytest-style
+    "PT",
     # flake8-use-pathlib
     "PTH",
     # flake8-pyi
