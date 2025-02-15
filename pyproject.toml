@@ -53,6 +53,7 @@ disable = [
     "raise-missing-from",
     "redefined-builtin",
     "redefined-outer-name",
+    "too-few-public-methods",
     "too-many-arguments",
     "too-many-branches",
     "too-many-lines",
