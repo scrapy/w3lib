@@ -1,4 +1,3 @@
-import unittest
 from collections import OrderedDict
 
 from w3lib.http import (
@@ -8,33 +7,33 @@ from w3lib.http import (
     headers_raw_to_dict,
 )
 
-__doctests__ = ["w3lib.http"]  # for trial support
 
-
-class HttpTests(unittest.TestCase):
+class TestHttp:
     def test_basic_auth_header(self):
-        self.assertEqual(
-            b"Basic c29tZXVzZXI6c29tZXBhc3M=", basic_auth_header("someuser", "somepass")
+        assert (
+            basic_auth_header("someuser", "somepass")
+            == b"Basic c29tZXVzZXI6c29tZXBhc3M="
         )
         # Check url unsafe encoded header
-        self.assertEqual(
-            b"Basic c29tZXVzZXI6QDx5dTk+Jm8/UQ==",
-            basic_auth_header("someuser", "@<yu9>&o?Q"),
+        assert (
+            basic_auth_header("someuser", "@<yu9>&o?Q")
+            == b"Basic c29tZXVzZXI6QDx5dTk+Jm8/UQ=="
         )
 
     def test_basic_auth_header_encoding(self):
-        self.assertEqual(
-            b"Basic c29tw6Z1c8Oocjpzw7htZXDDpHNz",
-            basic_auth_header("somæusèr", "sømepäss", encoding="utf8"),
+        assert (
+            basic_auth_header("somæusèr", "sømepäss", encoding="utf8")
+            == b"Basic c29tw6Z1c8Oocjpzw7htZXDDpHNz"
         )
         # default encoding (ISO-8859-1)
-        self.assertEqual(
-            b"Basic c29t5nVz6HI6c/htZXDkc3M=", basic_auth_header("somæusèr", "sømepäss")
+        assert (
+            basic_auth_header("somæusèr", "sømepäss")
+            == b"Basic c29t5nVz6HI6c/htZXDkc3M="
         )
 
     def test_headers_raw_dict_none(self):
-        self.assertIsNone(headers_raw_to_dict(None))
-        self.assertIsNone(headers_dict_to_raw(None))
+        assert headers_raw_to_dict(None) is None
+        assert headers_dict_to_raw(None) is None
 
     def test_headers_raw_to_dict(self):
         raw = b"Content-type: text/html\n\rAccept: gzip\n\r\
@@ -44,37 +43,31 @@ class HttpTests(unittest.TestCase):
             b"Accept": [b"gzip"],
             b"Cache-Control": [b"no-cache", b"no-store"],
         }
-        self.assertEqual(headers_raw_to_dict(raw), dct)
+        assert headers_raw_to_dict(raw) == dct
 
     def test_headers_dict_to_raw(self):
         dct = OrderedDict([(b"Content-type", b"text/html"), (b"Accept", b"gzip")])
-        self.assertEqual(
-            headers_dict_to_raw(dct), b"Content-type: text/html\r\nAccept: gzip"
-        )
+        assert headers_dict_to_raw(dct) == b"Content-type: text/html\r\nAccept: gzip"
 
     def test_headers_dict_to_raw_listtuple(self):
         dct: HeadersDictInput = OrderedDict(
             [(b"Content-type", [b"text/html"]), (b"Accept", [b"gzip"])]
         )
-        self.assertEqual(
-            headers_dict_to_raw(dct), b"Content-type: text/html\r\nAccept: gzip"
-        )
+        assert headers_dict_to_raw(dct) == b"Content-type: text/html\r\nAccept: gzip"
 
         dct = OrderedDict([(b"Content-type", (b"text/html",)), (b"Accept", (b"gzip",))])
-        self.assertEqual(
-            headers_dict_to_raw(dct), b"Content-type: text/html\r\nAccept: gzip"
-        )
+        assert headers_dict_to_raw(dct) == b"Content-type: text/html\r\nAccept: gzip"
 
         dct = OrderedDict([(b"Cookie", (b"val001", b"val002")), (b"Accept", b"gzip")])
-        self.assertEqual(
-            headers_dict_to_raw(dct),
-            b"Cookie: val001\r\nCookie: val002\r\nAccept: gzip",
+        assert (
+            headers_dict_to_raw(dct)
+            == b"Cookie: val001\r\nCookie: val002\r\nAccept: gzip"
         )
 
         dct = OrderedDict([(b"Cookie", [b"val001", b"val002"]), (b"Accept", b"gzip")])
-        self.assertEqual(
-            headers_dict_to_raw(dct),
-            b"Cookie: val001\r\nCookie: val002\r\nAccept: gzip",
+        assert (
+            headers_dict_to_raw(dct)
+            == b"Cookie: val001\r\nCookie: val002\r\nAccept: gzip"
         )
 
     def test_headers_dict_to_raw_wrong_values(self):
@@ -83,8 +76,8 @@ class HttpTests(unittest.TestCase):
                 (b"Content-type", 0),
             ]
         )
-        self.assertEqual(headers_dict_to_raw(dct), b"")
-        self.assertEqual(headers_dict_to_raw(dct), b"")
+        assert headers_dict_to_raw(dct) == b""
+        assert headers_dict_to_raw(dct) == b""
 
         dct = OrderedDict([(b"Content-type", 1), (b"Accept", [b"gzip"])])
-        self.assertEqual(headers_dict_to_raw(dct), b"Accept: gzip")
+        assert headers_dict_to_raw(dct) == b"Accept: gzip"
