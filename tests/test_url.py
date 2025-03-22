@@ -1079,7 +1079,7 @@ class TestUrl:
         fn = "test.txt"
         x = path_to_file_uri(fn)
         assert x.startswith("file:///")
-        assert file_uri_to_path(x).lower() == str(Path(fn).resolve()).lower()
+        assert file_uri_to_path(x).lower() == str(Path(fn).absolute()).lower()
 
     def test_file_uri_to_path(self):
         if os.name == "nt":
