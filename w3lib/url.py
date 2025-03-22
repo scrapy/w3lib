@@ -401,7 +401,7 @@ def path_to_file_uri(path: str | os.PathLike[str]) -> str:
     """Convert local filesystem path to legal File URIs as described in:
     http://en.wikipedia.org/wiki/File_URI_scheme
     """
-    x = pathname2url(str(Path(path).resolve()))
+    x = pathname2url(str(Path(path).absolute()))
     return f"file:///{x.lstrip('/')}"
 
 
