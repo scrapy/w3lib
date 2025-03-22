@@ -27,12 +27,12 @@ check_untyped_defs = true
 [[tool.mypy.overrides]]
 # All non-tests functions must be typed.
 module = "w3lib.*"
-disallow_untyped_defs = true
+allow_untyped_defs = false
 
 [[tool.mypy.overrides]]
 # Allow test functions to be untyped
 module = "tests.*"
-disallow_untyped_defs = false
+allow_untyped_defs = true
 
 [tool.pylint.MASTER]
 persistent = "no"
@@ -60,6 +60,7 @@ disable = [
     "too-many-positional-arguments",
     "too-many-public-methods",
     "unused-argument",
+    "unused-import",
     "unused-variable",
 ]
 

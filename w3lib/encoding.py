@@ -8,10 +8,12 @@ import codecs
 import encodings
 import re
 from re import Match
-from typing import Callable, cast
+from typing import TYPE_CHECKING, Callable, cast
 
 import w3lib.util
-from w3lib._types import AnyUnicodeError
+
+if TYPE_CHECKING:
+    from w3lib._types import AnyUnicodeError
 
 _HEADER_ENCODING_RE = re.compile(r"charset=([\w-]+)", re.IGNORECASE)
 
@@ -136,7 +138,7 @@ def _c18n_encoding(encoding: str) -> str:
     encoding aliases
     """
     normed = encodings.normalize_encoding(encoding).lower()
-    return cast(str, encodings.aliases.aliases.get(normed, normed))
+    return cast("str", encodings.aliases.aliases.get(normed, normed))
 
 
 def resolve_encoding(encoding_alias: str) -> str | None:
@@ -201,7 +203,7 @@ def read_bom(data: bytes) -> tuple[None, None] | tuple[str, bytes]:
 # Python decoder doesn't follow unicode standard when handling
 # bad utf-8 encoded strings. see http://bugs.python.org/issue8271
 codecs.register_error(
-    "w3lib_replace", lambda exc: ("\ufffd", cast(AnyUnicodeError, exc).end)
+    "w3lib_replace", lambda exc: ("\ufffd", cast("AnyUnicodeError", exc).end)
 )
 
 
@@ -283,7 +285,7 @@ def html_to_unicode(
     '''
     bom_enc, bom = read_bom(html_body_str)
     if bom_enc is not None:
-        bom = cast(bytes, bom)
+        bom = cast("bytes", bom)
         return bom_enc, to_unicode(html_body_str[len(bom) :], bom_enc)
 
     enc = http_content_type_encoding(content_type_header)
