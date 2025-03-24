@@ -31,17 +31,18 @@ from urllib.parse import (  # type: ignore[attr-defined]
 from urllib.request import pathname2url, url2pathname
 
 from ._infra import _ASCII_TAB_OR_NEWLINE, _C0_CONTROL_OR_SPACE
-from ._types import AnyUnicodeError
 from ._url import _SPECIAL_SCHEMES
 from .util import to_unicode
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from ._types import AnyUnicodeError
+
 
 # error handling function for bytes-to-Unicode decoding errors with URLs
 def _quote_byte(error: UnicodeError) -> tuple[str, int]:
-    error = cast(AnyUnicodeError, error)
+    error = cast("AnyUnicodeError", error)
     return (to_unicode(quote(error.object[error.start : error.end])), error.end)
 
 
@@ -320,8 +321,8 @@ def url_query_cleaner(
     if isinstance(parameterlist, (str, bytes)):
         parameterlist = [parameterlist]
     url, fragment = urldefrag(url)
-    url = cast(str, url)
-    fragment = cast(str, fragment)
+    url = cast("str", url)
+    fragment = cast("str", fragment)
     base, _, query = url.partition("?")
     seen = set()
     querylist = []
@@ -400,7 +401,7 @@ def path_to_file_uri(path: str | os.PathLike[str]) -> str:
     """Convert local filesystem path to legal File URIs as described in:
     http://en.wikipedia.org/wiki/File_URI_scheme
     """
-    x = pathname2url(str(Path(path).resolve()))
+    x = pathname2url(str(Path(path).absolute()))
     return f"file:///{x.lstrip('/')}"
 
 
@@ -697,7 +698,7 @@ def parse_qsl_to_bytes(
     # (at https://hg.python.org/cpython/rev/c38ac7ab8d9a)
     # except for the unquote(s, encoding, errors) calls replaced
     # with unquote_to_bytes(s)
-    coerce_args = cast(Callable[..., tuple[str, Callable[..., bytes]]], _coerce_args)
+    coerce_args = cast("Callable[..., tuple[str, Callable[..., bytes]]]", _coerce_args)
     qs, _coerce_result = coerce_args(qs)
     pairs = [s2 for s1 in qs.split("&") for s2 in s1.split(";")]
     r = []
