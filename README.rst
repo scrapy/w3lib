@@ -2,8 +2,8 @@
 w3lib
 =====
 
-.. image:: https://github.com/scrapy/w3lib/actions/workflows/tests.yml/badge.svg
-   :target: https://github.com/scrapy/w3lib/actions
+.. image:: https://github.com/scrapy/w3lib/actions/workflows/tests-ubuntu.yml/badge.svg
+   :target: https://github.com/scrapy/w3lib/actions/workflows/tests-ubuntu.yml
 
 .. image:: https://img.shields.io/codecov/c/github/scrapy/w3lib/master.svg
    :target: http://codecov.io/github/scrapy/w3lib?branch=master
