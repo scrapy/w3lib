@@ -1,11 +1,61 @@
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "w3lib"
+description = "Library of web-related functions"
+readme = "README.rst"
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Scrapy project", email = "info@scrapy.org" },
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+requires-python = ">=3.9"
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/scrapy/w3lib"
+Documentation = "https://w3lib.readthedocs.io/en/latest/"
+Source = "https://github.com/scrapy/w3lib"
+Tracker = "https://github.com/scrapy/w3lib/issues"
+Changelog = "https://github.com/scrapy/w3lib/commits/master/"
+releasenotes = "https://w3lib.readthedocs.io/en/latest/#changelog"
+
+[tool.hatch.version]
+path = "w3lib/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/docs",
+    "/w3lib",
+    "/tests",
+    "/NEWS",
+    "/codecov.yml",
+    "/tox.ini",
+]
+
 [tool.bumpversion]
 current_version = "2.3.1"
 commit = true
 tag = true
 tag_name = "v{new_version}"
-
-[[tool.bumpversion.files]]
-filename = "setup.py"
 
 [[tool.bumpversion.files]]
 filename = "w3lib/__init__.py"
