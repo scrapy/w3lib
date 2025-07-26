@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import codecs
+import random
+from io import BytesIO
 from typing import Any
 
 from w3lib.encoding import (
@@ -266,9 +268,6 @@ class TestHtmlConversion:
         self._assert_encoding("utf-32", "hi".encode("utf-32-be"), "utf-32-be", "hi")
 
     def test_python_crash(self):
-        import random
-        from io import BytesIO
-
         random.seed(42)
         buf = BytesIO()
         for _ in range(150000):

@@ -46,7 +46,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "w3lib"
-copyright = "2014, w3lib developers"
+project_copyright = "2014, w3lib developers"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
