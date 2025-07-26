@@ -17,13 +17,14 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: Implementation :: CPython",
-    "Programming Language :: Python :: Implementation :: PyPy",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
     "Topic :: Internet :: WWW/HTTP",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
@@ -35,8 +36,7 @@ Homepage = "https://github.com/scrapy/w3lib"
 Documentation = "https://w3lib.readthedocs.io/en/latest/"
 Source = "https://github.com/scrapy/w3lib"
 Tracker = "https://github.com/scrapy/w3lib/issues"
-Changelog = "https://github.com/scrapy/w3lib/commits/master/"
-releasenotes = "https://w3lib.readthedocs.io/en/latest/#changelog"
+"Release notes" = "https://w3lib.readthedocs.io/en/latest/#changelog"
 
 [tool.hatch.version]
 path = "w3lib/__init__.py"
