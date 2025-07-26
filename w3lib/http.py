@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from base64 import b64encode
+from collections import defaultdict
 from collections.abc import Mapping, MutableMapping, Sequence
+from io import BytesIO
 from typing import Any, Union, overload
 
 from w3lib.util import to_bytes, to_unicode
@@ -44,23 +46,22 @@ def headers_raw_to_dict(headers_raw: bytes | None) -> HeadersDictOutput | None:
 
     if headers_raw is None:
         return None
-    headers = headers_raw.splitlines()
-    headers_tuples = [header.split(b":", 1) for header in headers]
 
-    result_dict: HeadersDictOutput = {}
-    for header_item in headers_tuples:
-        if len(header_item) != 2:
+    if not headers_raw:
+        return {}
+
+    headers = iter(BytesIO(headers_raw).readline, b"")
+    result_dict = defaultdict(list)
+
+    for header in headers:
+        parts = header.split(b":", 1)
+        if len(parts) != 2:
             continue
 
-        item_key = header_item[0].strip()
-        item_value = header_item[1].strip()
+        key, value = map(bytes.strip, parts)
+        result_dict[key].append(value)
 
-        if item_key in result_dict:
-            result_dict[item_key].append(item_value)
-        else:
-            result_dict[item_key] = [item_value]
-
-    return result_dict
+    return dict(result_dict)
 
 
 @overload
@@ -93,13 +94,25 @@ def headers_dict_to_raw(headers_dict: HeadersDictInput | None) -> bytes | None:
 
     if headers_dict is None:
         return None
-    raw_lines = []
+
+    if not headers_dict:
+        return b""
+
+    parts = bytearray()
+
     for key, value in headers_dict.items():
         if isinstance(value, bytes):
-            raw_lines.append(b": ".join([key, value]))
+            if parts:
+                parts.extend(b"\r\n")
+            parts.extend(key + b": " + value)
+
         elif isinstance(value, (list, tuple)):
-            raw_lines.extend(b": ".join([key, v]) for v in value)
-    return b"\r\n".join(raw_lines)
+            for v in value:
+                if parts:
+                    parts.extend(b"\r\n")
+                parts.extend(key + b": " + v)
+
+    return bytes(parts)
 
 
 def basic_auth_header(
