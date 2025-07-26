@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from base64 import b64encode
-from collections import defaultdict
 from collections.abc import Mapping, MutableMapping, Sequence
 from io import BytesIO
 from typing import Any, Union, overload
@@ -51,17 +50,21 @@ def headers_raw_to_dict(headers_raw: bytes | None) -> HeadersDictOutput | None:
         return {}
 
     headers = iter(BytesIO(headers_raw).readline, b"")
-    result_dict = defaultdict(list)
+    result_dict = {}
 
     for header in headers:
-        parts = header.split(b":", 1)
-        if len(parts) != 2:
+        key, sep, value = header.partition(b":")
+        if not sep:
             continue
 
-        key, value = map(bytes.strip, parts)
-        result_dict[key].append(value)
+        key, value = key.strip(), value.strip()
 
-    return dict(result_dict)
+        if key in result_dict:
+            result_dict[key].append(value)
+        else:
+            result_dict[key] = [value]
+
+    return result_dict
 
 
 @overload
