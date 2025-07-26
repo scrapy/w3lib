@@ -50,7 +50,7 @@ def headers_raw_to_dict(headers_raw: bytes | None) -> HeadersDictOutput | None:
         return {}
 
     headers = iter(BytesIO(headers_raw).readline, b"")
-    result_dict = {}
+    result_dict: HeadersDictOutput = {}
 
     for header in headers:
         key, sep, value = header.partition(b":")
