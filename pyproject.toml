@@ -116,10 +116,16 @@ disable = [
 
 [tool.ruff.lint]
 extend-select = [
+    # flake8-builtins
+    "A",
+    # flake8-async
+    "ASYNC",
     # flake8-bugbear
     "B",
     # flake8-comprehensions
     "C4",
+    # flake8-commas
+    "COM",
     # pydocstyle
     "D",
     # flake8-future-annotations
@@ -176,6 +182,8 @@ extend-select = [
 ignore = [
     # Within an `except` clause, raise exceptions with `raise ... from`
     "B904",
+    # Trailing comma missing
+    "COM812",
     # Missing docstring in public module
     "D100",
     # Missing docstring in public class
@@ -231,6 +239,9 @@ ignore = [
     # Use of `assert` detected
     "S101",
 ]
+
+[tool.ruff.lint.isort]
+split-on-trailing-comma = false
 
 [tool.ruff.lint.pydocstyle]
 convention = "pep257"
