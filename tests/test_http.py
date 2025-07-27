@@ -35,6 +35,10 @@ class TestHttp:
         assert headers_raw_to_dict(None) is None
         assert headers_dict_to_raw(None) is None
 
+    def test_headers_raw_dict_empty(self):
+        assert headers_raw_to_dict(b"") == {}
+        assert headers_dict_to_raw({}) == b""
+
     def test_headers_raw_to_dict(self):
         raw = b"Content-type: text/html\n\rAccept: gzip\n\r\
                 Cache-Control: no-cache\n\rCache-Control: no-store\n\n"
