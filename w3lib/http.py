@@ -49,10 +49,9 @@ def headers_raw_to_dict(headers_raw: bytes | None) -> HeadersDictOutput | None:
     if not headers_raw:
         return {}
 
-    headers = iter(BytesIO(headers_raw).readline, b"")
     result_dict: HeadersDictOutput = {}
 
-    for header in headers:
+    for header in BytesIO(headers_raw):
         key, sep, value = header.partition(b":")
         if not sep:
             continue
