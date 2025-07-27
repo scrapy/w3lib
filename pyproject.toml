@@ -83,6 +83,7 @@ allow_untyped_defs = false
 # Allow test functions to be untyped
 module = "tests.*"
 allow_untyped_defs = true
+disallow_untyped_calls = false
 
 [tool.pylint.MASTER]
 persistent = "no"

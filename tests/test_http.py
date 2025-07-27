@@ -55,7 +55,10 @@ class TestHttp:
 
     def test_headers_dict_to_raw_listtuple(self):
         dct: HeadersDictInput = OrderedDict(
-            [(b"Content-type", [b"text/html"]), (b"Accept", [b"gzip"])]
+            [
+                (b"Content-type", [b"text/html"]),
+                (b"Accept", [b"gzip"]),
+            ]
         )
         assert headers_dict_to_raw(dct) == b"Content-type: text/html\r\nAccept: gzip"
 

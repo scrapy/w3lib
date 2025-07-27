@@ -15,3 +15,5 @@ coverage.xml
 .dmypy.json
 .hypothesis/
 .idea/
+.codspeed
+uv.lock
