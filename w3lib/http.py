@@ -100,21 +100,21 @@ def headers_dict_to_raw(headers_dict: HeadersDictInput | None) -> bytes | None:
     if not headers_dict:
         return b""
 
-    parts = bytearray()
+    parts = b""
 
     for key, value in headers_dict.items():
         if isinstance(value, bytes):
             if parts:
-                parts.extend(b"\r\n")
-            parts.extend(key + b": " + value)
+                parts += b"\r\n"
+            parts += key + b": " + value
 
         elif isinstance(value, (list, tuple)):
             for v in value:
                 if parts:
-                    parts.extend(b"\r\n")
-                parts.extend(key + b": " + v)
+                    parts += b"\r\n"
+                parts += key + b": " + v
 
-    return bytes(parts)
+    return parts
 
 
 def basic_auth_header(
