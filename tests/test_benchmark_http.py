@@ -4,6 +4,8 @@ import pytest
 
 from w3lib.http import headers_dict_to_raw, headers_raw_to_dict
 
+pytest.importorskip("pytest_codspeed", reason="Benchmark tests require pytest-codspeed")
+
 pytestmark = pytest.mark.benchmark
 
 
@@ -17,7 +19,7 @@ def _header_case_long_headers():
     raw = (
         b"X-Custom-Header: " + b"a" * 1_000 + b"\r\n"
         b"X-Custom-Header-2: " + b"b" * 1_000
-    )
+    )  # fmt: off
     return "long_headers", dct, raw
 
 
