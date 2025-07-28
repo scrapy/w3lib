@@ -10,6 +10,7 @@ on:
 
 jobs:
   tests:
+    runs-on: ${{ matrix.os }}
 
     strategy:
       fail-fast: false
@@ -27,15 +28,13 @@ jobs:
           - "pypy3.10"
           - "pypy3.11"
 
-    runs-on: "${{ matrix.os }}"
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: "Set up Python ${{ matrix.python-version }}"
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: "${{ matrix.python-version }}"
+          python-version: ${{ matrix.python-version }}
 
       - name: Run tests
         run: |

@@ -10,39 +10,39 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
+
     strategy:
       fail-fast: false
       matrix:
         include:
-        - python-version: "3.13"  # Keep in sync with .readthedocs.yml
-          env:
-            TOXENV: docs
-        - python-version: "3.13"
-          env:
-            TOXENV: pre-commit
-        - python-version: "3.13"
-          env:
-            TOXENV: pylint
-        - python-version: "3.13"
-          env:
-            TOXENV: typing
-        - python-version: "3.13"
-          env:
-            TOXENV: twinecheck
+          - python-version: "3.13" # Keep in sync with .readthedocs.yml
+            env:
+              TOXENV: docs
+          - python-version: "3.13"
+            env:
+              TOXENV: pre-commit
+          - python-version: "3.13"
+            env:
+              TOXENV: pylint
+          - python-version: "3.13"
+            env:
+              TOXENV: typing
+          - python-version: "3.13"
+            env:
+              TOXENV: twinecheck
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: Run check
-      env: ${{ matrix.env }}
-      run: |
-        pip install --upgrade pip
-        pip install --upgrade tox
-        tox
+      - name: Run check
+        env: ${{ matrix.env }}
+        run: |
+          pip install --upgrade pip
+          pip install --upgrade tox
+          tox
