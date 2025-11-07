@@ -12,7 +12,7 @@ import posixpath
 import re
 import string
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, NamedTuple, cast, overload
+from typing import TYPE_CHECKING, NamedTuple, cast, overload
 from urllib.parse import (  # type: ignore[attr-defined]
     ParseResult,
     _coerce_args,
@@ -35,7 +35,7 @@ from ._url import _SPECIAL_SCHEMES
 from .util import to_unicode
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 
     from ._types import AnyUnicodeError
 
