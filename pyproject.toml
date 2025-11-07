@@ -237,8 +237,6 @@ ignore = [
     "RUF012",
     # Use of `assert` detected
     "S101",
-
-    "UP038",
 ]
 
 [tool.ruff.lint.isort]

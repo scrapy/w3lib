@@ -137,7 +137,7 @@ class TestHtmlConversion:
     def test_unicode_body(self):
         unicode_string = "\u043a\u0438\u0440\u0438\u043b\u043b\u0438\u0447\u0435\u0441\u043a\u0438\u0439 \u0442\u0435\u043a\u0441\u0442"
         original_string = unicode_string.encode("cp1251")
-        encoding, body_unicode = html_to_unicode(ct("cp1251"), original_string)
+        _, body_unicode = html_to_unicode(ct("cp1251"), original_string)
         # check body_as_unicode
         assert isinstance(body_unicode, str)
         assert body_unicode == unicode_string
@@ -207,7 +207,7 @@ class TestHtmlConversion:
 
     def test_replace_wrong_encoding(self):
         """Test invalid chars are replaced properly"""
-        encoding, body_unicode = html_to_unicode(ct("utf-8"), b"PREFIX\xe3\xabSUFFIX")
+        _, body_unicode = html_to_unicode(ct("utf-8"), b"PREFIX\xe3\xabSUFFIX")
         # XXX: Policy for replacing invalid chars may suffer minor variations
         # but it should always contain the unicode replacement char ('\ufffd')
         assert "\ufffd" in body_unicode, repr(body_unicode)
@@ -215,7 +215,7 @@ class TestHtmlConversion:
         assert "SUFFIX" in body_unicode, repr(body_unicode)
 
         # Do not destroy html tags due to encoding bugs
-        encoding, body_unicode = html_to_unicode(ct("utf-8"), b"\xf0<span>value</span>")
+        _, body_unicode = html_to_unicode(ct("utf-8"), b"\xf0<span>value</span>")
         assert "<span>value</span>" in body_unicode, repr(body_unicode)
 
     def _assert_encoding_detected(
