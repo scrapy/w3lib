@@ -65,18 +65,8 @@ filename = "docs/conf.py"
 [tool.coverage.run]
 branch = true
 
-[tool.coverage.report]
-exclude_also = [
-    "if TYPE_CHECKING:",
-]
-
 [tool.mypy]
-check_untyped_defs = true
-
-[[tool.mypy.overrides]]
-# All non-tests functions must be typed.
-module = "w3lib.*"
-allow_untyped_defs = false
+strict = true
 
 [[tool.mypy.overrides]]
 # Allow test functions to be untyped
