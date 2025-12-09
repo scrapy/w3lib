@@ -4,7 +4,7 @@ import os
 import sys
 from inspect import isclass
 from pathlib import Path
-from typing import Callable
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 import pytest
@@ -31,6 +31,9 @@ from w3lib.url import (
     url_query_cleaner,
     url_query_parameter,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 # Test cases for URL-to-safe-URL conversions with a URL and an encoding as
 # input parameters.

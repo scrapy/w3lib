@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Union
+from typing import TypeAlias
 
 # the base class UnicodeError doesn't have attributes like start / end
-AnyUnicodeError = Union[UnicodeEncodeError, UnicodeDecodeError]
+AnyUnicodeError: TypeAlias = UnicodeEncodeError | UnicodeDecodeError

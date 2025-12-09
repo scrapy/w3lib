@@ -17,7 +17,6 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -28,7 +27,7 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dynamic = ["version"]
 
 [project.urls]
@@ -66,18 +65,8 @@ filename = "docs/conf.py"
 [tool.coverage.run]
 branch = true
 
-[tool.coverage.report]
-exclude_also = [
-    "if TYPE_CHECKING:",
-]
-
 [tool.mypy]
-check_untyped_defs = true
-
-[[tool.mypy.overrides]]
-# All non-tests functions must be typed.
-module = "w3lib.*"
-allow_untyped_defs = false
+strict = true
 
 [[tool.mypy.overrides]]
 # Allow test functions to be untyped

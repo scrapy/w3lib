@@ -3,12 +3,12 @@ from __future__ import annotations
 from base64 import b64encode
 from collections.abc import Mapping, MutableMapping, Sequence
 from io import BytesIO
-from typing import Any, Union, overload
+from typing import Any, TypeAlias, overload
 
 from w3lib.util import to_bytes, to_unicode
 
-HeadersDictInput = Mapping[bytes, Union[Any, Sequence[bytes]]]
-HeadersDictOutput = MutableMapping[bytes, list[bytes]]
+HeadersDictInput: TypeAlias = Mapping[bytes, Any | Sequence[bytes]]
+HeadersDictOutput: TypeAlias = MutableMapping[bytes, list[bytes]]
 
 
 @overload

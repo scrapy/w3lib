@@ -8,11 +8,13 @@ import codecs
 import encodings
 import re
 from re import Match
-from typing import TYPE_CHECKING, Callable, cast
+from typing import TYPE_CHECKING, cast
 
 import w3lib.util
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from w3lib._types import AnyUnicodeError
 
 _HEADER_ENCODING_RE = re.compile(r"charset=([\w-]+)", re.IGNORECASE)
