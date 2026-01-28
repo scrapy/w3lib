@@ -62,6 +62,12 @@ filename = "w3lib/__init__.py"
 [[tool.bumpversion.files]]
 filename = "docs/conf.py"
 
+[[tool.bumpversion.files]]
+filename = "NEWS"
+search = "\\(unreleased\\)$"
+replace = "({now:%Y-%m-%d})"
+regex = true
+
 [tool.coverage.run]
 branch = true
 
