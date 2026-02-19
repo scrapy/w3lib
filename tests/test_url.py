@@ -245,6 +245,10 @@ SAFE_URL_URL_CASES = (
     ("http://192.168.0.0.0", ValueError),
     ("http://[2a01:5cc0:1:2::4]", "http://[2a01:5cc0:1:2::4]"),
     ("http://[2a01:5cc0:1:2:3:4]", ValueError),
+    ("https://[2402:4e00:40:40::2:3b6]", "https://[2402:4e00:40:40::2:3b6]"),
+    ("https://[2402:4e00:40:40::2:3b6]:443", "https://[2402:4e00:40:40::2:3b6]:443"),
+    ("http://[::1]", "http://[::1]"),
+    ("http://[::1]:8080/path?q=1", "http://[::1]:8080/path?q=1"),
     # Port
     ("https://example.com:", "https://example.com:"),
     ("https://example.com:1", "https://example.com:1"),
@@ -390,7 +394,6 @@ KNOWN_SAFE_URL_STRING_URL_ISSUES = {
     "https://%80.example",  # Invalid domain name (non-visible character)
     "http://192.168.0.256",  # Invalid IP address
     "http://192.168.0.0.0",  # Invalid IP address / domain name
-    "http://[2a01:5cc0:1:2::4]",  # https://github.com/scrapy/w3lib/issues/193
     "https://example.com:",  # Removes the :
     # Does not convert \ to /
     "https://example.com\\a",
