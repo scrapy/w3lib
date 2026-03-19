@@ -1,6 +1,12 @@
 w3lib release notes
 ===================
 
+2.4.1 (unreleased)
+------------------
+
+- :func:`~w3lib.url.safe_url_string` now preserves IPv6 brackets in the URL
+  netloc (#253).
+
 2.4.0 (2026-01-29)
 ------------------
 
