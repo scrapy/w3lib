@@ -53,7 +53,7 @@ project_copyright = "2014, w3lib developers"
 # built documents.
 #
 # The full version, including alpha/beta/rc tags.
-release = "2.4.0"
+release = "2.4.1"
 # The short X.Y version.
 version = ".".join(release.split(".")[:2])
 

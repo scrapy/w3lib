@@ -1,7 +1,7 @@
 w3lib release notes
 ===================
 
-2.4.1 (unreleased)
+2.4.1 (2026-03-20)
 ------------------
 
 - :func:`~w3lib.url.safe_url_string` now preserves IPv6 brackets in the URL
