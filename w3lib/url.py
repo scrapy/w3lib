@@ -156,12 +156,17 @@ def safe_url_string(  # pylint: disable=too-many-locals
             netloc_bytes += safe_password.encode(encoding)
         netloc_bytes += b"@"
     if hostname is not None:
-        try:
-            netloc_bytes += hostname.encode("idna")
-        except UnicodeError:
-            # IDNA encoding can fail for too long labels (>63 characters) or
-            # missing labels (e.g. http://.example.com)
-            netloc_bytes += hostname.encode(encoding)
+        if ":" in hostname:
+            # IPv6 address: urlsplit() strips the brackets from the hostname,
+            # but they are required in the netloc when rebuilding the URL.
+            netloc_bytes += f"[{hostname}]".encode("ascii")
+        else:
+            try:
+                netloc_bytes += hostname.encode("idna")
+            except UnicodeError:
+                # IDNA encoding can fail for too long labels (>63 characters) or
+                # missing labels (e.g. http://.example.com)
+                netloc_bytes += hostname.encode(encoding)
     if port is not None:
         netloc_bytes += b":"
         netloc_bytes += str(port).encode(encoding)
@@ -543,9 +548,19 @@ def _safe_ParseResult(
 ) -> tuple[str, str, str, str, str, str]:
     # IDNA encoding can fail for too long labels (>63 characters)
     # or missing labels (e.g. http://.example.com)
+    # Encode only the hostname; parts.netloc may include a port which is not a valid
+    # IDNA label and would produce a corrupt result like 'xn--e1aybc.xn--:33-qdd4dec'.
     try:
-        netloc = parts.netloc.encode("idna").decode()
-    except UnicodeError:
+        hostname = parts.hostname or ""
+        netloc = hostname.encode("idna").decode()
+        if parts.port:
+            netloc = f"{netloc}:{parts.port}"
+        if parts.username is not None:
+            userinfo = parts.username
+            if parts.password is not None:
+                userinfo = f"{userinfo}:{parts.password}"
+            netloc = f"{userinfo}@{netloc}"
+    except (UnicodeError, AttributeError):
         netloc = parts.netloc
 
     return (
