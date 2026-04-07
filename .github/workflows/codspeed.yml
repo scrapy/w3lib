@@ -40,8 +40,7 @@ jobs:
               uses: CodSpeedHQ/action@v4
               with:
                   mode: simulation
-                  python-version: ${{ matrix.python-version }}
                   run: |
                       pip install --upgrade pip
                       pip install --upgrade tox
-                      tox -e benchmark-${{ matrix.python-version }}
+                      tox -e benchmark-py${{ matrix.python-version }}
