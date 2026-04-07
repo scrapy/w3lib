@@ -21,7 +21,7 @@ permissions:
     contents: read
 
 jobs:
-    build:
+    benchmark:
         runs-on: ubuntu-latest
         strategy:
             fail-fast: false
@@ -39,7 +39,8 @@ jobs:
             - name: Run benchmarks on ${{ matrix.python-version }}
               uses: CodSpeedHQ/action@v4
               with:
-                  pytho~n-version: ${{ matrix.python-version }}
+                  mode: simulation
+                  python-version: ${{ matrix.python-version }}
                   run: |
                       pip install --upgrade pip
                       pip install --upgrade tox
