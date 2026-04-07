@@ -1,18 +1,119 @@
 from __future__ import annotations
 
 from collections import OrderedDict
-from typing import TYPE_CHECKING
+from contextlib import suppress
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from w3lib.http import headers_dict_to_raw, headers_raw_to_dict
+from tests.benchmarks import CasesMapType, unroll_cases
+from w3lib.http import basic_auth_header, headers_dict_to_raw, headers_raw_to_dict
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from pytest_codspeed import BenchmarkFixture  # type: ignore[import-not-found]
 
-pytest.importorskip("pytest_codspeed", reason="Benchmark tests require pytest-codspeed")
 
-pytestmark = pytest.mark.benchmark
+BENCHMARK_CASES: CasesMapType = {
+    basic_auth_header: [
+        (("someuser", "somepass"), {}),
+        (("someuser", "@<yu9>&o?Q"), {}),
+        (("somæusèr", "sømepäss"), {"encoding": "utf8"}),
+        (("somæusèr", "sømepäss"), {}),  # default encoding
+    ],
+    headers_raw_to_dict: [
+        ((None,), {}),
+        ((b"",), {}),
+        (
+            (
+                b"Content-type: text/html\n\rAccept: gzip\n\r"
+                b"Cache-Control: no-cache\n\rCache-Control: no-store\n\n",
+            ),
+            {},
+        ),
+    ],
+    headers_dict_to_raw: [
+        ((None,), {}),
+        (({},), {}),
+        (
+            (
+                OrderedDict(
+                    [
+                        (b"Content-type", b"text/html"),
+                        (b"Accept", b"gzip"),
+                    ]
+                ),
+            ),
+            {},
+        ),
+        (
+            (
+                OrderedDict(
+                    [
+                        (b"Content-type", [b"text/html"]),
+                        (b"Accept", [b"gzip"]),
+                    ]
+                ),
+            ),
+            {},
+        ),
+        (
+            (
+                OrderedDict(
+                    [
+                        (b"Content-type", (b"text/html",)),
+                        (b"Accept", (b"gzip",)),
+                    ]
+                ),
+            ),
+            {},
+        ),
+        (
+            (
+                OrderedDict(
+                    [
+                        (b"Cookie", (b"val001", b"val002")),
+                        (b"Accept", b"gzip"),
+                    ]
+                ),
+            ),
+            {},
+        ),
+        (
+            (
+                OrderedDict(
+                    [
+                        (b"Cookie", [b"val001", b"val002"]),
+                        (b"Accept", b"gzip"),
+                    ]
+                ),
+            ),
+            {},
+        ),
+        (
+            (
+                OrderedDict(
+                    [
+                        (b"Content-type", 0),
+                    ]
+                ),
+            ),
+            {},
+        ),
+        (
+            (
+                OrderedDict(
+                    [
+                        (b"Content-type", 1),
+                        (b"Accept", [b"gzip"]),
+                    ]
+                ),
+            ),
+            {},
+        ),
+    ],
+}
 
 
 def _header_case_long_headers():
@@ -73,3 +174,19 @@ class TestBenchmarkHttp:
         @benchmark
         def factory():
             assert headers_raw_to_dict(raw) == headers_dict
+
+
+@pytest.mark.parametrize(
+    ("func", "args", "kwargs"),
+    unroll_cases(BENCHMARK_CASES),
+)
+def test_benchmark_http_general(
+    benchmark: BenchmarkFixture,
+    func: Callable[..., Any],
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+) -> None:
+    @benchmark
+    def factory():
+        with suppress(Exception):
+            func(*args, **kwargs)

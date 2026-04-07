@@ -27,6 +27,7 @@ jobs:
             fail-fast: false
             matrix:
                 python-version: ['3.13', pypy3.11]
+                submodule-to-bench: [encoding, html, http, url]
 
         steps:
             - uses: actions/checkout@v6
@@ -43,4 +44,4 @@ jobs:
                   run: |
                       pip install --upgrade pip
                       pip install --upgrade tox
-                      tox -e benchmark-${{ matrix.python-version }}
+                      tox -e benchmark-${{ matrix.python-version }} -- ${{ matrix.submodule-to-bench }}
