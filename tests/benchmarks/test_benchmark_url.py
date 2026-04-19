@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 from contextlib import suppress
-from functools import partial
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.benchmarks import CasesMapType, unroll_cases
-from tests.test_url import KNOWN_SAFE_URL_STRING_URL_ISSUES, SAFE_URL_URL_CASES
+from tests.test_url import SAFE_URL_URL_CASES
 from w3lib.url import (
     add_or_replace_parameter,
     add_or_replace_parameters,
@@ -25,49 +23,22 @@ from w3lib.url import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from pytest_codspeed import BenchmarkFixture  # type: ignore[import-not-found]
 
+    from tests.benchmarks import CasesMapType
 
-URLS = [
-    url
-    for url, output in SAFE_URL_URL_CASES
-    if isinstance(output, (str, bytes)) and url not in KNOWN_SAFE_URL_STRING_URL_ISSUES
-]
-
-
-def _benchmark(func: Callable[..., Any]) -> None:
-    for url in URLS:
-        with suppress(Exception):
-            func(url)  # ty:ignore[invalid-argument-type]
-
-
-@pytest.mark.parametrize(
-    "func",
-    [
-        partial(add_or_replace_parameter, name="arg", new_value="v"),
-        partial(add_or_replace_parameters, new_parameters={"arg": "v"}),
-        any_to_uri,
-        canonicalize_url,
-        file_uri_to_path,
-        is_url,
-        parse_data_uri,
-        parse_url,
-        path_to_file_uri,
-        safe_download_url,
-        safe_url_string,
-        url_query_cleaner,
-        partial(url_query_parameter, parameter="param"),
-    ],
-)
-def test_benchmark_urls(benchmark: BenchmarkFixture, func: Callable[..., Any]) -> None:
-    @benchmark
-    def factory():
-        _benchmark(func)
-
-
+_urls = [case[0] for case in SAFE_URL_URL_CASES]
 BENCHMARK_CASES: CasesMapType = {
+    parse_url: (((url,), {}) for url in _urls),
+    canonicalize_url: (((url,), {}) for url in _urls),
+    file_uri_to_path: (((url,), {}) for url in _urls),
+    path_to_file_uri: (((url,), {}) for url in _urls),
+    any_to_uri: [
+        (("/some/path.txt",), {}),
+        (("file:///some/path.txt"), {}),
+        (("http://www.example.com/some/path.txt",), {}),
+        *(((url,), {}) for url in _urls),
+    ],
     safe_url_string: [
         (("\u8349\u8599 \u7d20\u5b50",), {}),
         (("©",), {}),
@@ -125,6 +96,7 @@ BENCHMARK_CASES: CasesMapType = {
         (("http://%2525user:%2525pass@host",), {}),
         (("http://%2526user:%2526pass@host",), {}),
         (("http://%25%26user:%25%26pass@host",), {}),
+        *(((url,), {}) for url in _urls),
     ],
     safe_download_url: [
         (("http://www.example.org",), {}),
@@ -254,17 +226,13 @@ BENCHMARK_CASES: CasesMapType = {
 }
 
 
-@pytest.mark.parametrize(
-    ("func", "args", "kwargs"),
-    unroll_cases(BENCHMARK_CASES),
-)
+@pytest.mark.parametrize("func", BENCHMARK_CASES)
 def test_benchmark_url_general(
     benchmark: BenchmarkFixture,
-    func: Callable[..., Any],
-    args: tuple[Any, ...],
-    kwargs: dict[str, Any],
+    func,
 ) -> None:
     @benchmark
     def factory():
-        with suppress(Exception):
-            func(*args, **kwargs)
+        for args, kwargs in BENCHMARK_CASES[func]:
+            with suppress(Exception):
+                func(*args, **kwargs)

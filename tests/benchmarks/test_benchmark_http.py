@@ -1,18 +1,16 @@
 from __future__ import annotations
 
 from collections import OrderedDict
-from contextlib import suppress
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.benchmarks import CasesMapType, unroll_cases
 from w3lib.http import basic_auth_header, headers_dict_to_raw, headers_raw_to_dict
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from pytest_codspeed import BenchmarkFixture  # type: ignore[import-not-found]
+
+    from tests.benchmarks import CasesMapType
 
 
 BENCHMARK_CASES: CasesMapType = {
@@ -176,17 +174,12 @@ class TestBenchmarkHttp:
             assert headers_raw_to_dict(raw) == headers_dict
 
 
-@pytest.mark.parametrize(
-    ("func", "args", "kwargs"),
-    unroll_cases(BENCHMARK_CASES),
-)
-def test_benchmark_http_general(
+@pytest.mark.parametrize("func", BENCHMARK_CASES)
+def test_benchmark_url_general(
     benchmark: BenchmarkFixture,
-    func: Callable[..., Any],
-    args: tuple[Any, ...],
-    kwargs: dict[str, Any],
+    func,
 ) -> None:
     @benchmark
     def factory():
-        with suppress(Exception):
+        for args, kwargs in BENCHMARK_CASES[func]:
             func(*args, **kwargs)

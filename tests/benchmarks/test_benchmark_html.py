@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from contextlib import suppress
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -17,12 +16,10 @@ from w3lib.html import (
     unquote_markup,
 )
 
-from . import CasesMapType, unroll_cases
-
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from pytest_codspeed import BenchmarkFixture  # type: ignore[import-not-found]
+
+    from tests.benchmarks import CasesMapType
 
 
 BENCHMARK_CASES: CasesMapType = {
@@ -246,17 +243,12 @@ BENCHMARK_CASES: CasesMapType = {
 }
 
 
-@pytest.mark.parametrize(
-    ("func", "args", "kwargs"),
-    unroll_cases(BENCHMARK_CASES),
-)
-def test_benchmark_safe_url(
+@pytest.mark.parametrize("func", BENCHMARK_CASES)
+def test_benchmark_url_general(
     benchmark: BenchmarkFixture,
-    func: Callable[..., Any],
-    args: tuple[Any, ...],
-    kwargs: dict[str, Any],
+    func,
 ) -> None:
     @benchmark
     def factory():
-        with suppress(Exception):
+        for args, kwargs in BENCHMARK_CASES[func]:
             func(*args, **kwargs)

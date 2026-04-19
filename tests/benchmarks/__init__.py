@@ -9,11 +9,3 @@ pytestmark = pytest.mark.benchmark
 
 
 CasesMapType: TypeAlias = dict[Callable[..., Any], Iterable[Any]]
-
-
-def unroll_cases(
-    cases_map: CasesMapType,
-) -> Iterable[tuple[Callable[..., Any], Any, Any]]:
-    for func, cases in cases_map.items():
-        for args, kwargs in cases:
-            yield func, args, kwargs
