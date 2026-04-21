@@ -46,4 +46,4 @@ jobs:
               uses: CodSpeedHQ/action@v4
               with:
                   mode: simulation
-                  run: tox --skip-env-install --skip-pkg-install -e benchmark-${{ matrix.python-version }} -- ${{ matrix.submodule-to-bench }}
+                  run: ./tox/benchmark-${{ matrix.python-version }}/bin/pytest tests/benchmarks/test_benchmark_${{ matrix.submodule-to-bench }}.py --codspeed
