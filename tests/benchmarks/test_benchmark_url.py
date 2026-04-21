@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextlib import suppress
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -23,6 +23,8 @@ from w3lib.url import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from pytest_codspeed import BenchmarkFixture  # type: ignore[import-not-found]
 
     from tests.benchmarks import CasesMapType
@@ -229,7 +231,7 @@ BENCHMARK_CASES: CasesMapType = {
 @pytest.mark.parametrize("func", BENCHMARK_CASES)
 def test_benchmark_url_general(
     benchmark: BenchmarkFixture,
-    func,
+    func: Callable[..., Any],
 ) -> None:
     @benchmark
     def factory():
