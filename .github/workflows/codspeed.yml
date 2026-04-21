@@ -40,10 +40,9 @@ jobs:
             - name: Install deps
               run: |
                   pip install --upgrade pip
-                  pip install --upgrade tox
-                  tox -n -e benchmark-${{ matrix.python-version }}
+                  pip install --upgrade pytest pytest-codspeed
             - name: Run benchmarks on ${{ matrix.python-version }}
               uses: CodSpeedHQ/action@v4
               with:
                   mode: simulation
-                  run: ./tox/benchmark-${{ matrix.python-version }}/bin/pytest tests/benchmarks/test_benchmark_${{ matrix.submodule-to-bench }}.py --codspeed
+                  run: pytest tests/benchmarks/test_benchmark_${{ matrix.submodule-to-bench }}.py
