@@ -19,6 +19,7 @@ concurrency:
 
 permissions:
     contents: read
+    id-token: write
 
 jobs:
     benchmark:
@@ -38,7 +39,7 @@ jobs:
                   python-version: ${{ matrix.python-version }}
 
             - name: Run benchmarks on ${{ matrix.python-version }}
-              uses: CodSpeedHQ/action@v4
+              uses: CodSpeedHQ/action@v4.14.0
               with:
                   mode: simulation
                   run: |
