@@ -19,7 +19,6 @@ concurrency:
 
 permissions:
     contents: read
-    id-token: write
 
 jobs:
     benchmark:
@@ -40,7 +39,7 @@ jobs:
             - name: Install deps
               run: |
                   pip install --upgrade pip
-                  pip install --upgrade pytest pytest-codspeed
+                  pip install --upgrade tox
             - name: Run benchmarks on ${{ matrix.python-version }}
               uses: CodSpeedHQ/action@v4
               with:
