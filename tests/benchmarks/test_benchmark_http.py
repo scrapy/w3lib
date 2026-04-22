@@ -20,7 +20,7 @@ BENCHMARK_CASES: CasesMapType = {
         (("someuser", "somepass"), {}),
         (("someuser", "@<yu9>&o?Q"), {}),
         (("somæusèr", "sømepäss"), {"encoding": "utf8"}),
-        (("somæusèr", "sømepäss"), {}),  # default encoding
+        (("somæusèr", "sømepäss"), {}),
     ],
     headers_raw_to_dict: [
         ((None,), {}),
