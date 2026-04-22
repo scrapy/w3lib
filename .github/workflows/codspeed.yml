@@ -40,6 +40,7 @@ jobs:
               run: |
                   pip install --upgrade pip
                   pip install --upgrade tox
+                  tox -n -e benchmark-${{ matrix.python-version }}
             - name: Run benchmarks on ${{ matrix.python-version }}
               uses: CodSpeedHQ/action@v4
               with:
