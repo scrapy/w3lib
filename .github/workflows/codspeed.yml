@@ -23,26 +23,21 @@ permissions:
 jobs:
     benchmark:
         runs-on: ubuntu-latest
-        strategy:
-            fail-fast: false
-            matrix:
-                python-version: ['3.13', pypy3.11]
-                submodule-to-bench: [encoding, html, http, url]
 
         steps:
             - uses: actions/checkout@v6
 
-            - name: Set up Python ${{ matrix.python-version }}
+            - name: Set up Python 3.13
               uses: actions/setup-python@v6
               with:
-                  python-version: ${{ matrix.python-version }}
-            - name: Install deps
+                  python-version: '3.13'
+            - name: Install dependencies
               run: |
                   pip install --upgrade pip
                   pip install --upgrade tox
-                  tox -n -e benchmark-${{ matrix.python-version }}
-            - name: Run benchmarks on ${{ matrix.python-version }}
+                  tox -n -e benchmark
+            - name: Run benchmarks
               uses: CodSpeedHQ/action@v4
               with:
                   mode: simulation
-                  run: tox --skip-env-install --skip-pkg-install -e benchmark-${{ matrix.python-version }} -- ${{ matrix.submodule-to-bench }}
+                  run: tox -e benchmark

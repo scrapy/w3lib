@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-from contextlib import suppress
 from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from tests.benchmarks import PYTHON_IMPL
-from tests.test_url import SAFE_URL_URL_CASES
 from w3lib.url import (
     add_or_replace_parameter,
     add_or_replace_parameters,
@@ -30,17 +27,34 @@ if TYPE_CHECKING:
 
     from tests.benchmarks import CasesMapType
 
-_urls = [case[0] for case in SAFE_URL_URL_CASES]
 BENCHMARK_CASES: CasesMapType = {
-    parse_url: (((url,), {}) for url in _urls),
-    canonicalize_url: (((url,), {}) for url in _urls),
-    file_uri_to_path: (((url,), {}) for url in _urls),
-    path_to_file_uri: (((url,), {}) for url in _urls),
+    parse_url: [
+        (("http://example.com",), {}),
+        (("https://example.com/path?x=1",), {}),
+        (("ftp://user:pass@example.com:21/file.txt",), {}),
+        ((b"http://example.com",), {}),
+    ],
+    canonicalize_url: [
+        (("http://www.example.com",), {}),
+        (("http://www.example.com/do?b=2&a=1",), {}),
+        (("http://www.example.com/résumé?q=résumé",), {}),
+        ((b"http://www.example.com/a do\xc2\xa3.html?a=1",), {}),
+    ],
+    file_uri_to_path: [
+        (("file:///some/path.txt",), {}),
+        (("file:///path/to/file",), {}),
+        (("/path/to/file",), {}),
+        (("test.txt",), {}),
+    ],
+    path_to_file_uri: [
+        (("/some/path.txt",), {}),
+        (("test.txt",), {}),
+        (("./relative/path.txt",), {}),
+    ],
     any_to_uri: [
         (("/some/path.txt",), {}),
-        (("file:///some/path.txt"), {}),
+        (("file:///some/path.txt",), {}),
         (("http://www.example.com/some/path.txt",), {}),
-        *(((url,), {}) for url in _urls),
     ],
     safe_url_string: [
         (("\u8349\u8599 \u7d20\u5b50",), {}),
@@ -99,7 +113,6 @@ BENCHMARK_CASES: CasesMapType = {
         (("http://%2525user:%2525pass@host",), {}),
         (("http://%2526user:%2526pass@host",), {}),
         (("http://%25%26user:%25%26pass@host",), {}),
-        *(((url,), {}) for url in _urls),
     ],
     safe_download_url: [
         (("http://www.example.org",), {}),
@@ -215,29 +228,35 @@ BENCHMARK_CASES: CasesMapType = {
         (("data:,A%20brief%20note",), {}),
         ((b"data:,A%20brief%20note",), {}),
         (("data:,é",), {}),
-        (("data:;charset=iso-8859-7,%be%d3%be",), {}),
-        (("data:text/plain;charset=iso-8859-7,%be%d3%be",), {}),
-        (("data:text/plain;base64,SGVsbG8sIHdvcmxkLg%3D%3D",), {}),
         (("data:text/plain;base64,SGVsb G8sIH\n  dvcm   xk Lg%3D\n%3D",), {}),
-        (("data:text/plain;baes64,SGVsbG8sIHdvcmxkLg%3D%3D",), {}),
-        (("data:A%20brief%20note",), {}),
-        (("text/plain,A%20brief%20note",), {}),
-        (("http://example.com/",), {}),
+        (
+            (
+                "data:text/plain;"
+                "foo=%22foo;bar%5C%22%22;"
+                "charset=utf-8;"
+                "bar=%22foo;%5C%22foo%20;/%20,%22,"
+                "%CE%8E%CE%A3%CE%8E",
+            ),
+            {},
+        ),
+        (
+            (
+                "data:text/plain;base64,SGVsb%20G8sIH%0A%20%20dvcm%20%20%20xk%20Lg%3D%0A%3D",
+            ),
+            {},
+        ),
         (("DATA:,A%20brief%20note",), {}),
         (("DaTa:,A%20brief%20note",), {}),
     ],
 }
 
 
-@pytest.mark.parametrize("_py_impl_name", PYTHON_IMPL)
 @pytest.mark.parametrize("func", BENCHMARK_CASES)
 def test_benchmark_url(
     benchmark: BenchmarkFixture,
     func: Callable[..., Any],
-    _py_impl_name: str,
 ) -> None:
     @benchmark
     def factory():
         for args, kwargs in BENCHMARK_CASES[func]:
-            with suppress(Exception):
-                func(*args, **kwargs)
+            func(*args, **kwargs)

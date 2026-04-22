@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from tests.benchmarks import PYTHON_IMPL
 from w3lib.http import basic_auth_header, headers_dict_to_raw, headers_raw_to_dict
 
 if TYPE_CHECKING:
@@ -117,12 +116,10 @@ BENCHMARK_CASES: CasesMapType = {
 }
 
 
-@pytest.mark.parametrize("_py_impl_name", PYTHON_IMPL)
 @pytest.mark.parametrize("func", BENCHMARK_CASES)
 def test_benchmark_http(
     benchmark: BenchmarkFixture,
     func: Callable[..., Any],
-    _py_impl_name: str,
 ) -> None:
     @benchmark
     def factory():

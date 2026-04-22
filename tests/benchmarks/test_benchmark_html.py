@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from tests.benchmarks import PYTHON_IMPL
 from w3lib.html import (
     get_base_url,
     get_meta_refresh,
@@ -246,12 +245,10 @@ BENCHMARK_CASES: CasesMapType = {
 }
 
 
-@pytest.mark.parametrize("_py_impl_name", PYTHON_IMPL)
 @pytest.mark.parametrize("func", BENCHMARK_CASES)
 def test_benchmark_html(
     benchmark: BenchmarkFixture,
     func: Callable[..., Any],
-    _py_impl_name: str,
 ) -> None:
     @benchmark
     def factory():

@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from tests.benchmarks import PYTHON_IMPL
 from w3lib.encoding import (
     html_body_declared_encoding,
     html_to_unicode,
@@ -207,10 +206,10 @@ BENCHMARK_CASES: CasesMapType = {
 }
 
 
-@pytest.mark.parametrize("_py_impl_name", PYTHON_IMPL)
 @pytest.mark.parametrize("func", BENCHMARK_CASES)
 def test_benchmark_encoding(
-    benchmark: BenchmarkFixture, func: Callable[..., Any], _py_impl_name: str
+    benchmark: BenchmarkFixture,
+    func: Callable[..., Any],
 ) -> None:
     @benchmark
     def factory():
