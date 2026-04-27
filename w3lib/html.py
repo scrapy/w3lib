@@ -5,8 +5,9 @@ Functions for dealing with markup text
 from __future__ import annotations
 
 import re
+from functools import partial
 from html.entities import name2codepoint
-from re import Match, Pattern
+from re import Match
 from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
@@ -26,19 +27,62 @@ _baseurl_re = re.compile(
     r"<base\s[^>]*href\s*=\s*[\"\']\s*([^\"\'\s]+)\s*[\"\']", re.IGNORECASE
 )
 _meta_refresh_re = re.compile(
-    r'<meta\s[^>]*http-equiv[^>]*refresh[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)',
-    re.DOTALL | re.IGNORECASE,
-)
-_meta_refresh_re2 = re.compile(
-    r'<meta\s[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)[^>]*?\shttp-equiv\s*=[^>]*refresh',
-    re.DOTALL | re.IGNORECASE,
+    r"""
+    <meta\s[^>]*(
+        http-equiv[^>]*refresh[^>]*content\s*=\s*
+            (?P<quote>["\'])
+            (?P<int>(\d*\.)?\d+)\s*;\s*url=\s*
+            (?P<url>.*?)
+            (?P=quote)
+        |
+        content\s*=\s*
+            (?P<quote2>["\'])
+            (?P<int2>(\d*\.)?\d+)\s*;\s*url=\s*
+            (?P<url2>.*?)
+            (?P=quote2)
+            [^>]*?\shttp-equiv\s*=[^>]*refresh
+    )
+    """,
+    re.DOTALL | re.IGNORECASE | re.VERBOSE,
 )
 
 _cdata_re = re.compile(
     r"((?P<cdata_s><!\[CDATA\[)(?P<cdata_d>.*?)(?P<cdata_e>\]\]>))", re.DOTALL
 )
+_tags_re = re.compile("</?([^ >/]+).*?>", re.DOTALL | re.IGNORECASE)
 
 HTML5_WHITESPACE = " \t\n\r\x0c"
+
+
+def _convert_entity(m: Match[str], keep: set[str], remove_illegal: bool = True) -> str:
+    groups = m.groupdict()
+    number = None
+
+    if groups.get("dec"):
+        number = int(groups["dec"], 10)
+    elif groups.get("hex"):
+        number = int(groups["hex"], 16)
+    elif groups.get("named"):
+        entity_name = groups["named"]
+        if entity_name.lower() in keep:
+            return m.group(0)
+        number = name2codepoint.get(entity_name) or name2codepoint.get(
+            entity_name.lower()
+        )
+
+    if number is not None:
+        # Numeric character references in the 80-9F range are typically
+        # interpreted by browsers as representing the characters mapped
+        # to bytes 80-9F in the Windows-1252 encoding. For more info
+        # see: http://en.wikipedia.org/wiki/Character_encodings_in_HTML
+        try:
+            if 0x80 <= number <= 0x9F:
+                return bytes((number,)).decode("cp1252")
+            return chr(number)
+        except (ValueError, OverflowError):
+            pass
+
+    return "" if remove_illegal and groups.get("semicolon") else m.group(0)
 
 
 def replace_entities(
@@ -73,36 +117,10 @@ def replace_entities(
     >>>
 
     """
-
-    def convert_entity(m: Match[str]) -> str:
-        groups = m.groupdict()
-        number = None
-        if groups.get("dec"):
-            number = int(groups["dec"], 10)
-        elif groups.get("hex"):
-            number = int(groups["hex"], 16)
-        elif groups.get("named"):
-            entity_name = groups["named"]
-            if entity_name.lower() in keep:
-                return m.group(0)
-            number = name2codepoint.get(entity_name) or name2codepoint.get(
-                entity_name.lower()
-            )
-        if number is not None:
-            # Numeric character references in the 80-9F range are typically
-            # interpreted by browsers as representing the characters mapped
-            # to bytes 80-9F in the Windows-1252 encoding. For more info
-            # see: http://en.wikipedia.org/wiki/Character_encodings_in_HTML
-            try:
-                if 0x80 <= number <= 0x9F:
-                    return bytes((number,)).decode("cp1252")
-                return chr(number)
-            except (ValueError, OverflowError):
-                pass
-
-        return "" if remove_illegal and groups.get("semicolon") else m.group(0)
-
-    return _ent_re.sub(convert_entity, to_unicode(text, encoding))
+    return _ent_re.sub(
+        partial(_convert_entity, keep=set(keep), remove_illegal=remove_illegal),
+        to_unicode(text, encoding),
+    )
 
 
 def has_entities(text: str | bytes, encoding: str | None = None) -> bool:
@@ -149,6 +167,16 @@ def remove_comments(text: str | bytes, encoding: str | None = None) -> str:
 
     utext = to_unicode(text, encoding)
     return _REMOVECOMMENTS_RE.sub("", utext)
+
+
+def _remove_tag(
+    m: Match[str], which_ones: set[str] | tuple[()], keep: set[str] | tuple[()]
+) -> str:
+    tag = m.group(1).lower()
+
+    should_remove = tag in which_ones if which_ones else tag not in keep
+
+    return "" if should_remove else m.group(0)
 
 
 def remove_tags(
@@ -203,23 +231,14 @@ def remove_tags(
     if which_ones and keep:
         raise ValueError("Cannot use both which_ones and keep")
 
-    which_ones = {tag.lower() for tag in which_ones}
-    keep = {tag.lower() for tag in keep}
-
-    def will_remove(tag: str) -> bool:
-        tag = tag.lower()
-        if which_ones:
-            return tag in which_ones
-        return tag not in keep
-
-    def remove_tag(m: Match[str]) -> str:
-        tag = m.group(1)
-        return "" if will_remove(tag) else m.group(0)
-
-    regex = "</?([^ >/]+).*?>"
-    retags = re.compile(regex, re.DOTALL | re.IGNORECASE)
-
-    return retags.sub(remove_tag, to_unicode(text, encoding))
+    return _tags_re.sub(
+        partial(
+            _remove_tag,
+            which_ones={tag.lower() for tag in which_ones} if which_ones else (),
+            keep={tag.lower() for tag in keep} if keep else (),
+        ),
+        to_unicode(text, encoding),
+    )
 
 
 def remove_tags_with_content(
@@ -285,27 +304,35 @@ def unquote_markup(
 
     """
 
-    def _get_fragments(txt: str, pattern: Pattern[str]) -> Iterable[str | Match[str]]:
-        offset = 0
-        for match in pattern.finditer(txt):
-            match_s, match_e = match.span(1)
-            yield txt[offset:match_s]
-            yield match
-            offset = match_e
-        yield txt[offset:]
-
     utext = to_unicode(text, encoding)
-    ret_text = ""
-    for fragment in _get_fragments(utext, _cdata_re):
-        if isinstance(fragment, str):
-            # it's not a CDATA (so we try to remove its entities)
-            ret_text += replace_entities(
-                fragment, keep=keep, remove_illegal=remove_illegal
+    ret = []
+    offset = 0
+
+    for match in _cdata_re.finditer(utext):
+        start, end = match.span(1)
+
+        if offset < start:
+            ret.append(
+                replace_entities(
+                    utext[offset:start],
+                    keep=keep,
+                    remove_illegal=remove_illegal,
+                )
             )
-        else:
-            # it's a CDATA (so we just extract its content)
-            ret_text += fragment.group("cdata_d")
-    return ret_text
+
+        ret.append(match.group("cdata_d"))
+        offset = end
+
+    if offset < len(utext):
+        ret.append(
+            replace_entities(
+                utext[offset:],
+                keep=keep,
+                remove_illegal=remove_illegal,
+            )
+        )
+
+    return "".join(ret)
 
 
 def get_base_url(
@@ -318,7 +345,7 @@ def get_base_url(
 
     """
 
-    utext: str = remove_comments(text, encoding=encoding)
+    utext = remove_comments(text, encoding=encoding)
     if m := _baseurl_re.search(utext):
         return urljoin(
             safe_url_string(baseurl), safe_url_string(m.group(1), encoding=encoding)
@@ -340,17 +367,18 @@ def get_meta_refresh(
     If no meta redirect is found, ``(None, None)`` is returned.
 
     """
+    utext = to_unicode(text, encoding)
+    if not re.search(r"meta", utext, re.IGNORECASE):
+        return None, None
 
-    try:
-        utext = to_unicode(text, encoding)
-    except UnicodeDecodeError:
-        print(text)
-        raise
-    utext = remove_tags_with_content(utext, ignore_tags)
-    utext = remove_comments(replace_entities(utext))
-    if m := _meta_refresh_re.search(utext) or _meta_refresh_re2.search(utext):
-        interval = float(m.group("int"))
-        url = safe_url_string(m.group("url").strip(" \"'"), encoding)
+    utext = remove_comments(
+        replace_entities(remove_tags_with_content(utext, ignore_tags))
+    )
+    if m := _meta_refresh_re.search(utext):
+        interval = float(m.group("int") or m.group("int2"))
+        url = safe_url_string(
+            (m.group("url") or m.group("url2")).strip(" \"'"), encoding
+        )
         url = urljoin(baseurl, url)
         return interval, url
     return None, None
