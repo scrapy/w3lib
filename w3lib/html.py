@@ -107,7 +107,7 @@ def replace_entities(
 
     """
     return _ent_re.sub(
-        partial(_convert_entity, keep=set(keep), remove_illegal=remove_illegal),
+        partial(_convert_entity, keep=keep, remove_illegal=remove_illegal),
         to_unicode(text, encoding),
     )
 
