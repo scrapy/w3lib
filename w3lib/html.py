@@ -27,23 +27,12 @@ _baseurl_re = re.compile(
     r"<base\s[^>]*href\s*=\s*[\"\']\s*([^\"\'\s]+)\s*[\"\']", re.IGNORECASE
 )
 _meta_refresh_re = re.compile(
-    r"""
-    <meta\s[^>]*(
-        http-equiv[^>]*refresh[^>]*content\s*=\s*
-            (?P<quote>["\'])
-            (?P<int>(\d*\.)?\d+)\s*;\s*url=\s*
-            (?P<url>.*?)
-            (?P=quote)
-        |
-        content\s*=\s*
-            (?P<quote2>["\'])
-            (?P<int2>(\d*\.)?\d+)\s*;\s*url=\s*
-            (?P<url2>.*?)
-            (?P=quote2)
-            [^>]*?\shttp-equiv\s*=[^>]*refresh
-    )
-    """,
-    re.DOTALL | re.IGNORECASE | re.VERBOSE,
+    r'<meta\s[^>]*http-equiv[^>]*refresh[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)',
+    re.DOTALL | re.IGNORECASE,
+)
+_meta_refresh_re2 = re.compile(
+    r'<meta\s[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)[^>]*?\shttp-equiv\s*=[^>]*refresh',
+    re.DOTALL | re.IGNORECASE,
 )
 
 _cdata_re = re.compile(
@@ -368,17 +357,12 @@ def get_meta_refresh(
 
     """
     utext = to_unicode(text, encoding)
-    if not re.search(r"meta", utext, re.IGNORECASE):
-        return None, None
-
-    utext = remove_comments(
-        replace_entities(remove_tags_with_content(utext, ignore_tags))
-    )
-    if m := _meta_refresh_re.search(utext):
-        interval = float(m.group("int") or m.group("int2"))
-        url = safe_url_string(
-            (m.group("url") or m.group("url2")).strip(" \"'"), encoding
-        )
+    utext = remove_tags_with_content(utext, ignore_tags)
+    utext = replace_entities(utext)
+    utext = remove_comments(utext)
+    if m := _meta_refresh_re.search(utext) or _meta_refresh_re2.search(utext):
+        interval = float(m.group("int"))
+        url = safe_url_string(m.group("url").strip(" \"'"), encoding)
         url = urljoin(baseurl, url)
         return interval, url
     return None, None
