@@ -43,37 +43,6 @@ _tags_re = re.compile("</?([^ >/]+).*?>", re.DOTALL | re.IGNORECASE)
 HTML5_WHITESPACE = " \t\n\r\x0c"
 
 
-def _convert_entity(m: Match[str], keep: set[str], remove_illegal: bool = True) -> str:
-    groups = m.groupdict()
-    number = None
-
-    if groups.get("dec"):
-        number = int(groups["dec"], 10)
-    elif groups.get("hex"):
-        number = int(groups["hex"], 16)
-    elif groups.get("named"):
-        entity_name = groups["named"]
-        if entity_name.lower() in keep:
-            return m.group(0)
-        number = name2codepoint.get(entity_name) or name2codepoint.get(
-            entity_name.lower()
-        )
-
-    if number is not None:
-        # Numeric character references in the 80-9F range are typically
-        # interpreted by browsers as representing the characters mapped
-        # to bytes 80-9F in the Windows-1252 encoding. For more info
-        # see: http://en.wikipedia.org/wiki/Character_encodings_in_HTML
-        try:
-            if 0x80 <= number <= 0x9F:
-                return bytes((number,)).decode("cp1252")
-            return chr(number)
-        except (ValueError, OverflowError):
-            pass
-
-    return "" if remove_illegal and groups.get("semicolon") else m.group(0)
-
-
 def replace_entities(
     text: str | bytes,
     keep: Iterable[str] = (),
@@ -106,10 +75,36 @@ def replace_entities(
     >>>
 
     """
-    return _ent_re.sub(
-        partial(_convert_entity, keep=keep, remove_illegal=remove_illegal),
-        to_unicode(text, encoding),
-    )
+
+    def convert_entity(m: Match[str]) -> str:
+        groups = m.groupdict()
+        number = None
+        if groups.get("dec"):
+            number = int(groups["dec"], 10)
+        elif groups.get("hex"):
+            number = int(groups["hex"], 16)
+        elif groups.get("named"):
+            entity_name = groups["named"]
+            if entity_name.lower() in keep:
+                return m.group(0)
+            number = name2codepoint.get(entity_name) or name2codepoint.get(
+                entity_name.lower()
+            )
+        if number is not None:
+            # Numeric character references in the 80-9F range are typically
+            # interpreted by browsers as representing the characters mapped
+            # to bytes 80-9F in the Windows-1252 encoding. For more info
+            # see: http://en.wikipedia.org/wiki/Character_encodings_in_HTML
+            try:
+                if 0x80 <= number <= 0x9F:
+                    return bytes((number,)).decode("cp1252")
+                return chr(number)
+            except (ValueError, OverflowError):
+                pass
+
+        return "" if remove_illegal and groups.get("semicolon") else m.group(0)
+
+    return _ent_re.sub(convert_entity, to_unicode(text, encoding))
 
 
 def has_entities(text: str | bytes, encoding: str | None = None) -> bool:
