@@ -227,7 +227,7 @@ def remove_tags(
 
 
 @functools.lru_cache(maxsize=256)
-def _build_remove_tags_pattern(tags_tuple: tuple[..., str]):
+def _build_remove_tags_pattern(tags_tuple: tuple[str, ...]) -> re.Pattern[str]:
     tags = "|".join(re.escape(tag) for tag in tags_tuple)
     pattern = rf"""
         <(?P<tag>{tags})\b[^>]*>.*?</(?P=tag)>
