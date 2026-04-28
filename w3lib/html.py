@@ -4,10 +4,10 @@ Functions for dealing with markup text
 
 from __future__ import annotations
 
+import functools
 import re
 from functools import partial
 from html.entities import name2codepoint
-from re import Match
 from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
@@ -76,7 +76,7 @@ def replace_entities(
 
     """
 
-    def convert_entity(m: Match[str]) -> str:
+    def convert_entity(m: re.Match[str]) -> str:
         groups = m.groupdict()
         number = None
         if groups.get("dec"):
@@ -155,7 +155,7 @@ def remove_comments(text: str | bytes, encoding: str | None = None) -> str:
 
 
 def _remove_tag(
-    m: Match[str], which_ones: set[str] | tuple[()], keep: set[str] | tuple[()]
+    m: re.Match[str], which_ones: set[str] | tuple[()], keep: set[str] | tuple[()]
 ) -> str:
     tag = m.group(1).lower()
 
@@ -226,6 +226,17 @@ def remove_tags(
     )
 
 
+@functools.lru_cache(maxsize=256)
+def _build_remove_tags_pattern(tags_tuple: tuple[..., str]):
+    tags = "|".join(re.escape(tag) for tag in tags_tuple)
+    pattern = rf"""
+        <(?P<tag>{tags})\b[^>]*>.*?</(?P=tag)>
+        |
+        <(?P<tag2>{tags})\b[^>]*/>
+    """
+    return re.compile(pattern, re.IGNORECASE | re.DOTALL | re.VERBOSE)
+
+
 def remove_tags_with_content(
     text: str | bytes, which_ones: Iterable[str] = (), encoding: str | None = None
 ) -> str:
@@ -243,11 +254,12 @@ def remove_tags_with_content(
     """
 
     utext = to_unicode(text, encoding)
-    if which_ones:
-        tags = "|".join([rf"<{tag}\b.*?</{tag}>|<{tag}\s*/>" for tag in which_ones])
-        retags = re.compile(tags, re.DOTALL | re.IGNORECASE)
-        utext = retags.sub("", utext)
-    return utext
+
+    if not which_ones:
+        return utext
+
+    pattern = _build_remove_tags_pattern(tuple(sorted(set(which_ones))))
+    return pattern.sub("", utext)
 
 
 def replace_escape_chars(
