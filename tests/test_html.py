@@ -1,6 +1,7 @@
 from w3lib.html import (
     get_base_url,
     get_meta_refresh,
+    has_entities,
     remove_comments,
     remove_tags,
     remove_tags_with_content,
@@ -13,7 +14,7 @@ from w3lib.html import (
 
 class TestRemoveEntities:
     def test_returns_unicode(self):
-        # make sure it always return uncode
+        # make sure it always return unicode
         assert isinstance(replace_entities(b"no entities"), str)
         assert isinstance(replace_entities(b"Price: &pound;100!"), str)
         assert isinstance(replace_entities("no entities"), str)
@@ -334,6 +335,15 @@ although this is inside a cdata! &amp; &quot;</node1><node2>blah&blahblahblahbla
             == 'something\xa3&more<node3>things, stuff, and suchwhat"ever</node3><node4'
         )
 
+    def test_cdata_at_start(self):
+        assert unquote_markup("<![CDATA[foo]]>bar") == "foobar"
+
+    def test_adjacent_cdata(self):
+        assert unquote_markup("<![CDATA[a]]><![CDATA[b]]>") == "ab"
+
+    def test_cdata_at_end(self):
+        assert unquote_markup("foo<![CDATA[bar]]>") == "foobar"
+
 
 class TestGetBaseUrl:
     def test_get_base_url(self):
@@ -592,3 +602,42 @@ http://www.example.org/index.php" />
             0.0,
             "http://localhost:8000/dummy.html",
         )
+
+
+class TestHasEntities:
+    def test_no_entities(self):
+        assert not has_entities("plain text")
+        assert not has_entities("")
+        assert not has_entities("just <tags> & stuff without semicolon")
+
+    def test_named_entities(self):
+        assert has_entities("&amp;")
+        assert has_entities("foo &copy; bar")
+        assert has_entities("&nbsp;")
+
+    def test_numeric_entities_decimal(self):
+        assert has_entities("&#169;")
+        assert has_entities("foo &#1234; bar")
+
+    def test_numeric_entities_hex(self):
+        assert has_entities("&#xA9;")
+        assert has_entities("foo &#x1F600; bar")
+
+    def test_mixed_content(self):
+        assert has_entities("text &amp; more &#169; stuff")
+        assert not has_entities("text & amp; missing semicolon")
+
+    def test_bytes_input(self):
+        assert has_entities(b"&amp;")
+        assert has_entities(b"&#169;")
+
+    def test_incomplete_or_invalid_entities(self):
+        # TODO: should we adress this?
+        assert has_entities("&amp")
+        assert has_entities("&#123")
+
+        assert not has_entities("&#xZZ;")
+
+    def test_entities_inside_markup(self):
+        assert has_entities("<div>&amp;</div>")
+        assert has_entities("<a href='?q=1&amp;x=2'>link</a>")

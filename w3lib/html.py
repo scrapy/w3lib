@@ -83,7 +83,8 @@ def replace_entities(
             number = int(groups["dec"], 10)
         elif groups.get("hex"):
             number = int(groups["hex"], 16)
-        elif groups.get("named"):
+        else:
+            # guaranteed to be named
             entity_name = groups["named"]
             if entity_name.lower() in keep:
                 return m.group(0)
