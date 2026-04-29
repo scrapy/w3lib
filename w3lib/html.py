@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import functools
 import re
-from functools import partial
 from html.entities import name2codepoint
 from typing import TYPE_CHECKING
 from urllib.parse import urljoin
@@ -217,7 +216,7 @@ def remove_tags(
         raise ValueError("Cannot use both which_ones and keep")
 
     return _tags_re.sub(
-        partial(
+        functools.partial(
             _remove_tag,
             which_ones={tag.lower() for tag in which_ones} if which_ones else (),
             keep={tag.lower() for tag in keep} if keep else (),

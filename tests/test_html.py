@@ -99,7 +99,7 @@ class TestRemoveEntities:
 
 class TestReplaceTags:
     def test_returns_unicode(self):
-        # make sure it always return uncode
+        # make sure it always return unicode
         assert isinstance(replace_tags(b"no entities"), str)
         assert isinstance(replace_tags("no entities"), str)
 
@@ -625,14 +625,14 @@ class TestHasEntities:
 
     def test_mixed_content(self):
         assert has_entities("text &amp; more &#169; stuff")
-        assert not has_entities("text & amp; missing semicolon")
+        assert not has_entities("text & amp; ")
 
     def test_bytes_input(self):
         assert has_entities(b"&amp;")
         assert has_entities(b"&#169;")
 
     def test_incomplete_or_invalid_entities(self):
-        # TODO: should we adress this?
+        # TODO: should we address this?
         assert has_entities("&amp")
         assert has_entities("&#123")
 
