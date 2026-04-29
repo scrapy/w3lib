@@ -38,6 +38,8 @@ _cdata_re = re.compile(
     r"((?P<cdata_s><!\[CDATA\[)(?P<cdata_d>.*?)(?P<cdata_e>\]\]>))", re.DOTALL
 )
 _tags_re = re.compile("</?([^ >/]+).*?>", re.DOTALL | re.IGNORECASE)
+_meta_tag_re = re.compile(r"<meta\b[^>]*>", re.IGNORECASE)
+
 
 HTML5_WHITESPACE = " \t\n\r\x0c"
 
@@ -364,14 +366,26 @@ def get_meta_refresh(
 
     """
     utext = to_unicode(text, encoding)
-    utext = remove_tags_with_content(utext, ignore_tags)
-    utext = replace_entities(utext)
+
+    if ignore_tags:
+        utext = remove_tags_with_content(utext, ignore_tags)
+
     utext = remove_comments(utext)
-    if m := _meta_refresh_re.search(utext) or _meta_refresh_re2.search(utext):
-        interval = float(m.group("int"))
-        url = safe_url_string(m.group("url").strip(" \"'"), encoding)
-        url = urljoin(baseurl, url)
-        return interval, url
+
+    for tag in _meta_tag_re.finditer(utext):
+        raw_tag = tag.group(0)
+
+        if "refresh" not in raw_tag.lower():
+            continue
+
+        if "&" in raw_tag:
+            raw_tag = replace_entities(raw_tag)
+
+        if m := _meta_refresh_re.search(raw_tag) or _meta_refresh_re2.search(raw_tag):
+            interval = float(m.group("int"))
+            url = safe_url_string(m.group("url").strip(" \"'"), encoding)
+            return interval, urljoin(baseurl, url)
+
     return None, None
 
 

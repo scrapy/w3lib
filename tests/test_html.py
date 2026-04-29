@@ -603,6 +603,22 @@ http://www.example.org/index.php" />
             "http://localhost:8000/dummy.html",
         )
 
+    def test_non_refresh_meta_is_skipped(self):
+        baseurl = "http://example.org"
+        body = """
+            <html>
+            <head>
+                <meta name="viewport" content="width=device-width">
+                <meta charset="utf-8">
+                <meta http-equiv="refresh" content="2; url=/next">
+            </head>
+            </html>
+        """
+        assert get_meta_refresh(body, baseurl) == (
+            2.0,
+            "http://example.org/next",
+        )
+
 
 class TestHasEntities:
     def test_no_entities(self):
