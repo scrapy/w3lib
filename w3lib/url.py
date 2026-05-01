@@ -706,9 +706,9 @@ def parse_qsl_to_bytes(
 
     result: list[tuple[bytes, bytes]] = []
 
-    for name_value in (
+    for name_value in [
         nv for field in qs.split("&") for nv in field.split(";") if field
-    ):
+    ]:
         if "=" in name_value:
             name, _, value = name_value.partition("=")
         else:
