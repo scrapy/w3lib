@@ -15,7 +15,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple, cast, overload
 from urllib.parse import (  # type: ignore[attr-defined]
     ParseResult,
-    _coerce_args,
     parse_qs,
     parse_qsl,
     quote,
@@ -35,7 +34,7 @@ from ._url import _SPECIAL_SCHEMES
 from .util import to_unicode
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
+    from collections.abc import Sequence
 
     from ._types import AnyUnicodeError
 
@@ -450,6 +449,7 @@ _token = r"[{}]+".format(
 _quoted_string = r"(?:[{}]|(?:\\[{}]))*".format(
     re.escape("".join(_char - {'"', "\\", "\r"})), re.escape("".join(_char))
 )
+del _char
 
 # Encode the regular expression strings to make them into bytes, as Python 3
 # bytes have no format() method, but bytes must be passed to re.compile() in
@@ -460,6 +460,7 @@ _mediatype_pattern = re.compile(rf"{_token}/{_token}".encode())
 _mediatype_parameter_pattern = re.compile(
     rf';({_token})=(?:({_token})|"({_quoted_string})")'.encode()
 )
+del _token, _quoted_string
 
 
 class ParseDataURIResult(NamedTuple):
@@ -699,30 +700,28 @@ def parse_qsl_to_bytes(
         are to be ignored and treated as if they were  not included.
 
     """
-    # This code is the same as Python3's parse_qsl()
-    # (at https://hg.python.org/cpython/rev/c38ac7ab8d9a)
-    # except for the unquote(s, encoding, errors) calls replaced
-    # with unquote_to_bytes(s)
-    coerce_args = cast("Callable[..., tuple[str, Callable[..., bytes]]]", _coerce_args)
-    qs, _coerce_result = coerce_args(qs)
-    pairs = [s2 for s1 in qs.split("&") for s2 in s1.split(";")]
-    r = []
-    for name_value in pairs:
-        if not name_value:
+
+    if not qs:
+        return []
+
+    result: list[tuple[bytes, bytes]] = []
+
+    for field in qs.split("&"):
+        if not field:
             continue
-        nv = name_value.split("=", 1)
-        if len(nv) != 2:
-            # Handle case of a control-name with no equal sign
-            if keep_blank_values:
-                nv.append("")
+        for name_value in field.split(";"):
+            if "=" in name_value:
+                name, _, value = name_value.partition("=")
             else:
-                continue
-        if len(nv[1]) or keep_blank_values:
-            name: str | bytes = nv[0].replace("+", " ")
-            name = unquote_to_bytes(name)
-            name = _coerce_result(name)
-            value: str | bytes = nv[1].replace("+", " ")
-            value = unquote_to_bytes(value)
-            value = _coerce_result(value)
-            r.append((name, value))
-    return r
+                if not keep_blank_values:
+                    continue
+                name, value = name_value, ""
+
+            if value or keep_blank_values:
+                # '+' -> space BEFORE decoding
+                name_b = unquote_to_bytes(name.replace("+", " "))
+                value_b = unquote_to_bytes(value.replace("+", " "))
+
+                result.append((name_b, value_b))
+
+    return result
