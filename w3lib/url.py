@@ -13,7 +13,7 @@ import re
 import string
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple, cast, overload
-from urllib.parse import (  # type: ignore[attr-defined]
+from urllib.parse import (
     ParseResult,
     parse_qs,
     parse_qsl,
@@ -706,22 +706,21 @@ def parse_qsl_to_bytes(
 
     result: list[tuple[bytes, bytes]] = []
 
-    for field in qs.split("&"):
-        if not field:
-            continue
-        for name_value in field.split(";"):
-            if "=" in name_value:
-                name, _, value = name_value.partition("=")
-            else:
-                if not keep_blank_values:
-                    continue
-                name, value = name_value, ""
+    for name_value in (
+        nv for field in qs.split("&") for nv in field.split(";") if field
+    ):
+        if "=" in name_value:
+            name, _, value = name_value.partition("=")
+        else:
+            if not keep_blank_values:
+                continue
+            name, value = name_value, ""
 
-            if value or keep_blank_values:
-                # '+' -> space BEFORE decoding
-                name_b = unquote_to_bytes(name.replace("+", " "))
-                value_b = unquote_to_bytes(value.replace("+", " "))
+        if value or keep_blank_values:
+            # '+' -> space BEFORE decoding
+            name_b = unquote_to_bytes(name.replace("+", " "))
+            value_b = unquote_to_bytes(value.replace("+", " "))
 
-                result.append((name_b, value_b))
+            result.append((name_b, value_b))
 
     return result
