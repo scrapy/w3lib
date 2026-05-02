@@ -8,7 +8,7 @@ import codecs
 import encodings
 import re
 from re import Match
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Final, cast
 
 import w3lib.util
 
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
     from w3lib._types import AnyUnicodeError
 
-_HEADER_ENCODING_RE = re.compile(r"charset=([\w-]+)", re.IGNORECASE)
+_HEADER_ENCODING_RE: Final = re.compile(r"charset=([\w-]+)", re.IGNORECASE)
 
 
 def http_content_type_encoding(content_type: str | None) -> str | None:
@@ -38,8 +38,8 @@ def http_content_type_encoding(content_type: str | None) -> str | None:
 
 
 # regexp for parsing HTTP meta tags
-_TEMPLATE = r"""%s\s*=\s*["']?\s*%s\s*["']?"""
-_SKIP_ATTRS = """(?:\\s+
+_TEMPLATE: Final = r"""%s\s*=\s*["']?\s*%s\s*["']?"""
+_SKIP_ATTRS: Final = """(?:\\s+
     [^=<>/\\s"'\x00-\x1f\x7f]+  # Attribute name
     (?:\\s*=\\s*
     (?:  # ' and " are entity encoded (&apos;, &quot;), so no need for \', \"
@@ -50,15 +50,20 @@ _SKIP_ATTRS = """(?:\\s+
         [^'"\\s]+  # attr having no ' nor "
     ))?
 )*?"""  # must be used with re.VERBOSE flag
-_HTTPEQUIV_RE = _TEMPLATE % ("http-equiv", "Content-Type")
-_CONTENT_RE = _TEMPLATE % ("content", r"(?P<mime>[^;]+);\s*charset=(?P<charset>[\w-]+)")
-_CONTENT2_RE = _TEMPLATE % ("charset", r"(?P<charset2>[\w-]+)")
-_XML_ENCODING_RE = _TEMPLATE % ("encoding", r"(?P<xmlcharset>[\w-]+)")
+_HTTPEQUIV_RE: Final = _TEMPLATE % ("http-equiv", "Content-Type")
+_CONTENT_RE: Final = _TEMPLATE % (
+    "content",
+    r"(?P<mime>[^;]+);\s*charset=(?P<charset>[\w-]+)",
+)
+_CONTENT2_RE: Final = _TEMPLATE % ("charset", r"(?P<charset2>[\w-]+)")
+_XML_ENCODING_RE: Final = _TEMPLATE % ("encoding", r"(?P<xmlcharset>[\w-]+)")
 
 # check for meta tags, or xml decl. and stop search if a body tag is encountered
-_BODY_ENCODING_PATTERN = rf"<\s*(?:meta{_SKIP_ATTRS}(?:(?:\s+{_HTTPEQUIV_RE}|\s+{_CONTENT_RE}){{2}}|\s+{_CONTENT2_RE})|\?xml\s[^>]+{_XML_ENCODING_RE}|body)"
-_BODY_ENCODING_STR_RE = re.compile(_BODY_ENCODING_PATTERN, re.IGNORECASE | re.VERBOSE)
-_BODY_ENCODING_BYTES_RE = re.compile(
+_BODY_ENCODING_PATTERN: Final = rf"<\s*(?:meta{_SKIP_ATTRS}(?:(?:\s+{_HTTPEQUIV_RE}|\s+{_CONTENT_RE}){{2}}|\s+{_CONTENT2_RE})|\?xml\s[^>]+{_XML_ENCODING_RE}|body)"
+_BODY_ENCODING_STR_RE: Final = re.compile(
+    _BODY_ENCODING_PATTERN, re.IGNORECASE | re.VERBOSE
+)
+_BODY_ENCODING_BYTES_RE: Final = re.compile(
     _BODY_ENCODING_PATTERN.encode("ascii"), re.IGNORECASE | re.VERBOSE
 )
 
@@ -110,7 +115,7 @@ def html_body_declared_encoding(html_body_str: str | bytes) -> str | None:
 # see http://www.whatwg.org/specs/web-apps/current-work/multipage/parsing.html#character-encodings-0
 # in addition, gb18030 supercedes gb2312 & gbk
 # the keys are converted using _c18n_encoding and in sorted order
-DEFAULT_ENCODING_TRANSLATION = {
+DEFAULT_ENCODING_TRANSLATION: Final = {
     "ascii": "cp1252",
     "big5": "big5hkscs",
     "euc_kr": "cp949",
@@ -140,7 +145,7 @@ def _c18n_encoding(encoding: str) -> str:
     encoding aliases
     """
     normed = encodings.normalize_encoding(encoding).lower()
-    return cast("str", encodings.aliases.aliases.get(normed, normed))
+    return encodings.aliases.aliases.get(normed, normed)
 
 
 def resolve_encoding(encoding_alias: str) -> str | None:
@@ -163,14 +168,14 @@ def resolve_encoding(encoding_alias: str) -> str | None:
         return None
 
 
-_BOM_TABLE = [
+_BOM_TABLE: Final = [
     (codecs.BOM_UTF32_BE, "utf-32-be"),
     (codecs.BOM_UTF32_LE, "utf-32-le"),
     (codecs.BOM_UTF16_BE, "utf-16-be"),
     (codecs.BOM_UTF16_LE, "utf-16-le"),
     (codecs.BOM_UTF8, "utf-8"),
 ]
-_FIRST_CHARS = {c[0] for (c, _) in _BOM_TABLE}
+_FIRST_CHARS: Final = frozenset([c[0] for (c, _) in _BOM_TABLE])
 
 
 def read_bom(data: bytes) -> tuple[None, None] | tuple[str, bytes]:
@@ -287,7 +292,7 @@ def html_to_unicode(
     '''
     bom_enc, bom = read_bom(html_body_str)
     if bom_enc is not None:
-        bom = cast("bytes", bom)
+        assert bom
         return bom_enc, to_unicode(html_body_str[len(bom) :], bom_enc)
 
     enc = http_content_type_encoding(content_type_header)

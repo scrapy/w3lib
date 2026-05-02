@@ -107,6 +107,7 @@ disable = [
     "unused-argument",
     "unused-import",
     "unused-variable",
+    "useless-import-alias",
 ]
 
 [tool.ruff.lint]
@@ -233,6 +234,8 @@ ignore = [
     "RUF012",
     # Use of `assert` detected
     "S101",
+    # Import alias does not rename original package
+    "PLC0414",
 ]
 
 [tool.ruff.lint.isort]

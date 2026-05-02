@@ -7,25 +7,32 @@ from __future__ import annotations
 
 import base64
 import codecs
-import functools
 import os
 import posixpath
 import re
-import string
 from pathlib import Path
-from typing import TYPE_CHECKING, NamedTuple, cast, overload
-from urllib.parse import (
-    ParseResult,
-    parse_qs,
-    parse_qsl,
-    urlencode,
-    urlsplit,
-    urlunsplit,
-)
-from urllib.request import pathname2url, url2pathname
+from typing import TYPE_CHECKING, Final, NamedTuple, cast, overload
+from urllib.parse import ParseResult, parse_qs, parse_qsl, urlencode, urlsplit
 
 from ._infra import _ASCII_TAB_OR_NEWLINE, _C0_CONTROL_OR_SPACE
-from ._url import _SPECIAL_SCHEMES
+from ._url import (
+    _SPECIAL_SCHEMES,
+    _quote,
+    _safe_chars,
+    _unquote,
+    _url2pathname,
+    _urlunparse,
+    _urlunsplit,
+)
+
+# reexports
+from ._url import RFC3986_GEN_DELIMS as RFC3986_GEN_DELIMS
+from ._url import RFC3986_RESERVED as RFC3986_RESERVED
+from ._url import RFC3986_SUB_DELIMS as RFC3986_SUB_DELIMS
+from ._url import RFC3986_UNRESERVED as RFC3986_UNRESERVED
+from ._url import RFC3986_USERINFO_SAFE_CHARS as RFC3986_USERINFO_SAFE_CHARS
+from ._url import _path_safe_chars as _path_safe_chars
+from ._url import _pathname2url as _pathname2url
 from .util import to_unicode
 
 if TYPE_CHECKING:
@@ -38,23 +45,12 @@ if TYPE_CHECKING:
 def _quote_byte(error: UnicodeError) -> tuple[str, int]:
     error = cast("AnyUnicodeError", error)
     text = error.object[error.start : error.end]
-    if isinstance(text, str):
+    if isinstance(text, str):  # pragma: no cover
         text = text.encode()
     return (to_unicode(_quote(text)), error.end)
 
 
 codecs.register_error("percentencode", _quote_byte)
-
-# constants from RFC 3986, Section 2.2 and 2.3
-RFC3986_GEN_DELIMS = b":/?#[]@"
-RFC3986_SUB_DELIMS = b"!$&'()*+,;="
-RFC3986_RESERVED = RFC3986_GEN_DELIMS + RFC3986_SUB_DELIMS
-RFC3986_UNRESERVED = (string.ascii_letters + string.digits + "-._~").encode("ascii")
-EXTRA_SAFE_CHARS = b"|"  # see https://github.com/scrapy/w3lib/pull/25
-
-RFC3986_USERINFO_SAFE_CHARS = RFC3986_UNRESERVED + RFC3986_SUB_DELIMS + b":"
-_safe_chars = RFC3986_RESERVED + RFC3986_UNRESERVED + EXTRA_SAFE_CHARS + b"%"
-_path_safe_chars = _safe_chars.replace(b"#", b"")
 
 # Characters that are safe in all of:
 #
@@ -66,14 +62,16 @@ _path_safe_chars = _safe_chars.replace(b"#", b"")
 # limitations of the current safe_url_string implementation, but it should also
 # be escaped as %25 when it is not already being used as part of an escape
 # character.
-_USERINFO_SAFEST_CHARS = RFC3986_USERINFO_SAFE_CHARS.translate(None, delete=b":;=")
-_PATH_SAFEST_CHARS = _safe_chars.translate(None, delete=b"#[]|")
-_QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS
-_SPECIAL_QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS.translate(None, delete=b"'")
-_FRAGMENT_SAFEST_CHARS = _PATH_SAFEST_CHARS
+_USERINFO_SAFEST_CHARS: Final = RFC3986_USERINFO_SAFE_CHARS.translate(
+    None, delete=b":;="
+)
+_PATH_SAFEST_CHARS: Final = _safe_chars.translate(None, delete=b"#[]|")
+_QUERY_SAFEST_CHARS: Final = _PATH_SAFEST_CHARS
+_SPECIAL_QUERY_SAFEST_CHARS: Final = _PATH_SAFEST_CHARS.translate(None, delete=b"'")
+_FRAGMENT_SAFEST_CHARS: Final = _PATH_SAFEST_CHARS
 
 
-_ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE = {
+_ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE: Final = {
     ord(char): None for char in _ASCII_TAB_OR_NEWLINE
 }
 
@@ -82,95 +80,6 @@ def _strip(url: str) -> str:
     return url.strip(_C0_CONTROL_OR_SPACE).translate(
         _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE
     )
-
-
-@functools.cache
-def _safe_base_table() -> bytes:
-    table = bytearray(256)
-    for c in RFC3986_UNRESERVED:
-        table[c] = 1
-    return bytes(table)
-
-
-@functools.cache
-def _hex_encode_table() -> bytes:
-    return b"".join(f"%{i:02X}".encode() for i in range(256))
-
-
-@functools.cache
-def _safe_table(extra_safe: bytes) -> bytes:
-    table = bytearray(256)
-    for b in extra_safe:
-        table[b] = 1
-    return bytes(table)
-
-
-@functools.cache
-def _hex_decode_table() -> bytes:
-    table = bytearray([255]) * 256
-    table[48:58] = bytes(range(10))  # '0'-'9'
-    table[65:71] = bytes(range(10, 16))  # 'A'-'F'
-    table[97:103] = bytes(range(10, 16))  # 'a'-'f'
-    return bytes(table)
-
-
-def _quote(data: bytes, safe: bytes | None = None) -> bytes:
-    if not data:
-        return b""
-
-    safe_base = _safe_base_table()
-    hex_bytes = _hex_encode_table()
-    safe_extra = _safe_table(safe) if safe else None
-
-    res = bytearray()
-
-    for b in data:
-        if safe_base[b] or (safe_extra and safe_extra[b]):
-            res.append(b)
-        else:
-            b3 = b * 3
-            res += hex_bytes[b3 : b3 + 3]
-
-    return bytes(res)
-
-
-def _unquote(
-    s: bytes | bytearray | str,
-    safe: bytes = b"",
-) -> bytes:
-    if not s:
-        return b""
-
-    if isinstance(s, str):
-        s = s.encode("utf8")
-
-    hex_table = _hex_decode_table()
-    safe_table = _safe_table(safe) if safe else None
-
-    res = bytearray()
-
-    i = 0
-    n = len(s)
-
-    while i < n:
-        c = s[i]
-
-        if c == 37 and i + 2 < n:  # ord('%') = '%'
-            h1 = hex_table[s[i + 1]]
-            h2 = hex_table[s[i + 2]]
-
-            if h1 != 255 and h2 != 255:
-                decoded = (h1 << 4) | h2
-
-                if safe_table is None or not safe_table[decoded]:
-                    res.append(decoded)
-                    i += 3
-                    continue
-
-        res.append(c)
-        i += 1
-
-    return bytes(res)
 
 
 def safe_url_string(
@@ -270,7 +179,7 @@ def safe_url_string(
     else:
         query = _quote(parts.query.encode(encoding), _QUERY_SAFEST_CHARS).decode()
 
-    return urlunsplit(
+    return _urlunsplit(
         (
             parts.scheme,
             netloc,
@@ -304,7 +213,7 @@ def safe_download_url(
             path += "/"
     else:
         path = "/"
-    return urlunsplit((scheme, netloc, path, query, ""))
+    return _urlunsplit((scheme, netloc, path, query, ""))
 
 
 def is_url(text: str) -> bool:
@@ -425,7 +334,7 @@ def url_query_cleaner(
             base if not keep_fragments else base + ("#" + fragment if fragment else "")
         )
 
-    param_lookup = set(parameterlist)
+    param_lookup = frozenset(parameterlist)
 
     seen: set[str] | None = set() if unique else None
     result: list[str] = []
@@ -476,7 +385,7 @@ def _add_or_replace_parameters(url: str, params: dict[str, str]) -> str:
     new_args += not_modified_args
 
     query = urlencode(new_args)
-    return urlunsplit(parsed._replace(query=query))
+    return _urlunsplit(parsed._replace(query=query))
 
 
 def add_or_replace_parameter(url: str, name: str, new_value: str) -> str:
@@ -514,7 +423,7 @@ def path_to_file_uri(path: str | os.PathLike[str]) -> str:
     """Convert local filesystem path to legal File URIs as described in:
     http://en.wikipedia.org/wiki/File_URI_scheme
     """
-    x = pathname2url(str(Path(path).absolute()))
+    x = _pathname2url(str(Path(path).absolute()))
     return f"file:///{x.lstrip('/')}"
 
 
@@ -523,7 +432,7 @@ def file_uri_to_path(uri: str) -> str:
     http://en.wikipedia.org/wiki/File_URI_scheme
     """
     uri_path = _urlparse(uri)[2]
-    return url2pathname(uri_path)
+    return _url2pathname(uri_path)
 
 
 def any_to_uri(uri_or_path: str) -> str:
@@ -588,10 +497,7 @@ def parse_data_uri(uri: str | bytes) -> ParseDataURIResult:
     if not isinstance(uri, bytes):
         uri = safe_url_string(uri).encode("ascii")
 
-    try:
-        scheme, _, uri = uri.partition(b":")
-    except ValueError:
-        raise ValueError("invalid URI")
+    scheme, _, uri = uri.partition(b":")
     if not scheme or not uri:
         raise ValueError("invalid URI")
     if scheme[:4].lower() != b"data":
@@ -627,10 +533,7 @@ def parse_data_uri(uri: str | bytes) -> ParseDataURIResult:
         else:
             break
 
-    try:
-        is_base64, _, data = uri.partition(b",")
-    except ValueError:
-        raise ValueError("invalid data URI")
+    is_base64, _, data = uri.partition(b",")
     if is_base64:
         if is_base64 != b";base64":
             raise ValueError("invalid data URI")
@@ -726,29 +629,6 @@ def _safe_ParseResult(
         _quote(parts.query.encode(encoding), _safe_chars).decode(),
         _quote(parts.fragment.encode(encoding), _safe_chars).decode(),
     )
-
-
-def _urlunparse(
-    scheme: str,
-    netloc: str,
-    path: str,
-    params: str,
-    query: str,
-    fragment: str,
-) -> str:
-    url = ""
-    if scheme:
-        url = scheme + ":"
-    if netloc:
-        url += "//" + netloc
-    url += path
-    if params:
-        url += ";" + params
-    if query:
-        url += "?" + query
-    if fragment:
-        url += "#" + fragment
-    return url
 
 
 def canonicalize_url(
