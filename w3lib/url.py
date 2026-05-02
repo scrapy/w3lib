@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import base64
 import codecs
+import functools
 import os
 import posixpath
 import re
@@ -83,31 +84,54 @@ def _strip(url: str) -> str:
     )
 
 
-_SAFE = bytearray(256)
-for c in b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.-~":
-    _SAFE[c] = 1
+@functools.cache
+def _safe_base_table() -> bytes:
+    table = bytearray(256)
+    for c in RFC3986_UNRESERVED:
+        table[c] = 1
+    return bytes(table)
 
-_HEX = [f"%{i:02X}".encode() for i in range(256)]
+
+@functools.cache
+def _hex_encode_table() -> bytes:
+    return b"".join(f"%{i:02X}".encode() for i in range(256))
+
+
+@functools.cache
+def _safe_table(extra_safe: bytes) -> bytes:
+    table = bytearray(256)
+    for b in extra_safe:
+        table[b] = 1
+    return bytes(table)
+
+
+@functools.cache
+def _hex_decode_table() -> bytes:
+    table = bytearray([255]) * 256
+    table[48:58] = bytes(range(10))  # '0'-'9'
+    table[65:71] = bytes(range(10, 16))  # 'A'-'F'
+    table[97:103] = bytes(range(10, 16))  # 'a'-'f'
+    return bytes(table)
 
 
 def _quote(data: bytes, safe: bytes | None = None) -> bytes:
-    out = bytearray()
+    if not data:
+        return b""
+
+    safe_base = _safe_base_table()
+    hex_bytes = _hex_encode_table()
+    safe_extra = _safe_table(safe) if safe else None
+
+    res = bytearray()
+
     for b in data:
-        if _SAFE[b] or (safe is not None and b in safe):
-            out.append(b)
+        if safe_base[b] or (safe_extra and safe_extra[b]):
+            res.append(b)
         else:
-            out += _HEX[b]
+            b3 = b * 3
+            res += hex_bytes[b3 : b3 + 3]
 
-    return bytes(out)
-
-
-_HEX_TABLE = [-1] * 256
-for i in range(ord("0"), ord("9") + 1):
-    _HEX_TABLE[i] = i - 48
-for i in range(ord("A"), ord("F") + 1):
-    _HEX_TABLE[i] = i - 55
-for i in range(ord("a"), ord("f") + 1):
-    _HEX_TABLE[i] = i - 87
+    return bytes(res)
 
 
 def _unquote(
@@ -120,6 +144,9 @@ def _unquote(
     if isinstance(s, str):
         s = s.encode("utf8")
 
+    hex_table = _hex_decode_table()
+    safe_table = _safe_table(safe) if safe else None
+
     res = bytearray()
 
     i = 0
@@ -128,14 +155,14 @@ def _unquote(
     while i < n:
         c = s[i]
 
-        if c == 37 and i + 2 < n:  # '%'
-            h1 = _HEX_TABLE[s[i + 1]]
-            h2 = _HEX_TABLE[s[i + 2]]
+        if c == 37 and i + 2 < n:  # ord('%') = '%'
+            h1 = hex_table[s[i + 1]]
+            h2 = hex_table[s[i + 2]]
 
-            if h1 != -1 and h2 != -1:
+            if h1 != 255 and h2 != 255:
                 decoded = (h1 << 4) | h2
 
-                if decoded not in safe:
+                if safe_table is None or not safe_table[decoded]:
                     res.append(decoded)
                     i += 3
                     continue
