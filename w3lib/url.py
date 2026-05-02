@@ -163,7 +163,7 @@ def _unquote(
     return bytes(res)
 
 
-def safe_url_string(  # pylint: disable=too-many-locals
+def safe_url_string(
     url: str | bytes,
     encoding: str = "utf8",
     path_encoding: str = "utf8",
@@ -424,7 +424,7 @@ def url_query_cleaner(
             base if not keep_fragments else base + ("#" + fragment if fragment else "")
         )
 
-    seen = set() if unique else None
+    seen: set[str] | None = set() if unique else None
     result: list[str] = []
 
     for ksv in query.split(sep):
@@ -446,12 +446,12 @@ def url_query_cleaner(
 
         result.append(ksv)
 
-    cleaned = base if not result else base + "?" + sep.join(result)
+    url = base if not result else base + "?" + sep.join(result)
 
     if keep_fragments and fragment:
-        cleaned += "#" + fragment
+        url += "#" + fragment
 
-    return cleaned
+    return url
 
 
 def _add_or_replace_parameters(url: str, params: dict[str, str]) -> str:
