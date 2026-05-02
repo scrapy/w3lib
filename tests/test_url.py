@@ -987,6 +987,7 @@ class TestUrl:
 
     def test_url_query_cleaner(self):
         assert url_query_cleaner("product.html?") == "product.html"
+        assert url_query_cleaner(b"product.html?") == "product.html"
         assert url_query_cleaner("product.html?&") == "product.html"
         assert (
             url_query_cleaner("product.html?id=200&foo=bar&name=wired", ["id"])

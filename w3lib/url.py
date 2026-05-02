@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import base64
 import codecs
-import functools
 import os
 import posixpath
 import re
@@ -18,7 +17,6 @@ from urllib.parse import (
     ParseResult,
     parse_qs,
     parse_qsl,
-    urldefrag,
     urlencode,
     urlparse,
     urlsplit,
@@ -114,28 +112,15 @@ for i in range(ord("a"), ord("f") + 1):
     _HEX_TABLE[i] = i - 87
 
 
-@functools.lru_cache(256)
-def _make_safe_table(safe: bytes) -> list[bool]:
-    table = [False] * 256
-    for b in safe:
-        table[b] = True
-    return table
-
-
 def _unquote(
     s: bytes | bytearray | str,
-    safe: bytes | bytearray | str = b"",
+    safe: bytes = b"",
 ) -> bytes:
     if not s:
         return b""
 
     if isinstance(s, str):
         s = s.encode("utf8")
-
-    if isinstance(safe, str):
-        safe = safe.encode("utf8")
-
-    safe_table = _make_safe_table(bytes(safe))
 
     res = bytearray()
 
@@ -152,7 +137,7 @@ def _unquote(
             if h1 != -1 and h2 != -1:
                 decoded = (h1 << 4) | h2
 
-                if not safe_table[decoded]:
+                if decoded not in safe:
                     res.append(decoded)
                     i += 3
                     continue
@@ -229,7 +214,7 @@ def safe_url_string(
             netloc_bytes += b":"
             netloc_bytes += _quote(_unquote(password), _USERINFO_SAFEST_CHARS)
         netloc_bytes += b"@"
-    if hostname is not None:
+    if hostname:
         if ":" in hostname:
             # IPv6 address: urlsplit() strips the brackets from the hostname,
             # but they are required in the netloc when rebuilding the URL.
@@ -241,7 +226,7 @@ def safe_url_string(
                 # IDNA encoding can fail for too long labels (>63 characters) or
                 # missing labels (e.g. http://.example.com)
                 netloc_bytes += hostname.encode(encoding)
-    if port is not None:
+    if port:
         netloc_bytes += b":"
         netloc_bytes += str(port).encode(encoding)
 
@@ -266,7 +251,9 @@ def safe_url_string(
             netloc,
             path,
             query,
-            _quote(parts.fragment.encode(encoding), _FRAGMENT_SAFEST_CHARS).decode(),
+            _quote(parts.fragment.encode(encoding), _FRAGMENT_SAFEST_CHARS).decode()
+            if parts.fragment
+            else parts.fragment,
         )
     )
 
@@ -399,30 +386,21 @@ def url_query_cleaner(
 
     """
 
-    if isinstance(parameterlist, (str, bytes)):
+    if parameterlist and isinstance(parameterlist, (str, bytes)):
         parameterlist = (parameterlist,)
-
-    if not parameterlist and not remove:
-        if isinstance(url, bytes):
-            url = url.decode()
-        url, fragment = urldefrag(url)
-        base, _, _ = url.partition("?")
-        if keep_fragments and fragment:
-            return base + "#" + fragment
-        return base
-
-    param_lookup = set(parameterlist) if len(parameterlist) > 4 else parameterlist
 
     if isinstance(url, bytes):
         url = url.decode()
 
-    url, fragment = urldefrag(url)
+    url, _, fragment = url.partition("#")
     base, _, query = url.partition("?")
 
-    if not query:
+    if not query or (not parameterlist and not remove):
         return (
             base if not keep_fragments else base + ("#" + fragment if fragment else "")
         )
+
+    param_lookup = set(parameterlist)
 
     seen: set[str] | None = set() if unique else None
     result: list[str] = []
@@ -586,10 +564,12 @@ def parse_data_uri(uri: str | bytes) -> ParseDataURIResult:
         uri = safe_url_string(uri).encode("ascii")
 
     try:
-        scheme, uri = uri.split(b":", 1)
+        scheme, _, uri = uri.partition(b":")
     except ValueError:
         raise ValueError("invalid URI")
-    if scheme.lower() != b"data":
+    if not scheme or not uri:
+        raise ValueError("invalid URI")
+    if scheme[:4].lower() != b"data":
         raise ValueError("not a data URI")
 
     # RFC 3986 section 2.1 allows percent encoding to escape characters that
@@ -623,7 +603,7 @@ def parse_data_uri(uri: str | bytes) -> ParseDataURIResult:
             break
 
     try:
-        is_base64, data = uri.split(b",", 1)
+        is_base64, _, data = uri.partition(b",")
     except ValueError:
         raise ValueError("invalid data URI")
     if is_base64:
@@ -744,10 +724,15 @@ def canonicalize_url(
     # Similar considerations apply to query parts.  The functionality of
     # IRIs (namely, to be able to include non-ASCII characters) can only be
     # used if the query part is encoded in UTF-8.
-    keyvals = parse_qsl_to_bytes(query, keep_blank_values)
+    if query:
+        keyvals = parse_qsl_to_bytes(query, keep_blank_values)
 
-    keyvals.sort()
-    query = urlencode(keyvals)
+        if len(keyvals) > 1:
+            keyvals.sort()
+
+        query = urlencode(keyvals)
+    else:
+        query = ""
 
     # 2. decode percent-encoded sequences in path as UTF-8 (or keep raw bytes)
     #    and percent-encode path again (this normalizes to upper-case %XX)
