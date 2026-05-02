@@ -18,9 +18,7 @@ from urllib.parse import (
     parse_qs,
     parse_qsl,
     urlencode,
-    urlparse,
     urlsplit,
-    urlunparse,
     urlunsplit,
 )
 from urllib.request import pathname2url, url2pathname
@@ -497,7 +495,7 @@ def file_uri_to_path(uri: str) -> str:
     """Convert File URI to local filesystem path according to:
     http://en.wikipedia.org/wiki/File_URI_scheme
     """
-    uri_path = urlparse(uri).path
+    uri_path = _urlparse(uri)[2]
     return url2pathname(uri_path)
 
 
@@ -507,8 +505,8 @@ def any_to_uri(uri_or_path: str) -> str:
     """
     if os.path.splitdrive(uri_or_path)[0]:
         return path_to_file_uri(uri_or_path)
-    u = urlparse(uri_or_path)
-    return uri_or_path if u.scheme else path_to_file_uri(uri_or_path)
+    u = _urlparse(uri_or_path)
+    return uri_or_path if u[0] else path_to_file_uri(uri_or_path)
 
 
 # ASCII characters.
@@ -630,6 +628,59 @@ __all__ = [
 ]
 
 
+def _urlparse(
+    url: str,
+    scheme: str = "",
+    allow_fragments: bool = True,
+) -> tuple[str, str, str, str, str, str]:
+    if not url:
+        return ParseResult(scheme, "", "", "", "", "")
+
+    i = url.find(":")
+    if i > 0:
+        scheme_candidate = url[:i]
+        if scheme_candidate[0].isalpha():
+            scheme = scheme_candidate.lower()
+            url = url[i + 1 :]
+
+    netloc = ""
+    if url.startswith("//"):
+        url = url[2:]
+        end = len(url)
+
+        for sep in ("/", "?", "#"):
+            j = url.find(sep)
+            if j != -1:
+                end = min(end, j)
+
+        netloc = url[:end]
+        url = url[end:]
+
+    fragment = ""
+    if allow_fragments:
+        i = url.find("#")
+        if i != -1:
+            fragment = url[i + 1 :]
+            url = url[:i]
+
+    query = ""
+    i = url.find("?")
+    if i != -1:
+        query = url[i + 1 :]
+        url = url[:i]
+
+    params = ""
+    if scheme in _SPECIAL_SCHEMES:
+        i = url.find(";")
+        if i != -1:
+            params = url[i + 1 :]
+            url = url[:i]
+
+    path = url or ""
+
+    return ParseResult(scheme, netloc, path, params, query, fragment)
+
+
 def _safe_ParseResult(
     parts: ParseResult, encoding: str = "utf8", path_encoding: str = "utf8"
 ) -> tuple[str, str, str, str, str, str]:
@@ -648,6 +699,29 @@ def _safe_ParseResult(
         _quote(parts.query.encode(encoding), _safe_chars).decode(),
         _quote(parts.fragment.encode(encoding), _safe_chars).decode(),
     )
+
+
+def _urlunparse(
+    scheme: str,
+    netloc: str,
+    path: str,
+    params: str,
+    query: str,
+    fragment: str,
+) -> str:
+    url = ""
+    if scheme:
+        url = scheme + ":"
+    if netloc:
+        url += "//" + netloc
+    url += path
+    if params:
+        url += ";" + params
+    if query:
+        url += "?" + query
+    if fragment:
+        url += "#" + fragment
+    return url
 
 
 def canonicalize_url(
@@ -747,7 +821,7 @@ def canonicalize_url(
     netloc = "@".join(netloc_parts)
 
     # every part should be safe already
-    return urlunparse((scheme, netloc, path, params, query, fragment))
+    return _urlunparse(scheme, netloc, path, params, query, fragment)
 
 
 def _unquotepath(path: str) -> bytes:
@@ -770,7 +844,7 @@ def parse_url(
     """
     if isinstance(url, ParseResult):
         return url
-    return urlparse(to_unicode(url, encoding))
+    return ParseResult(*_urlparse(to_unicode(url, encoding)))
 
 
 def parse_qsl_to_bytes(
