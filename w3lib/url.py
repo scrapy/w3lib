@@ -115,9 +115,7 @@ for i in range(ord("a"), ord("f") + 1):
 
 
 @functools.lru_cache(256)
-def _make_safe_table(safe: bytes | str) -> list[bool]:
-    if isinstance(safe, str):
-        safe = safe.encode("ascii")
+def _make_safe_table(safe: bytes) -> list[bool]:
     table = [False] * 256
     for b in safe:
         table[b] = True
@@ -132,9 +130,12 @@ def _unquote(
         return b""
 
     if isinstance(s, str):
-        s = s.encode("utf-8")
+        s = s.encode("utf8")
 
-    safe_table = _make_safe_table(safe)
+    if isinstance(safe, str):
+        safe = safe.encode("utf8")
+
+    safe_table = _make_safe_table(bytes(safe))
 
     res = bytearray()
 
@@ -399,10 +400,12 @@ def url_query_cleaner(
     """
 
     if isinstance(parameterlist, (str, bytes)):
-        parameterlist = [parameterlist]
+        parameterlist = (parameterlist,)
+    else:
+        parameterlist = set(parameterlist)  # type: ignore[assignment]
+    if isinstance(url, bytes):
+        url = url.decode()
     url, fragment = urldefrag(url)
-    url = cast("str", url)
-    fragment = cast("str", fragment)
     base, _, query = url.partition("?")
     seen = set()
     querylist = []
