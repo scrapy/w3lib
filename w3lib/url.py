@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import base64
 import codecs
+import functools
 import os
 import posixpath
 import re
@@ -17,8 +18,6 @@ from urllib.parse import (
     ParseResult,
     parse_qs,
     parse_qsl,
-    unquote,
-    unquote_to_bytes,
     urldefrag,
     urlencode,
     urlparse,
@@ -106,6 +105,63 @@ def _quote(data: bytes, safe: bytes | None = None) -> bytes:
     return bytes(out)
 
 
+_HEX_TABLE = [-1] * 256
+for i in range(ord("0"), ord("9") + 1):
+    _HEX_TABLE[i] = i - 48
+for i in range(ord("A"), ord("F") + 1):
+    _HEX_TABLE[i] = i - 55
+for i in range(ord("a"), ord("f") + 1):
+    _HEX_TABLE[i] = i - 87
+
+
+@functools.lru_cache(256)
+def _make_safe_table(safe: bytes | str) -> list[bool]:
+    if isinstance(safe, str):
+        safe = safe.encode("ascii")
+    table = [False] * 256
+    for b in safe:
+        table[b] = True
+    return table
+
+
+def _unquote(
+    s: bytes | bytearray | str,
+    safe: bytes | bytearray | str = b"",
+) -> bytes:
+    if not s:
+        return b""
+
+    if isinstance(s, str):
+        s = s.encode("utf-8")
+
+    safe_table = _make_safe_table(safe)
+
+    res = bytearray()
+
+    i = 0
+    n = len(s)
+
+    while i < n:
+        c = s[i]
+
+        if c == 37 and i + 2 < n:  # '%'
+            h1 = _HEX_TABLE[s[i + 1]]
+            h2 = _HEX_TABLE[s[i + 2]]
+
+            if h1 != -1 and h2 != -1:
+                decoded = (h1 << 4) | h2
+
+                if not safe_table[decoded]:
+                    res.append(decoded)
+                    i += 3
+                    continue
+
+        res.append(c)
+        i += 1
+
+    return bytes(res)
+
+
 def safe_url_string(  # pylint: disable=too-many-locals
     url: str | bytes,
     encoding: str = "utf8",
@@ -167,14 +223,10 @@ def safe_url_string(  # pylint: disable=too-many-locals
     netloc_bytes = bytearray()
     if username is not None or password is not None:
         if username is not None:
-            netloc_bytes += _quote(
-                unquote(username).encode(encoding), _USERINFO_SAFEST_CHARS
-            )
+            netloc_bytes += _quote(_unquote(username), _USERINFO_SAFEST_CHARS)
         if password is not None:
             netloc_bytes += b":"
-            netloc_bytes += _quote(
-                unquote(password).encode(encoding), _USERINFO_SAFEST_CHARS
-            )
+            netloc_bytes += _quote(_unquote(password), _USERINFO_SAFEST_CHARS)
         netloc_bytes += b"@"
     if hostname is not None:
         if ":" in hostname:
@@ -517,7 +569,7 @@ def parse_data_uri(uri: str | bytes) -> ParseDataURIResult:
     # delimiters, but it makes parsing easier and should not affect
     # well-formed URIs, as the delimiters used in this URI scheme are not
     # allowed, percent-encoded or not, in tokens.
-    uri = unquote_to_bytes(uri)
+    uri = _unquote(uri)
 
     media_type = "text/plain"
     media_type_params = {}
@@ -692,7 +744,7 @@ def _unquotepath(path: str) -> bytes:
     # e.g., '%a3' becomes 'REPLACEMENT CHARACTER' (U+FFFD)
     #
     # unquote_to_bytes() returns raw bytes instead
-    return unquote_to_bytes(path)
+    return _unquote(path)
 
 
 def parse_url(
@@ -742,8 +794,8 @@ def parse_qsl_to_bytes(
 
         if value or keep_blank_values:
             # '+' -> space BEFORE decoding
-            name_b = unquote_to_bytes(name.replace("+", " "))
-            value_b = unquote_to_bytes(value.replace("+", " "))
+            name_b = _unquote(name.replace("+", " "))
+            value_b = _unquote(value.replace("+", " "))
 
             result.append((name_b, value_b))
 
