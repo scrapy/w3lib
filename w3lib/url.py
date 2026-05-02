@@ -401,30 +401,57 @@ def url_query_cleaner(
 
     if isinstance(parameterlist, (str, bytes)):
         parameterlist = (parameterlist,)
-    else:
-        parameterlist = set(parameterlist)  # type: ignore[assignment]
+
+    if not parameterlist and not remove:
+        if isinstance(url, bytes):
+            url = url.decode()
+        url, fragment = urldefrag(url)
+        base, _, _ = url.partition("?")
+        if keep_fragments and fragment:
+            return base + "#" + fragment
+        return base
+
+    param_lookup = set(parameterlist) if len(parameterlist) > 4 else parameterlist
+
     if isinstance(url, bytes):
         url = url.decode()
+
     url, fragment = urldefrag(url)
     base, _, query = url.partition("?")
-    seen = set()
-    querylist = []
+
+    if not query:
+        return (
+            base if not keep_fragments else base + ("#" + fragment if fragment else "")
+        )
+
+    seen = set() if unique else None
+    result: list[str] = []
+
     for ksv in query.split(sep):
         if not ksv:
             continue
+
         k, _, _ = ksv.partition(kvsep)
-        if unique and k in seen:
+
+        if seen is not None:
+            if k in seen:
+                continue
+            seen.add(k)
+
+        if remove:
+            if k in param_lookup:
+                continue
+        elif k not in param_lookup:
             continue
-        if remove and k in parameterlist:
-            continue
-        if not remove and k not in parameterlist:
-            continue
-        querylist.append(ksv)
-        seen.add(k)
-    url = "?".join([base, sep.join(querylist)]) if querylist else base
+
+        result.append(ksv)
+
+    cleaned = base if not result else base + "?" + sep.join(result)
+
     if keep_fragments and fragment:
-        url += "#" + fragment
-    return url
+        cleaned += "#" + fragment
+
+    return cleaned
 
 
 def _add_or_replace_parameters(url: str, params: dict[str, str]) -> str:
