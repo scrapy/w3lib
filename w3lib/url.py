@@ -17,7 +17,6 @@ from urllib.parse import (
     ParseResult,
     parse_qs,
     parse_qsl,
-    quote,
     unquote,
     unquote_to_bytes,
     urldefrag,
@@ -42,7 +41,10 @@ if TYPE_CHECKING:
 # error handling function for bytes-to-Unicode decoding errors with URLs
 def _quote_byte(error: UnicodeError) -> tuple[str, int]:
     error = cast("AnyUnicodeError", error)
-    return (to_unicode(quote(error.object[error.start : error.end])), error.end)
+    text = error.object[error.start : error.end]
+    if isinstance(text, str):
+        text = text.encode()
+    return (to_unicode(_quote(text)), error.end)
 
 
 codecs.register_error("percentencode", _quote_byte)
@@ -84,6 +86,24 @@ def _strip(url: str) -> str:
     return url.strip(_C0_CONTROL_OR_SPACE).translate(
         _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE
     )
+
+
+_SAFE = bytearray(256)
+for c in b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.-~":
+    _SAFE[c] = 1
+
+_HEX = [f"%{i:02X}".encode() for i in range(256)]
+
+
+def _quote(data: bytes, safe: bytes | None = None) -> bytes:
+    out = bytearray()
+    for b in data:
+        if _SAFE[b] or (safe is not None and b in safe):
+            out.append(b)
+        else:
+            out += _HEX[b]
+
+    return bytes(out)
 
 
 def safe_url_string(  # pylint: disable=too-many-locals
@@ -144,15 +164,17 @@ def safe_url_string(  # pylint: disable=too-many-locals
         parts.hostname,
         parts.port,
     )
-    netloc_bytes = b""
+    netloc_bytes = bytearray()
     if username is not None or password is not None:
         if username is not None:
-            safe_username = quote(unquote(username), _USERINFO_SAFEST_CHARS)
-            netloc_bytes += safe_username.encode(encoding)
+            netloc_bytes += _quote(
+                unquote(username).encode(encoding), _USERINFO_SAFEST_CHARS
+            )
         if password is not None:
             netloc_bytes += b":"
-            safe_password = quote(unquote(password), _USERINFO_SAFEST_CHARS)
-            netloc_bytes += safe_password.encode(encoding)
+            netloc_bytes += _quote(
+                unquote(password).encode(encoding), _USERINFO_SAFEST_CHARS
+            )
         netloc_bytes += b"@"
     if hostname is not None:
         if ":" in hostname:
@@ -174,14 +196,16 @@ def safe_url_string(  # pylint: disable=too-many-locals
 
     # default encoding for path component SHOULD be UTF-8
     if quote_path:
-        path = quote(parts.path.encode(path_encoding), _PATH_SAFEST_CHARS)
+        path = _quote(parts.path.encode(path_encoding), _PATH_SAFEST_CHARS).decode()
     else:
         path = parts.path
 
     if parts.scheme in _SPECIAL_SCHEMES:
-        query = quote(parts.query.encode(encoding), _SPECIAL_QUERY_SAFEST_CHARS)
+        query = _quote(
+            parts.query.encode(encoding), _SPECIAL_QUERY_SAFEST_CHARS
+        ).decode()
     else:
-        query = quote(parts.query.encode(encoding), _QUERY_SAFEST_CHARS)
+        query = _quote(parts.query.encode(encoding), _QUERY_SAFEST_CHARS).decode()
 
     return urlunsplit(
         (
@@ -189,7 +213,7 @@ def safe_url_string(  # pylint: disable=too-many-locals
             netloc,
             path,
             query,
-            quote(parts.fragment.encode(encoding), _FRAGMENT_SAFEST_CHARS),
+            _quote(parts.fragment.encode(encoding), _FRAGMENT_SAFEST_CHARS).decode(),
         )
     )
 
@@ -557,10 +581,10 @@ def _safe_ParseResult(
     return (
         parts.scheme,
         netloc,
-        quote(parts.path.encode(path_encoding), _path_safe_chars),
-        quote(parts.params.encode(path_encoding), _safe_chars),
-        quote(parts.query.encode(encoding), _safe_chars),
-        quote(parts.fragment.encode(encoding), _safe_chars),
+        _quote(parts.path.encode(path_encoding), _path_safe_chars).decode(),
+        _quote(parts.params.encode(path_encoding), _safe_chars).decode(),
+        _quote(parts.query.encode(encoding), _safe_chars).decode(),
+        _quote(parts.fragment.encode(encoding), _safe_chars).decode(),
     )
 
 
@@ -646,7 +670,7 @@ def canonicalize_url(
     # 2. decode percent-encoded sequences in path as UTF-8 (or keep raw bytes)
     #    and percent-encode path again (this normalizes to upper-case %XX)
     uqp = _unquotepath(path)
-    path = quote(uqp, _path_safe_chars) or "/"
+    path = _quote(uqp, _path_safe_chars).decode() or "/"
 
     fragment = "" if not keep_fragments else fragment
 
