@@ -105,9 +105,24 @@ def _quote(data: bytes, safe: bytes = b"") -> bytes:
 
 
 def _quote_plus(data: bytes) -> bytes:
-    if b" " in data:
-        return _quote(data, b" ").replace(b" ", b"+")
-    return _quote(data)
+    if not data:
+        return b""
+
+    hex_table = _hex_encode_table()
+    safe_table = _safe_table(RFC3986_UNRESERVED)
+
+    out = bytearray()
+
+    for b in data:
+        if b == 32:  # ' '
+            out.append(43)  # '+'
+        elif safe_table[b]:
+            out.append(b)
+        else:
+            offset = b * 3
+            out += hex_table[offset : offset + 3]
+
+    return bytes(out)
 
 
 def _splitparams(url: str) -> tuple[str, str]:
