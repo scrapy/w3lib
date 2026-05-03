@@ -1,12 +1,9 @@
 from __future__ import annotations
 
 import functools
-import ipaddress
 import os
-import re
 import string
 import sys
-import unicodedata
 from typing import TYPE_CHECKING
 from urllib.parse import (
     ParseResult,
@@ -20,6 +17,15 @@ from w3lib._infra import _ASCII_TAB_OR_NEWLINE, _C0_CONTROL_OR_SPACE
 
 if TYPE_CHECKING:
     from urllib.parse import _QueryType
+
+_NOT_LINUX = sys.platform in {"win32", "darwin"}
+if _NOT_LINUX:
+    from urllib.parse import urlsplit as urllib_urlsplit
+else:
+    from urllib.parse import (  # type: ignore[attr-defined]
+        _check_bracketed_netloc,
+        _checknetloc,
+    )
 
 _FS_ENCODING = sys.getfilesystemencoding()
 _FS_ERRORS = sys.getfilesystemencodeerrors()
@@ -239,59 +245,6 @@ def _urlunsplit(components: tuple[str, str, str, str, str]) -> str:
     return url
 
 
-def _checknetloc(netloc: str) -> None:
-    if not netloc or netloc.isascii():
-        return
-    # looking for characters like \u2100 that expand to 'a/c'
-    # IDNA uses NFKC equivalence, so normalize for this check
-
-    n = netloc.replace("@", "")  # ignore characters already included
-    n = n.replace(":", "")  # but not the surrounding text
-    n = n.replace("#", "")
-    n = n.replace("?", "")
-    netloc2 = unicodedata.normalize("NFKC", n)
-    if n == netloc2:
-        return
-    for c in "/?#@:":
-        if c in netloc2:
-            raise ValueError(
-                "netloc '"
-                + netloc
-                + "' contains invalid "
-                + "characters under NFKC normalization"
-            )
-
-
-def _check_bracketed_netloc(netloc: str) -> None:
-    # Note that this function must mirror the splitting
-    # done in NetlocResultMixins._hostinfo().
-    hostname_and_port = netloc.rpartition("@")[2]
-    before_bracket, have_open_br, bracketed = hostname_and_port.partition("[")
-    if have_open_br:
-        # No data is allowed before a bracket.
-        if before_bracket:
-            raise ValueError("Invalid IPv6 URL")
-        hostname, _, port = bracketed.partition("]")
-        # No data is allowed after the bracket but before the port delimiter.
-        if port and not port.startswith(":"):
-            raise ValueError("Invalid IPv6 URL")
-    else:
-        hostname, _, port = hostname_and_port.partition(":")
-    _check_bracketed_host(hostname)
-
-
-# Valid bracketed hosts are defined in
-# https://www.rfc-editor.org/rfc/rfc3986#page-49 and https://url.spec.whatwg.org/
-def _check_bracketed_host(hostname: str) -> None:
-    if hostname.startswith("v"):
-        if not re.match(r"\Av[a-fA-F0-9]+\..+\Z", hostname):
-            raise ValueError("IPvFuture address is invalid")
-    else:
-        ip = ipaddress.ip_address(hostname)  # Throws Value Error if not IPv6 or IPv4
-        if isinstance(ip, ipaddress.IPv4Address):
-            raise ValueError("An IPv4 address cannot be in brackets")
-
-
 @functools.lru_cache(typed=True)
 def _urlsplit(
     url: str,
@@ -346,6 +299,9 @@ def _urlsplit(
 
     return SplitResult(scheme, netloc, url, query, fragment)
 
+
+if _NOT_LINUX:
+    _urlsplit = urllib_urlsplit  # type: ignore[assignment]
 
 _IS_WINDOWS = os.name == "nt"
 
