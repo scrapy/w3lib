@@ -2,6 +2,18 @@ import functools
 import os
 import string
 import sys
+from urllib.parse import (  # type: ignore[attr-defined]
+    ParseResult,
+    SplitResult,
+    _check_bracketed_netloc,
+    _checknetloc,
+    _splitparams,
+    scheme_chars,
+    uses_netloc,
+    uses_params,
+)
+
+from w3lib._infra import _ASCII_TAB_OR_NEWLINE, _C0_CONTROL_OR_SPACE
 
 _FS_ENCODING = sys.getfilesystemencoding()
 _FS_ERRORS = sys.getfilesystemencodeerrors()
@@ -29,6 +41,9 @@ RFC3986_USERINFO_SAFE_CHARS = RFC3986_UNRESERVED + RFC3986_SUB_DELIMS + b":"
 _safe_chars = RFC3986_RESERVED + RFC3986_UNRESERVED + EXTRA_SAFE_CHARS + b"%"
 _path_safe_chars = _safe_chars.replace(b"#", b"")
 _path_safe_chars_str = _path_safe_chars.decode()
+_uses_netloc = frozenset(uses_netloc)
+_scheme_chars = frozenset(scheme_chars)
+_uses_params = frozenset(uses_params)
 
 
 @functools.cache
@@ -54,6 +69,7 @@ def _hex_decode_table() -> bytes:
 
 
 def _quote(data: bytes, safe: bytes = b"") -> bytes:
+    """faster version of urlib.parse.quote and without _coerce_args/_coerce_result"""
     if not data:
         return b""
 
@@ -80,6 +96,7 @@ def _unquote(
     data: bytes | bytearray | str,
     safe: bytes = b"",
 ) -> bytes:
+    """faster version of urlib.parse.unquote and without _coerce_args/_coerce_result"""
     if not data:
         return b""
 
@@ -115,42 +132,50 @@ def _unquote(
     return bytes(output)
 
 
+def _urlparse(
+    url: str,
+    scheme: str = "",
+    allow_fragments: bool = True,
+) -> ParseResult:
+    """urlib.parse.urlparse but without _coerce_args/_coerce_result"""
+    if not url:
+        return ParseResult(scheme, "", "", "", "", "")
+
+    splitresult = _urlsplit(url, scheme, allow_fragments)
+    scheme, netloc, url, query, fragment = splitresult
+    if scheme in _uses_params and ";" in url:
+        url, params = _splitparams(url)
+    else:
+        params = ""
+    return ParseResult(scheme, netloc, url, params, query, fragment)
+
+
 def _urlunparse(
     scheme: str,
     netloc: str,
-    path: str,
+    url: str,
     params: str,
     query: str,
     fragment: str,
 ) -> str:
-    url = ""
-
-    if scheme:
-        url = scheme + ":"
-    if netloc:
-        url += "//" + netloc
-    url += path
+    """urlib.parse.urlunparse but without _coerce_args/_coerce_result"""
     if params:
-        url += ";" + params
-    if query:
-        url += "?" + query
-    if fragment:
-        url += "#" + fragment
-
-    return url
+        url = f"{url};{params}"
+    return _urlunsplit((scheme, netloc, url, query, fragment))
 
 
 def _urlunsplit(components: tuple[str, str, str, str, str]) -> str:
-    scheme, netloc, path, query, fragment = components
+    """urlib.parse.urlunsplit but without _coerce_args/_coerce_result"""
+    scheme, netloc, url, query, fragment = components
 
     if netloc:
-        if path and path[0] != "/":
-            path = "/" + path
-        url = "//" + netloc + path
-    elif path[:2] == "//" or (scheme and path[0] == "/"):
-        url = "//" + path
-    else:
-        url = path
+        if url and url[:1] != "/":
+            url = "/" + url
+        url = "//" + netloc + url
+    elif url[:2] == "//" or (
+        scheme and scheme in _uses_netloc and (not url or url[:1] == "/")
+    ):
+        url = "//" + url
     if scheme:
         url = scheme + ":" + url
     if query:
@@ -161,10 +186,66 @@ def _urlunsplit(components: tuple[str, str, str, str, str]) -> str:
     return url
 
 
+@functools.lru_cache(typed=True)
+def _urlsplit(
+    url: str,
+    scheme: str = "",
+    allow_fragments: bool = True,
+) -> SplitResult:
+    """urllib.parse.urlsplit but without _coerce_args/_coerce_result"""
+
+    if not url:
+        return SplitResult(scheme, "", "", "", "")
+
+    url = url.lstrip(_C0_CONTROL_OR_SPACE)
+    scheme = scheme.strip(_C0_CONTROL_OR_SPACE)
+
+    for char in _ASCII_TAB_OR_NEWLINE:
+        if char in url:
+            url = url.replace(char, "")
+        if char in scheme:
+            scheme = scheme.replace(char, "")
+
+    netloc = query = fragment = ""
+
+    scheme_sep_idx = url.find(":")
+    if scheme_sep_idx > 0 and url[0].isascii() and url[0].isalpha():
+        for c in url[:scheme_sep_idx]:
+            if c not in _scheme_chars:
+                break
+        else:
+            scheme, url = url[:scheme_sep_idx].lower(), url[scheme_sep_idx + 1 :]
+
+    if url[:2] == "//":
+        delim = len(url)
+        for char in "/?#":
+            wdelim = url.find(char, 2)
+            if wdelim >= 0:
+                delim = min(delim, wdelim)
+        netloc, url = url[2:delim], url[delim:]
+
+        has_opening = "[" in netloc
+        has_closing = "]" in netloc
+        if (has_opening and not has_closing) or (has_closing and not has_opening):
+            raise ValueError("Invalid IPv6 URL")
+        if has_opening and has_closing:
+            _check_bracketed_netloc(netloc)
+    _checknetloc(netloc)
+
+    if allow_fragments and "#" in url:
+        url, _, fragment = url.partition("#")
+
+    if "?" in url:
+        url, _, query = url.partition("?")
+
+    return SplitResult(scheme, netloc, url, query, fragment)
+
+
 _IS_WINDOWS = os.name == "nt"
 
 
 def _url2pathname(url: str) -> str:
+    """urllib.request.url2pathname but with faster _unquote"""
     if not url:
         return ""
 
@@ -179,30 +260,18 @@ def _url2pathname(url: str) -> str:
 
         return _unquote(url, _path_safe_chars).decode(_FS_ENCODING, _FS_ERRORS)
 
-    if url[:2] == "///":
+    if url[:3] == "///":
         url = url[1:]
-
     url = url.replace(":", "|")
-
     if "|" not in url:
-        return _unquote(url.replace("/", "\\"), _path_safe_chars).decode(
+        return _unquote(url.replace("/", "\\").encode(), _path_safe_chars).decode(
             _FS_ENCODING, _FS_ERRORS
         )
-
-    i = url.find("|")
-    if i <= 0:
+    comp = url.split("|")
+    if len(comp) != 2 or comp[0][-1] not in string.ascii_letters:
         raise OSError(f"Bad URL: {url}")
-
-    drive_part = url[:i]
-    tail_part = url[i + 1 :]
-
-    drive_char = drive_part[-1]
-    if not drive_char.isascii() or not drive_char.isalpha():
-        raise OSError(f"Bad URL: {url}")
-
-    drive = drive_char.upper()
-    tail = _unquote(tail_part.replace("/", "\\"), _path_safe_chars).decode(
+    drive = comp[0][-1].upper()
+    tail = _unquote(comp[1].replace("/", "\\"), _path_safe_chars).decode(
         _FS_ENCODING, _FS_ERRORS
     )
-
-    return f"{drive}:{tail}"
+    return drive + ":" + tail

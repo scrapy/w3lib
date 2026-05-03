@@ -12,7 +12,7 @@ import posixpath
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple, cast, overload
-from urllib.parse import ParseResult, parse_qs, parse_qsl, urlencode, urlsplit
+from urllib.parse import ParseResult, parse_qs, parse_qsl, urlencode
 from urllib.request import pathname2url
 
 from ._infra import _ASCII_TAB_OR_NEWLINE, _C0_CONTROL_OR_SPACE
@@ -22,6 +22,8 @@ from ._url import (
     _safe_chars,
     _unquote,
     _url2pathname,
+    _urlparse,
+    _urlsplit,
     _urlunparse,
     _urlunsplit,
 )
@@ -130,7 +132,7 @@ def safe_url_string(
     #   - if the supplied (or default) encoding chokes,
     #     percent-encode offending bytes
     decoded = to_unicode(url, encoding=encoding, errors="percentencode")
-    parts = urlsplit(_strip(decoded))
+    parts = _urlsplit(_strip(decoded))
 
     username, password, hostname, port = (
         parts.username,
@@ -204,7 +206,7 @@ def safe_download_url(
     to be within the document root.
     """
     safe_url = safe_url_string(url, encoding, path_encoding)
-    scheme, netloc, path, query, _ = urlsplit(safe_url)
+    scheme, netloc, path, query, _ = _urlsplit(safe_url)
     if path:
         path = _parent_dirs.sub("", posixpath.normpath(path))
         if safe_url.endswith("/") and not path.endswith("/"):
@@ -271,7 +273,7 @@ def url_query_parameter(
     """
 
     queryparams = parse_qs(
-        urlsplit(str(url))[3], keep_blank_values=bool(keep_blank_values)
+        _urlsplit(str(url))[3], keep_blank_values=bool(keep_blank_values)
     )
     if parameter in queryparams:
         return queryparams[parameter][0]
@@ -365,7 +367,7 @@ def url_query_cleaner(
 
 
 def _add_or_replace_parameters(url: str, params: dict[str, str]) -> str:
-    parsed = urlsplit(url)
+    parsed = _urlsplit(url)
     current_args = parse_qsl(parsed.query, keep_blank_values=True)
 
     new_args = []
@@ -556,59 +558,6 @@ __all__ = [
 ]
 
 
-def _urlparse(
-    url: str,
-    scheme: str = "",
-    allow_fragments: bool = True,
-) -> ParseResult:
-    if not url:
-        return ParseResult(scheme, "", "", "", "", "")
-
-    i = url.find(":")
-    if i > 0:
-        scheme_candidate = url[:i]
-        if scheme_candidate[0].isalpha():
-            scheme = scheme_candidate.lower()
-            url = url[i + 1 :]
-
-    netloc = ""
-    if url.startswith("//"):
-        url = url[2:]
-        end = len(url)
-
-        for sep in ("/", "?", "#"):
-            j = url.find(sep)
-            if j != -1:
-                end = min(end, j)
-
-        netloc = url[:end]
-        url = url[end:]
-
-    fragment = ""
-    if allow_fragments:
-        i = url.find("#")
-        if i != -1:
-            fragment = url[i + 1 :]
-            url = url[:i]
-
-    query = ""
-    i = url.find("?")
-    if i != -1:
-        query = url[i + 1 :]
-        url = url[:i]
-
-    params = ""
-    if scheme in _SPECIAL_SCHEMES:
-        i = url.find(";")
-        if i != -1:
-            params = url[i + 1 :]
-            url = url[:i]
-
-    path = url or ""
-
-    return ParseResult(scheme, netloc, path, params, query, fragment)
-
-
 def _safe_ParseResult(
     parts: ParseResult, encoding: str = "utf8", path_encoding: str = "utf8"
 ) -> tuple[str, str, str, str, str, str]:
@@ -731,13 +680,13 @@ def canonicalize_url(
 
 def _unquotepath(path: str) -> bytes:
     for reserved in ("2f", "2F", "3f", "3F"):
+        if reserved not in path:
+            continue
         path = path.replace("%" + reserved, "%25" + reserved.upper())
 
     # standard lib's unquote() does not work for non-UTF-8
     # percent-escaped characters, they get lost.
     # e.g., '%a3' becomes 'REPLACEMENT CHARACTER' (U+FFFD)
-    #
-    # unquote_to_bytes() returns raw bytes instead
     return _unquote(path)
 
 
