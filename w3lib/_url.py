@@ -165,7 +165,7 @@ def _parse_qs(
         return {}
 
     if isinstance(qs, str):
-        qs = qs.encode("utf-8")
+        qs = qs.encode()
 
     result: dict[bytes, list[bytes]] = {}
 
@@ -187,14 +187,8 @@ def _parse_qs(
             if not value and not keep_blank_values:
                 continue
 
-        # '+' → ' ' before unquote
-        if b"+" in key:
-            key = key.replace(b"+", b" ")
-        if b"+" in value:
-            value = value.replace(b"+", b" ")
-
-        key = _unquote(key)
-        value = _unquote(value)
+        key = _unquote_plus(key)
+        value = _unquote_plus(value)
 
         if key in result:
             result[key].append(value)
@@ -211,7 +205,7 @@ def _parse_qsl(
         return []
 
     if isinstance(qs, str):
-        qs = qs.encode("utf-8")
+        qs = qs.encode()
 
     result: list[tuple[bytes, bytes]] = []
 
@@ -276,7 +270,7 @@ def _unquote(
         return b""
 
     if isinstance(data, str):
-        data = data.encode("utf8")
+        data = data.encode()
 
     hex_table = _hex_decode_table()
     allowed = _safe_table(safe) if safe else None
