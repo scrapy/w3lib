@@ -11,7 +11,7 @@ import os
 import posixpath
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING, Final, NamedTuple, cast, overload
+from typing import TYPE_CHECKING, NamedTuple, cast, overload
 from urllib.parse import ParseResult, parse_qs, parse_qsl, urlencode, urlsplit
 
 from ._infra import _ASCII_TAB_OR_NEWLINE, _C0_CONTROL_OR_SPACE
@@ -62,16 +62,14 @@ codecs.register_error("percentencode", _quote_byte)
 # limitations of the current safe_url_string implementation, but it should also
 # be escaped as %25 when it is not already being used as part of an escape
 # character.
-_USERINFO_SAFEST_CHARS: Final = RFC3986_USERINFO_SAFE_CHARS.translate(
-    None, delete=b":;="
-)
-_PATH_SAFEST_CHARS: Final = _safe_chars.translate(None, delete=b"#[]|")
-_QUERY_SAFEST_CHARS: Final = _PATH_SAFEST_CHARS
-_SPECIAL_QUERY_SAFEST_CHARS: Final = _PATH_SAFEST_CHARS.translate(None, delete=b"'")
-_FRAGMENT_SAFEST_CHARS: Final = _PATH_SAFEST_CHARS
+_USERINFO_SAFEST_CHARS = RFC3986_USERINFO_SAFE_CHARS.translate(None, delete=b":;=")
+_PATH_SAFEST_CHARS = _safe_chars.translate(None, delete=b"#[]|")
+_QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS
+_SPECIAL_QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS.translate(None, delete=b"'")
+_FRAGMENT_SAFEST_CHARS = _PATH_SAFEST_CHARS
 
 
-_ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE: Final = {
+_ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE = {
     ord(char): None for char in _ASCII_TAB_OR_NEWLINE
 }
 

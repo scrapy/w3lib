@@ -2,14 +2,13 @@ import functools
 import os
 import string
 import sys
-from typing import Final
 
-_FS_ENCODING: Final = sys.getfilesystemencoding()
-_FS_ERRORS: Final = sys.getfilesystemencodeerrors()
+_FS_ENCODING = sys.getfilesystemencoding()
+_FS_ERRORS = sys.getfilesystemencodeerrors()
 
 # https://url.spec.whatwg.org/
 # https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#default-port
-_DEFAULT_PORTS: Final = {
+_DEFAULT_PORTS = {
     "ftp": 21,
     "file": None,
     "http": 80,
@@ -17,20 +16,18 @@ _DEFAULT_PORTS: Final = {
     "ws": 80,
     "wss": 443,
 }
-_SPECIAL_SCHEMES: Final = frozenset(_DEFAULT_PORTS.keys())
+_SPECIAL_SCHEMES = frozenset(_DEFAULT_PORTS.keys())
 
 # constants from RFC 3986, Section 2.2 and 2.3
-RFC3986_GEN_DELIMS: Final = b":/?#[]@"
-RFC3986_SUB_DELIMS: Final = b"!$&'()*+,;="
-RFC3986_RESERVED: Final = RFC3986_GEN_DELIMS + RFC3986_SUB_DELIMS
-RFC3986_UNRESERVED: Final = (string.ascii_letters + string.digits + "-._~").encode(
-    "ascii"
-)
-EXTRA_SAFE_CHARS: Final = b"|"  # see https://github.com/scrapy/w3lib/pull/25
+RFC3986_GEN_DELIMS = b":/?#[]@"
+RFC3986_SUB_DELIMS = b"!$&'()*+,;="
+RFC3986_RESERVED = RFC3986_GEN_DELIMS + RFC3986_SUB_DELIMS
+RFC3986_UNRESERVED = (string.ascii_letters + string.digits + "-._~").encode("ascii")
+EXTRA_SAFE_CHARS = b"|"  # see https://github.com/scrapy/w3lib/pull/25
 
-RFC3986_USERINFO_SAFE_CHARS: Final = RFC3986_UNRESERVED + RFC3986_SUB_DELIMS + b":"
-_safe_chars: Final = RFC3986_RESERVED + RFC3986_UNRESERVED + EXTRA_SAFE_CHARS + b"%"
-_path_safe_chars: Final = _safe_chars.replace(b"#", b"")
+RFC3986_USERINFO_SAFE_CHARS = RFC3986_UNRESERVED + RFC3986_SUB_DELIMS + b":"
+_safe_chars = RFC3986_RESERVED + RFC3986_UNRESERVED + EXTRA_SAFE_CHARS + b"%"
+_path_safe_chars = _safe_chars.replace(b"#", b"")
 
 
 @functools.cache
@@ -149,7 +146,7 @@ def _urlunsplit(components: tuple[str, str, str, str, str]) -> str:
         if path and path[0] != "/":
             path = "/" + path
         url = "//" + netloc + path
-    elif path.startswith("//") or (scheme and path.startswith("/")):
+    elif path[:2] == "//" or (scheme and path[0] == "/"):
         url = "//" + path
     else:
         url = path
@@ -180,7 +177,9 @@ if os.name == "nt":
         url = url.replace(":", "|")
 
         if "|" not in url:
-            return _unquote(url.replace("/", "\\")).decode(_FS_ENCODING, _FS_ERRORS)
+            return _unquote(url.replace("/", "\\"), _path_safe_chars).decode(
+                _FS_ENCODING, _FS_ERRORS
+            )
 
         i = url.find("|")
         if i <= 0:
@@ -194,7 +193,9 @@ if os.name == "nt":
             raise OSError(f"Bad URL: {url}")
 
         drive = drive_char.upper()
-        tail = _unquote(tail_part.replace("/", "\\")).decode(_FS_ENCODING, _FS_ERRORS)
+        tail = _unquote(tail_part.replace("/", "\\"), _path_safe_chars).decode(
+            _FS_ENCODING, _FS_ERRORS
+        )
 
         return f"{drive}:{tail}"
 
@@ -212,7 +213,7 @@ if os.name == "nt":
                 raise OSError(f"Bad path: {p}")
 
         if ":" not in p:
-            return _quote(p.encode(_FS_ENCODING, _FS_ERRORS)).decode()
+            return _quote(p.encode(_FS_ENCODING, _FS_ERRORS), _path_safe_chars).decode()
 
         i = p.find(":")
         if i != 1:
@@ -221,8 +222,10 @@ if os.name == "nt":
         drive = p[0].upper()
         tail = p[2:] if len(p) > 2 else ""
 
-        drive_enc = _quote(drive.encode()).decode()
-        tail_enc = _quote(tail.encode(_FS_ENCODING, _FS_ERRORS)).decode()
+        drive_enc = _quote(drive.encode(), _path_safe_chars).decode()
+        tail_enc = _quote(
+            tail.encode(_FS_ENCODING, _FS_ERRORS), _path_safe_chars
+        ).decode()
 
         return f"///{drive_enc}:{tail_enc}"
 else:
@@ -231,9 +234,9 @@ else:
         if not pathname:
             return ""
 
-        if pathname.startswith("///"):
+        if pathname[2:] == "///":
             pathname = pathname[2:]
-        elif pathname.startswith("//localhost/"):
+        elif pathname[11:] == "//localhost/":
             pathname = pathname[11:]
 
         if "%" not in pathname:
@@ -246,7 +249,7 @@ else:
             return ""
         pathname_bytes = pathname.encode(_FS_ENCODING)
 
-        if pathname_bytes.startswith(b"//"):
+        if pathname_bytes[:2] == b"//":
             pathname_bytes = b"//" + pathname_bytes
 
         return _quote(pathname_bytes, _path_safe_chars).decode(

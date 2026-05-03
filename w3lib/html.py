@@ -7,7 +7,7 @@ from __future__ import annotations
 import re
 from html.entities import name2codepoint
 from re import Match, Pattern
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
 from w3lib.url import safe_url_string
@@ -17,28 +17,28 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
 
-_ent_re: Final = re.compile(
+_ent_re = re.compile(
     r"&((?P<named>[a-z\d]+)|#(?P<dec>\d+)|#x(?P<hex>[a-f\d]+))(?P<semicolon>;?)",
     re.IGNORECASE,
 )
-_tag_re: Final = re.compile(r"<[a-zA-Z\/!].*?>", re.DOTALL)
-_baseurl_re: Final = re.compile(
+_tag_re = re.compile(r"<[a-zA-Z\/!].*?>", re.DOTALL)
+_baseurl_re = re.compile(
     r"<base\s[^>]*href\s*=\s*[\"\']\s*([^\"\'\s]+)\s*[\"\']", re.IGNORECASE
 )
-_meta_refresh_re: Final = re.compile(
+_meta_refresh_re = re.compile(
     r'<meta\s[^>]*http-equiv[^>]*refresh[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)',
     re.DOTALL | re.IGNORECASE,
 )
-_meta_refresh_re2: Final = re.compile(
+_meta_refresh_re2 = re.compile(
     r'<meta\s[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)[^>]*?\shttp-equiv\s*=[^>]*refresh',
     re.DOTALL | re.IGNORECASE,
 )
 
-_cdata_re: Final = re.compile(
+_cdata_re = re.compile(
     r"((?P<cdata_s><!\[CDATA\[)(?P<cdata_d>.*?)(?P<cdata_e>\]\]>))", re.DOTALL
 )
 
-HTML5_WHITESPACE: Final = " \t\n\r\x0c"
+HTML5_WHITESPACE = " \t\n\r\x0c"
 
 
 def replace_entities(
@@ -134,7 +134,7 @@ def replace_tags(
     return _tag_re.sub(token, to_unicode(text, encoding))
 
 
-_REMOVECOMMENTS_RE: Final = re.compile("<!--.*?(?:-->|$)", re.DOTALL)
+_REMOVECOMMENTS_RE = re.compile("<!--.*?(?:-->|$)", re.DOTALL)
 
 
 def remove_comments(text: str | bytes, encoding: str | None = None) -> str:
