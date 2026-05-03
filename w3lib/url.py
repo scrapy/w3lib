@@ -21,6 +21,7 @@ from ._url import (
     _parse_qs,
     _parse_qsl,
     _quote,
+    _quote_into,
     _safe_chars,
     _unquote,
     _url2pathname,
@@ -146,16 +147,29 @@ def safe_url_string(
     netloc_bytes = bytearray()
     if username is not None or password is not None:
         if username is not None:
-            netloc_bytes += _quote(_unquote(username), _USERINFO_SAFEST_CHARS)
+            _quote_into(
+                _unquote(username),
+                _USERINFO_SAFEST_CHARS,
+                netloc_bytes,
+            )
+
         if password is not None:
-            netloc_bytes += b":"
-            netloc_bytes += _quote(_unquote(password), _USERINFO_SAFEST_CHARS)
-        netloc_bytes += b"@"
+            netloc_bytes.append(58)  # ':'
+            _quote_into(
+                _unquote(password),
+                _USERINFO_SAFEST_CHARS,
+                netloc_bytes,
+            )
+
+        netloc_bytes.append(64)  # '@'
+
     if hostname:
         if ":" in hostname:
             # IPv6 address: urlsplit() strips the brackets from the hostname,
             # but they are required in the netloc when rebuilding the URL.
-            netloc_bytes += f"[{hostname}]".encode("ascii")
+            netloc_bytes.append(91)  # '['
+            netloc_bytes += hostname.encode("ascii")
+            netloc_bytes.append(93)  # ']'
         else:
             try:
                 netloc_bytes += hostname.encode("idna")
@@ -163,24 +177,42 @@ def safe_url_string(
                 # IDNA encoding can fail for too long labels (>63 characters) or
                 # missing labels (e.g. http://.example.com)
                 netloc_bytes += hostname.encode(encoding)
+
     if port:
-        netloc_bytes += b":"
+        netloc_bytes.append(58)  # ':'
         netloc_bytes += str(port).encode(encoding)
 
     netloc = netloc_bytes.decode()
 
-    # default encoding for path component SHOULD be UTF-8
     if quote_path:
-        path = _quote(parts.path.encode(path_encoding), _PATH_SAFEST_CHARS).decode()
+        path_bytes = parts.path.encode(path_encoding)
+        path_buf = bytearray(len(path_bytes) * 3)
+        path_buf.clear()
+        _quote_into(path_bytes, _PATH_SAFEST_CHARS, path_buf)
+        path = path_buf.decode()
     else:
         path = parts.path
 
+    query_bytes = parts.query.encode(encoding)
+
+    query_buf = bytearray(len(query_bytes) * 3)
+    query_buf.clear()
+
     if parts.scheme in _SPECIAL_SCHEMES:
-        query = _quote(
-            parts.query.encode(encoding), _SPECIAL_QUERY_SAFEST_CHARS
-        ).decode()
+        _quote_into(query_bytes, _SPECIAL_QUERY_SAFEST_CHARS, query_buf)
     else:
-        query = _quote(parts.query.encode(encoding), _QUERY_SAFEST_CHARS).decode()
+        _quote_into(query_bytes, _QUERY_SAFEST_CHARS, query_buf)
+
+    query = query_buf.decode()
+
+    if parts.fragment:
+        frag_bytes = parts.fragment.encode(encoding)
+        frag_buf = bytearray(len(frag_bytes) * 3)
+        frag_buf.clear()
+        _quote_into(frag_bytes, _FRAGMENT_SAFEST_CHARS, frag_buf)
+        fragment = frag_buf.decode()
+    else:
+        fragment = parts.fragment
 
     return _urlunsplit(
         (
@@ -188,9 +220,7 @@ def safe_url_string(
             netloc,
             path,
             query,
-            _quote(parts.fragment.encode(encoding), _FRAGMENT_SAFEST_CHARS).decode()
-            if parts.fragment
-            else parts.fragment,
+            fragment,
         )
     )
 

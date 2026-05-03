@@ -104,6 +104,22 @@ def _quote(data: bytes, safe: bytes = b"") -> bytes:
     return bytes(output)
 
 
+def _quote_into(data: bytes, safe: bytes, out: bytearray) -> None:
+    hex_table = _hex_encode_table()
+    allowed = (
+        _safe_table(RFC3986_UNRESERVED + safe)
+        if safe
+        else _safe_table(RFC3986_UNRESERVED)
+    )
+
+    for byte in data:
+        if allowed[byte]:
+            out.append(byte)
+        else:
+            offset = byte * 3
+            out.extend(hex_table[offset : offset + 3])
+
+
 def _quote_plus(data: bytes) -> bytes:
     if not data:
         return b""
