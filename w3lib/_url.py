@@ -125,6 +125,119 @@ def _quote_plus(data: bytes) -> bytes:
     return bytes(out)
 
 
+def _unquote_plus(data: bytes) -> bytes:
+    if not data:
+        return b""
+
+    hex_table = _hex_decode_table()
+    out = bytearray()
+
+    i = 0
+    n = len(data)
+
+    while i < n:
+        b = data[i]
+
+        if b == 43:  # '+'
+            out.append(32)
+            i += 1
+            continue
+
+        if b == 37 and i + 2 < n:
+            hi = hex_table[data[i + 1]]
+            lo = hex_table[data[i + 2]]
+
+            if hi != 255 and lo != 255:
+                out.append((hi << 4) | lo)
+                i += 3
+                continue
+
+        out.append(b)
+        i += 1
+
+    return bytes(out)
+
+
+def _parse_qs(
+    qs: str | bytes, keep_blank_values: bool = False
+) -> dict[bytes, list[bytes]]:
+    if not qs:
+        return {}
+
+    if isinstance(qs, str):
+        qs = qs.encode("utf-8")
+
+    result: dict[bytes, list[bytes]] = {}
+
+    for field in qs.split(b"&"):
+        if not field:
+            continue
+
+        i = field.find(b"=")
+
+        if i == -1:
+            if not keep_blank_values:
+                continue
+            key = field
+            value = b""
+        else:
+            key = field[:i]
+            value = field[i + 1 :]
+
+            if not value and not keep_blank_values:
+                continue
+
+        # '+' → ' ' before unquote
+        if b"+" in key:
+            key = key.replace(b"+", b" ")
+        if b"+" in value:
+            value = value.replace(b"+", b" ")
+
+        key = _unquote(key)
+        value = _unquote(value)
+
+        if key in result:
+            result[key].append(value)
+        else:
+            result[key] = [value]
+
+    return result
+
+
+def _parse_qsl(
+    qs: str | bytes, keep_blank_values: bool = False
+) -> list[tuple[bytes, bytes]]:
+    if not qs:
+        return []
+
+    if isinstance(qs, str):
+        qs = qs.encode("utf-8")
+
+    result: list[tuple[bytes, bytes]] = []
+
+    for field in qs.split(b"&"):
+        if not field:
+            continue
+
+        i = field.find(b"=")
+
+        if i == -1:
+            if not keep_blank_values:
+                continue
+            key = field
+            value = b""
+        else:
+            key = field[:i]
+            value = field[i + 1 :]
+
+            if not value and not keep_blank_values:
+                continue
+
+        result.append((_unquote_plus(key), _unquote_plus(value)))
+
+    return result
+
+
 def _splitparams(url: str) -> tuple[str, str]:
     if "/" in url:
         i = url.find(";", url.rfind("/"))

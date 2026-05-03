@@ -12,12 +12,14 @@ import posixpath
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple, cast, overload
-from urllib.parse import ParseResult, parse_qs, parse_qsl
+from urllib.parse import ParseResult
 from urllib.request import pathname2url
 
 from ._infra import _ASCII_TAB_OR_NEWLINE, _C0_CONTROL_OR_SPACE
 from ._url import (
     _SPECIAL_SCHEMES,
+    _parse_qs,
+    _parse_qsl,
     _quote,
     _safe_chars,
     _unquote,
@@ -273,11 +275,12 @@ def url_query_parameter(
 
     """
 
-    queryparams = parse_qs(
+    queryparams = _parse_qs(
         _urlsplit(str(url))[3], keep_blank_values=bool(keep_blank_values)
     )
-    if parameter in queryparams:
-        return queryparams[parameter][0]
+    parameter_bytes = parameter.encode()
+    if parameter_bytes in queryparams:
+        return queryparams[parameter_bytes][0].decode()
     return default
 
 
@@ -369,19 +372,21 @@ def url_query_cleaner(
 
 def _add_or_replace_parameters(url: str, params: dict[str, str]) -> str:
     parsed = _urlsplit(url)
-    current_args = parse_qsl(parsed.query, keep_blank_values=True)
+    current_args = _parse_qsl(parsed.query, keep_blank_values=True)
 
     new_args = []
     seen_params = set()
     for name, value in current_args:
-        if name not in params:
+        if name.decode() not in params:
             new_args.append((name, value))
         elif name not in seen_params:
-            new_args.append((name, params[name]))
+            new_args.append((name, params[name.decode()].encode()))
             seen_params.add(name)
 
     not_modified_args = [
-        (name, value) for name, value in params.items() if name not in seen_params
+        (name.encode(), value.encode())
+        for name, value in params.items()
+        if name.encode() not in seen_params
     ]
     new_args += not_modified_args
 
