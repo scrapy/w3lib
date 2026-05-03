@@ -57,62 +57,62 @@ def _quote(data: bytes, safe: bytes = b"") -> bytes:
     if not data:
         return b""
 
-    hex_bytes = _hex_encode_table()
-    safe_table = (
+    hex_table = _hex_encode_table()
+    allowed = (
         _safe_table(RFC3986_UNRESERVED + safe)
         if safe
         else _safe_table(RFC3986_UNRESERVED)
     )
 
-    res = bytearray()
+    output = bytearray()
 
-    for b in data:
-        if safe_table[b]:
-            res.append(b)
+    for byte in data:
+        if allowed[byte]:
+            output.append(byte)
         else:
-            b3 = b * 3
-            res += hex_bytes[b3 : b3 + 3]
+            offset = byte * 3
+            output += hex_table[offset : offset + 3]
 
-    return bytes(res)
+    return bytes(output)
 
 
 def _unquote(
-    s: bytes | bytearray | str,
+    data: bytes | bytearray | str,
     safe: bytes = b"",
 ) -> bytes:
-    if not s:
+    if not data:
         return b""
 
-    if isinstance(s, str):
-        s = s.encode("utf8")
+    if isinstance(data, str):
+        data = data.encode("utf8")
 
     hex_table = _hex_decode_table()
-    safe_table = _safe_table(safe) if safe else None
+    allowed = _safe_table(safe) if safe else None
 
-    res = bytearray()
+    output = bytearray()
 
     i = 0
-    n = len(s)
+    length = len(data)
 
-    while i < n:
-        c = s[i]
+    while i < length:
+        byte = data[i]
 
-        if c == 37 and i + 2 < n:  # ord('%') = '37'
-            h1 = hex_table[s[i + 1]]
-            h2 = hex_table[s[i + 2]]
+        if byte == 37 and i + 2 < length:  # ord('%') = 37
+            hi = hex_table[data[i + 1]]
+            lo = hex_table[data[i + 2]]
 
-            if h1 != 255 and h2 != 255:
-                decoded = (h1 << 4) | h2
+            if hi != 255 and lo != 255:
+                decoded = (hi << 4) | lo
 
-                if safe_table is None or not safe_table[decoded]:
-                    res.append(decoded)
+                if allowed is None or not allowed[decoded]:
+                    output.append(decoded)
                     i += 3
                     continue
 
-        res.append(c)
+        output.append(byte)
         i += 1
 
-    return bytes(res)
+    return bytes(output)
 
 
 def _urlunparse(
