@@ -190,7 +190,11 @@ def safe_url_string(  # pylint: disable=too-many-locals,too-many-statements
             netloc_bytes.append(93)  # ']'
         else:
             try:
-                netloc_bytes += hostname.encode("idna")
+                netloc_bytes += (
+                    hostname.encode("idna")
+                    if not hostname.isascii()
+                    else hostname.encode()
+                )
             except UnicodeError:
                 # IDNA encoding can fail for too long labels (>63 characters) or
                 # missing labels (e.g. http://.example.com)
@@ -625,7 +629,11 @@ def _safe_ParseResult(
     # IDNA encoding can fail for too long labels (>63 characters)
     # or missing labels (e.g. http://.example.com)
     try:
-        netloc = parts.netloc.encode("idna").decode()
+        netloc = (
+            parts.netloc.encode("idna").decode()
+            if not parts.netloc.isascii()
+            else parts.netloc
+        )
     except UnicodeError:
         netloc = parts.netloc
 
