@@ -81,9 +81,27 @@ _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE = {
 
 
 def _strip(url: str) -> str:
-    return url.strip(_C0_CONTROL_OR_SPACE).translate(
-        _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE
-    )
+    if not url:
+        return url
+
+    if (
+        url[0] not in _C0_CONTROL_OR_SPACE
+        and url[-1] not in _C0_CONTROL_OR_SPACE
+        and "\t" not in url
+        and "\n" not in url
+    ):
+        return url
+
+    start = 0
+    end = len(url)
+
+    while start < end and url[start] in _C0_CONTROL_OR_SPACE:
+        start += 1
+
+    while end > start and url[end - 1] in _C0_CONTROL_OR_SPACE:
+        end -= 1
+
+    return "".join([c for c in url[start:end] if c not in {"\t", "\n"}])
 
 
 def safe_url_string(  # pylint: disable=too-many-locals,too-many-statements
