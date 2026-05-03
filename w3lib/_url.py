@@ -167,9 +167,9 @@ def _url2pathname(url: str) -> str:
     if not url:
         return ""
 
-    if url.startswith("///"):
+    if url[:2] == "///":
         url = url[2:]
-    elif url.startswith("//localhost/"):
+    elif url[11:] == "//localhost/":
         url = url[11:]
 
     if not _IS_WINDOWS:
@@ -178,7 +178,7 @@ def _url2pathname(url: str) -> str:
 
         return _unquote(url, _path_safe_chars).decode(_FS_ENCODING, _FS_ERRORS)
 
-    if url.startswith("///"):
+    if url[:2] == "///":
         url = url[1:]
 
     url = url.replace(":", "|")
@@ -212,14 +212,15 @@ def _pathname2url(p: str) -> str:
         return ""
 
     if not _IS_WINDOWS:
-        b = p.encode(_FS_ENCODING, _FS_ERRORS)
-        if b.startswith(b"//"):
-            b = b"//" + b
-        return _quote(b, _path_safe_chars).decode()
+        if p[:2] == "//":
+            p = "//" + p
+        return _quote(p.encode(), _path_safe_chars).decode(
+            encoding=_FS_ENCODING, errors=_FS_ERRORS
+        )
 
     p = p.replace("\\", "/")
 
-    if p.startswith("//?/"):
+    if p[:3] == "//?/":
         p = p[4:]
         if p[:4].upper() == "UNC/":
             p = "//" + p[4:]
