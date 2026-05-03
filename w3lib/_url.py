@@ -28,6 +28,7 @@ EXTRA_SAFE_CHARS = b"|"  # see https://github.com/scrapy/w3lib/pull/25
 RFC3986_USERINFO_SAFE_CHARS = RFC3986_UNRESERVED + RFC3986_SUB_DELIMS + b":"
 _safe_chars = RFC3986_RESERVED + RFC3986_UNRESERVED + EXTRA_SAFE_CHARS + b"%"
 _path_safe_chars = _safe_chars.replace(b"#", b"")
+_path_safe_chars_str = _path_safe_chars.decode()
 
 
 @functools.cache
@@ -73,6 +74,37 @@ def _quote(data: bytes, safe: bytes = b"") -> bytes:
             res += hex_bytes[b3 : b3 + 3]
 
     return bytes(res)
+
+
+def _quote_str(data: str, safe: str = "") -> str:
+    if not data:
+        return ""
+
+    hex_bytes = _hex_encode_table()
+    hex_str = hex_bytes.decode("ascii")
+
+    safe_bytes = (
+        RFC3986_UNRESERVED + safe.encode("ascii") if safe else RFC3986_UNRESERVED
+    )
+    safe_table = _safe_table(safe_bytes)
+
+    res: list[str] = []
+
+    for ch in data:
+        o = ord(ch)
+
+        if o < 256 and safe_table[o]:
+            res.append(ch)
+            continue
+
+        for b in ch.encode("utf8"):
+            if safe_table[b]:
+                res.append(chr(b))
+            else:
+                i = b * 3
+                res.append(hex_str[i : i + 3])
+
+    return "".join(res)
 
 
 def _unquote(
@@ -214,9 +246,7 @@ def _pathname2url(p: str) -> str:
     if not _IS_WINDOWS:
         if p[:2] == "//":
             p = "//" + p
-        return _quote(p.encode(), _path_safe_chars).decode(
-            encoding=_FS_ENCODING, errors=_FS_ERRORS
-        )
+        return _quote_str(p, _path_safe_chars_str)
 
     p = p.replace("\\", "/")
 
@@ -228,7 +258,7 @@ def _pathname2url(p: str) -> str:
             raise OSError(f"Bad path: {p}")
 
     if ":" not in p:
-        return _quote(p.encode(_FS_ENCODING, _FS_ERRORS), _path_safe_chars).decode()
+        return _quote_str(p, _path_safe_chars_str)
 
     i = p.find(":")
     if i != 1:
@@ -237,7 +267,7 @@ def _pathname2url(p: str) -> str:
     drive = p[0].upper()
     tail = p[2:] if len(p) > 2 else ""
 
-    drive_enc = _quote(drive.encode(), _path_safe_chars).decode()
-    tail_enc = _quote(tail.encode(_FS_ENCODING, _FS_ERRORS), _path_safe_chars).decode()
+    drive_enc = _quote_str(drive, _path_safe_chars_str)
+    tail_enc = _quote_str(tail, _path_safe_chars_str)
 
     return f"///{drive_enc}:{tail_enc}"
