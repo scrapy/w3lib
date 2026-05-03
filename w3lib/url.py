@@ -13,6 +13,7 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple, cast, overload
 from urllib.parse import ParseResult, parse_qs, parse_qsl, urlencode, urlsplit
+from urllib.request import pathname2url
 
 from ._infra import _ASCII_TAB_OR_NEWLINE, _C0_CONTROL_OR_SPACE
 from ._url import (
@@ -32,7 +33,6 @@ from ._url import RFC3986_SUB_DELIMS as RFC3986_SUB_DELIMS
 from ._url import RFC3986_UNRESERVED as RFC3986_UNRESERVED
 from ._url import RFC3986_USERINFO_SAFE_CHARS as RFC3986_USERINFO_SAFE_CHARS
 from ._url import _path_safe_chars as _path_safe_chars
-from ._url import _pathname2url as _pathname2url
 from .util import to_unicode
 
 if TYPE_CHECKING:
@@ -421,7 +421,7 @@ def path_to_file_uri(path: str | os.PathLike[str]) -> str:
     """Convert local filesystem path to legal File URIs as described in:
     http://en.wikipedia.org/wiki/File_URI_scheme
     """
-    x = _pathname2url(str(Path(path).absolute()))
+    x = pathname2url(str(Path(path).absolute()))
     return f"file:///{x.lstrip('/')}"
 
 

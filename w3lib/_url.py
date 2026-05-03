@@ -76,37 +76,6 @@ def _quote(data: bytes, safe: bytes = b"") -> bytes:
     return bytes(res)
 
 
-def _quote_str(data: str, safe: str = "") -> str:
-    if not data:
-        return ""
-
-    hex_bytes = _hex_encode_table()
-    hex_str = hex_bytes.decode("ascii")
-
-    safe_bytes = (
-        RFC3986_UNRESERVED + safe.encode("ascii") if safe else RFC3986_UNRESERVED
-    )
-    safe_table = _safe_table(safe_bytes)
-
-    res: list[str] = []
-
-    for ch in data:
-        o = ord(ch)
-
-        if o < 256 and safe_table[o]:
-            res.append(ch)
-            continue
-
-        for b in ch.encode("utf8"):
-            if safe_table[b]:
-                res.append(chr(b))
-            else:
-                i = b * 3
-                res.append(hex_str[i : i + 3])
-
-    return "".join(res)
-
-
 def _unquote(
     s: bytes | bytearray | str,
     safe: bytes = b"",
@@ -237,37 +206,3 @@ def _url2pathname(url: str) -> str:
     )
 
     return f"{drive}:{tail}"
-
-
-def _pathname2url(p: str) -> str:
-    if not p:
-        return ""
-
-    if not _IS_WINDOWS:
-        if p[:2] == "//":
-            p = "//" + p
-        return _quote_str(p, _path_safe_chars_str)
-
-    p = p.replace("\\", "/")
-
-    if p[:3] == "//?/":
-        p = p[4:]
-        if p[:4].upper() == "UNC/":
-            p = "//" + p[4:]
-        elif not (len(p) > 1 and p[1] == ":"):
-            raise OSError(f"Bad path: {p}")
-
-    if ":" not in p:
-        return _quote_str(p, _path_safe_chars_str)
-
-    i = p.find(":")
-    if i != 1:
-        raise OSError(f"Bad path: {p}")
-
-    drive = p[0].upper()
-    tail = p[2:] if len(p) > 2 else ""
-
-    drive_enc = _quote_str(drive, _path_safe_chars_str)
-    tail_enc = _quote_str(tail, _path_safe_chars_str)
-
-    return f"///{drive_enc}:{tail_enc}"
