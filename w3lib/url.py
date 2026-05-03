@@ -86,7 +86,7 @@ def _strip(url: str) -> str:
     )
 
 
-def safe_url_string(
+def safe_url_string(  # pylint: disable=too-many-locals,too-many-statements
     url: str | bytes,
     encoding: str = "utf8",
     path_encoding: str = "utf8",
@@ -183,6 +183,7 @@ def safe_url_string(
         netloc_bytes += str(port).encode(encoding)
 
     netloc = netloc_bytes.decode()
+    del netloc_bytes
 
     if quote_path:
         path_bytes = parts.path.encode(path_encoding)
@@ -190,6 +191,7 @@ def safe_url_string(
         path_buf.clear()
         _quote_into(path_bytes, _PATH_SAFEST_CHARS, path_buf)
         path = path_buf.decode()
+        del path_bytes, path_buf
     else:
         path = parts.path
 
@@ -204,6 +206,7 @@ def safe_url_string(
         _quote_into(query_bytes, _QUERY_SAFEST_CHARS, query_buf)
 
     query = query_buf.decode()
+    del query_buf, query_bytes
 
     if parts.fragment:
         frag_bytes = parts.fragment.encode(encoding)
@@ -211,6 +214,7 @@ def safe_url_string(
         frag_buf.clear()
         _quote_into(frag_bytes, _FRAGMENT_SAFEST_CHARS, frag_buf)
         fragment = frag_buf.decode()
+        del frag_buf, frag_bytes
     else:
         fragment = parts.fragment
 
@@ -391,8 +395,10 @@ def url_query_cleaner(
             continue
 
         result.append(ksv)
+    del param_lookup, seen
 
     url = base if not result else base + "?" + sep.join(result)
+    del result
 
     if keep_fragments and fragment:
         url += "#" + fragment
@@ -402,26 +408,27 @@ def url_query_cleaner(
 
 def _add_or_replace_parameters(url: str, params: dict[str, str]) -> str:
     parsed = _urlsplit(url)
+
+    params_b: dict[bytes, bytes] = {k.encode(): v.encode() for k, v in params.items()}
+
     current_args = _parse_qsl(parsed.query, keep_blank_values=True)
 
-    new_args = []
-    seen_params = set()
+    new_args: list[tuple[bytes, bytes]] = []
+    seen_params: set[bytes] = set()
+
     for name, value in current_args:
-        if name.decode() not in params:
+        if name not in params_b:
             new_args.append((name, value))
         elif name not in seen_params:
-            new_args.append((name, params[name.decode()].encode()))
+            new_args.append((name, params_b[name]))
             seen_params.add(name)
 
-    not_modified_args = [
-        (name.encode(), value.encode())
-        for name, value in params.items()
-        if name.encode() not in seen_params
-    ]
-    new_args += not_modified_args
+    for name, value in params_b.items():
+        if name not in seen_params:
+            new_args.append((name, value))
+    del seen_params, current_args, params_b
 
-    query = _urlencode(new_args).decode()
-    return _urlunsplit(parsed._replace(query=query))
+    return _urlunsplit(parsed._replace(query=_urlencode(new_args).decode()))
 
 
 def add_or_replace_parameter(url: str, name: str, new_value: str) -> str:
@@ -689,26 +696,28 @@ def canonicalize_url(
     # IRIs (namely, to be able to include non-ASCII characters) can only be
     # used if the query part is encoded in UTF-8.
     if query:
-        keyvals = parse_qsl_to_bytes(query, keep_blank_values)
+        keyvals = _parse_qsl(query, keep_blank_values)
 
         if len(keyvals) > 1:
             keyvals.sort()
 
         query = _urlencode(keyvals).decode()
+        del keyvals
     else:
         query = ""
 
     # 2. decode percent-encoded sequences in path as UTF-8 (or keep raw bytes)
     #    and percent-encode path again (this normalizes to upper-case %XX)
-    uqp = _unquotepath(path)
-    path = _quote(uqp, _path_safe_chars).decode() or "/"
+    path = _quote(_unquotepath(path), _path_safe_chars).decode() if path else "/"
 
     fragment = "" if not keep_fragments else fragment
 
     # Apply lowercase to the domain, but not to the userinfo.
-    netloc_parts = netloc.split("@")
-    netloc_parts[-1] = netloc_parts[-1].lower().rstrip(":")
-    netloc = "@".join(netloc_parts)
+    uinf_sep_idx = netloc.rfind("@")
+    host = netloc[uinf_sep_idx + 1 :] if uinf_sep_idx != -1 else netloc
+    host = host.lower()
+    host = host.removesuffix(":")
+    netloc = (netloc[: uinf_sep_idx + 1] + host) if uinf_sep_idx != -1 else host
 
     # every part should be safe already
     return _urlunparse(scheme, netloc, path, params, query, fragment)
@@ -718,7 +727,7 @@ def _unquotepath(path: str) -> bytes:
     for reserved in ("2f", "2F", "3f", "3F"):
         if reserved not in path:
             continue
-        path = path.replace("%" + reserved, "%25" + reserved.upper())
+        path = path.replace(f"%{reserved}", f"%25{reserved.upper()}")
 
     # standard lib's unquote() does not work for non-UTF-8
     # percent-escaped characters, they get lost.
@@ -756,27 +765,4 @@ def parse_qsl_to_bytes(
 
     """
 
-    if not qs:
-        return []
-
-    result: list[tuple[bytes, bytes]] = []
-
-    for field in qs.split("&"):
-        if not field:
-            continue
-        for name_value in field.split(";"):
-            if "=" in name_value:
-                name, _, value = name_value.partition("=")
-            else:
-                if not keep_blank_values:
-                    continue
-                name, value = name_value, ""
-
-            if value or keep_blank_values:
-                # '+' -> space BEFORE decoding
-                name_b = _unquote(name.replace("+", " "))
-                value_b = _unquote(value.replace("+", " "))
-
-                result.append((name_b, value_b))
-
-    return result
+    return _parse_qsl(qs, keep_blank_values)
