@@ -160,98 +160,83 @@ def _urlunsplit(components: tuple[str, str, str, str, str]) -> str:
     return url
 
 
-if os.name == "nt":
+_IS_WINDOWS = os.name == "nt"
 
-    def _url2pathname(url: str) -> str:
-        if not url:
-            return ""
 
-        if url.startswith("///"):
-            url = url[2:]
-        elif url.startswith("//localhost/"):
-            url = url[11:]
+def _url2pathname(url: str) -> str:
+    if not url:
+        return ""
 
-        if url.startswith("///"):
-            url = url[1:]
+    if url.startswith("///"):
+        url = url[2:]
+    elif url.startswith("//localhost/"):
+        url = url[11:]
 
-        url = url.replace(":", "|")
+    if not _IS_WINDOWS:
+        if "%" not in url:
+            return url
 
-        if "|" not in url:
-            return _unquote(url.replace("/", "\\"), _path_safe_chars).decode(
-                _FS_ENCODING, _FS_ERRORS
-            )
+        return _unquote(url, _path_safe_chars).decode(_FS_ENCODING, _FS_ERRORS)
 
-        i = url.find("|")
-        if i <= 0:
-            raise OSError(f"Bad URL: {url}")
+    if url.startswith("///"):
+        url = url[1:]
 
-        drive_part = url[:i]
-        tail_part = url[i + 1 :]
+    url = url.replace(":", "|")
 
-        drive_char = drive_part[-1]
-        if drive_char.encode() not in RFC3986_UNRESERVED:
-            raise OSError(f"Bad URL: {url}")
-
-        drive = drive_char.upper()
-        tail = _unquote(tail_part.replace("/", "\\"), _path_safe_chars).decode(
+    if "|" not in url:
+        return _unquote(url.replace("/", "\\"), _path_safe_chars).decode(
             _FS_ENCODING, _FS_ERRORS
         )
 
-        return f"{drive}:{tail}"
+    i = url.find("|")
+    if i <= 0:
+        raise OSError(f"Bad URL: {url}")
 
-    def _pathname2url(p: str) -> str:
-        if not p:
-            return ""
+    drive_part = url[:i]
+    tail_part = url[i + 1 :]
 
-        p = p.replace("\\", "/")
+    drive_char = drive_part[-1]
+    if not drive_char.isascii() or not drive_char.isalpha():
+        raise OSError(f"Bad URL: {url}")
 
-        if p.startswith("//?/"):
-            p = p[4:]
-            if p[:4].upper() == "UNC/":
-                p = "//" + p[4:]
-            elif not (len(p) > 1 and p[1] == ":"):
-                raise OSError(f"Bad path: {p}")
+    drive = drive_char.upper()
+    tail = _unquote(tail_part.replace("/", "\\"), _path_safe_chars).decode(
+        _FS_ENCODING, _FS_ERRORS
+    )
 
-        if ":" not in p:
-            return _quote(p.encode(_FS_ENCODING, _FS_ERRORS), _path_safe_chars).decode()
+    return f"{drive}:{tail}"
 
-        i = p.find(":")
-        if i != 1:
+
+def _pathname2url(p: str) -> str:
+    if not p:
+        return ""
+
+    if not _IS_WINDOWS:
+        b = p.encode(_FS_ENCODING, _FS_ERRORS)
+        if b.startswith(b"//"):
+            b = b"//" + b
+        return _quote(b, _path_safe_chars).decode()
+
+    p = p.replace("\\", "/")
+
+    if p.startswith("//?/"):
+        p = p[4:]
+        if p[:4].upper() == "UNC/":
+            p = "//" + p[4:]
+        elif not (len(p) > 1 and p[1] == ":"):
             raise OSError(f"Bad path: {p}")
 
-        drive = p[0].upper()
-        tail = p[2:] if len(p) > 2 else ""
+    if ":" not in p:
+        return _quote(p.encode(_FS_ENCODING, _FS_ERRORS), _path_safe_chars).decode()
 
-        drive_enc = _quote(drive.encode(), _path_safe_chars).decode()
-        tail_enc = _quote(
-            tail.encode(_FS_ENCODING, _FS_ERRORS), _path_safe_chars
-        ).decode()
+    i = p.find(":")
+    if i != 1:
+        raise OSError(f"Bad path: {p}")
 
-        return f"///{drive_enc}:{tail_enc}"
-else:
+    drive = p[0].upper()
+    tail = p[2:] if len(p) > 2 else ""
 
-    def _url2pathname(pathname: str) -> str:  # type: ignore[misc]
-        if not pathname:
-            return ""
+    drive_enc = _quote(drive.encode(), _path_safe_chars).decode()
+    tail_enc = _quote(tail.encode(_FS_ENCODING, _FS_ERRORS), _path_safe_chars).decode()
 
-        if pathname[2:] == "///":
-            pathname = pathname[2:]
-        elif pathname[11:] == "//localhost/":
-            pathname = pathname[11:]
-
-        if "%" not in pathname:
-            return pathname
-
-        return _unquote(pathname, _path_safe_chars).decode(_FS_ENCODING, _FS_ERRORS)
-
-    def _pathname2url(pathname: str) -> str:  # type: ignore[misc]
-        if not pathname:
-            return ""
-        pathname_bytes = pathname.encode(_FS_ENCODING)
-
-        if pathname_bytes[:2] == b"//":
-            pathname_bytes = b"//" + pathname_bytes
-
-        return _quote(pathname_bytes, _path_safe_chars).decode(
-            encoding=_FS_ENCODING, errors=_FS_ERRORS
-        )
+    return f"///{drive_enc}:{tail_enc}"
