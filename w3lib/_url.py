@@ -1,19 +1,25 @@
+from __future__ import annotations
+
 import functools
+import ipaddress
 import os
+import re
 import string
 import sys
-from urllib.parse import (  # type: ignore[attr-defined]
+import unicodedata
+from typing import TYPE_CHECKING
+from urllib.parse import (
     ParseResult,
     SplitResult,
-    _check_bracketed_netloc,
-    _checknetloc,
-    _splitparams,
     scheme_chars,
     uses_netloc,
     uses_params,
 )
 
 from w3lib._infra import _ASCII_TAB_OR_NEWLINE, _C0_CONTROL_OR_SPACE
+
+if TYPE_CHECKING:
+    from urllib.parse import _QueryType
 
 _FS_ENCODING = sys.getfilesystemencoding()
 _FS_ERRORS = sys.getfilesystemencodeerrors()
@@ -90,6 +96,53 @@ def _quote(data: bytes, safe: bytes = b"") -> bytes:
             output += hex_table[offset : offset + 3]
 
     return bytes(output)
+
+
+def _quote_plus(data: bytes, safe: bytes = b"") -> bytes:
+    if b" " not in data:
+        return _quote(data, safe)
+    data = _quote(data, safe + b" ")
+    return data.replace(b" ", b"+")
+
+
+def _splitparams(url: str) -> tuple[str, str]:
+    if "/" in url:
+        i = url.find(";", url.rfind("/"))
+        if i < 0:
+            return url, ""
+    else:
+        i = url.find(";")
+    return url[:i], url[i + 1 :]
+
+
+def _urlencode(query: _QueryType, safe: bytes = b"") -> bytes:
+    if hasattr(query, "items"):
+        query = query.items()  # type: ignore[assignment]
+
+    result = bytearray()
+    first = True
+
+    for key, value in query:  # type: ignore[str-unpack]
+        if isinstance(key, bytes):
+            k = _quote_plus(key, safe)
+        else:
+            k = _quote_plus(str(key).encode(), safe)
+
+        if isinstance(value, bytes):
+            v = _quote_plus(value, safe)
+        else:
+            v = _quote_plus(str(value).encode(), safe)
+
+        if first:
+            first = False
+        else:
+            result.append(38)  # '&'
+
+        result += k
+        result.append(61)  # '='
+        result += v
+
+    return bytes(result)
 
 
 def _unquote(
@@ -184,6 +237,59 @@ def _urlunsplit(components: tuple[str, str, str, str, str]) -> str:
         url += "#" + fragment
 
     return url
+
+
+def _checknetloc(netloc: str) -> None:
+    if not netloc or netloc.isascii():
+        return
+    # looking for characters like \u2100 that expand to 'a/c'
+    # IDNA uses NFKC equivalence, so normalize for this check
+
+    n = netloc.replace("@", "")  # ignore characters already included
+    n = n.replace(":", "")  # but not the surrounding text
+    n = n.replace("#", "")
+    n = n.replace("?", "")
+    netloc2 = unicodedata.normalize("NFKC", n)
+    if n == netloc2:
+        return
+    for c in "/?#@:":
+        if c in netloc2:
+            raise ValueError(
+                "netloc '"
+                + netloc
+                + "' contains invalid "
+                + "characters under NFKC normalization"
+            )
+
+
+def _check_bracketed_netloc(netloc: str) -> None:
+    # Note that this function must mirror the splitting
+    # done in NetlocResultMixins._hostinfo().
+    hostname_and_port = netloc.rpartition("@")[2]
+    before_bracket, have_open_br, bracketed = hostname_and_port.partition("[")
+    if have_open_br:
+        # No data is allowed before a bracket.
+        if before_bracket:
+            raise ValueError("Invalid IPv6 URL")
+        hostname, _, port = bracketed.partition("]")
+        # No data is allowed after the bracket but before the port delimiter.
+        if port and not port.startswith(":"):
+            raise ValueError("Invalid IPv6 URL")
+    else:
+        hostname, _, port = hostname_and_port.partition(":")
+    _check_bracketed_host(hostname)
+
+
+# Valid bracketed hosts are defined in
+# https://www.rfc-editor.org/rfc/rfc3986#page-49 and https://url.spec.whatwg.org/
+def _check_bracketed_host(hostname: str) -> None:
+    if hostname.startswith("v"):
+        if not re.match(r"\Av[a-fA-F0-9]+\..+\Z", hostname):
+            raise ValueError("IPvFuture address is invalid")
+    else:
+        ip = ipaddress.ip_address(hostname)  # Throws Value Error if not IPv6 or IPv4
+        if isinstance(ip, ipaddress.IPv4Address):
+            raise ValueError("An IPv4 address cannot be in brackets")
 
 
 @functools.lru_cache(typed=True)

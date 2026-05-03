@@ -12,7 +12,7 @@ import posixpath
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple, cast, overload
-from urllib.parse import ParseResult, parse_qs, parse_qsl, urlencode
+from urllib.parse import ParseResult, parse_qs, parse_qsl
 from urllib.request import pathname2url
 
 from ._infra import _ASCII_TAB_OR_NEWLINE, _C0_CONTROL_OR_SPACE
@@ -22,6 +22,7 @@ from ._url import (
     _safe_chars,
     _unquote,
     _url2pathname,
+    _urlencode,
     _urlparse,
     _urlsplit,
     _urlunparse,
@@ -384,7 +385,7 @@ def _add_or_replace_parameters(url: str, params: dict[str, str]) -> str:
     ]
     new_args += not_modified_args
 
-    query = urlencode(new_args)
+    query = _urlencode(new_args).decode()
     return _urlunsplit(parsed._replace(query=query))
 
 
@@ -658,7 +659,7 @@ def canonicalize_url(
         if len(keyvals) > 1:
             keyvals.sort()
 
-        query = urlencode(keyvals)
+        query = _urlencode(keyvals).decode()
     else:
         query = ""
 
