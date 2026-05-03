@@ -104,11 +104,10 @@ def _quote(data: bytes, safe: bytes = b"") -> bytes:
     return bytes(output)
 
 
-def _quote_plus(data: bytes, safe: bytes = b"") -> bytes:
-    if b" " not in data:
-        return _quote(data, safe)
-    data = _quote(data, safe + b" ")
-    return data.replace(b" ", b"+")
+def _quote_plus(data: bytes) -> bytes:
+    if b" " in data:
+        return _quote(data, b" ").replace(b" ", b"+")
+    return _quote(data)
 
 
 def _splitparams(url: str) -> tuple[str, str]:
@@ -121,34 +120,23 @@ def _splitparams(url: str) -> tuple[str, str]:
     return url[:i], url[i + 1 :]
 
 
-def _urlencode(query: _QueryType, safe: bytes = b"") -> bytes:
+def _urlencode(query: _QueryType) -> bytes:
     if hasattr(query, "items"):
         query = query.items()  # type: ignore[assignment]
 
-    result = bytearray()
-    first = True
+    if not query:
+        return b""
+
+    result: list[bytes] = []
 
     for key, value in query:  # type: ignore[str-unpack]
-        if isinstance(key, bytes):
-            k = _quote_plus(key, safe)
-        else:
-            k = _quote_plus(str(key).encode(), safe)
+        result.append(
+            _quote_plus(key if isinstance(key, bytes) else str(key).encode())
+            + b"="
+            + _quote_plus(value if isinstance(value, bytes) else str(value).encode())
+        )
 
-        if isinstance(value, bytes):
-            v = _quote_plus(value, safe)
-        else:
-            v = _quote_plus(str(value).encode(), safe)
-
-        if first:
-            first = False
-        else:
-            result.append(38)  # '&'
-
-        result += k
-        result.append(61)  # '='
-        result += v
-
-    return bytes(result)
+    return b"&".join(result)
 
 
 def _unquote(
