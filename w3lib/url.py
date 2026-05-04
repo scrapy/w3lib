@@ -17,12 +17,19 @@ from urllib.request import pathname2url
 
 from ._infra import _ASCII_TAB_OR_NEWLINE, _C0_CONTROL_OR_SPACE
 from ._url import (
-    _SPECIAL_SCHEMES,
+    # reexports
+    _PATH_SAFE_CHARS as _path_safe_chars,
+    _SAFE_CHARS as _safe_chars,
+    _SPECIAL_SCHEMES as _SPECIAL_SCHEMES,
+    RFC3986_GEN_DELIMS as RFC3986_GEN_DELIMS,
+    RFC3986_RESERVED as RFC3986_RESERVED,
+    RFC3986_SUB_DELIMS as RFC3986_SUB_DELIMS,
+    RFC3986_UNRESERVED as RFC3986_UNRESERVED,
+    RFC3986_USERINFO_SAFE_CHARS as RFC3986_USERINFO_SAFE_CHARS,
     _parse_qs,
     _parse_qsl,
     _quote,
     _quote_into,
-    _safe_chars,
     _unquote,
     _url2pathname,
     _urlencode,
@@ -31,14 +38,6 @@ from ._url import (
     _urlunparse,
     _urlunsplit,
 )
-
-# reexports
-from ._url import RFC3986_GEN_DELIMS as RFC3986_GEN_DELIMS
-from ._url import RFC3986_RESERVED as RFC3986_RESERVED
-from ._url import RFC3986_SUB_DELIMS as RFC3986_SUB_DELIMS
-from ._url import RFC3986_UNRESERVED as RFC3986_UNRESERVED
-from ._url import RFC3986_USERINFO_SAFE_CHARS as RFC3986_USERINFO_SAFE_CHARS
-from ._url import _path_safe_chars as _path_safe_chars
 from .util import to_unicode
 
 if TYPE_CHECKING:
@@ -78,6 +77,8 @@ _FRAGMENT_SAFEST_CHARS = _PATH_SAFEST_CHARS
 _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE = {
     ord(char): None for char in _ASCII_TAB_OR_NEWLINE
 }
+
+_UNQUOTE_PATH_RE = re.compile(r"%(2f|3f)", flags=re.IGNORECASE)
 
 
 def _strip(url: str) -> str:
@@ -240,15 +241,13 @@ def safe_url_string(  # pylint: disable=too-many-locals,too-many-statements
     else:
         fragment = parts.fragment
 
-    return _urlunsplit(
-        (
-            parts.scheme,
-            netloc,
-            path,
-            query,
-            fragment,
-        )
-    )
+    return _urlunsplit((
+        parts.scheme,
+        netloc,
+        path,
+        query,
+        fragment,
+    ))
 
 
 _parent_dirs = re.compile(r"/?(\.\./)+")
@@ -276,7 +275,7 @@ def safe_download_url(
 
 
 def is_url(text: str) -> bool:
-    return text.partition("://")[0] in ("file", "http", "https")
+    return text.partition("://")[0] in {"file", "http", "https"}
 
 
 @overload
@@ -740,25 +739,26 @@ def canonicalize_url(
 
     # Apply lowercase to the domain, but not to the userinfo.
     uinf_sep_idx = netloc.rfind("@")
-    host = netloc[uinf_sep_idx + 1 :] if uinf_sep_idx != -1 else netloc
-    host = host.lower()
-    host = host.removesuffix(":")
+    host = (
+        (netloc[uinf_sep_idx + 1 :] if uinf_sep_idx != -1 else netloc)
+        .lower()
+        .removesuffix(":")
+    )
     netloc = (netloc[: uinf_sep_idx + 1] + host) if uinf_sep_idx != -1 else host
 
     # every part should be safe already
     return _urlunparse(scheme, netloc, path, params, query, fragment)
 
 
-def _unquotepath(path: str) -> bytes:
-    for reserved in ("2f", "2F", "3f", "3F"):
-        if reserved not in path:
-            continue
-        path = path.replace(f"%{reserved}", f"%25{reserved.upper()}")
+def _to_percent_upper(m: re.Match[str]) -> str:
+    return "%25" + m.group(1).upper()
 
+
+def _unquotepath(path: str) -> bytes:
     # standard lib's unquote() does not work for non-UTF-8
     # percent-escaped characters, they get lost.
     # e.g., '%a3' becomes 'REPLACEMENT CHARACTER' (U+FFFD)
-    return _unquote(path)
+    return _unquote(_UNQUOTE_PATH_RE.sub(_to_percent_upper, path).encode())
 
 
 def parse_url(

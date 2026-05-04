@@ -51,10 +51,7 @@ _SKIP_ATTRS = """(?:\\s+
     ))?
 )*?"""  # must be used with re.VERBOSE flag
 _HTTPEQUIV_RE = _TEMPLATE % ("http-equiv", "Content-Type")
-_CONTENT_RE = _TEMPLATE % (
-    "content",
-    r"(?P<mime>[^;]+);\s*charset=(?P<charset>[\w-]+)",
-)
+_CONTENT_RE = _TEMPLATE % ("content", r"(?P<mime>[^;]+);\s*charset=(?P<charset>[\w-]+)")
 _CONTENT2_RE = _TEMPLATE % ("charset", r"(?P<charset2>[\w-]+)")
 _XML_ENCODING_RE = _TEMPLATE % ("encoding", r"(?P<xmlcharset>[\w-]+)")
 
@@ -173,7 +170,7 @@ _BOM_TABLE = [
     (codecs.BOM_UTF16_LE, "utf-16-le"),
     (codecs.BOM_UTF8, "utf-8"),
 ]
-_FIRST_CHARS = frozenset([c[0] for (c, _) in _BOM_TABLE])
+_FIRST_CHARS = {c[0] for (c, _) in _BOM_TABLE}
 
 
 def read_bom(data: bytes) -> tuple[None, None] | tuple[str, bytes]:
@@ -289,8 +286,7 @@ def html_to_unicode(
 
     '''
     bom_enc, bom = read_bom(html_body_str)
-    if bom_enc is not None:
-        assert bom
+    if bom_enc is not None and bom is not None:
         return bom_enc, to_unicode(html_body_str[len(bom) :], bom_enc)
 
     enc = http_content_type_encoding(content_type_header)

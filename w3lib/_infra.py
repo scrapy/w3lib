@@ -1,4 +1,5 @@
 # https://infra.spec.whatwg.org/
+
 import string
 
 # https://infra.spec.whatwg.org/commit-snapshots/59e0d16c1e3ba0e77c6a60bfc69a0929b8ffaa5d/#code-points

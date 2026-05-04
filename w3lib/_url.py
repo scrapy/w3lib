@@ -18,14 +18,15 @@ from w3lib._infra import _ASCII_TAB_OR_NEWLINE, _C0_CONTROL_OR_SPACE
 if TYPE_CHECKING:
     from urllib.parse import _QueryType
 
-_NOT_LINUX = sys.platform in {"win32", "darwin"}
-if _NOT_LINUX:
-    from urllib.parse import urlsplit as urllib_urlsplit
-else:
+_IS_WINDOWS = os.name == "nt"
+_IS_LINUX = sys.platform == "linux"
+if _IS_LINUX:
     from urllib.parse import (  # type: ignore[attr-defined]
         _check_bracketed_netloc,
         _checknetloc,
     )
+else:
+    from urllib.parse import urlsplit as urllib_urlsplit
 
 _FS_ENCODING = sys.getfilesystemencoding()
 _FS_ERRORS = sys.getfilesystemencodeerrors()
@@ -40,7 +41,7 @@ _DEFAULT_PORTS = {
     "ws": 80,
     "wss": 443,
 }
-_SPECIAL_SCHEMES = frozenset(_DEFAULT_PORTS.keys())
+_SPECIAL_SCHEMES = set(_DEFAULT_PORTS.keys())
 
 # constants from RFC 3986, Section 2.2 and 2.3
 RFC3986_GEN_DELIMS = b":/?#[]@"
@@ -50,12 +51,12 @@ RFC3986_UNRESERVED = (string.ascii_letters + string.digits + "-._~").encode("asc
 EXTRA_SAFE_CHARS = b"|"  # see https://github.com/scrapy/w3lib/pull/25
 
 RFC3986_USERINFO_SAFE_CHARS = RFC3986_UNRESERVED + RFC3986_SUB_DELIMS + b":"
-_safe_chars = RFC3986_RESERVED + RFC3986_UNRESERVED + EXTRA_SAFE_CHARS + b"%"
-_path_safe_chars = _safe_chars.replace(b"#", b"")
-_path_safe_chars_str = _path_safe_chars.decode()
-_uses_netloc = frozenset(uses_netloc)
-_scheme_chars = frozenset(scheme_chars)
-_uses_params = frozenset(uses_params)
+_SAFE_CHARS = RFC3986_RESERVED + RFC3986_UNRESERVED + EXTRA_SAFE_CHARS + b"%"
+_PATH_SAFE_CHARS = _SAFE_CHARS.replace(b"#", b"")
+_PATH_SAFE_CHARS_STR = _PATH_SAFE_CHARS.decode()
+_USES_NETLOC = frozenset(uses_netloc)
+_SCHEME_CHARS = frozenset(scheme_chars)
+_USES_PARAMS = frozenset(uses_params)
 
 
 @functools.cache
@@ -328,7 +329,7 @@ def _urlparse(
 
     splitresult = _urlsplit(url, scheme, allow_fragments)
     scheme, netloc, url, query, fragment = splitresult
-    if scheme in _uses_params and ";" in url:
+    if scheme in _USES_PARAMS and ";" in url:
         url, params = _splitparams(url)
     else:
         params = ""
@@ -358,7 +359,7 @@ def _urlunsplit(components: tuple[str, str, str, str, str]) -> str:
             url = "/" + url
         url = "//" + netloc + url
     elif url[:2] == "//" or (
-        scheme and scheme in _uses_netloc and (not url or url[:1] == "/")
+        scheme and scheme in _USES_NETLOC and (not url or url[:1] == "/")
     ):
         url = "//" + url
     if scheme:
@@ -396,7 +397,7 @@ def _urlsplit(
     scheme_sep_idx = url.find(":")
     if scheme_sep_idx > 0 and url[0].isascii() and url[0].isalpha():
         for c in url[:scheme_sep_idx]:
-            if c not in _scheme_chars:
+            if c not in _SCHEME_CHARS:
                 break
         else:
             scheme, url = url[:scheme_sep_idx].lower(), url[scheme_sep_idx + 1 :]
@@ -426,10 +427,8 @@ def _urlsplit(
     return SplitResult(scheme, netloc, url, query, fragment)
 
 
-if _NOT_LINUX:
+if not _IS_LINUX:
     _urlsplit = urllib_urlsplit  # type: ignore[assignment]
-
-_IS_WINDOWS = os.name == "nt"
 
 
 def _url2pathname(url: str) -> str:
@@ -446,20 +445,20 @@ def _url2pathname(url: str) -> str:
         if "%" not in url:
             return url
 
-        return _unquote(url, _path_safe_chars).decode(_FS_ENCODING, _FS_ERRORS)
+        return _unquote(url, _PATH_SAFE_CHARS).decode(_FS_ENCODING, _FS_ERRORS)
 
     if url[:3] == "///":
         url = url[1:]
     url = url.replace(":", "|")
     if "|" not in url:
-        return _unquote(url.replace("/", "\\").encode(), _path_safe_chars).decode(
+        return _unquote(url.replace("/", "\\").encode(), _PATH_SAFE_CHARS).decode(
             _FS_ENCODING, _FS_ERRORS
         )
     comp = url.split("|")
     if len(comp) != 2 or comp[0][-1] not in string.ascii_letters:
         raise OSError(f"Bad URL: {url}")
     drive = comp[0][-1].upper()
-    tail = _unquote(comp[1].replace("/", "\\"), _path_safe_chars).decode(
+    tail = _unquote(comp[1].replace("/", "\\"), _PATH_SAFE_CHARS).decode(
         _FS_ENCODING, _FS_ERRORS
     )
-    return drive + ":" + tail
+    return f"{drive}:{tail}"
