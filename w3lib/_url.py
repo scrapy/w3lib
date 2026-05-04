@@ -20,12 +20,12 @@ if TYPE_CHECKING:
 
 _IS_WINDOWS = os.name == "nt"
 _IS_LINUX = sys.platform == "linux"
-if _IS_LINUX:
+if _IS_LINUX:  # pragma: no cover
     from urllib.parse import (  # type: ignore[attr-defined]
         _check_bracketed_netloc,
         _checknetloc,
     )
-else:
+else:  # pragma: no cover
     from urllib.parse import urlsplit as urllib_urlsplit
 
 _FS_ENCODING = sys.getfilesystemencoding()
@@ -427,7 +427,7 @@ def _urlsplit(
     return SplitResult(scheme, netloc, url, query, fragment)
 
 
-if not _IS_LINUX:
+if not _IS_LINUX:  # pragma: no cover
     _urlsplit = urllib_urlsplit  # type: ignore[assignment]
 
 

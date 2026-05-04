@@ -78,8 +78,6 @@ _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE = {
     ord(char): None for char in _ASCII_TAB_OR_NEWLINE
 }
 
-_UNQUOTE_PATH_RE = re.compile(r"%(2f|3f)", flags=re.IGNORECASE)
-
 
 def _strip(url: str) -> str:
     if not url:
@@ -241,13 +239,15 @@ def safe_url_string(  # pylint: disable=too-many-locals,too-many-statements
     else:
         fragment = parts.fragment
 
-    return _urlunsplit((
-        parts.scheme,
-        netloc,
-        path,
-        query,
-        fragment,
-    ))
+    return _urlunsplit(
+        (
+            parts.scheme,
+            netloc,
+            path,
+            query,
+            fragment,
+        )
+    )
 
 
 _parent_dirs = re.compile(r"/?(\.\./)+")
@@ -750,15 +750,16 @@ def canonicalize_url(
     return _urlunparse(scheme, netloc, path, params, query, fragment)
 
 
-def _to_percent_upper(m: re.Match[str]) -> str:
-    return "%25" + m.group(1).upper()
-
-
 def _unquotepath(path: str) -> bytes:
     # standard lib's unquote() does not work for non-UTF-8
     # percent-escaped characters, they get lost.
     # e.g., '%a3' becomes 'REPLACEMENT CHARACTER' (U+FFFD)
-    return _unquote(_UNQUOTE_PATH_RE.sub(_to_percent_upper, path).encode())
+    return _unquote(
+        path.replace("%2f", "%252F")
+        .replace("%2F", "%252F")
+        .replace("%3f", "%253F")
+        .replace("%3F", "%253F")
+    )
 
 
 def parse_url(

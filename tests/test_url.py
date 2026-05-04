@@ -136,7 +136,7 @@ QUERY_TO_ENCODE = "".join(
     if (
         chr(value) not in _C0_CONTROL_OR_SPACE
         and chr(value) not in QUERY_SAFE
-        and chr(value) not in "#"
+        and chr(value) != "#"
     )
 )
 QUERY_ENCODED = "".join(f"%{ord(char):02X}" for char in QUERY_TO_ENCODE)
@@ -147,7 +147,7 @@ SPECIAL_QUERY_TO_ENCODE = "".join(
     if (
         chr(value) not in _C0_CONTROL_OR_SPACE
         and chr(value) not in SPECIAL_QUERY_SAFE
-        and chr(value) not in "#"
+        and chr(value) != "#"
     )
 )
 SPECIAL_QUERY_ENCODED = "".join(f"%{ord(char):02X}" for char in SPECIAL_QUERY_TO_ENCODE)

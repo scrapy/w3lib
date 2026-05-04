@@ -112,8 +112,6 @@ disable = [
 ]
 
 [tool.ruff]
-preview = true
-fix = true
 target-version = "py310"
 
 [tool.ruff.lint]
