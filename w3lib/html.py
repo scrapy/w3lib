@@ -4,9 +4,9 @@ Functions for dealing with markup text
 
 from __future__ import annotations
 
+import functools
 import re
 from html.entities import name2codepoint
-from re import Match, Pattern
 from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
@@ -37,6 +37,9 @@ _meta_refresh_re2 = re.compile(
 _cdata_re = re.compile(
     r"((?P<cdata_s><!\[CDATA\[)(?P<cdata_d>.*?)(?P<cdata_e>\]\]>))", re.DOTALL
 )
+_tags_re = re.compile("</?([^ >/]+).*?>", re.DOTALL | re.IGNORECASE)
+_meta_tag_re = re.compile(r"<meta\b[^>]*>", re.IGNORECASE)
+
 
 HTML5_WHITESPACE = " \t\n\r\x0c"
 
@@ -74,14 +77,15 @@ def replace_entities(
 
     """
 
-    def convert_entity(m: Match[str]) -> str:
+    def convert_entity(m: re.Match[str]) -> str:
         groups = m.groupdict()
         number = None
         if groups.get("dec"):
             number = int(groups["dec"], 10)
         elif groups.get("hex"):
             number = int(groups["hex"], 16)
-        elif groups.get("named"):
+        else:
+            # guaranteed to be named
             entity_name = groups["named"]
             if entity_name.lower() in keep:
                 return m.group(0)
@@ -151,6 +155,16 @@ def remove_comments(text: str | bytes, encoding: str | None = None) -> str:
     return _REMOVECOMMENTS_RE.sub("", utext)
 
 
+def _remove_tag(
+    m: re.Match[str], which_ones: set[str] | tuple[()], keep: set[str] | tuple[()]
+) -> str:
+    tag = m.group(1).lower()
+
+    should_remove = tag in which_ones if which_ones else tag not in keep
+
+    return "" if should_remove else m.group(0)
+
+
 def remove_tags(
     text: str | bytes,
     which_ones: Iterable[str] = (),
@@ -203,23 +217,25 @@ def remove_tags(
     if which_ones and keep:
         raise ValueError("Cannot use both which_ones and keep")
 
-    which_ones = {tag.lower() for tag in which_ones}
-    keep = {tag.lower() for tag in keep}
+    return _tags_re.sub(
+        functools.partial(
+            _remove_tag,
+            which_ones={tag.lower() for tag in which_ones} if which_ones else (),
+            keep={tag.lower() for tag in keep} if keep else (),
+        ),
+        to_unicode(text, encoding),
+    )
 
-    def will_remove(tag: str) -> bool:
-        tag = tag.lower()
-        if which_ones:
-            return tag in which_ones
-        return tag not in keep
 
-    def remove_tag(m: Match[str]) -> str:
-        tag = m.group(1)
-        return "" if will_remove(tag) else m.group(0)
-
-    regex = "</?([^ >/]+).*?>"
-    retags = re.compile(regex, re.DOTALL | re.IGNORECASE)
-
-    return retags.sub(remove_tag, to_unicode(text, encoding))
+@functools.lru_cache(maxsize=256)
+def _build_remove_tags_pattern(tags_tuple: tuple[str, ...]) -> re.Pattern[str]:
+    tags = "|".join(re.escape(tag) for tag in tags_tuple)
+    pattern = rf"""
+        <(?P<tag>{tags})\b[^>]*>.*?</(?P=tag)>
+        |
+        <(?P<tag2>{tags})\b[^>]*/>
+    """
+    return re.compile(pattern, re.IGNORECASE | re.DOTALL | re.VERBOSE)
 
 
 def remove_tags_with_content(
@@ -239,11 +255,12 @@ def remove_tags_with_content(
     """
 
     utext = to_unicode(text, encoding)
-    if which_ones:
-        tags = "|".join([rf"<{tag}\b.*?</{tag}>|<{tag}\s*/>" for tag in which_ones])
-        retags = re.compile(tags, re.DOTALL | re.IGNORECASE)
-        utext = retags.sub("", utext)
-    return utext
+
+    if not which_ones:
+        return utext
+
+    pattern = _build_remove_tags_pattern(tuple(sorted(set(which_ones))))
+    return pattern.sub("", utext)
 
 
 def replace_escape_chars(
@@ -285,27 +302,35 @@ def unquote_markup(
 
     """
 
-    def _get_fragments(txt: str, pattern: Pattern[str]) -> Iterable[str | Match[str]]:
-        offset = 0
-        for match in pattern.finditer(txt):
-            match_s, match_e = match.span(1)
-            yield txt[offset:match_s]
-            yield match
-            offset = match_e
-        yield txt[offset:]
-
     utext = to_unicode(text, encoding)
-    ret_text = ""
-    for fragment in _get_fragments(utext, _cdata_re):
-        if isinstance(fragment, str):
-            # it's not a CDATA (so we try to remove its entities)
-            ret_text += replace_entities(
-                fragment, keep=keep, remove_illegal=remove_illegal
+    ret = []
+    offset = 0
+
+    for match in _cdata_re.finditer(utext):
+        start, end = match.span(1)
+
+        if offset < start:
+            ret.append(
+                replace_entities(
+                    utext[offset:start],
+                    keep=keep,
+                    remove_illegal=remove_illegal,
+                )
             )
-        else:
-            # it's a CDATA (so we just extract its content)
-            ret_text += fragment.group("cdata_d")
-    return ret_text
+
+        ret.append(match.group("cdata_d"))
+        offset = end
+
+    if offset < len(utext):
+        ret.append(
+            replace_entities(
+                utext[offset:],
+                keep=keep,
+                remove_illegal=remove_illegal,
+            )
+        )
+
+    return "".join(ret)
 
 
 def get_base_url(
@@ -318,7 +343,7 @@ def get_base_url(
 
     """
 
-    utext: str = remove_comments(text, encoding=encoding)
+    utext = remove_comments(text, encoding=encoding)
     if m := _baseurl_re.search(utext):
         return urljoin(
             safe_url_string(baseurl), safe_url_string(m.group(1), encoding=encoding)
@@ -340,19 +365,27 @@ def get_meta_refresh(
     If no meta redirect is found, ``(None, None)`` is returned.
 
     """
+    utext = to_unicode(text, encoding)
 
-    try:
-        utext = to_unicode(text, encoding)
-    except UnicodeDecodeError:
-        print(text)
-        raise
-    utext = remove_tags_with_content(utext, ignore_tags)
-    utext = remove_comments(replace_entities(utext))
-    if m := _meta_refresh_re.search(utext) or _meta_refresh_re2.search(utext):
-        interval = float(m.group("int"))
-        url = safe_url_string(m.group("url").strip(" \"'"), encoding)
-        url = urljoin(baseurl, url)
-        return interval, url
+    if ignore_tags:
+        utext = remove_tags_with_content(utext, ignore_tags)
+
+    utext = remove_comments(utext)
+
+    for tag in _meta_tag_re.finditer(utext):
+        raw_tag = tag.group(0)
+
+        if "refresh" not in raw_tag.lower():
+            continue
+
+        if "&" in raw_tag:
+            raw_tag = replace_entities(raw_tag)
+
+        if m := _meta_refresh_re.search(raw_tag) or _meta_refresh_re2.search(raw_tag):
+            interval = float(m.group("int"))
+            url = safe_url_string(m.group("url").strip(" \"'"), encoding)
+            return interval, urljoin(baseurl, url)
+
     return None, None
 
 

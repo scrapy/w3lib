@@ -7,6 +7,7 @@ import pytest
 from w3lib.html import (
     get_base_url,
     get_meta_refresh,
+    has_entities,
     remove_comments,
     remove_tags,
     remove_tags_with_content,
@@ -241,6 +242,18 @@ BENCHMARK_CASES: CasesMapType = {
             ),
             {"encoding": "latin1"},
         ),
+    ],
+    has_entities: [
+        (("<a href='?q=1&amp;x=2'>link</a>",), {}),
+        (("<div>&amp;</div>",), {}),
+        (("&#123",), {}),
+        (("text & amp; missing semicolon",), {}),
+        (("text &amp; more &#169; stuff",), {}),
+        (("foo &#x1F600; bar",), {}),
+        (("&#xA9;",), {}),
+        (("plain text",), {}),
+        (("",), {}),
+        ((b"&#169;",), {}),
     ],
 }
 
