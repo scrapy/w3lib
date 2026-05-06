@@ -65,14 +65,6 @@ def _hex_encode_table() -> bytes:
 
 
 @functools.cache
-def _safe_table(safe: bytes) -> bytes:
-    table = bytearray(256)
-    for b in safe:
-        table[b] = 1
-    return bytes(table)
-
-
-@functools.cache
 def _hex_decode_table() -> bytes:
     table = bytearray([255]) * 256
     table[48:58] = bytes(range(10))  # '0'-'9'
@@ -81,98 +73,106 @@ def _hex_decode_table() -> bytes:
     return bytes(table)
 
 
-def _quote(data: bytes, safe: bytes = b"") -> bytes:
+@functools.cache
+def _safe_table(safe: bytes = RFC3986_UNRESERVED) -> bytes:
+    table = bytearray(256)
+    for b in safe:
+        table[b] = 1
+    return bytes(table)
+
+
+@functools.cache
+def _quote_table(safe: bytes = b"", quote_plus: bool = False) -> tuple[bytes, ...]:
+    hex_table = _hex_encode_table()
+    allowed = _safe_table(RFC3986_UNRESERVED + safe) if safe else _safe_table()
+    output: list[bytes] = [] * 256
+
+    for byte in range(256):
+        if allowed[byte]:
+            output.append(chr(byte).encode())
+        elif quote_plus and byte == 32:
+            output.append(b"+")
+        else:
+            offset = byte * 3
+            output.append(hex_table[offset : offset + 3])
+
+    return tuple(output)
+
+
+def _quote(data: bytes, safe: bytes = b"", quote_plus: bool = False) -> bytes:
     """faster version of urlib.parse.quote and without _coerce_args/_coerce_result"""
     if not data:
         return b""
-
-    hex_table = _hex_encode_table()
-    allowed = (
-        _safe_table(RFC3986_UNRESERVED + safe)
-        if safe
-        else _safe_table(RFC3986_UNRESERVED)
-    )
-
     output = bytearray()
-
-    for byte in data:
-        if allowed[byte]:
-            output.append(byte)
-        else:
-            offset = byte * 3
-            output += hex_table[offset : offset + 3]
-
+    _quote_into(data, safe, output, quote_plus)
     return bytes(output)
 
 
-def _quote_into(data: bytes, safe: bytes, out: bytearray) -> None:
-    hex_table = _hex_encode_table()
-    allowed = (
-        _safe_table(RFC3986_UNRESERVED + safe)
-        if safe
-        else _safe_table(RFC3986_UNRESERVED)
-    )
+def _quote_into(
+    data: bytes, safe: bytes, output: bytearray, quote_plus: bool = False
+) -> None:
+    if not data:
+        return
 
-    for byte in data:
-        if allowed[byte]:
-            out.append(byte)
-        else:
-            offset = byte * 3
-            out.extend(hex_table[offset : offset + 3])
+    transform_table = _quote_table(safe, quote_plus)
+
+    output += b"".join([transform_table[byte] for byte in data])
 
 
 def _quote_plus(data: bytes) -> bytes:
+    return _quote(data, quote_plus=True)
+
+
+def _unquote(
+    data: bytes | bytearray | str,
+    safe: bytes = b"",
+    unquote_plus: bool = False,
+) -> bytes:
+    """faster version of urlib.parse.unquote and without _coerce_args/_coerce_result"""
     if not data:
         return b""
 
-    hex_table = _hex_encode_table()
-    safe_table = _safe_table(RFC3986_UNRESERVED)
+    if isinstance(data, str):
+        data = data.encode()
 
-    out = bytearray()
+    hex_table = _hex_decode_table()
+    allowed = _safe_table(safe) if safe else None
 
-    for b in data:
-        if b == 32:  # ' '
-            out.append(43)  # '+'
-        elif safe_table[b]:
-            out.append(b)
-        else:
-            offset = b * 3
-            out += hex_table[offset : offset + 3]
+    output = bytearray()
 
-    return bytes(out)
+    i = 0
+    length = len(data)
+
+    while i < length:
+        byte = data[i]
+
+        if unquote_plus and byte == 43:  # '+'
+            output.append(32)
+            i += 1
+            continue
+
+        if byte == 37 and i + 2 < length:  # ord('%') = 37
+            hi = hex_table[data[i + 1]]
+            lo = hex_table[data[i + 2]]
+
+            if hi != 255 and lo != 255:
+                decoded = (hi << 4) | lo
+
+                if allowed is None or not allowed[decoded]:
+                    output.append(decoded)
+                    i += 3
+                    continue
+
+        output.append(byte)
+        i += 1
+
+    return bytes(output)
 
 
 def _unquote_plus(data: bytes) -> bytes:
     if not data:
         return b""
-
-    hex_table = _hex_decode_table()
-    out = bytearray()
-
-    i = 0
-    n = len(data)
-
-    while i < n:
-        b = data[i]
-
-        if b == 43:  # '+'
-            out.append(32)
-            i += 1
-            continue
-
-        if b == 37 and i + 2 < n:
-            hi = hex_table[data[i + 1]]
-            lo = hex_table[data[i + 2]]
-
-            if hi != 255 and lo != 255:
-                out.append((hi << 4) | lo)
-                i += 3
-                continue
-
-        out.append(b)
-        i += 1
-
-    return bytes(out)
+    return _unquote(data, unquote_plus=True)
 
 
 def _parse_qs(
@@ -276,46 +276,6 @@ def _urlencode(query: _QueryType) -> bytes:
         )
 
     return b"&".join(result)
-
-
-def _unquote(
-    data: bytes | bytearray | str,
-    safe: bytes = b"",
-) -> bytes:
-    """faster version of urlib.parse.unquote and without _coerce_args/_coerce_result"""
-    if not data:
-        return b""
-
-    if isinstance(data, str):
-        data = data.encode()
-
-    hex_table = _hex_decode_table()
-    allowed = _safe_table(safe) if safe else None
-
-    output = bytearray()
-
-    i = 0
-    length = len(data)
-
-    while i < length:
-        byte = data[i]
-
-        if byte == 37 and i + 2 < length:  # ord('%') = 37
-            hi = hex_table[data[i + 1]]
-            lo = hex_table[data[i + 2]]
-
-            if hi != 255 and lo != 255:
-                decoded = (hi << 4) | lo
-
-                if allowed is None or not allowed[decoded]:
-                    output.append(decoded)
-                    i += 3
-                    continue
-
-        output.append(byte)
-        i += 1
-
-    return bytes(output)
 
 
 def _urlparse(
