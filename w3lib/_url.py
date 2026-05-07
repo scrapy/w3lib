@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import functools
 import os
+import re
 import string
 import sys
 from typing import TYPE_CHECKING
@@ -57,6 +58,26 @@ _PATH_SAFE_CHARS_STR = _PATH_SAFE_CHARS.decode()
 _USES_NETLOC = frozenset(uses_netloc)
 _SCHEME_CHARS = frozenset(scheme_chars)
 _USES_PARAMS = frozenset(uses_params)
+_ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE = str.maketrans("", "", _ASCII_TAB_OR_NEWLINE)
+_C0_CONTROL_OR_SPACE_SET = frozenset(_C0_CONTROL_OR_SPACE)
+_C0_CONTROL_OR_SPACE_RE = re.compile(rf"[{_C0_CONTROL_OR_SPACE}]")
+_SCHEME_RE = re.compile(r"^([A-Za-z][A-Za-z0-9+.-]*):")
+
+
+def _strip(input_string: str) -> str:
+    if not input_string:
+        return input_string
+
+    if (
+        input_string[0] not in _C0_CONTROL_OR_SPACE_SET
+        and input_string[-1] not in _C0_CONTROL_OR_SPACE_SET
+        and not _C0_CONTROL_OR_SPACE_RE.search(input_string)
+    ):
+        return input_string
+
+    return input_string.strip(_C0_CONTROL_OR_SPACE).translate(
+        _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE
+    )
 
 
 @functools.cache
@@ -85,16 +106,16 @@ def _safe_table(safe: bytes = RFC3986_UNRESERVED) -> bytes:
 def _quote_table(safe: bytes = b"", quote_plus: bool = False) -> tuple[bytes, ...]:
     hex_table = _hex_encode_table()
     allowed = _safe_table(RFC3986_UNRESERVED + safe) if safe else _safe_table()
-    output: list[bytes] = [] * 256
+    output: list[bytes] = [b""] * 256
 
-    for byte in range(256):
+    for idx, byte in enumerate(range(256)):
         if allowed[byte]:
-            output.append(chr(byte).encode())
+            output[idx] = chr(byte).encode()
         elif quote_plus and byte == 32:
-            output.append(b"+")
+            output[idx] = b"+"
         else:
             offset = byte * 3
-            output.append(hex_table[offset : offset + 3])
+            output[idx] = hex_table[offset : offset + 3]
 
     return tuple(output)
 
@@ -103,9 +124,9 @@ def _quote(data: bytes, safe: bytes = b"", quote_plus: bool = False) -> bytes:
     """faster version of urlib.parse.quote and without _coerce_args/_coerce_result"""
     if not data:
         return b""
-    output = bytearray()
-    _quote_into(data, safe, output, quote_plus)
-    return bytes(output)
+
+    transform_table = _quote_table(safe, quote_plus)
+    return b"".join([transform_table[byte] for byte in data])
 
 
 def _quote_into(
@@ -115,18 +136,12 @@ def _quote_into(
         return
 
     transform_table = _quote_table(safe, quote_plus)
-
     output += b"".join([transform_table[byte] for byte in data])
-
-
-def _quote_plus(data: bytes) -> bytes:
-    return _quote(data, quote_plus=True)
 
 
 def _unquote(
     data: bytes | bytearray | str,
     safe: bytes = b"",
-    unquote_plus: bool = False,
 ) -> bytes:
     """faster version of urlib.parse.unquote and without _coerce_args/_coerce_result"""
     if not data:
@@ -145,11 +160,6 @@ def _unquote(
 
     while i < length:
         byte = data[i]
-
-        if unquote_plus and byte == 43:  # '+'
-            output.append(32)
-            i += 1
-            continue
 
         if byte == 37 and i + 2 < length:  # ord('%') = 37
             hi = hex_table[data[i + 1]]
@@ -170,9 +180,45 @@ def _unquote(
 
 
 def _unquote_plus(data: bytes) -> bytes:
+    """faster version of urlib.parse.unquote and without _coerce_args/_coerce_result"""
     if not data:
         return b""
-    return _unquote(data, unquote_plus=True)
+
+    if isinstance(data, str):
+        data = data.encode()
+
+    hex_table = _hex_decode_table()
+    allowed = _safe_table()
+
+    output = bytearray()
+
+    i = 0
+    length = len(data)
+
+    while i < length:
+        byte = data[i]
+
+        if byte == 43:  # '+'
+            output.append(32)
+            i += 1
+            continue
+
+        if byte == 37 and i + 2 < length:  # ord('%') = 37
+            hi = hex_table[data[i + 1]]
+            lo = hex_table[data[i + 2]]
+
+            if hi != 255 and lo != 255:
+                decoded = (hi << 4) | lo
+
+                if allowed is None or not allowed[decoded]:
+                    output.append(decoded)
+                    i += 3
+                    continue
+
+        output.append(byte)
+        i += 1
+
+    return bytes(output)
 
 
 def _parse_qs(
@@ -249,16 +295,6 @@ def _parse_qsl(
     return result
 
 
-def _splitparams(url: str) -> tuple[str, str]:
-    if "/" in url:
-        i = url.find(";", url.rfind("/"))
-        if i < 0:
-            return url, ""
-    else:
-        i = url.find(";")
-    return url[:i], url[i + 1 :]
-
-
 def _urlencode(query: _QueryType) -> bytes:
     if hasattr(query, "items"):
         query = query.items()  # type: ignore[assignment]
@@ -267,13 +303,24 @@ def _urlencode(query: _QueryType) -> bytes:
         return b""
 
     result: list[bytes] = []
+    tmp_buf = bytearray()
 
     for key, value in query:  # type: ignore[str-unpack]
-        result.append(
-            _quote_plus(key if isinstance(key, bytes) else str(key).encode())
-            + b"="
-            + _quote_plus(value if isinstance(value, bytes) else str(value).encode())
+        _quote_into(
+            key if isinstance(key, bytes) else str(key).encode(),
+            b"",
+            tmp_buf,
+            quote_plus=True,
         )
+        tmp_buf.append(61)
+        _quote_into(
+            value if isinstance(value, bytes) else str(value).encode(),
+            b"",
+            tmp_buf,
+            quote_plus=True,
+        )
+        result.append(bytes(tmp_buf))
+        tmp_buf.clear()
 
     return b"&".join(result)
 
@@ -287,12 +334,21 @@ def _urlparse(
     if not url:
         return ParseResult(scheme, "", "", "", "", "")
 
-    splitresult = _urlsplit(url, scheme, allow_fragments)
-    scheme, netloc, url, query, fragment = splitresult
-    if scheme in _USES_PARAMS and ";" in url:
-        url, params = _splitparams(url)
-    else:
-        params = ""
+    scheme, netloc, url, query, fragment = _urlsplit(url, scheme, allow_fragments)
+    params = ""
+
+    if scheme in _USES_PARAMS:
+        semi_idx = url.find(";")
+
+        if semi_idx != -1:
+            slash_idx = url.rfind("/")
+
+            if slash_idx != -1 and slash_idx < semi_idx:
+                semi_idx = url.find(";", slash_idx)
+
+            if semi_idx != -1:
+                url, params = url[:semi_idx], url[semi_idx + 1 :]
+
     return ParseResult(scheme, netloc, url, params, query, fragment)
 
 
@@ -343,46 +399,45 @@ def _urlsplit(
     if not url:
         return SplitResult(scheme, "", "", "", "")
 
-    url = url.lstrip(_C0_CONTROL_OR_SPACE)
-    scheme = scheme.strip(_C0_CONTROL_OR_SPACE)
-
-    for char in _ASCII_TAB_OR_NEWLINE:
-        if char in url:
-            url = url.replace(char, "")
-        if char in scheme:
-            scheme = scheme.replace(char, "")
+    url, scheme = url.lstrip(_C0_CONTROL_OR_SPACE), scheme.strip(_C0_CONTROL_OR_SPACE)
 
     netloc = query = fragment = ""
 
-    scheme_sep_idx = url.find(":")
-    if scheme_sep_idx > 0 and url[0].isascii() and url[0].isalpha():
-        for c in url[:scheme_sep_idx]:
-            if c not in _SCHEME_CHARS:
-                break
-        else:
-            scheme, url = url[:scheme_sep_idx].lower(), url[scheme_sep_idx + 1 :]
+    if m := _SCHEME_RE.match(url):
+        scheme = m.group(1).lower()
+        url = url[m.end() :]
 
     if url[:2] == "//":
+        slash = url.find("/", 2)
+        question = url.find("?", 2)
+        hash_ = url.find("#", 2)
+
         delim = len(url)
-        for char in "/?#":
-            wdelim = url.find(char, 2)
-            if wdelim >= 0:
-                delim = min(delim, wdelim)
-        netloc, url = url[2:delim], url[delim:]
+
+        if slash >= 0 and slash < delim:  # pylint: disable=chained-comparison
+            delim = slash
+
+        if question >= 0 and question < delim:  # pylint: disable=chained-comparison
+            delim = question
+
+        if hash_ >= 0 and hash_ < delim:  # pylint: disable=chained-comparison
+            delim = hash_
+
+        netloc = url[2:delim]
+        url = url[delim:]
 
         has_opening = "[" in netloc
         has_closing = "]" in netloc
-        if (has_opening and not has_closing) or (has_closing and not has_opening):
+        if has_opening != has_closing:
             raise ValueError("Invalid IPv6 URL")
         if has_opening and has_closing:
             _check_bracketed_netloc(netloc)
     _checknetloc(netloc)
 
-    if allow_fragments and "#" in url:
+    if allow_fragments:
         url, _, fragment = url.partition("#")
 
-    if "?" in url:
-        url, _, query = url.partition("?")
+    url, _, query = url.partition("?")
 
     return SplitResult(scheme, netloc, url, query, fragment)
 
@@ -422,3 +477,20 @@ def _url2pathname(url: str) -> str:
         _FS_ENCODING, _FS_ERRORS
     )
     return f"{drive}:{tail}"
+
+
+@functools.lru_cache
+def _idna(input_string: str) -> tuple[bytes, str]:
+    if input_string.isascii():
+        return input_string.encode(), input_string
+
+    encoded = input_string.encode("idna")
+    return encoded, encoded.decode()
+
+
+def _idna_bytes(input_string: str) -> bytes:
+    return _idna(input_string)[0]
+
+
+def _idna_str(input_string: str) -> str:
+    return _idna(input_string)[1]

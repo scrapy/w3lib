@@ -15,8 +15,13 @@ from typing import TYPE_CHECKING, NamedTuple, cast, overload
 from urllib.parse import ParseResult
 from urllib.request import pathname2url
 
-from ._infra import _ASCII_TAB_OR_NEWLINE, _C0_CONTROL_OR_SPACE
+# reexports
+from ._infra import (
+    _ASCII_TAB_OR_NEWLINE as _ASCII_TAB_OR_NEWLINE,
+    _C0_CONTROL_OR_SPACE as _C0_CONTROL_OR_SPACE,
+)
 from ._url import (
+    _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE as _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE,
     # reexports
     _PATH_SAFE_CHARS as _path_safe_chars,
     _SAFE_CHARS as _safe_chars,
@@ -26,10 +31,13 @@ from ._url import (
     RFC3986_SUB_DELIMS as RFC3986_SUB_DELIMS,
     RFC3986_UNRESERVED as RFC3986_UNRESERVED,
     RFC3986_USERINFO_SAFE_CHARS as RFC3986_USERINFO_SAFE_CHARS,
+    _idna_bytes,
+    _idna_str,
     _parse_qs,
     _parse_qsl,
     _quote,
     _quote_into,
+    _strip as _strip,  # reexport
     _unquote,
     _url2pathname,
     _urlencode,
@@ -74,36 +82,7 @@ _SPECIAL_QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS.translate(None, delete=b"'")
 _FRAGMENT_SAFEST_CHARS = _PATH_SAFEST_CHARS
 
 
-_ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE = {
-    ord(char): None for char in _ASCII_TAB_OR_NEWLINE
-}
-
-
-def _strip(url: str) -> str:
-    if not url:
-        return url
-
-    if (
-        url[0] not in _C0_CONTROL_OR_SPACE
-        and url[-1] not in _C0_CONTROL_OR_SPACE
-        and "\t" not in url
-        and "\n" not in url
-    ):
-        return url
-
-    start = 0
-    end = len(url)
-
-    while start < end and url[start] in _C0_CONTROL_OR_SPACE:
-        start += 1
-
-    while end > start and url[end - 1] in _C0_CONTROL_OR_SPACE:
-        end -= 1
-
-    return "".join([c for c in url[start:end] if c not in {"\t", "\n"}])
-
-
-def safe_url_string(  # pylint: disable=too-many-locals,too-many-statements
+def safe_url_string(
     url: str | bytes,
     encoding: str = "utf8",
     path_encoding: str = "utf8",
@@ -161,81 +140,69 @@ def safe_url_string(  # pylint: disable=too-many-locals,too-many-statements
         parts.hostname,
         parts.port,
     )
-    netloc_bytes = bytearray()
+    tmp_buf = bytearray()
     if username is not None or password is not None:
         if username is not None:
             _quote_into(
                 _unquote(username),
                 _USERINFO_SAFEST_CHARS,
-                netloc_bytes,
+                tmp_buf,
             )
 
         if password is not None:
-            netloc_bytes.append(58)  # ':'
+            tmp_buf.append(58)  # ':'
             _quote_into(
                 _unquote(password),
                 _USERINFO_SAFEST_CHARS,
-                netloc_bytes,
+                tmp_buf,
             )
 
-        netloc_bytes.append(64)  # '@'
+        tmp_buf.append(64)  # '@'
 
     if hostname:
         if ":" in hostname:
             # IPv6 address: urlsplit() strips the brackets from the hostname,
             # but they are required in the netloc when rebuilding the URL.
-            netloc_bytes.append(91)  # '['
-            netloc_bytes += hostname.encode("ascii")
-            netloc_bytes.append(93)  # ']'
+            tmp_buf.append(91)  # '['
+            tmp_buf += hostname.encode("ascii")
+            tmp_buf.append(93)  # ']'
         else:
             try:
-                netloc_bytes += (
-                    hostname.encode("idna")
-                    if not hostname.isascii()
-                    else hostname.encode()
-                )
+                tmp_buf += _idna_bytes(hostname)
             except UnicodeError:
                 # IDNA encoding can fail for too long labels (>63 characters) or
                 # missing labels (e.g. http://.example.com)
-                netloc_bytes += hostname.encode(encoding)
+                tmp_buf += hostname.encode(encoding)
 
     if port:
-        netloc_bytes.append(58)  # ':'
-        netloc_bytes += str(port).encode(encoding)
+        tmp_buf.append(58)  # ':'
+        tmp_buf += str(port).encode(encoding)
 
-    netloc = netloc_bytes.decode()
-    del netloc_bytes
+    netloc = tmp_buf.decode()
+    tmp_buf.clear()
 
     if quote_path:
-        path_bytes = parts.path.encode(path_encoding)
-        path_buf = bytearray(len(path_bytes) * 3)
-        path_buf.clear()
-        _quote_into(path_bytes, _PATH_SAFEST_CHARS, path_buf)
-        path = path_buf.decode()
-        del path_bytes, path_buf
+        _quote_into(parts.path.encode(path_encoding), _PATH_SAFEST_CHARS, tmp_buf)
+        path = tmp_buf.decode()
     else:
         path = parts.path
 
-    query_bytes = parts.query.encode(encoding)
+    tmp_buf.clear()
 
-    query_buf = bytearray(len(query_bytes) * 3)
-    query_buf.clear()
-
-    if parts.scheme in _SPECIAL_SCHEMES:
-        _quote_into(query_bytes, _SPECIAL_QUERY_SAFEST_CHARS, query_buf)
-    else:
-        _quote_into(query_bytes, _QUERY_SAFEST_CHARS, query_buf)
-
-    query = query_buf.decode()
-    del query_buf, query_bytes
+    _quote_into(
+        parts.query.encode(encoding),
+        _SPECIAL_QUERY_SAFEST_CHARS
+        if parts.scheme in _SPECIAL_SCHEMES
+        else _QUERY_SAFEST_CHARS,
+        tmp_buf,
+    )
+    query = tmp_buf.decode()
+    tmp_buf.clear()
 
     if parts.fragment:
-        frag_bytes = parts.fragment.encode(encoding)
-        frag_buf = bytearray(len(frag_bytes) * 3)
-        frag_buf.clear()
-        _quote_into(frag_bytes, _FRAGMENT_SAFEST_CHARS, frag_buf)
-        fragment = frag_buf.decode()
-        del frag_buf, frag_bytes
+        _quote_into(parts.fragment.encode(encoding), _FRAGMENT_SAFEST_CHARS, tmp_buf)
+        fragment = tmp_buf.decode()
+        tmp_buf.clear()
     else:
         fragment = parts.fragment
 
@@ -427,10 +394,8 @@ def url_query_cleaner(
     return url
 
 
-def _add_or_replace_parameters(url: str, params: dict[str, str]) -> str:
+def _add_or_replace_parameters(url: str, params: dict[bytes, bytes]) -> str:
     parsed = _urlsplit(url)
-
-    params_b: dict[bytes, bytes] = {k.encode(): v.encode() for k, v in params.items()}
 
     current_args = _parse_qsl(parsed.query, keep_blank_values=True)
 
@@ -438,16 +403,19 @@ def _add_or_replace_parameters(url: str, params: dict[str, str]) -> str:
     seen_params: set[bytes] = set()
 
     for name, value in current_args:
-        if name not in params_b:
+        if name in seen_params:
+            continue
+        replacement = params.get(name)
+        if replacement is None:
             new_args.append((name, value))
-        elif name not in seen_params:
-            new_args.append((name, params_b[name]))
+        else:
+            new_args.append((name, replacement))
             seen_params.add(name)
 
-    for name, value in params_b.items():
+    for name, value in params.items():
         if name not in seen_params:
             new_args.append((name, value))
-    del seen_params, current_args, params_b
+    del seen_params, current_args
 
     return _urlunsplit(parsed._replace(query=_urlencode(new_args).decode()))
 
@@ -465,7 +433,7 @@ def add_or_replace_parameter(url: str, name: str, new_value: str) -> str:
     >>>
 
     """
-    return _add_or_replace_parameters(url, {name: new_value})
+    return _add_or_replace_parameters(url, {name.encode(): new_value.encode()})
 
 
 def add_or_replace_parameters(url: str, new_parameters: dict[str, str]) -> str:
@@ -480,7 +448,9 @@ def add_or_replace_parameters(url: str, new_parameters: dict[str, str]) -> str:
     >>>
 
     """
-    return _add_or_replace_parameters(url, new_parameters)
+    return _add_or_replace_parameters(
+        url, {k.encode(): v.encode() for k, v in new_parameters.items()}
+    )
 
 
 def path_to_file_uri(path: str | os.PathLike[str]) -> str:
@@ -628,11 +598,7 @@ def _safe_ParseResult(
     # IDNA encoding can fail for too long labels (>63 characters)
     # or missing labels (e.g. http://.example.com)
     try:
-        netloc = (
-            parts.netloc.encode("idna").decode()
-            if not parts.netloc.isascii()
-            else parts.netloc
-        )
+        netloc = _idna_str(parts.netloc)
     except UnicodeError:
         netloc = parts.netloc
 
