@@ -409,7 +409,7 @@ class _SplitResult:  # pylint: disable=too-many-instance-attributes
         yield self.fragment
 
     def __len__(self) -> int:
-        return 5
+        return 5  # pragma: no cover
 
     def __getitem__(self, index: int) -> str:
         return (

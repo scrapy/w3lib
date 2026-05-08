@@ -463,16 +463,14 @@ def path_to_file_uri(path: str | os.PathLike[str]) -> str:
     """Convert local filesystem path to legal File URIs as described in:
     http://en.wikipedia.org/wiki/File_URI_scheme
     """
-    x = pathname2url(str(Path(path).absolute()))
-    return f"file:///{x.lstrip('/')}"
+    return f"file:///{pathname2url(str(Path(path).absolute())).lstrip('/')}"
 
 
 def file_uri_to_path(uri: str) -> str:
     """Convert File URI to local filesystem path according to:
     http://en.wikipedia.org/wiki/File_URI_scheme
     """
-    uri_path = _urlparse(uri)[2]
-    return _url2pathname(uri_path)
+    return _url2pathname(_urlparse(uri)[2])
 
 
 def any_to_uri(uri_or_path: str) -> str:
@@ -481,8 +479,7 @@ def any_to_uri(uri_or_path: str) -> str:
     """
     if os.path.splitdrive(uri_or_path)[0]:
         return path_to_file_uri(uri_or_path)
-    u = _urlparse(uri_or_path)
-    return uri_or_path if u[0] else path_to_file_uri(uri_or_path)
+    return uri_or_path if _urlparse(uri_or_path)[0] else path_to_file_uri(uri_or_path)
 
 
 # ASCII characters.

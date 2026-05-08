@@ -244,6 +244,9 @@ SAFE_URL_URL_CASES = (
     ("http://192.168.0.256", ValueError),
     ("http://192.168.0.0.0", ValueError),
     ("http://[2a01:5cc0:1:2::4]", "http://[2a01:5cc0:1:2::4]"),
+    ("http://[2a01:5cc0:1:2::4", ValueError),
+    ("http://2a01:5cc0:1:2::4]", ValueError),
+    ("http://[[2a01:5cc0:1:2::4]", ValueError),
     ("http://[2a01:5cc0:1:2:3:4]", ValueError),
     ("https://[2402:4e00:40:40::2:3b6]", "https://[2402:4e00:40:40::2:3b6]"),
     ("https://[2402:4e00:40:40::2:3b6]:443", "https://[2402:4e00:40:40::2:3b6]:443"),
@@ -253,6 +256,9 @@ SAFE_URL_URL_CASES = (
     ("https://example.com:", "https://example.com:"),
     ("https://example.com:1", "https://example.com:1"),
     ("https://example.com:443", "https://example.com:443"),
+    ("https://example.com:bad_port", ValueError),
+    ("https://example.com:-1", ValueError),
+    ("https://example.com:66000", ValueError),
     # Path
     ("https://example.com/", "https://example.com/"),
     ("https://example.com/a", "https://example.com/a"),
@@ -681,8 +687,8 @@ class TestUrl:
 
         # DNS label too long
         assert (
-            safe_url_string(f"http://www.{'example' * 11}.com/résumé?q=résumé")
-            == f"http://www.{'example' * 11}.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9"
+            safe_url_string(f"http://www.{'éxamplé' * 11}.com/résumé?q=résumé")
+            == f"http://www.{'éxamplé' * 11}.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9"
         )
 
     def test_safe_url_port_number(self):
@@ -1103,8 +1109,13 @@ class TestUrl:
             uri = "file:///path/to/test.txt"
             uri2 = path_to_file_uri(file_uri_to_path(uri))
             assert uri == uri2
+            assert (
+                file_uri_to_path("//localhost/path/to/test.txt") == "/path/to/test.txt"
+            )
 
         assert file_uri_to_path("test.txt") == "test.txt"
+        assert file_uri_to_path("///path/to/test.txt") == "/path/to/test.txt"
+        assert file_uri_to_path("/path/to/test%20file.txt") == "/path/to/test file.txt"
 
     def test_any_to_uri(self):
         if os.name == "nt":
