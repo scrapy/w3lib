@@ -206,7 +206,7 @@ def _unquote_plus(data: bytes) -> bytes:
             if hi != 255 and lo != 255:
                 decoded = (hi << 4) | lo
 
-                if allowed is None or not allowed[decoded]:
+                if not allowed[decoded]:
                     output.append(decoded)
                     i += 3
                     continue
