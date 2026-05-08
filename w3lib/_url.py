@@ -1,22 +1,18 @@
 from __future__ import annotations
 
+import dataclasses
 import functools
 import os
 import re
 import string
 import sys
 from typing import TYPE_CHECKING
-from urllib.parse import (
-    ParseResult,
-    SplitResult,
-    scheme_chars,
-    uses_netloc,
-    uses_params,
-)
+from urllib.parse import ParseResult, scheme_chars, uses_netloc, uses_params
 
 from w3lib._infra import _ASCII_TAB_OR_NEWLINE, _C0_CONTROL_OR_SPACE
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
     from urllib.parse import _QueryType
 
 _IS_WINDOWS = os.name == "nt"
@@ -130,7 +126,7 @@ def _quote(data: bytes, safe: bytes = b"", quote_plus: bool = False) -> bytes:
 
 
 def _quote_into(
-    data: bytes, safe: bytes, output: bytearray, quote_plus: bool = False
+    data: bytes, output: bytearray, safe: bytes = b"", quote_plus: bool = False
 ) -> None:
     if not data:
         return
@@ -151,7 +147,7 @@ def _unquote(
         data = data.encode()
 
     hex_table = _hex_decode_table()
-    allowed = _safe_table(safe) if safe else None
+    allowed = _safe_table(safe)
 
     output = bytearray()
 
@@ -168,7 +164,7 @@ def _unquote(
             if hi != 255 and lo != 255:
                 decoded = (hi << 4) | lo
 
-                if allowed is None or not allowed[decoded]:
+                if not allowed[decoded]:
                     output.append(decoded)
                     i += 3
                     continue
@@ -308,15 +304,13 @@ def _urlencode(query: _QueryType) -> bytes:
     for key, value in query:  # type: ignore[str-unpack]
         _quote_into(
             key if isinstance(key, bytes) else str(key).encode(),
-            b"",
-            tmp_buf,
+            output=tmp_buf,
             quote_plus=True,
         )
         tmp_buf.append(61)
         _quote_into(
             value if isinstance(value, bytes) else str(value).encode(),
-            b"",
-            tmp_buf,
+            output=tmp_buf,
             quote_plus=True,
         )
         result.append(bytes(tmp_buf))
@@ -370,34 +364,90 @@ def _urlunsplit(components: tuple[str, str, str, str, str]) -> str:
     """urlib.parse.urlunsplit but without _coerce_args/_coerce_result"""
     scheme, netloc, url, query, fragment = components
 
+    parts = ["", "", "", ""]
+
+    if scheme:
+        parts[0] = f"{scheme}:"
+
     if netloc:
         if url and url[:1] != "/":
-            url = "/" + url
-        url = "//" + netloc + url
+            url = f"/{url}"
+        parts[1] = f"//{netloc}{url}"
     elif url[:2] == "//" or (
         scheme and scheme in _USES_NETLOC and (not url or url[:1] == "/")
     ):
-        url = "//" + url
-    if scheme:
-        url = scheme + ":" + url
+        parts[1] = f"//{url}"
+    else:
+        parts[1] = url
+
     if query:
-        url += "?" + query
+        parts[2] = f"?{query}"
+
     if fragment:
-        url += "#" + fragment
+        parts[3] = f"#{fragment}"
 
-    return url
+    return "".join(parts)
 
 
-@functools.lru_cache(typed=True)
-def _urlsplit(
+@dataclasses.dataclass(slots=True, eq=False, repr=False)
+class _SplitResult:  # pylint: disable=too-many-instance-attributes
+    scheme: str
+    netloc: str
+    path: str
+    query: str
+    fragment: str
+
+    username: str | None = None
+    password: str | None = None
+    hostname: str | None = None
+    port: str | int | None = None
+
+    def __post_init__(self) -> None:
+        if self.hostname is not None:
+            hostname, delim, zone = self.hostname.partition("%")
+            self.hostname = f"{hostname.lower()}{delim}{zone}"
+
+        if self.port is not None:
+            try:
+                self.port = int(self.port)
+            except ValueError:
+                raise ValueError(
+                    f"Port could not be cast to integer value as {self.port}"
+                ) from None
+
+            if self.port not in range(65536):
+                raise ValueError("Port out of range 0-65535")
+
+    def __iter__(self) -> Generator[str]:
+        yield self.scheme
+        yield self.netloc
+        yield self.path
+        yield self.query
+        yield self.fragment
+
+    def __len__(self) -> int:
+        return 5
+
+    def __getitem__(self, index: int) -> str:
+        return (
+            self.scheme,
+            self.netloc,
+            self.path,
+            self.query,
+            self.fragment,
+        )[index]
+
+
+@functools.lru_cache
+def _urlsplit(  # pylint: disable=too-many-locals,too-many-statements
     url: str,
     scheme: str = "",
     allow_fragments: bool = True,
-) -> SplitResult:
+) -> _SplitResult:
     """urllib.parse.urlsplit but without _coerce_args/_coerce_result"""
 
     if not url:
-        return SplitResult(scheme, "", "", "", "")
+        return _SplitResult(scheme, "", "", "", "")
 
     url, scheme = url.lstrip(_C0_CONTROL_OR_SPACE), scheme.strip(_C0_CONTROL_OR_SPACE)
 
@@ -407,39 +457,79 @@ def _urlsplit(
         scheme = m.group(1).lower()
         url = url[m.end() :]
 
-    if url[:2] == "//":
-        slash = url.find("/", 2)
-        question = url.find("?", 2)
-        hash_ = url.find("#", 2)
+    slash_pos = question_pos = hash_pos = open_br_pos = closing_br_pos = -1
+    for idx, char in enumerate(url[2:], 2):
+        if char == "/" and slash_pos == -1:
+            slash_pos = idx
+        elif char == "?" and question_pos == -1:
+            question_pos = idx
+        elif char == "#" and hash_pos == -1:
+            hash_pos = idx
+        elif char == "[" and open_br_pos == -1:
+            open_br_pos = idx
+        elif char == "]" and closing_br_pos == -1:
+            closing_br_pos = idx
+        if slash_pos != question_pos != hash_pos != open_br_pos != closing_br_pos != -1:
+            break
 
+    if url[:2] == "//":
+        if (open_br_pos != -1) != (closing_br_pos != -1):
+            raise ValueError("Invalid IPv6 URL")
         delim = len(url)
 
-        if slash >= 0 and slash < delim:  # pylint: disable=chained-comparison
-            delim = slash
-
-        if question >= 0 and question < delim:  # pylint: disable=chained-comparison
-            delim = question
-
-        if hash_ >= 0 and hash_ < delim:  # pylint: disable=chained-comparison
-            delim = hash_
+        if 0 < slash_pos < delim:
+            delim = slash_pos
+        if 0 < question_pos < delim:
+            delim = question_pos
+        if 0 < hash_pos < delim:
+            delim = hash_pos
 
         netloc = url[2:delim]
+        if open_br_pos != -1 and closing_br_pos != -1:
+            _check_bracketed_netloc(netloc)
+
         url = url[delim:]
 
-        has_opening = "[" in netloc
-        has_closing = "]" in netloc
-        if has_opening != has_closing:
-            raise ValueError("Invalid IPv6 URL")
-        if has_opening and has_closing:
-            _check_bracketed_netloc(netloc)
+        if question_pos != -1:
+            question_pos -= delim
+        if hash_pos != -1:
+            hash_pos -= delim
     _checknetloc(netloc)
 
-    if allow_fragments:
-        url, _, fragment = url.partition("#")
+    if allow_fragments and hash_pos != -1:
+        url, fragment = url[:hash_pos], url[hash_pos + 1 :]
 
-    url, _, query = url.partition("?")
+    if question_pos != -1:
+        url, query = url[:question_pos], url[question_pos + 1 :]
 
-    return SplitResult(scheme, netloc, url, query, fragment)
+    username = password = hostname = port = None
+    userinfo, have_info, hostinfo = netloc.rpartition("@")
+
+    if have_info:
+        username, _, password = userinfo.partition(":")
+        password = password if _ else None
+    else:
+        username = password = None
+
+    if open_br_pos != -1:
+        bracketed = hostinfo.partition("[")[2]
+        hostname, _, port = bracketed.partition("]")
+        port = port.partition(":")[2]
+    else:
+        hostname, _, port = hostinfo.partition(":")
+    port = port or None
+
+    return _SplitResult(
+        scheme,
+        netloc,
+        url,
+        query,
+        fragment,
+        username,
+        password,
+        hostname,
+        port,
+    )
 
 
 if not _IS_LINUX:  # pragma: no cover

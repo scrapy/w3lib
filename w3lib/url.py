@@ -145,16 +145,16 @@ def safe_url_string(
         if username is not None:
             _quote_into(
                 _unquote(username),
-                _USERINFO_SAFEST_CHARS,
                 tmp_buf,
+                _USERINFO_SAFEST_CHARS,
             )
 
         if password is not None:
             tmp_buf.append(58)  # ':'
             _quote_into(
                 _unquote(password),
-                _USERINFO_SAFEST_CHARS,
                 tmp_buf,
+                _USERINFO_SAFEST_CHARS,
             )
 
         tmp_buf.append(64)  # '@'
@@ -182,7 +182,7 @@ def safe_url_string(
     tmp_buf.clear()
 
     if quote_path:
-        _quote_into(parts.path.encode(path_encoding), _PATH_SAFEST_CHARS, tmp_buf)
+        _quote_into(parts.path.encode(path_encoding), tmp_buf, _PATH_SAFEST_CHARS)
         path = tmp_buf.decode()
     else:
         path = parts.path
@@ -191,16 +191,16 @@ def safe_url_string(
 
     _quote_into(
         parts.query.encode(encoding),
+        tmp_buf,
         _SPECIAL_QUERY_SAFEST_CHARS
         if parts.scheme in _SPECIAL_SCHEMES
         else _QUERY_SAFEST_CHARS,
-        tmp_buf,
     )
     query = tmp_buf.decode()
     tmp_buf.clear()
 
     if parts.fragment:
-        _quote_into(parts.fragment.encode(encoding), _FRAGMENT_SAFEST_CHARS, tmp_buf)
+        _quote_into(parts.fragment.encode(encoding), tmp_buf, _FRAGMENT_SAFEST_CHARS)
         fragment = tmp_buf.decode()
         tmp_buf.clear()
     else:
@@ -234,7 +234,7 @@ def safe_download_url(
     scheme, netloc, path, query, _ = _urlsplit(safe_url)
     if path:
         path = _parent_dirs.sub("", posixpath.normpath(path))
-        if safe_url.endswith("/") and not path.endswith("/"):
+        if safe_url[-1] == "/" and path[-1] != "/":
             path += "/"
     else:
         path = "/"
@@ -417,7 +417,15 @@ def _add_or_replace_parameters(url: str, params: dict[bytes, bytes]) -> str:
             new_args.append((name, value))
     del seen_params, current_args
 
-    return _urlunsplit(parsed._replace(query=_urlencode(new_args).decode()))
+    return _urlunsplit(
+        (
+            parsed.scheme,
+            parsed.netloc,
+            parsed.path,
+            _urlencode(new_args).decode(),
+            parsed.fragment,
+        )
+    )
 
 
 def add_or_replace_parameter(url: str, name: str, new_value: str) -> str:
