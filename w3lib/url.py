@@ -610,13 +610,31 @@ def _safe_ParseResult(
     except UnicodeError:
         netloc = parts.netloc
 
+    tmp_buf = bytearray()
+
+    _quote_into(parts.path.encode(path_encoding), tmp_buf, _path_safe_chars)
+    path = tmp_buf.decode()
+    tmp_buf.clear()
+
+    _quote_into(parts.params.encode(encoding), tmp_buf, _safe_chars)
+    params = tmp_buf.decode()
+    tmp_buf.clear()
+
+    _quote_into(parts.query.encode(encoding), tmp_buf, _safe_chars)
+    query = tmp_buf.decode()
+    tmp_buf.clear()
+
+    _quote_into(parts.fragment.encode(encoding), tmp_buf, _safe_chars)
+    fragment = tmp_buf.decode()
+    tmp_buf.clear()
+
     return (
         parts.scheme,
         netloc,
-        _quote(parts.path.encode(path_encoding), _path_safe_chars).decode(),
-        _quote(parts.params.encode(path_encoding), _safe_chars).decode(),
-        _quote(parts.query.encode(encoding), _safe_chars).decode(),
-        _quote(parts.fragment.encode(encoding), _safe_chars).decode(),
+        path,
+        params,
+        query,
+        fragment,
     )
 
 
