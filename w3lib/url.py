@@ -21,8 +21,8 @@ from ._infra import (
     _C0_CONTROL_OR_SPACE as _C0_CONTROL_OR_SPACE,
 )
 from ._url import (
-    _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE as _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE,
     # reexports
+    _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE as _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE,
     _PATH_SAFE_CHARS as _path_safe_chars,
     _SAFE_CHARS as _safe_chars,
     _SPECIAL_SCHEMES as _SPECIAL_SCHEMES,
@@ -159,7 +159,7 @@ def safe_url_string(
 
         tmp_buf.append(64)  # '@'
 
-    if hostname:
+    if hostname is not None:
         if ":" in hostname:
             # IPv6 address: urlsplit() strips the brackets from the hostname,
             # but they are required in the netloc when rebuilding the URL.
@@ -174,7 +174,7 @@ def safe_url_string(
                 # missing labels (e.g. http://.example.com)
                 tmp_buf += hostname.encode(encoding)
 
-    if port:
+    if port is not None:
         tmp_buf.append(58)  # ':'
         tmp_buf += str(port).encode(encoding)
 
@@ -356,9 +356,7 @@ def url_query_cleaner(
     base, _, query = url.partition("?")
 
     if not query or (not parameterlist and not remove):
-        return (
-            base if not keep_fragments else base + ("#" + fragment if fragment else "")
-        )
+        return base if not keep_fragments else f"{base}#{fragment or ''}"
 
     param_lookup = frozenset(parameterlist)
 
@@ -385,11 +383,11 @@ def url_query_cleaner(
         result.append(ksv)
     del param_lookup, seen
 
-    url = base if not result else base + "?" + sep.join(result)
+    url = base if not result else f"{base}?{sep.join(result)}"
     del result
 
     if keep_fragments and fragment:
-        url += "#" + fragment
+        url += f"#{fragment}"
 
     return url
 
@@ -509,7 +507,6 @@ _token = r"[{}]+".format(
 _quoted_string = r"(?:[{}]|(?:\\[{}]))*".format(
     re.escape("".join(_char - {'"', "\\", "\r"})), re.escape("".join(_char))
 )
-del _char
 
 # Encode the regular expression strings to make them into bytes, as Python 3
 # bytes have no format() method, but bytes must be passed to re.compile() in
@@ -520,7 +517,6 @@ _mediatype_pattern = re.compile(rf"{_token}/{_token}".encode())
 _mediatype_parameter_pattern = re.compile(
     rf';({_token})=(?:({_token})|"({_quoted_string})")'.encode()
 )
-del _token, _quoted_string
 
 
 class ParseDataURIResult(NamedTuple):

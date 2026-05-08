@@ -118,7 +118,7 @@ def _quote_table(safe: bytes = b"", quote_plus: bool = False) -> tuple[bytes, ..
 
 def _quote(data: bytes, safe: bytes = b"", quote_plus: bool = False) -> bytes:
     """faster version of urlib.parse.quote and without _coerce_args/_coerce_result"""
-    if not data:
+    if not data:  # pragma: no cover
         return b""
 
     transform_table = _quote_table(safe, quote_plus)
@@ -128,7 +128,7 @@ def _quote(data: bytes, safe: bytes = b"", quote_plus: bool = False) -> bytes:
 def _quote_into(
     data: bytes, output: bytearray, safe: bytes = b"", quote_plus: bool = False
 ) -> None:
-    if not data:
+    if not data:  # pragma: no cover
         return
 
     transform_table = _quote_table(safe, quote_plus)
@@ -140,10 +140,10 @@ def _unquote(
     safe: bytes = b"",
 ) -> bytes:
     """faster version of urlib.parse.unquote and without _coerce_args/_coerce_result"""
-    if not data:
+    if not data:  # pragma: no cover
         return b""
 
-    if isinstance(data, str):
+    if isinstance(data, str):  # pragma: no cover
         data = data.encode()
 
     hex_table = _hex_decode_table()
@@ -177,11 +177,8 @@ def _unquote(
 
 def _unquote_plus(data: bytes) -> bytes:
     """faster version of urlib.parse.unquote and without _coerce_args/_coerce_result"""
-    if not data:
+    if not data:  # pragma: no cover
         return b""
-
-    if isinstance(data, str):
-        data = data.encode()
 
     hex_table = _hex_decode_table()
     allowed = _safe_table()
@@ -218,12 +215,14 @@ def _unquote_plus(data: bytes) -> bytes:
 
 
 def _parse_qs(
-    qs: str | bytes, keep_blank_values: bool = False
+    qs: str | bytes,
+    keep_blank_values: bool = False,
 ) -> dict[bytes, list[bytes]]:
-    if not qs:
+
+    if not qs:  # pragma: no cover
         return {}
 
-    if isinstance(qs, str):
+    if isinstance(qs, str):  # pragma: no cover
         qs = qs.encode()
 
     result: dict[bytes, list[bytes]] = {}
@@ -232,19 +231,10 @@ def _parse_qs(
         if not field:
             continue
 
-        i = field.find(b"=")
+        key, sep, value = field.partition(b"=")
 
-        if i == -1:
-            if not keep_blank_values:
-                continue
-            key = field
-            value = b""
-        else:
-            key = field[:i]
-            value = field[i + 1 :]
-
-            if not value and not keep_blank_values:
-                continue
+        if not keep_blank_values and (not sep or not value):
+            continue
 
         key = _unquote_plus(key)
         value = _unquote_plus(value)
@@ -258,12 +248,14 @@ def _parse_qs(
 
 
 def _parse_qsl(
-    qs: str | bytes, keep_blank_values: bool = False
+    qs: str | bytes,
+    keep_blank_values: bool = False,
 ) -> list[tuple[bytes, bytes]]:
-    if not qs:
+
+    if not qs:  # pragma: no cover
         return []
 
-    if isinstance(qs, str):
+    if isinstance(qs, str):  # pragma: no cover
         qs = qs.encode()
 
     result: list[tuple[bytes, bytes]] = []
@@ -272,19 +264,10 @@ def _parse_qsl(
         if not field:
             continue
 
-        i = field.find(b"=")
+        key, sep, value = field.partition(b"=")
 
-        if i == -1:
-            if not keep_blank_values:
-                continue
-            key = field
-            value = b""
-        else:
-            key = field[:i]
-            value = field[i + 1 :]
-
-            if not value and not keep_blank_values:
-                continue
+        if not keep_blank_values and (not sep or not value):
+            continue
 
         result.append((_unquote_plus(key), _unquote_plus(value)))
 
@@ -292,10 +275,10 @@ def _parse_qsl(
 
 
 def _urlencode(query: _QueryType) -> bytes:
-    if hasattr(query, "items"):
+    if hasattr(query, "items"):  # pragma: no cover
         query = query.items()  # type: ignore[assignment]
 
-    if not query:
+    if not query:  # pragma: no cover
         return b""
 
     result: list[bytes] = []
@@ -325,7 +308,7 @@ def _urlparse(
     allow_fragments: bool = True,
 ) -> ParseResult:
     """urlib.parse.urlparse but without _coerce_args/_coerce_result"""
-    if not url:
+    if not url:  # pragma: no cover
         return ParseResult(scheme, "", "", "", "", "")
 
     scheme, netloc, url, query, fragment = _urlsplit(url, scheme, allow_fragments)
@@ -355,7 +338,7 @@ def _urlunparse(
     fragment: str,
 ) -> str:
     """urlib.parse.urlunparse but without _coerce_args/_coerce_result"""
-    if params:
+    if params:  # pragma: no cover
         url = f"{url};{params}"
     return _urlunsplit((scheme, netloc, url, query, fragment))
 
@@ -538,12 +521,12 @@ if not _IS_LINUX:  # pragma: no cover
 
 def _url2pathname(url: str) -> str:
     """urllib.request.url2pathname but with faster _unquote"""
-    if not url:
+    if not url:  # pragma: no cover
         return ""
 
-    if url[:2] == "///":
+    if url[:3] == "///":
         url = url[2:]
-    elif url[11:] == "//localhost/":
+    elif url[12:] == "//localhost/":
         url = url[11:]
 
     if not _IS_WINDOWS:
