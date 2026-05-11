@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import dataclasses
 import functools
+import ipaddress
 import os
 import re
 import string
 import sys
+import unicodedata
 from typing import TYPE_CHECKING
 from urllib.parse import ParseResult, scheme_chars, uses_netloc, uses_params
 
@@ -16,14 +18,7 @@ if TYPE_CHECKING:
     from urllib.parse import _QueryType
 
 _IS_WINDOWS = os.name == "nt"
-_IS_LINUX = sys.platform == "linux"
-if _IS_LINUX:  # pragma: no cover
-    from urllib.parse import (  # type: ignore[attr-defined]
-        _check_bracketed_netloc,
-        _checknetloc,
-    )
-else:  # pragma: no cover
-    from urllib.parse import urlsplit as urllib_urlsplit
+
 
 _FS_ENCODING = sys.getfilesystemencoding()
 _FS_ERRORS = sys.getfilesystemencodeerrors()
@@ -58,6 +53,14 @@ _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE = str.maketrans("", "", _ASCII_TAB_OR_NE
 _C0_CONTROL_OR_SPACE_SET = frozenset(_C0_CONTROL_OR_SPACE)
 _C0_CONTROL_OR_SPACE_RE = re.compile(rf"[{_C0_CONTROL_OR_SPACE}]")
 _SCHEME_RE = re.compile(r"^([A-Za-z][A-Za-z0-9+.-]*):")
+
+_IPV_FUTURE_RE = re.compile(r"\Av[a-fA-F0-9]+\..+\Z")
+_NETLOC_DELIMS = ("/", "?", "#", "@", ":")
+_NETLOC_STRIP_CHARS = str.maketrans(
+    "",
+    "",
+    "@:#?",
+)
 
 
 def _strip(input_string: str) -> str:
@@ -139,79 +142,130 @@ def _unquote(
     data: bytes | bytearray | str,
     safe: bytes = b"",
 ) -> bytes:
-    """faster version of urlib.parse.unquote and without _coerce_args/_coerce_result"""
-    if not data:  # pragma: no cover
+    if not data:
         return b""
 
-    if isinstance(data, str):  # pragma: no cover
+    if isinstance(data, str):
         data = data.encode()
 
-    hex_table = _hex_decode_table()
-    allowed = _safe_table(safe)
+    first_percent = data.find(b"%")
 
-    output = bytearray()
+    if first_percent < 0:
+        return bytes(data)
 
-    i = 0
-    length = len(data)
+    hex_decode_table = _hex_decode_table()
+    safe_table = _safe_table(safe)
 
-    while i < length:
-        byte = data[i]
+    data_length = len(data)
+    decode_limit = data_length - 2
 
-        if byte == 37 and i + 2 < length:  # ord('%') = 37
-            hi = hex_table[data[i + 1]]
-            lo = hex_table[data[i + 2]]
+    output = bytearray(data_length)
+    output[:first_percent] = data[:first_percent]
 
-            if hi != 255 and lo != 255:
-                decoded = (hi << 4) | lo
+    input_index = first_percent
+    output_index = first_percent
 
-                if not allowed[decoded]:
-                    output.append(decoded)
-                    i += 3
+    while input_index < decode_limit:
+        current_byte = data[input_index]
+
+        if current_byte == 37:
+            high_nibble = hex_decode_table[data[input_index + 1]]
+            low_nibble = hex_decode_table[data[input_index + 2]]
+
+            if (high_nibble | low_nibble) != 255:
+                decoded_byte = (high_nibble << 4) | low_nibble
+
+                if not safe_table[decoded_byte]:
+                    output[output_index] = decoded_byte
+                    input_index += 3
+                    output_index += 1
                     continue
 
-        output.append(byte)
-        i += 1
+        output[output_index] = current_byte
+        input_index += 1
+        output_index += 1
 
-    return bytes(output)
+    while input_index < data_length:
+        output[output_index] = data[input_index]
+        input_index += 1
+        output_index += 1
+
+    return bytes(output[:output_index])
 
 
-def _unquote_plus(data: bytes) -> bytes:
-    """faster version of urlib.parse.unquote and without _coerce_args/_coerce_result"""
-    if not data:  # pragma: no cover
+def _unquote_plus(
+    data: bytes | bytearray | str,
+) -> bytes:
+    if not data:
         return b""
 
-    hex_table = _hex_decode_table()
-    allowed = _safe_table()
+    if isinstance(data, str):
+        data = data.encode()
 
-    output = bytearray()
+    first_percent = data.find(b"%")
+    first_plus = data.find(b"+")
 
-    i = 0
-    length = len(data)
+    first_special = min(first_percent, first_plus)
 
-    while i < length:
-        byte = data[i]
+    if first_special < 0:
+        first_special = max(first_percent, first_plus)
 
-        if byte == 43:  # '+'
-            output.append(32)
-            i += 1
+    if first_special < 0:
+        return bytes(data)
+
+    hex_decode_table = _hex_decode_table()
+    safe_table = _safe_table()
+
+    data_length = len(data)
+    decode_limit = data_length - 2
+
+    output = bytearray(data_length)
+    output[:first_special] = data[:first_special]
+
+    input_index = first_special
+    output_index = first_special
+
+    while input_index < decode_limit:
+        current_byte = data[input_index]
+
+        # '+'
+        if current_byte == 43:
+            output[output_index] = 32
+            input_index += 1
+            output_index += 1
             continue
 
-        if byte == 37 and i + 2 < length:  # ord('%') = 37
-            hi = hex_table[data[i + 1]]
-            lo = hex_table[data[i + 2]]
+        # '%'
+        if current_byte == 37:
+            high_nibble = hex_decode_table[data[input_index + 1]]
+            low_nibble = hex_decode_table[data[input_index + 2]]
 
-            if hi != 255 and lo != 255:
-                decoded = (hi << 4) | lo
+            if (high_nibble | low_nibble) != 255:
+                decoded_byte = (high_nibble << 4) | low_nibble
 
-                if not allowed[decoded]:
-                    output.append(decoded)
-                    i += 3
+                if not safe_table[decoded_byte]:
+                    output[output_index] = decoded_byte
+                    input_index += 3
+                    output_index += 1
                     continue
 
-        output.append(byte)
-        i += 1
+        output[output_index] = current_byte
+        input_index += 1
+        output_index += 1
 
-    return bytes(output)
+    # tail
+    while input_index < data_length:
+        current_byte = data[input_index]
+
+        if current_byte == 43:
+            output[output_index] = 32
+        else:
+            output[output_index] = current_byte
+
+        input_index += 1
+        output_index += 1
+
+    return bytes(output[:output_index])
 
 
 def _parse_qs(
@@ -421,6 +475,81 @@ class _SplitResult:  # pylint: disable=too-many-instance-attributes
         )[index]
 
 
+def _checknetloc(netloc: str) -> None:
+    """
+    Validate that NFKC normalization does not introduce reserved URL characters.
+
+    Raises:
+        ValueError: If normalization introduces reserved delimiters.
+    """
+    # Fast path for common cases.
+    if not netloc or netloc.isascii():
+        return
+
+    # IDNA uses NFKC equivalence. Remove already-valid delimiters before
+    # normalization so we only detect newly introduced ones.
+    cleaned = netloc.translate(_NETLOC_STRIP_CHARS)
+    normalized = unicodedata.normalize("NFKC", cleaned)
+
+    # Fast path: no normalization changes.
+    if cleaned == normalized:
+        return
+
+    if any(delim in normalized for delim in _NETLOC_DELIMS):
+        raise ValueError(
+            f"netloc {netloc!r} contains invalid characters under NFKC normalization"
+        )
+
+
+def _check_bracketed_netloc(netloc: str) -> None:
+    """
+    Validate bracket usage in a URL netloc.
+
+    Raises:
+        ValueError: If bracket placement or host syntax is invalid.
+    """
+    # Must mirror NetlocResultMixins._hostinfo() splitting behavior.
+    hostname_and_port = netloc.rpartition("@")[2]
+
+    before_bracket, has_open_bracket, bracketed = hostname_and_port.partition("[")
+
+    if has_open_bracket:
+        # No data is allowed before '['.
+        if before_bracket:
+            raise ValueError("Invalid IPv6 URL")
+
+        hostname, _, port = bracketed.partition("]")
+
+        # Only ':<port>' may follow ']'.
+        if port and not port.startswith(":"):
+            raise ValueError("Invalid IPv6 URL")
+    else:
+        hostname, _, _ = hostname_and_port.partition(":")
+
+    _check_bracketed_host(hostname)
+
+
+def _check_bracketed_host(hostname: str) -> None:
+    """
+    Validate a bracketed host according to RFC 3986 / WHATWG URL rules.
+
+    Raises:
+        ValueError: If the host is invalid.
+    """
+    # IPvFuture: v<HEXDIG>.<address>
+    if hostname.startswith(("v", "V")):
+        if not _IPV_FUTURE_RE.fullmatch(hostname):
+            raise ValueError("IPvFuture address is invalid")
+        return
+
+    # ip_address() raises ValueError if invalid.
+    ip = ipaddress.ip_address(hostname)
+
+    # Bracketed IPv4 literals are forbidden.
+    if isinstance(ip, ipaddress.IPv4Address):
+        raise ValueError("An IPv4 address cannot be in brackets")
+
+
 @functools.lru_cache
 def _urlsplit(  # pylint: disable=too-many-locals,too-many-statements
     url: str,
@@ -491,8 +620,6 @@ def _urlsplit(  # pylint: disable=too-many-locals,too-many-statements
     if have_info:
         username, _, password = userinfo.partition(":")
         password = password if _ else None
-    else:
-        username = password = None
 
     if open_br_pos != -1:
         bracketed = hostinfo.partition("[")[2]
@@ -500,7 +627,6 @@ def _urlsplit(  # pylint: disable=too-many-locals,too-many-statements
         port = port.partition(":")[2]
     else:
         hostname, _, port = hostinfo.partition(":")
-    port = port or None
 
     return _SplitResult(
         scheme,
@@ -511,12 +637,8 @@ def _urlsplit(  # pylint: disable=too-many-locals,too-many-statements
         username,
         password,
         hostname,
-        port,
+        port or None,
     )
-
-
-if not _IS_LINUX:  # pragma: no cover
-    _urlsplit = urllib_urlsplit  # type: ignore[assignment]
 
 
 def _url2pathname(url: str) -> str:
