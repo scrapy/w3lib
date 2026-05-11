@@ -1103,6 +1103,11 @@ class TestUrl:
             uri = "file:///C:/windows/clock.avi"
             uri2 = path_to_file_uri(file_uri_to_path(uri))
             assert uri == uri2
+            assert file_uri_to_path("///path/to/test.txt") == r"\path\to\test.txt"
+            assert (
+                file_uri_to_path("/path/to/test%20file.txt")
+                == r"\path\to\test file.txt"
+            )
         else:
             assert file_uri_to_path("file:///path/to/test.txt") == "/path/to/test.txt"
             assert file_uri_to_path("/path/to/test.txt") == "/path/to/test.txt"
@@ -1112,10 +1117,12 @@ class TestUrl:
             assert (
                 file_uri_to_path("//localhost/path/to/test.txt") == "/path/to/test.txt"
             )
+            assert file_uri_to_path("///path/to/test.txt") == "/path/to/test.txt"
+            assert (
+                file_uri_to_path("/path/to/test%20file.txt") == "/path/to/test file.txt"
+            )
 
         assert file_uri_to_path("test.txt") == "test.txt"
-        assert file_uri_to_path("///path/to/test.txt") == "/path/to/test.txt"
-        assert file_uri_to_path("/path/to/test%20file.txt") == "/path/to/test file.txt"
 
     def test_any_to_uri(self):
         if os.name == "nt":

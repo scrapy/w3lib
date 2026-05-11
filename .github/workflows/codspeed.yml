@@ -30,6 +30,7 @@ jobs:
             - name: Set up Python 3.13
               uses: actions/setup-python@v6
               with:
+                  check-latest: true
                   python-version: '3.13'
             - name: Install dependencies
               run: |
