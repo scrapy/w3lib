@@ -52,15 +52,11 @@ _USES_PARAMS = frozenset(uses_params)
 _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE = str.maketrans("", "", _ASCII_TAB_OR_NEWLINE)
 _C0_CONTROL_OR_SPACE_SET = frozenset(_C0_CONTROL_OR_SPACE)
 _C0_CONTROL_OR_SPACE_RE = re.compile(rf"[{_C0_CONTROL_OR_SPACE}]")
-_SCHEME_RE = re.compile(r"^([A-Za-z][A-Za-z0-9+.-]*):")
+_SCHEME_RE = re.compile(rf"^([{scheme_chars}]*):")
 
 _IPV_FUTURE_RE = re.compile(r"\Av[a-fA-F0-9]+\..+\Z")
-_NETLOC_DELIMS = ("/", "?", "#", "@", ":")
-_NETLOC_STRIP_CHARS = str.maketrans(
-    "",
-    "",
-    "@:#?",
-)
+_NETLOC_DELIMS_RE = re.compile(r"[/?#@:]")
+_NETLOC_STRIP_CHARS = str.maketrans("", "", "@:#?")
 
 
 def _strip(input_string: str) -> str:
@@ -110,7 +106,7 @@ def _quote_table(safe: bytes = b"", quote_plus: bool = False) -> tuple[bytes, ..
     for idx, byte in enumerate(range(256)):
         if allowed[byte]:
             output[idx] = chr(byte).encode()
-        elif quote_plus and byte == 32:
+        elif quote_plus and byte == 32:  # ord(' ')
             output[idx] = b"+"
         else:
             offset = byte * 3
@@ -168,7 +164,7 @@ def _unquote(
     while input_index < decode_limit:
         current_byte = data[input_index]
 
-        if current_byte == 37:
+        if current_byte == 37:  # ord('%')
             high_nibble = hex_decode_table[data[input_index + 1]]
             low_nibble = hex_decode_table[data[input_index + 2]]
 
@@ -185,7 +181,7 @@ def _unquote(
         input_index += 1
         output_index += 1
 
-    while input_index < data_length:
+    while input_index < data_length:  # tail
         output[output_index] = data[input_index]
         input_index += 1
         output_index += 1
@@ -205,7 +201,7 @@ def _unquote_plus(
     first_percent = data.find(b"%")
     first_plus = data.find(b"+")
 
-    first_special = min(first_percent, first_plus)
+    first_special = min(first_plus, first_percent)
 
     if first_special < 0:
         first_special = max(first_percent, first_plus)
@@ -228,15 +224,13 @@ def _unquote_plus(
     while input_index < decode_limit:
         current_byte = data[input_index]
 
-        # '+'
-        if current_byte == 43:
-            output[output_index] = 32
+        if current_byte == 43:  # ord('+')
+            output[output_index] = 32  # ord(' ')
             input_index += 1
             output_index += 1
             continue
 
-        # '%'
-        if current_byte == 37:
+        if current_byte == 37:  # ord('%')
             high_nibble = hex_decode_table[data[input_index + 1]]
             low_nibble = hex_decode_table[data[input_index + 2]]
 
@@ -253,12 +247,11 @@ def _unquote_plus(
         input_index += 1
         output_index += 1
 
-    # tail
-    while input_index < data_length:
+    while input_index < data_length:  # tail
         current_byte = data[input_index]
 
-        if current_byte == 43:
-            output[output_index] = 32
+        if current_byte == 43:  # ord('+')
+            output[output_index] = 32  # ord(' ')
         else:
             output[output_index] = current_byte
 
@@ -344,7 +337,7 @@ def _urlencode(query: _QueryType) -> bytes:
             output=tmp_buf,
             quote_plus=True,
         )
-        tmp_buf.append(61)
+        tmp_buf.append(61)  # chr(61)
         _quote_into(
             value if isinstance(value, bytes) else str(value).encode(),
             output=tmp_buf,
@@ -401,29 +394,25 @@ def _urlunsplit(components: tuple[str, str, str, str, str]) -> str:
     """urlib.parse.urlunsplit but without _coerce_args/_coerce_result"""
     scheme, netloc, url, query, fragment = components
 
-    parts = ["", "", "", ""]
-
     if scheme:
-        parts[0] = f"{scheme}:"
+        scheme = f"{scheme}:"
 
     if netloc:
         if url and url[:1] != "/":
             url = f"/{url}"
-        parts[1] = f"//{netloc}{url}"
+        url = f"//{netloc}{url}"
     elif url[:2] == "//" or (
         scheme and scheme in _USES_NETLOC and (not url or url[:1] == "/")
     ):
-        parts[1] = f"//{url}"
-    else:
-        parts[1] = url
+        url = f"//{url}"
 
     if query:
-        parts[2] = f"?{query}"
+        query = f"?{query}"
 
     if fragment:
-        parts[3] = f"#{fragment}"
+        fragment = f"#{fragment}"
 
-    return "".join(parts)
+    return f"{scheme}{url}{query}{fragment}"
 
 
 @dataclasses.dataclass(slots=True, eq=False, repr=False)
@@ -452,7 +441,7 @@ class _SplitResult:  # pylint: disable=too-many-instance-attributes
                     f"Port could not be cast to integer value as {self.port}"
                 ) from None
 
-            if self.port not in range(65536):
+            if self.port not in range(65535 + 1):
                 raise ValueError("Port out of range 0-65535")
 
     def __iter__(self) -> Generator[str]:
@@ -466,13 +455,18 @@ class _SplitResult:  # pylint: disable=too-many-instance-attributes
         return 5  # pragma: no cover
 
     def __getitem__(self, index: int) -> str:
-        return (
-            self.scheme,
-            self.netloc,
-            self.path,
-            self.query,
-            self.fragment,
-        )[index]
+        match index:
+            case 0:
+                return self.scheme
+            case 1:
+                return self.netloc
+            case 2:
+                return self.path
+            case 3:
+                return self.query
+            case 4:
+                return self.fragment
+        raise IndexError
 
 
 def _checknetloc(netloc: str) -> None:
@@ -488,14 +482,13 @@ def _checknetloc(netloc: str) -> None:
 
     # IDNA uses NFKC equivalence. Remove already-valid delimiters before
     # normalization so we only detect newly introduced ones.
-    cleaned = netloc.translate(_NETLOC_STRIP_CHARS)
-    normalized = unicodedata.normalize("NFKC", cleaned)
+    cleaned, normalized = _nfkc_netloc(netloc)
 
     # Fast path: no normalization changes.
     if cleaned == normalized:
         return
 
-    if any(delim in normalized for delim in _NETLOC_DELIMS):
+    if _NETLOC_DELIMS_RE.search(normalized):
         raise ValueError(
             f"netloc {netloc!r} contains invalid characters under NFKC normalization"
         )
@@ -679,7 +672,9 @@ def _idna(input_string: str) -> tuple[bytes, str]:
     if input_string.isascii():
         return input_string.encode(), input_string
 
-    encoded = input_string.encode("idna")
+    _, normalized = _nfkc_netloc(input_string)
+
+    encoded = normalized.encode("idna")
     return encoded, encoded.decode()
 
 
@@ -689,3 +684,15 @@ def _idna_bytes(input_string: str) -> bytes:
 
 def _idna_str(input_string: str) -> str:
     return _idna(input_string)[1]
+
+
+@functools.lru_cache
+def _nfkc_netloc(netloc: str) -> tuple[str, str]:
+    """
+    Return:
+        cleaned: delimiter-stripped input
+        normalized: NFKC-normalized cleaned input
+    """
+    cleaned = netloc.translate(_NETLOC_STRIP_CHARS)
+    normalized = unicodedata.normalize("NFKC", cleaned)
+    return cleaned, normalized
