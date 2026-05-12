@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import sys
 from inspect import isclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -497,12 +496,6 @@ KNOWN_SAFE_URL_STRING_URL_ISSUES = {
     # (%) are not escaped.
     f"a://example.com#{FRAGMENT_TO_ENCODE}",
 }
-if (
-    sys.version_info < (3, 9, 21)
-    or (sys.version_info[:2] == (3, 10) and sys.version_info < (3, 10, 16))
-    or (sys.version_info[:2] == (3, 11) and sys.version_info < (3, 11, 4))
-):
-    KNOWN_SAFE_URL_STRING_URL_ISSUES.add("http://[2a01:5cc0:1:2:3:4]")  # Invalid IPv6
 
 
 @pytest.mark.parametrize(
