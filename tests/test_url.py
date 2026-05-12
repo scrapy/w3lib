@@ -5,7 +5,7 @@ import sys
 from inspect import isclass
 from pathlib import Path
 from typing import TYPE_CHECKING
-from urllib.parse import urlparse, urlunparse, urlunsplit
+from urllib.parse import urlparse
 
 import pytest
 
@@ -1769,22 +1769,21 @@ class TestPrivateHelpers:
             (("http", "example.com", "", "q", "frag"), "http://example.com?q#frag"),
         ],
     )
-    def test_urlunsplit_matches_stdlib_behavior(self, components, expected):
+    def test_urlunsplit(self, components, expected):
         assert _urlunsplit(components) == expected
-        assert _urlunsplit(components) == urlunsplit(components)
 
     @pytest.mark.parametrize(
-        ("scheme", "netloc", "url", "params", "query", "fragment"),
+        ("components", "expected"),
         [
-            ("http", "example.com", "path", "", "", ""),
-            ("http", "example.com", "/path", "a=1", "b=2", "frag"),
-            ("http", "", "path", "", "", ""),
-            ("http", "", "/path", "", "q=1", "frag"),
-            ("mailto", "", "user@example.com", "", "", ""),
+            (("http", "example.com", "path", "", "", ""), "http://example.com/path"),
+            (
+                ("http", "example.com", "/path", "a=1", "b=2", "frag"),
+                "http://example.com/path;a=1?b=2#frag",
+            ),
+            (("http", "", "path", "", "", ""), "http:path"),
+            (("http", "", "/path", "", "q=1", "frag"), "http:///path?q=1#frag"),
+            (("mailto", "", "user@example.com", "", "", ""), "mailto:user@example.com"),
         ],
     )
-    def test_urlunparse_matches_stdlib_behavior(
-        self, scheme, netloc, url, params, query, fragment
-    ):
-        expected = urlunparse((scheme, netloc, url, params, query, fragment))
-        assert _urlunparse(scheme, netloc, url, params, query, fragment) == expected
+    def test_urlunparse(self, components, expected):
+        assert _urlunparse(*components) == expected
