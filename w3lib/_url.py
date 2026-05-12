@@ -424,7 +424,7 @@ def _urlencode(query: _QueryType) -> bytes:
             output=tmp_buf,
             quote_plus=True,
         )
-        tmp_buf.append(61)  # chr(61)
+        tmp_buf.append(61)  # ord('=')
         _quote_into(
             value if isinstance(value, bytes) else str(value).encode(),
             output=tmp_buf,
