@@ -77,11 +77,37 @@ def _strip(input_string: str) -> str:
 
 @functools.cache
 def _hex_encode_table() -> bytes:
+    """Build a lookup table for percent-encoded byte values.
+
+    | byte | encoding |
+    |------|----------|
+    | 0    | %00      |
+    | 1    | %01      |
+    | ...  | ...      |
+    | 255  | %FF      |
+
+    Each entry is exactly 3 bytes: b"%HH".
+
+    Returns:
+        A bytes object of length 256 * 3 containing all percent encodings.
+    """
     return b"".join(f"%{i:02X}".encode() for i in range(256))
 
 
 @functools.cache
 def _hex_decode_table() -> bytes:
+    """Build a lookup table for decoding hex ASCII characters.
+
+    | ASCII  | value        |
+    |--------|--------------|
+    | '0'-'9'| 0-9          |
+    | 'A'-'F'| 10-15        |
+    | 'a'-'f'| 10-15        |
+    | other  | 255 (invalid)|
+
+    Returns:
+        A bytes object of length 256 containing nibble values.
+    """
     table = bytearray([255]) * 256
     table[48:58] = bytes(range(10))  # '0'-'9'
     table[65:71] = bytes(range(10, 16))  # 'A'-'F'
@@ -91,6 +117,18 @@ def _hex_decode_table() -> bytes:
 
 @functools.cache
 def _safe_table(safe: bytes = RFC3986_UNRESERVED) -> bytes:
+    """Build a lookup table marking safe (non-encoded) bytes.
+
+    | byte | is allowed? |
+    |------|-------------|
+    | 0    | 0           |
+    | 32   | 1 (if safe) |
+    | 65   | 1           |
+    | 255  | 0           |
+
+    Returns:
+        A bytes object of length 256 acting as a boolean mask (0/1).
+    """
     table = bytearray(256)
     for b in safe:
         table[b] = 1
@@ -99,6 +137,25 @@ def _safe_table(safe: bytes = RFC3986_UNRESERVED) -> bytes:
 
 @functools.cache
 def _quote_table(safe: bytes = b"", quote_plus: bool = False) -> tuple[bytes, ...]:
+    """Precompute encoding rules for all 256 byte values.
+
+    Decision table:
+    | condition                     | output |
+    |-------------------------------|--------|
+    | byte in safe                  | as-is  |
+    | byte == 32 and quote_plus     | "+"    |
+    | otherwise                     | "%HH"  |
+
+    Example mapping:
+    | byte | char | output |
+    |------|------|--------|
+    | 65   | A    | b"A"   |
+    | 32   | space| b"+"   |
+    | 255  | N/A  | b"%FF" |
+
+    Returns:
+        A 256-entry tuple mapping byte value (index) -> encoded bytes.
+    """
     hex_table = _hex_encode_table()
     allowed = _safe_table(RFC3986_UNRESERVED + safe) if safe else _safe_table()
     output: list[bytes] = [b""] * 256
@@ -116,7 +173,16 @@ def _quote_table(safe: bytes = b"", quote_plus: bool = False) -> tuple[bytes, ..
 
 
 def _quote(data: bytes, safe: bytes = b"", quote_plus: bool = False) -> bytes:
-    """faster version of urlib.parse.quote and without _coerce_args/_coerce_result"""
+    """Fast URL-style quoting using a precomputed table.
+
+    Args:
+        data: Input bytes.
+        safe: Additional unescaped bytes.
+        quote_plus: Encode space as '+' if True.
+
+    Returns:
+        Percent-encoded bytes.
+    """
     if not data:  # pragma: no cover
         return b""
 
@@ -153,6 +219,7 @@ def _unquote(
     safe_table = _safe_table(safe)
 
     data_length = len(data)
+    # stop at len - 2 because "%HH" decoding reads 2 extra bytes after '%'
     decode_limit = data_length - 2
 
     output = bytearray(data_length)
@@ -165,16 +232,27 @@ def _unquote(
         current_byte = data[input_index]
 
         if current_byte == 37:  # ord('%')
+            # Decoding "%HH" sequence
+            # Step 1: read two hex characters after '%'
+            # Example: "%4F" -> '4' and 'F'
             high_nibble = hex_decode_table[data[input_index + 1]]
             low_nibble = hex_decode_table[data[input_index + 2]]
 
+            # Step 2: validate both characters are valid hex digits
+            # hex_decode_table returns 255 for invalid input
+            # bitwise OR catches any invalid nibble quickly
             if (high_nibble | low_nibble) != 255:
+                # Step 3: combine two 4-bit nibbles into one byte
+                # (high_nibble << 4) + low_nibble
+                # Example: 0x4 and 0xF -> 0x4F
                 decoded_byte = (high_nibble << 4) | low_nibble
 
+                # Step 4: check if decoded byte is NOT in safe set
+                # (only unsafe bytes are decoded; safe ones are left encoded
                 if not safe_table[decoded_byte]:
                     output[output_index] = decoded_byte
-                    input_index += 3
-                    output_index += 1
+                    input_index += 3  # skip past "%HH" in input
+                    output_index += 1  # advance output position by one decoded byte
                     continue
 
         output[output_index] = current_byte
@@ -192,10 +270,12 @@ def _unquote(
 def _unquote_plus(
     data: bytes | bytearray | str,
 ) -> bytes:
+    # This function is intentionally duplicated from `_unquote` for performance.
+    # The duplication avoids extra branching for '+' handling in hot loop.
     if not data:
         return b""
 
-    if isinstance(data, str):
+    if isinstance(data, str):  # pragma: no cover
         data = data.encode()
 
     first_percent = data.find(b"%")
@@ -265,7 +345,10 @@ def _parse_qs(
     qs: str | bytes,
     keep_blank_values: bool = False,
 ) -> dict[bytes, list[bytes]]:
-
+    """Reimplementation of urllib.parse.parse_qs which:
+    - Doesn't use _coerce_args or _coerce_result
+    - Works directly on bytes internally (no type coercion layer)
+    - Returns bytes keys/values only"""
     if not qs:  # pragma: no cover
         return {}
 
@@ -298,11 +381,15 @@ def _parse_qsl(
     qs: str | bytes,
     keep_blank_values: bool = False,
 ) -> list[tuple[bytes, bytes]]:
-
-    if not qs:  # pragma: no cover
+    """Reimplementation of urllib.parse.parse_qsl which:
+    - Doesn't use _coerce_args or _coerce_result
+    - Works directly on bytes internally (no type coercion layer)
+    - Returns only bytes tuples"""
+    # This function is intentionally duplicated from `_parse_qs` for performance.
+    if not qs:
         return []
 
-    if isinstance(qs, str):  # pragma: no cover
+    if isinstance(qs, str):
         qs = qs.encode()
 
     result: list[tuple[bytes, bytes]] = []
@@ -354,7 +441,7 @@ def _urlparse(
     scheme: str = "",
     allow_fragments: bool = True,
 ) -> ParseResult:
-    """urlib.parse.urlparse but without _coerce_args/_coerce_result"""
+    """Reimplementation of urlib.parse.urlparse but without _coerce_args/_coerce_result."""
     if not url:  # pragma: no cover
         return ParseResult(scheme, "", "", "", "", "")
 
@@ -370,8 +457,7 @@ def _urlparse(
             if slash_idx != -1 and slash_idx < semi_idx:
                 semi_idx = url.find(";", slash_idx)
 
-            if semi_idx != -1:
-                url, params = url[:semi_idx], url[semi_idx + 1 :]
+            url, params = url[:semi_idx], url[semi_idx + 1 :]
 
     return ParseResult(scheme, netloc, url, params, query, fragment)
 
@@ -384,18 +470,19 @@ def _urlunparse(
     query: str,
     fragment: str,
 ) -> str:
-    """urlib.parse.urlunparse but without _coerce_args/_coerce_result"""
-    if params:  # pragma: no cover
+    """Reimplementation of urlib.parse.urlunparse but without _coerce_args/_coerce_result."""
+    if params:
         url = f"{url};{params}"
     return _urlunsplit((scheme, netloc, url, query, fragment))
 
 
 def _urlunsplit(components: tuple[str, str, str, str, str]) -> str:
-    """urlib.parse.urlunsplit but without _coerce_args/_coerce_result"""
+    """Reimplementation of urllib.parse.urlsplit which:
+    - Doesn't use _coerce_args or _coerce_result
+    - Operates directly on bytes internally without type coercion
+    - Returns a _SplitResult containing raw bytes components
+    """
     scheme, netloc, url, query, fragment = components
-
-    if scheme:
-        scheme = f"{scheme}:"
 
     if netloc:
         if url and url[:1] != "/":
@@ -405,6 +492,9 @@ def _urlunsplit(components: tuple[str, str, str, str, str]) -> str:
         scheme and scheme in _USES_NETLOC and (not url or url[:1] == "/")
     ):
         url = f"//{url}"
+
+    if scheme:
+        scheme = f"{scheme}:"
 
     if query:
         query = f"?{query}"
@@ -454,7 +544,7 @@ class _SplitResult:  # pylint: disable=too-many-instance-attributes
     def __len__(self) -> int:
         return 5  # pragma: no cover
 
-    def __getitem__(self, index: int) -> str:
+    def __getitem__(self, index: int) -> str:  # pragma: no cover
         match index:
             case 0:
                 return self.scheme
@@ -476,7 +566,6 @@ def _checknetloc(netloc: str) -> None:
     Raises:
         ValueError: If normalization introduces reserved delimiters.
     """
-    # Fast path for common cases.
     if not netloc or netloc.isascii():
         return
 
@@ -484,7 +573,6 @@ def _checknetloc(netloc: str) -> None:
     # normalization so we only detect newly introduced ones.
     cleaned, normalized = _nfkc_netloc(netloc)
 
-    # Fast path: no normalization changes.
     if cleaned == normalized:
         return
 
@@ -500,8 +588,9 @@ def _check_bracketed_netloc(netloc: str) -> None:
 
     Raises:
         ValueError: If bracket placement or host syntax is invalid.
+
+    NOTE: this is basically a backport of https://github.com/python/cpython/issues/105704
     """
-    # Must mirror NetlocResultMixins._hostinfo() splitting behavior.
     hostname_and_port = netloc.rpartition("@")[2]
 
     before_bracket, has_open_bracket, bracketed = hostname_and_port.partition("[")
@@ -516,6 +605,7 @@ def _check_bracketed_netloc(netloc: str) -> None:
         # Only ':<port>' may follow ']'.
         if port and not port.startswith(":"):
             raise ValueError("Invalid IPv6 URL")
+        # port validation done after, in `_SplitResult.__post_init__`
     else:
         hostname, _, _ = hostname_and_port.partition(":")
 
@@ -549,8 +639,12 @@ def _urlsplit(  # pylint: disable=too-many-locals,too-many-statements
     scheme: str = "",
     allow_fragments: bool = True,
 ) -> _SplitResult:
-    """urllib.parse.urlsplit but without _coerce_args/_coerce_result"""
-
+    """Reimplementation of urllib.parse.urlsplit which:
+    - Doesn't use _coerce_args or _coerce_result
+    - Does manual single-pass scanning instead of repeated .find/.split calls
+    - Have reduced string allocations by slicing once using computed indices
+    - Avoids extra computations as much as possible
+    """
     if not url:
         return _SplitResult(scheme, "", "", "", "")
 
@@ -635,13 +729,14 @@ def _urlsplit(  # pylint: disable=too-many-locals,too-many-statements
 
 
 def _url2pathname(url: str) -> str:
-    """urllib.request.url2pathname but with faster _unquote"""
-    if not url:  # pragma: no cover
+    """Reimplementation of urllib.request.url2pathname but with faster _unquote"""
+    if not url:
         return ""
 
-    if url[:3] == "///":
+    # this branches are handled by `_urlparse`
+    if url[:3] == "///":  # pragma: no cover
         url = url[2:]
-    elif url[12:] == "//localhost/":
+    elif url[12:] == "//localhost/":  # pragma: no cover
         url = url[11:]
 
     if not _IS_WINDOWS:
@@ -669,6 +764,14 @@ def _url2pathname(url: str) -> str:
 
 @functools.lru_cache
 def _idna(input_string: str) -> tuple[bytes, str]:
+    """Cached IDNA encoding using Python's built-in 'idna' codec.
+
+    NOTE: IDNA processing in CPython is implemented in pure Python (not C),
+    which makes it relatively slow and allocation-heavy. The only
+    lower-level optimisation involved is Unicode normalization
+    (NFKC), which may use optimized internal paths, but IDNA itself
+    remains Python-level logic.
+    """
     if input_string.isascii():
         return input_string.encode(), input_string
 
@@ -688,11 +791,6 @@ def _idna_str(input_string: str) -> str:
 
 @functools.lru_cache
 def _nfkc_netloc(netloc: str) -> tuple[str, str]:
-    """
-    Return:
-        cleaned: delimiter-stripped input
-        normalized: NFKC-normalized cleaned input
-    """
     cleaned = netloc.translate(_NETLOC_STRIP_CHARS)
     normalized = unicodedata.normalize("NFKC", cleaned)
     return cleaned, normalized

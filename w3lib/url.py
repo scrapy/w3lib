@@ -131,8 +131,9 @@ def safe_url_string(
     #     encoded with the supplied encoding (or UTF8 by default)
     #   - if the supplied (or default) encoding chokes,
     #     percent-encode offending bytes
-    decoded = to_unicode(url, encoding=encoding, errors="percentencode")
-    parts = _urlsplit(_strip(decoded))
+    parts = _urlsplit(
+        _strip(to_unicode(url, encoding=encoding, errors="percentencode"))
+    )
 
     username, password, hostname, port = (
         parts.username,
@@ -141,6 +142,7 @@ def safe_url_string(
         parts.port,
     )
     tmp_buf = bytearray()
+
     if username is not None or password is not None:
         if username is not None:
             _quote_into(
@@ -184,10 +186,9 @@ def safe_url_string(
     if quote_path:
         _quote_into(parts.path.encode(path_encoding), tmp_buf, _PATH_SAFEST_CHARS)
         path = tmp_buf.decode()
+        tmp_buf.clear()
     else:
         path = parts.path
-
-    tmp_buf.clear()
 
     _quote_into(
         parts.query.encode(encoding),
@@ -235,7 +236,7 @@ def safe_download_url(
     if path:
         path = _parent_dirs.sub("", posixpath.normpath(path))
         if safe_url[-1] == "/" and path[-1] != "/":
-            path += "/"
+            path = f"{path}/"
     else:
         path = "/"
     return _urlunsplit((scheme, netloc, path, query, ""))
@@ -270,6 +271,7 @@ def url_query_parameter(
     keep_blank_values: bool | int = 0,
 ) -> str | None:
     """Return the value of a url parameter, given the url and parameter name
+    NOTE: If url contains multiple parameters, the first leftmost one is returned
 
     General case:
 
@@ -387,7 +389,7 @@ def url_query_cleaner(
     del result
 
     if keep_fragments and fragment:
-        url += f"#{fragment}"
+        url = f"{url}#{fragment}"
 
     return url
 
@@ -557,16 +559,12 @@ def parse_data_uri(uri: str | bytes) -> ParseDataURIResult:
     else:
         media_type_params["charset"] = "US-ASCII"
 
-    while True:
-        m = _mediatype_parameter_pattern.match(uri)
-        if m:
-            attribute, value, value_quoted = m.groups()
-            if value_quoted:
-                value = re.sub(rb"\\(.)", rb"\1", value_quoted)
-            media_type_params[attribute.decode()] = value.decode()
-            uri = uri[m.end() :]
-        else:
-            break
+    while m := _mediatype_parameter_pattern.match(uri):
+        attribute, value, value_quoted = m.groups()
+        if value_quoted:
+            value = re.sub(rb"\\(.)", rb"\1", value_quoted)
+        media_type_params[attribute.decode()] = value.decode()
+        uri = uri[m.end() :]
 
     is_base64, _, data = uri.partition(b",")
     if is_base64:
@@ -713,8 +711,6 @@ def canonicalize_url(
 
         query = _urlencode(keyvals).decode()
         del keyvals
-    else:
-        query = ""
 
     # 2. decode percent-encoded sequences in path as UTF-8 (or keep raw bytes)
     #    and percent-encode path again (this normalizes to upper-case %XX)
@@ -736,6 +732,8 @@ def canonicalize_url(
 
 
 def _unquotepath(path: str) -> bytes:
+    if "%" not in path:
+        return path.encode()
     # standard lib's unquote() does not work for non-UTF-8
     # percent-escaped characters, they get lost.
     # e.g., '%a3' becomes 'REPLACEMENT CHARACTER' (U+FFFD)
