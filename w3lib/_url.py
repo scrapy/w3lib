@@ -705,8 +705,7 @@ def _urlsplit(  # pylint: disable=too-many-locals,too-many-statements
         password = password if _ else None
 
     if open_br_pos != -1:
-        bracketed = hostinfo.partition("[")[2]
-        hostname, _, port = bracketed.partition("]")
+        hostname, _, port = hostinfo.partition("[")[2].partition("]")
         port = port.partition(":")[2]
     else:
         hostname, _, port = hostinfo.partition(":")
