@@ -477,11 +477,7 @@ def _urlunparse(
 
 
 def _urlunsplit(components: tuple[str, str, str, str, str]) -> str:
-    """Reimplementation of urllib.parse.urlsplit which:
-    - Doesn't use _coerce_args or _coerce_result
-    - Operates directly on bytes internally without type coercion
-    - Returns a _SplitResult containing raw bytes components
-    """
+    """Reimplementation of urlib.parse.urlunsplit but without _coerce_args/_coerce_result."""
     scheme, netloc, url, query, fragment = components
 
     if netloc:
