@@ -15,17 +15,11 @@ from typing import TYPE_CHECKING, NamedTuple, cast, overload
 from urllib.parse import ParseResult
 from urllib.request import pathname2url
 
-# reexports
-from ._infra import (
-    _ASCII_TAB_OR_NEWLINE as _ASCII_TAB_OR_NEWLINE,
-    _C0_CONTROL_OR_SPACE as _C0_CONTROL_OR_SPACE,
-)
 from ._url import (
+    _PATH_SAFE_CHARS,
+    _SAFE_CHARS,
+    _SPECIAL_SCHEMES,
     # reexports
-    _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE as _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE,
-    _PATH_SAFE_CHARS as _path_safe_chars,
-    _SAFE_CHARS as _safe_chars,
-    _SPECIAL_SCHEMES as _SPECIAL_SCHEMES,
     RFC3986_GEN_DELIMS as RFC3986_GEN_DELIMS,
     RFC3986_RESERVED as RFC3986_RESERVED,
     RFC3986_SUB_DELIMS as RFC3986_SUB_DELIMS,
@@ -37,7 +31,7 @@ from ._url import (
     _parse_qsl,
     _quote,
     _quote_into,
-    _strip as _strip,  # reexport
+    _strip,
     _unquote,
     _url2pathname,
     _urlencode,
@@ -76,7 +70,7 @@ codecs.register_error("percentencode", _quote_byte)
 # be escaped as %25 when it is not already being used as part of an escape
 # character.
 _USERINFO_SAFEST_CHARS = RFC3986_USERINFO_SAFE_CHARS.translate(None, delete=b":;=")
-_PATH_SAFEST_CHARS = _safe_chars.translate(None, delete=b"#[]|")
+_PATH_SAFEST_CHARS = _SAFE_CHARS.translate(None, delete=b"#[]|")
 _QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS
 _SPECIAL_QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS.translate(None, delete=b"'")
 _FRAGMENT_SAFEST_CHARS = _PATH_SAFEST_CHARS
@@ -516,6 +510,7 @@ _mediatype_pattern = re.compile(rf"{_token}/{_token}".encode())
 _mediatype_parameter_pattern = re.compile(
     rf';({_token})=(?:({_token})|"({_quoted_string})")'.encode()
 )
+del _char, _token, _quoted_string
 
 
 class ParseDataURIResult(NamedTuple):
@@ -603,19 +598,19 @@ def _safe_ParseResult(
 
     tmp_buf = bytearray()
 
-    _quote_into(parts.path.encode(path_encoding), tmp_buf, _path_safe_chars)
+    _quote_into(parts.path.encode(path_encoding), tmp_buf, _PATH_SAFE_CHARS)
     path = tmp_buf.decode()
     tmp_buf.clear()
 
-    _quote_into(parts.params.encode(encoding), tmp_buf, _safe_chars)
+    _quote_into(parts.params.encode(encoding), tmp_buf, _SAFE_CHARS)
     params = tmp_buf.decode()
     tmp_buf.clear()
 
-    _quote_into(parts.query.encode(encoding), tmp_buf, _safe_chars)
+    _quote_into(parts.query.encode(encoding), tmp_buf, _SAFE_CHARS)
     query = tmp_buf.decode()
     tmp_buf.clear()
 
-    _quote_into(parts.fragment.encode(encoding), tmp_buf, _safe_chars)
+    _quote_into(parts.fragment.encode(encoding), tmp_buf, _SAFE_CHARS)
     fragment = tmp_buf.decode()
     tmp_buf.clear()
 
@@ -714,7 +709,7 @@ def canonicalize_url(
 
     # 2. decode percent-encoded sequences in path as UTF-8 (or keep raw bytes)
     #    and percent-encode path again (this normalizes to upper-case %XX)
-    path = _quote(_unquotepath(path), _path_safe_chars).decode() if path else "/"
+    path = _quote(_unquotepath(path), _PATH_SAFE_CHARS).decode() if path else "/"
 
     fragment = "" if not keep_fragments else fragment
 
