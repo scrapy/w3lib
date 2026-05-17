@@ -1764,7 +1764,7 @@ class TestPrivateHelpers:
         ],
     )
     def test_urlunsplit(self, components, expected):
-        assert _urlunsplit(components) == expected
+        assert _urlunsplit(*components) == expected
 
     @pytest.mark.parametrize(
         ("components", "expected"),

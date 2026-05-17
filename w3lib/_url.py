@@ -50,7 +50,6 @@ _USES_NETLOC = frozenset(uses_netloc)
 _SCHEME_CHARS = frozenset(scheme_chars)
 _USES_PARAMS = frozenset(uses_params)
 _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE = str.maketrans("", "", _ASCII_TAB_OR_NEWLINE)
-_C0_CONTROL_OR_SPACE_SET = frozenset(_C0_CONTROL_OR_SPACE)
 _C0_CONTROL_OR_SPACE_RE = re.compile(rf"[{_C0_CONTROL_OR_SPACE}]")
 _SCHEME_RE = re.compile(rf"^([{scheme_chars}]*):")
 
@@ -63,11 +62,7 @@ def _strip(input_string: str) -> str:
     if not input_string:
         return input_string
 
-    if (
-        input_string[0] not in _C0_CONTROL_OR_SPACE_SET
-        and input_string[-1] not in _C0_CONTROL_OR_SPACE_SET
-        and not _C0_CONTROL_OR_SPACE_RE.search(input_string)
-    ):
+    if not _C0_CONTROL_OR_SPACE_RE.search(input_string):
         return input_string
 
     return input_string.strip(_C0_CONTROL_OR_SPACE).translate(
@@ -473,12 +468,11 @@ def _urlunparse(
     """Reimplementation of urlib.parse.urlunparse but without _coerce_args/_coerce_result."""
     if params:
         url = f"{url};{params}"
-    return _urlunsplit((scheme, netloc, url, query, fragment))
+    return _urlunsplit(scheme, netloc, url, query, fragment)
 
 
-def _urlunsplit(components: tuple[str, str, str, str, str]) -> str:
+def _urlunsplit(scheme: str, netloc: str, url: str, query: str, fragment: str) -> str:
     """Reimplementation of urlib.parse.urlunsplit but without _coerce_args/_coerce_result."""
-    scheme, netloc, url, query, fragment = components
 
     if netloc:
         if url and url[:1] != "/":
@@ -728,7 +722,7 @@ def _url2pathname(url: str) -> str:
     if not url:
         return ""
 
-    # this branches are handled by `_urlparse`
+    # These branches are handled by `_urlparse`
     if url[:3] == "///":  # pragma: no cover
         url = url[2:]
     elif url[12:] == "//localhost/":  # pragma: no cover

@@ -128,51 +128,44 @@ def safe_url_string(
     parts = _urlsplit(
         _strip(to_unicode(url, encoding=encoding, errors="percentencode"))
     )
-
-    username, password, hostname, port = (
-        parts.username,
-        parts.password,
-        parts.hostname,
-        parts.port,
-    )
     tmp_buf = bytearray()
 
-    if username is not None or password is not None:
-        if username is not None:
+    if parts.username is not None or parts.password is not None:
+        if parts.username is not None:
             _quote_into(
-                _unquote(username),
+                _unquote(parts.username),
                 tmp_buf,
                 _USERINFO_SAFEST_CHARS,
             )
 
-        if password is not None:
-            tmp_buf.append(58)  # ':'
+        if parts.password is not None:
+            tmp_buf.append(58)  # ord(":")
             _quote_into(
-                _unquote(password),
+                _unquote(parts.password),
                 tmp_buf,
                 _USERINFO_SAFEST_CHARS,
             )
 
-        tmp_buf.append(64)  # '@'
+        tmp_buf.append(64)  # ord("@")
 
-    if hostname is not None:
-        if ":" in hostname:
+    if parts.hostname is not None:
+        if ":" in parts.hostname:
             # IPv6 address: urlsplit() strips the brackets from the hostname,
             # but they are required in the netloc when rebuilding the URL.
-            tmp_buf.append(91)  # '['
-            tmp_buf += hostname.encode("ascii")
-            tmp_buf.append(93)  # ']'
+            tmp_buf.append(91)  # ord("[")
+            tmp_buf += parts.hostname.encode("ascii")
+            tmp_buf.append(93)  # ord("]")
         else:
             try:
-                tmp_buf += _idna_bytes(hostname)
+                tmp_buf += _idna_bytes(parts.hostname)
             except UnicodeError:
                 # IDNA encoding can fail for too long labels (>63 characters) or
                 # missing labels (e.g. http://.example.com)
-                tmp_buf += hostname.encode(encoding)
+                tmp_buf += parts.hostname.encode(encoding)
 
-    if port is not None:
-        tmp_buf.append(58)  # ':'
-        tmp_buf += str(port).encode(encoding)
+    if parts.port is not None:
+        tmp_buf.append(58)  # ord(":")
+        tmp_buf += str(parts.port).encode(encoding)
 
     netloc = tmp_buf.decode()
     tmp_buf.clear()
@@ -202,13 +195,11 @@ def safe_url_string(
         fragment = parts.fragment
 
     return _urlunsplit(
-        (
-            parts.scheme,
-            netloc,
-            path,
-            query,
-            fragment,
-        )
+        parts.scheme,
+        netloc,
+        path,
+        query,
+        fragment,
     )
 
 
@@ -233,7 +224,7 @@ def safe_download_url(
             path = f"{path}/"
     else:
         path = "/"
-    return _urlunsplit((scheme, netloc, path, query, ""))
+    return _urlunsplit(scheme, netloc, path, query, "")
 
 
 def is_url(text: str) -> bool:
@@ -294,7 +285,7 @@ def url_query_parameter(
     """
 
     queryparams = _parse_qs(
-        _urlsplit(str(url))[3], keep_blank_values=bool(keep_blank_values)
+        _urlsplit(str(url)).query, keep_blank_values=bool(keep_blank_values)
     )
     parameter_bytes = parameter.encode()
     if parameter_bytes in queryparams:
@@ -352,7 +343,7 @@ def url_query_cleaner(
     base, _, query = url.partition("?")
 
     if not query or (not parameterlist and not remove):
-        return base if not keep_fragments else f"{base}#{fragment or ''}"
+        return base if not keep_fragments else f"{base}#{fragment}"
 
     param_lookup = frozenset(parameterlist)
 
@@ -412,13 +403,11 @@ def _add_or_replace_parameters(url: str, params: dict[bytes, bytes]) -> str:
     del seen_params, current_args
 
     return _urlunsplit(
-        (
-            parsed.scheme,
-            parsed.netloc,
-            parsed.path,
-            _urlencode(new_args).decode(),
-            parsed.fragment,
-        )
+        parsed.scheme,
+        parsed.netloc,
+        parsed.path,
+        _urlencode(new_args).decode(),
+        parsed.fragment,
     )
 
 
