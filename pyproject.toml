@@ -107,6 +107,8 @@ disable = [
     "unused-argument",
     "unused-import",
     "unused-variable",
+    "useless-import-alias",
+    "possibly-used-before-assignment",
 ]
 
 [tool.ruff.lint]
@@ -233,10 +235,17 @@ ignore = [
     "RUF012",
     # Use of `assert` detected
     "S101",
+    # Import alias does not rename original package
+    "PLC0414",
+    # Too many positional arguments
+    "PLR0917",
+    # Private name import
+    "PLC2701",
 ]
 
 [tool.ruff.lint.isort]
 split-on-trailing-comma = false
+combine-as-imports = true
 
 [tool.ruff.lint.pydocstyle]
 convention = "pep257"

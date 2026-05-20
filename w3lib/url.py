@@ -10,32 +10,40 @@ import codecs
 import os
 import posixpath
 import re
-import string
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple, cast, overload
-from urllib.parse import (  # type: ignore[attr-defined]
-    ParseResult,
-    _coerce_args,
-    parse_qs,
-    parse_qsl,
-    quote,
-    unquote,
-    unquote_to_bytes,
-    urldefrag,
-    urlencode,
-    urlparse,
-    urlsplit,
-    urlunparse,
-    urlunsplit,
-)
-from urllib.request import pathname2url, url2pathname
+from urllib.parse import ParseResult
+from urllib.request import pathname2url
 
-from ._infra import _ASCII_TAB_OR_NEWLINE, _C0_CONTROL_OR_SPACE
-from ._url import _SPECIAL_SCHEMES
+from ._url import (
+    _PATH_SAFE_CHARS,
+    _SAFE_CHARS,
+    _SPECIAL_SCHEMES,
+    # reexports
+    RFC3986_GEN_DELIMS as RFC3986_GEN_DELIMS,
+    RFC3986_RESERVED as RFC3986_RESERVED,
+    RFC3986_SUB_DELIMS as RFC3986_SUB_DELIMS,
+    RFC3986_UNRESERVED as RFC3986_UNRESERVED,
+    RFC3986_USERINFO_SAFE_CHARS as RFC3986_USERINFO_SAFE_CHARS,
+    _idna_bytes,
+    _idna_str,
+    _parse_qs,
+    _parse_qsl,
+    _quote,
+    _quote_into,
+    _strip,
+    _unquote,
+    _url2pathname,
+    _urlencode,
+    _urlparse,
+    _urlsplit,
+    _urlunparse,
+    _urlunsplit,
+)
 from .util import to_unicode
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
+    from collections.abc import Sequence
 
     from ._types import AnyUnicodeError
 
@@ -43,21 +51,13 @@ if TYPE_CHECKING:
 # error handling function for bytes-to-Unicode decoding errors with URLs
 def _quote_byte(error: UnicodeError) -> tuple[str, int]:
     error = cast("AnyUnicodeError", error)
-    return (to_unicode(quote(error.object[error.start : error.end])), error.end)
+    text = error.object[error.start : error.end]
+    if isinstance(text, str):  # pragma: no cover
+        text = text.encode()
+    return (to_unicode(_quote(text)), error.end)
 
 
 codecs.register_error("percentencode", _quote_byte)
-
-# constants from RFC 3986, Section 2.2 and 2.3
-RFC3986_GEN_DELIMS = b":/?#[]@"
-RFC3986_SUB_DELIMS = b"!$&'()*+,;="
-RFC3986_RESERVED = RFC3986_GEN_DELIMS + RFC3986_SUB_DELIMS
-RFC3986_UNRESERVED = (string.ascii_letters + string.digits + "-._~").encode("ascii")
-EXTRA_SAFE_CHARS = b"|"  # see https://github.com/scrapy/w3lib/pull/25
-
-RFC3986_USERINFO_SAFE_CHARS = RFC3986_UNRESERVED + RFC3986_SUB_DELIMS + b":"
-_safe_chars = RFC3986_RESERVED + RFC3986_UNRESERVED + EXTRA_SAFE_CHARS + b"%"
-_path_safe_chars = _safe_chars.replace(b"#", b"")
 
 # Characters that are safe in all of:
 #
@@ -70,24 +70,13 @@ _path_safe_chars = _safe_chars.replace(b"#", b"")
 # be escaped as %25 when it is not already being used as part of an escape
 # character.
 _USERINFO_SAFEST_CHARS = RFC3986_USERINFO_SAFE_CHARS.translate(None, delete=b":;=")
-_PATH_SAFEST_CHARS = _safe_chars.translate(None, delete=b"#[]|")
+_PATH_SAFEST_CHARS = _SAFE_CHARS.translate(None, delete=b"#[]|")
 _QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS
 _SPECIAL_QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS.translate(None, delete=b"'")
 _FRAGMENT_SAFEST_CHARS = _PATH_SAFEST_CHARS
 
 
-_ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE = {
-    ord(char): None for char in _ASCII_TAB_OR_NEWLINE
-}
-
-
-def _strip(url: str) -> str:
-    return url.strip(_C0_CONTROL_OR_SPACE).translate(
-        _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE
-    )
-
-
-def safe_url_string(  # pylint: disable=too-many-locals
+def safe_url_string(
     url: str | bytes,
     encoding: str = "utf8",
     path_encoding: str = "utf8",
@@ -136,62 +125,81 @@ def safe_url_string(  # pylint: disable=too-many-locals
     #     encoded with the supplied encoding (or UTF8 by default)
     #   - if the supplied (or default) encoding chokes,
     #     percent-encode offending bytes
-    decoded = to_unicode(url, encoding=encoding, errors="percentencode")
-    parts = urlsplit(_strip(decoded))
-
-    username, password, hostname, port = (
-        parts.username,
-        parts.password,
-        parts.hostname,
-        parts.port,
+    parts = _urlsplit(
+        _strip(to_unicode(url, encoding=encoding, errors="percentencode"))
     )
-    netloc_bytes = b""
-    if username is not None or password is not None:
-        if username is not None:
-            safe_username = quote(unquote(username), _USERINFO_SAFEST_CHARS)
-            netloc_bytes += safe_username.encode(encoding)
-        if password is not None:
-            netloc_bytes += b":"
-            safe_password = quote(unquote(password), _USERINFO_SAFEST_CHARS)
-            netloc_bytes += safe_password.encode(encoding)
-        netloc_bytes += b"@"
-    if hostname is not None:
-        if ":" in hostname:
+    tmp_buf = bytearray()
+
+    if parts.username is not None or parts.password is not None:
+        if parts.username is not None:
+            _quote_into(
+                _unquote(parts.username),
+                tmp_buf,
+                _USERINFO_SAFEST_CHARS,
+            )
+
+        if parts.password is not None:
+            tmp_buf.append(58)  # ord(":")
+            _quote_into(
+                _unquote(parts.password),
+                tmp_buf,
+                _USERINFO_SAFEST_CHARS,
+            )
+
+        tmp_buf.append(64)  # ord("@")
+
+    if parts.hostname is not None:
+        if ":" in parts.hostname:
             # IPv6 address: urlsplit() strips the brackets from the hostname,
             # but they are required in the netloc when rebuilding the URL.
-            netloc_bytes += f"[{hostname}]".encode("ascii")
+            tmp_buf.append(91)  # ord("[")
+            tmp_buf += parts.hostname.encode("ascii")
+            tmp_buf.append(93)  # ord("]")
         else:
             try:
-                netloc_bytes += hostname.encode("idna")
+                tmp_buf += _idna_bytes(parts.hostname)
             except UnicodeError:
                 # IDNA encoding can fail for too long labels (>63 characters) or
                 # missing labels (e.g. http://.example.com)
-                netloc_bytes += hostname.encode(encoding)
-    if port is not None:
-        netloc_bytes += b":"
-        netloc_bytes += str(port).encode(encoding)
+                tmp_buf += parts.hostname.encode(encoding)
 
-    netloc = netloc_bytes.decode()
+    if parts.port is not None:
+        tmp_buf.append(58)  # ord(":")
+        tmp_buf += str(parts.port).encode(encoding)
 
-    # default encoding for path component SHOULD be UTF-8
+    netloc = tmp_buf.decode()
+    tmp_buf.clear()
+
     if quote_path:
-        path = quote(parts.path.encode(path_encoding), _PATH_SAFEST_CHARS)
+        _quote_into(parts.path.encode(path_encoding), tmp_buf, _PATH_SAFEST_CHARS)
+        path = tmp_buf.decode()
+        tmp_buf.clear()
     else:
         path = parts.path
 
-    if parts.scheme in _SPECIAL_SCHEMES:
-        query = quote(parts.query.encode(encoding), _SPECIAL_QUERY_SAFEST_CHARS)
-    else:
-        query = quote(parts.query.encode(encoding), _QUERY_SAFEST_CHARS)
+    _quote_into(
+        parts.query.encode(encoding),
+        tmp_buf,
+        _SPECIAL_QUERY_SAFEST_CHARS
+        if parts.scheme in _SPECIAL_SCHEMES
+        else _QUERY_SAFEST_CHARS,
+    )
+    query = tmp_buf.decode()
+    tmp_buf.clear()
 
-    return urlunsplit(
-        (
-            parts.scheme,
-            netloc,
-            path,
-            query,
-            quote(parts.fragment.encode(encoding), _FRAGMENT_SAFEST_CHARS),
-        )
+    if parts.fragment:
+        _quote_into(parts.fragment.encode(encoding), tmp_buf, _FRAGMENT_SAFEST_CHARS)
+        fragment = tmp_buf.decode()
+        tmp_buf.clear()
+    else:
+        fragment = parts.fragment
+
+    return _urlunsplit(
+        parts.scheme,
+        netloc,
+        path,
+        query,
+        fragment,
     )
 
 
@@ -209,18 +217,18 @@ def safe_download_url(
     to be within the document root.
     """
     safe_url = safe_url_string(url, encoding, path_encoding)
-    scheme, netloc, path, query, _ = urlsplit(safe_url)
+    scheme, netloc, path, query, _ = _urlsplit(safe_url)
     if path:
         path = _parent_dirs.sub("", posixpath.normpath(path))
-        if safe_url.endswith("/") and not path.endswith("/"):
-            path += "/"
+        if safe_url[-1] == "/" and path[-1] != "/":
+            path = f"{path}/"
     else:
         path = "/"
-    return urlunsplit((scheme, netloc, path, query, ""))
+    return _urlunsplit(scheme, netloc, path, query, "")
 
 
 def is_url(text: str) -> bool:
-    return text.partition("://")[0] in ("file", "http", "https")
+    return text.partition("://")[0] in {"file", "http", "https"}
 
 
 @overload
@@ -248,6 +256,7 @@ def url_query_parameter(
     keep_blank_values: bool | int = 0,
 ) -> str | None:
     """Return the value of a url parameter, given the url and parameter name
+    NOTE: If url contains multiple parameters, the first leftmost one is returned
 
     General case:
 
@@ -275,11 +284,12 @@ def url_query_parameter(
 
     """
 
-    queryparams = parse_qs(
-        urlsplit(str(url))[3], keep_blank_values=bool(keep_blank_values)
+    queryparams = _parse_qs(
+        _urlsplit(str(url)).query, keep_blank_values=bool(keep_blank_values)
     )
-    if parameter in queryparams:
-        return queryparams[parameter][0]
+    parameter_bytes = parameter.encode()
+    if parameter_bytes in queryparams:
+        return queryparams[parameter_bytes][0].decode()
     return default
 
 
@@ -323,52 +333,82 @@ def url_query_cleaner(
 
     """
 
-    if isinstance(parameterlist, (str, bytes)):
-        parameterlist = [parameterlist]
-    url, fragment = urldefrag(url)
-    url = cast("str", url)
-    fragment = cast("str", fragment)
+    if parameterlist and isinstance(parameterlist, (str, bytes)):
+        parameterlist = (parameterlist,)
+
+    if isinstance(url, bytes):
+        url = url.decode()
+
+    url, _, fragment = url.partition("#")
     base, _, query = url.partition("?")
-    seen = set()
-    querylist = []
+
+    if not query or (not parameterlist and not remove):
+        return base if not keep_fragments else f"{base}#{fragment}"
+
+    param_lookup = frozenset(parameterlist)
+
+    seen: set[str] | None = set() if unique else None
+    result: list[str] = []
+
     for ksv in query.split(sep):
         if not ksv:
             continue
+
         k, _, _ = ksv.partition(kvsep)
-        if unique and k in seen:
+
+        if seen is not None:
+            if k in seen:
+                continue
+            seen.add(k)
+
+        if remove:
+            if k in param_lookup:
+                continue
+        elif k not in param_lookup:
             continue
-        if remove and k in parameterlist:
-            continue
-        if not remove and k not in parameterlist:
-            continue
-        querylist.append(ksv)
-        seen.add(k)
-    url = "?".join([base, sep.join(querylist)]) if querylist else base
+
+        result.append(ksv)
+    del param_lookup, seen
+
+    url = base if not result else f"{base}?{sep.join(result)}"
+    del result
+
     if keep_fragments and fragment:
-        url += "#" + fragment
+        url = f"{url}#{fragment}"
+
     return url
 
 
-def _add_or_replace_parameters(url: str, params: dict[str, str]) -> str:
-    parsed = urlsplit(url)
-    current_args = parse_qsl(parsed.query, keep_blank_values=True)
+def _add_or_replace_parameters(url: str, params: dict[bytes, bytes]) -> str:
+    parsed = _urlsplit(url)
 
-    new_args = []
-    seen_params = set()
+    current_args = _parse_qsl(parsed.query, keep_blank_values=True)
+
+    new_args: list[tuple[bytes, bytes]] = []
+    seen_params: set[bytes] = set()
+
     for name, value in current_args:
-        if name not in params:
+        if name in seen_params:
+            continue
+        replacement = params.get(name)
+        if replacement is None:
             new_args.append((name, value))
-        elif name not in seen_params:
-            new_args.append((name, params[name]))
+        else:
+            new_args.append((name, replacement))
             seen_params.add(name)
 
-    not_modified_args = [
-        (name, value) for name, value in params.items() if name not in seen_params
-    ]
-    new_args += not_modified_args
+    for name, value in params.items():
+        if name not in seen_params:
+            new_args.append((name, value))
+    del seen_params, current_args
 
-    query = urlencode(new_args)
-    return urlunsplit(parsed._replace(query=query))
+    return _urlunsplit(
+        parsed.scheme,
+        parsed.netloc,
+        parsed.path,
+        _urlencode(new_args).decode(),
+        parsed.fragment,
+    )
 
 
 def add_or_replace_parameter(url: str, name: str, new_value: str) -> str:
@@ -384,7 +424,7 @@ def add_or_replace_parameter(url: str, name: str, new_value: str) -> str:
     >>>
 
     """
-    return _add_or_replace_parameters(url, {name: new_value})
+    return _add_or_replace_parameters(url, {name.encode(): new_value.encode()})
 
 
 def add_or_replace_parameters(url: str, new_parameters: dict[str, str]) -> str:
@@ -399,23 +439,23 @@ def add_or_replace_parameters(url: str, new_parameters: dict[str, str]) -> str:
     >>>
 
     """
-    return _add_or_replace_parameters(url, new_parameters)
+    return _add_or_replace_parameters(
+        url, {k.encode(): v.encode() for k, v in new_parameters.items()}
+    )
 
 
 def path_to_file_uri(path: str | os.PathLike[str]) -> str:
     """Convert local filesystem path to legal File URIs as described in:
     http://en.wikipedia.org/wiki/File_URI_scheme
     """
-    x = pathname2url(str(Path(path).absolute()))
-    return f"file:///{x.lstrip('/')}"
+    return f"file:///{pathname2url(str(Path(path).absolute())).lstrip('/')}"
 
 
 def file_uri_to_path(uri: str) -> str:
     """Convert File URI to local filesystem path according to:
     http://en.wikipedia.org/wiki/File_URI_scheme
     """
-    uri_path = urlparse(uri).path
-    return url2pathname(uri_path)
+    return _url2pathname(_urlparse(uri)[2])
 
 
 def any_to_uri(uri_or_path: str) -> str:
@@ -424,8 +464,7 @@ def any_to_uri(uri_or_path: str) -> str:
     """
     if os.path.splitdrive(uri_or_path)[0]:
         return path_to_file_uri(uri_or_path)
-    u = urlparse(uri_or_path)
-    return uri_or_path if u.scheme else path_to_file_uri(uri_or_path)
+    return uri_or_path if _urlparse(uri_or_path)[0] else path_to_file_uri(uri_or_path)
 
 
 # ASCII characters.
@@ -460,6 +499,7 @@ _mediatype_pattern = re.compile(rf"{_token}/{_token}".encode())
 _mediatype_parameter_pattern = re.compile(
     rf';({_token})=(?:({_token})|"({_quoted_string})")'.encode()
 )
+del _char, _token, _quoted_string
 
 
 class ParseDataURIResult(NamedTuple):
@@ -478,11 +518,10 @@ def parse_data_uri(uri: str | bytes) -> ParseDataURIResult:
     if not isinstance(uri, bytes):
         uri = safe_url_string(uri).encode("ascii")
 
-    try:
-        scheme, uri = uri.split(b":", 1)
-    except ValueError:
+    scheme, _, uri = uri.partition(b":")
+    if not scheme or not uri:
         raise ValueError("invalid URI")
-    if scheme.lower() != b"data":
+    if scheme[:4].lower() != b"data":
         raise ValueError("not a data URI")
 
     # RFC 3986 section 2.1 allows percent encoding to escape characters that
@@ -492,7 +531,7 @@ def parse_data_uri(uri: str | bytes) -> ParseDataURIResult:
     # delimiters, but it makes parsing easier and should not affect
     # well-formed URIs, as the delimiters used in this URI scheme are not
     # allowed, percent-encoded or not, in tokens.
-    uri = unquote_to_bytes(uri)
+    uri = _unquote(uri)
 
     media_type = "text/plain"
     media_type_params = {}
@@ -504,21 +543,14 @@ def parse_data_uri(uri: str | bytes) -> ParseDataURIResult:
     else:
         media_type_params["charset"] = "US-ASCII"
 
-    while True:
-        m = _mediatype_parameter_pattern.match(uri)
-        if m:
-            attribute, value, value_quoted = m.groups()
-            if value_quoted:
-                value = re.sub(rb"\\(.)", rb"\1", value_quoted)
-            media_type_params[attribute.decode()] = value.decode()
-            uri = uri[m.end() :]
-        else:
-            break
+    while m := _mediatype_parameter_pattern.match(uri):
+        attribute, value, value_quoted = m.groups()
+        if value_quoted:
+            value = re.sub(rb"\\(.)", rb"\1", value_quoted)
+        media_type_params[attribute.decode()] = value.decode()
+        uri = uri[m.end() :]
 
-    try:
-        is_base64, data = uri.split(b",", 1)
-    except ValueError:
-        raise ValueError("invalid data URI")
+    is_base64, _, data = uri.partition(b",")
     if is_base64:
         if is_base64 != b";base64":
             raise ValueError("invalid data URI")
@@ -549,17 +581,35 @@ def _safe_ParseResult(
     # IDNA encoding can fail for too long labels (>63 characters)
     # or missing labels (e.g. http://.example.com)
     try:
-        netloc = parts.netloc.encode("idna").decode()
+        netloc = _idna_str(parts.netloc)
     except UnicodeError:
         netloc = parts.netloc
+
+    tmp_buf = bytearray()
+
+    _quote_into(parts.path.encode(path_encoding), tmp_buf, _PATH_SAFE_CHARS)
+    path = tmp_buf.decode()
+    tmp_buf.clear()
+
+    _quote_into(parts.params.encode(encoding), tmp_buf, _SAFE_CHARS)
+    params = tmp_buf.decode()
+    tmp_buf.clear()
+
+    _quote_into(parts.query.encode(encoding), tmp_buf, _SAFE_CHARS)
+    query = tmp_buf.decode()
+    tmp_buf.clear()
+
+    _quote_into(parts.fragment.encode(encoding), tmp_buf, _SAFE_CHARS)
+    fragment = tmp_buf.decode()
+    tmp_buf.clear()
 
     return (
         parts.scheme,
         netloc,
-        quote(parts.path.encode(path_encoding), _path_safe_chars),
-        quote(parts.params.encode(path_encoding), _safe_chars),
-        quote(parts.query.encode(encoding), _safe_chars),
-        quote(parts.fragment.encode(encoding), _safe_chars),
+        path,
+        params,
+        query,
+        fragment,
     )
 
 
@@ -637,37 +687,46 @@ def canonicalize_url(
     # Similar considerations apply to query parts.  The functionality of
     # IRIs (namely, to be able to include non-ASCII characters) can only be
     # used if the query part is encoded in UTF-8.
-    keyvals = parse_qsl_to_bytes(query, keep_blank_values)
+    if query:
+        keyvals = _parse_qsl(query, keep_blank_values)
 
-    keyvals.sort()
-    query = urlencode(keyvals)
+        if len(keyvals) > 1:
+            keyvals.sort()
+
+        query = _urlencode(keyvals).decode()
+        del keyvals
 
     # 2. decode percent-encoded sequences in path as UTF-8 (or keep raw bytes)
     #    and percent-encode path again (this normalizes to upper-case %XX)
-    uqp = _unquotepath(path)
-    path = quote(uqp, _path_safe_chars) or "/"
+    path = _quote(_unquotepath(path), _PATH_SAFE_CHARS).decode() if path else "/"
 
     fragment = "" if not keep_fragments else fragment
 
     # Apply lowercase to the domain, but not to the userinfo.
-    netloc_parts = netloc.split("@")
-    netloc_parts[-1] = netloc_parts[-1].lower().rstrip(":")
-    netloc = "@".join(netloc_parts)
+    uinf_sep_idx = netloc.rfind("@")
+    host = (
+        (netloc[uinf_sep_idx + 1 :] if uinf_sep_idx != -1 else netloc)
+        .lower()
+        .removesuffix(":")
+    )
+    netloc = (netloc[: uinf_sep_idx + 1] + host) if uinf_sep_idx != -1 else host
 
     # every part should be safe already
-    return urlunparse((scheme, netloc, path, params, query, fragment))
+    return _urlunparse(scheme, netloc, path, params, query, fragment)
 
 
 def _unquotepath(path: str) -> bytes:
-    for reserved in ("2f", "2F", "3f", "3F"):
-        path = path.replace("%" + reserved, "%25" + reserved.upper())
-
+    if "%" not in path:
+        return path.encode()
     # standard lib's unquote() does not work for non-UTF-8
     # percent-escaped characters, they get lost.
     # e.g., '%a3' becomes 'REPLACEMENT CHARACTER' (U+FFFD)
-    #
-    # unquote_to_bytes() returns raw bytes instead
-    return unquote_to_bytes(path)
+    return _unquote(
+        path.replace("%2f", "%252F")
+        .replace("%2F", "%252F")
+        .replace("%3f", "%253F")
+        .replace("%3F", "%253F")
+    )
 
 
 def parse_url(
@@ -678,7 +737,7 @@ def parse_url(
     """
     if isinstance(url, ParseResult):
         return url
-    return urlparse(to_unicode(url, encoding))
+    return _urlparse(to_unicode(url, encoding))
 
 
 def parse_qsl_to_bytes(
@@ -699,30 +758,5 @@ def parse_qsl_to_bytes(
         are to be ignored and treated as if they were  not included.
 
     """
-    # This code is the same as Python3's parse_qsl()
-    # (at https://hg.python.org/cpython/rev/c38ac7ab8d9a)
-    # except for the unquote(s, encoding, errors) calls replaced
-    # with unquote_to_bytes(s)
-    coerce_args = cast("Callable[..., tuple[str, Callable[..., bytes]]]", _coerce_args)
-    qs, _coerce_result = coerce_args(qs)
-    pairs = [s2 for s1 in qs.split("&") for s2 in s1.split(";")]
-    r = []
-    for name_value in pairs:
-        if not name_value:
-            continue
-        nv = name_value.split("=", 1)
-        if len(nv) != 2:
-            # Handle case of a control-name with no equal sign
-            if keep_blank_values:
-                nv.append("")
-            else:
-                continue
-        if len(nv[1]) or keep_blank_values:
-            name: str | bytes = nv[0].replace("+", " ")
-            name = unquote_to_bytes(name)
-            name = _coerce_result(name)
-            value: str | bytes = nv[1].replace("+", " ")
-            value = unquote_to_bytes(value)
-            value = _coerce_result(value)
-            r.append((name, value))
-    return r
+
+    return _parse_qsl(qs, keep_blank_values)

@@ -140,7 +140,7 @@ def _c18n_encoding(encoding: str) -> str:
     encoding aliases
     """
     normed = encodings.normalize_encoding(encoding).lower()
-    return cast("str", encodings.aliases.aliases.get(normed, normed))
+    return encodings.aliases.aliases.get(normed, normed)
 
 
 def resolve_encoding(encoding_alias: str) -> str | None:
@@ -286,8 +286,7 @@ def html_to_unicode(
 
     '''
     bom_enc, bom = read_bom(html_body_str)
-    if bom_enc is not None:
-        bom = cast("bytes", bom)
+    if bom_enc is not None and bom is not None:
         return bom_enc, to_unicode(html_body_str[len(bom) :], bom_enc)
 
     enc = http_content_type_encoding(content_type_header)
