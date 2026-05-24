@@ -722,7 +722,8 @@ def _unquotepath(path: str) -> bytes:
     # percent-escaped characters, they get lost.
     # e.g., '%a3' becomes 'REPLACEMENT CHARACTER' (U+FFFD)
     return _unquote(
-        path.replace("%2f", "%252F")
+        path.replace("%25", "%2525")
+        .replace("%2f", "%252F")
         .replace("%2F", "%252F")
         .replace("%3f", "%253F")
         .replace("%3F", "%253F")
