@@ -4,9 +4,22 @@ import os
 from inspect import isclass
 from pathlib import Path
 from typing import TYPE_CHECKING
-from urllib.parse import urlparse
+from urllib.parse import (
+    parse_qs,
+    parse_qsl,
+    quote,
+    quote_plus,
+    unquote,
+    unquote_plus,
+    urlparse,
+    urlsplit,
+    urlunparse,
+    urlunsplit,
+)
 
 import pytest
+from hypothesis import example, given, strategies as st
+from hypothesis.provisional import urls as hyp_urls
 
 from w3lib._infra import (
     _ASCII_ALPHA,
@@ -14,7 +27,18 @@ from w3lib._infra import (
     _ASCII_TAB_OR_NEWLINE,
     _C0_CONTROL_OR_SPACE,
 )
-from w3lib._url import _SPECIAL_SCHEMES, _urlunparse, _urlunsplit
+from w3lib._url import (
+    _SPECIAL_SCHEMES,
+    _parse_qs,
+    _parse_qsl,
+    _quote,
+    _unquote,
+    _unquote_plus,
+    _urlparse,
+    _urlsplit,
+    _urlunparse,
+    _urlunsplit,
+)
 from w3lib.url import (
     add_or_replace_parameter,
     add_or_replace_parameters,
@@ -1208,6 +1232,70 @@ class TestUrl:
         )
 
 
+class TestSafeDownloadUrlProperties:
+    @given(hyp_urls())
+    def test_no_exception(self, url: str) -> None:
+        safe_download_url(url)
+
+
+class TestIsUrlProperties:
+    @given(st.text() | hyp_urls())
+    def test_no_exception(self, url: str) -> None:
+        is_url(url)
+
+
+class TestUrlQueryParameterProperties:
+    @given(hyp_urls())
+    def test_no_exception(self, url: str) -> None:
+        url_query_parameter(url, "foo")
+
+
+class TestUrlQueryCleanerProperties:
+    @given(hyp_urls())
+    def test_no_exception(self, url: str) -> None:
+        url_query_cleaner(url)
+
+
+class TestAddOrReplaceParameterProperties:
+    @given(hyp_urls())
+    def test_no_exception(self, url: str) -> None:
+        add_or_replace_parameter(url, "foo", "bar")
+
+
+class TestAddOrReplaceParametersProperties:
+    @given(hyp_urls())
+    def test_no_exception(self, url: str) -> None:
+        add_or_replace_parameters(url, {"foo": "bar"})
+
+
+class TestSafeUrlStringProperties:
+    @given(hyp_urls())
+    def test_no_exception(self, url: str) -> None:
+        safe_url_string(url)
+
+    @given(st.text() | hyp_urls())
+    def test_idempotent(self, url: str) -> None:
+        try:
+            once = safe_url_string(url)
+        except ValueError:
+            return
+        assert safe_url_string(once) == once
+
+
+class TestParseUrlProperties:
+    @given(hyp_urls())
+    def test_no_exception(self, url: str) -> None:
+        parse_url(url)
+
+    @given(st.text() | hyp_urls())
+    def test_idempotent(self, url: str) -> None:
+        try:
+            once = parse_url(url)
+        except ValueError:
+            return
+        assert parse_url(once) == once
+
+
 class TestCanonicalizeUrl:
     def test_canonicalize_url(self):
         # simplest case
@@ -1613,6 +1701,21 @@ class TestCanonicalizeUrl:
         assert canonicalize_url(" https://example.com ") == "https://example.com/"
 
 
+class TestCanonicalizeUrlProperties:
+    @given(hyp_urls())
+    def test_no_exception(self, url: str) -> None:
+        canonicalize_url(url)
+
+    @given(st.text() | hyp_urls())
+    @example(r"\?").xfail()
+    def test_idempotent(self, url: str) -> None:
+        try:
+            once = canonicalize_url(url)
+        except (ValueError, KeyError):
+            return
+        assert canonicalize_url(once) == once
+
+
 class TestDataURI:
     def test_default_mediatype_charset(self):
         result = parse_data_uri("data:,A%20brief%20note")
@@ -1781,3 +1884,78 @@ class TestPrivateHelpers:
     )
     def test_urlunparse(self, components, expected):
         assert _urlunparse(*components) == expected
+
+
+class TestPrivateHelpersProperties:
+    @example("/").xfail()
+    @given(st.text())
+    def test_quote_matches_stdlib(self, data: str) -> None:
+        result = _quote(data.encode("utf-8")).decode("utf-8")
+        expected = quote(data)
+        assert result == expected
+
+    @given(st.text())
+    def test_quote_plus_matches_stdlib(self, data: str) -> None:
+        result = _quote(data.encode("utf-8"), quote_plus=True).decode("utf-8")
+        expected = quote_plus(data)
+        assert result == expected
+
+    @given(st.text())
+    def test_unquote_matches_stdlib(self, data: str) -> None:
+        result = _unquote(data)
+        expected = unquote(data).encode("utf-8")
+        assert result == expected
+
+    @given(st.text())
+    def test_unquote_plus_matches_stdlib(self, data: str) -> None:
+        result = _unquote_plus(data)
+        expected = unquote_plus(data).encode("utf-8")
+        assert result == expected
+
+    @given(st.text())
+    def test_parse_qs_matches_stdlib(self, data: str) -> None:
+        result = _parse_qs(data)
+        expected = parse_qs(data.encode("utf-8"))
+        assert result == expected
+
+    @given(st.text())
+    def test_parse_qsl_matches_stdlib(self, data: str) -> None:
+        result = _parse_qsl(data)
+        expected = parse_qsl(data.encode("utf-8"))
+        assert result == expected
+
+    @given(st.text() | hyp_urls())
+    @example(":").xfail()
+    def test_urlparse_matches_stdlib(self, url: str) -> None:
+        result = _urlparse(url)
+        expected = urlparse(url)
+        assert result.scheme == expected.scheme
+        assert result.netloc == expected.netloc
+        assert result.path == expected.path
+        assert result.query == expected.query
+        assert result.fragment == expected.fragment
+
+    @given(st.text() | hyp_urls())
+    @example("0\n").xfail()
+    def test_urlsplit_matches_stdlib(self, url: str) -> None:
+        result = _urlsplit(url)
+        expected = urlsplit(url)
+        assert result.scheme == expected.scheme
+        assert result.netloc == expected.netloc
+        assert result.path == expected.path
+        assert result.query == expected.query
+        assert result.fragment == expected.fragment
+
+    @given(st.text() | hyp_urls())
+    def test_urlunparse_matches_stdlib(self, url: str) -> None:
+        parsed = urlparse(url)
+        result = _urlunparse(*parsed)
+        expected = urlunparse(parsed)
+        assert result == expected
+
+    @given(st.text() | hyp_urls())
+    def test_urlunsplit_matches_stdlib(self, url: str) -> None:
+        split = urlsplit(url)
+        result = _urlunsplit(*split)
+        expected = urlunsplit(split)
+        assert result == expected
