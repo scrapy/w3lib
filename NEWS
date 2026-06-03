@@ -1,6 +1,24 @@
 w3lib release notes
 ===================
 
+2.5.0 (unreleased)
+------------------
+
+- Significantly improved performance of URL-processing functions, including
+  :func:`~w3lib.url.safe_url_string`, :func:`~w3lib.url.canonicalize_url`,
+  :func:`~w3lib.url.url_query_cleaner`, :func:`~w3lib.url.add_or_replace_parameter`,
+  and others (#256, #257).
+
+- Improved performance of :func:`~w3lib.html.remove_tags`,
+  :func:`~w3lib.html.remove_tags_with_content`,
+  :func:`~w3lib.html.unquote_markup`, and
+  :func:`~w3lib.html.get_meta_refresh` (#256).
+
+- :func:`~w3lib.html.get_meta_refresh` no longer prints HTML content to
+  stdout when a :exc:`UnicodeDecodeError` is raised (#256).
+
+- Added benchmarks for URL, HTML, and encoding functions (#247).
+
 2.4.1 (2026-03-20)
 ------------------
 
