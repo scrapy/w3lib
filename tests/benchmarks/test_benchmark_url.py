@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
+from w3lib._url import _urlsplit
 from w3lib.url import (
     add_or_replace_parameter,
     add_or_replace_parameters,
@@ -260,3 +261,18 @@ def test_benchmark_url(
     def factory():
         for args, kwargs in BENCHMARK_CASES[func]:
             func(*args, **kwargs)
+
+
+@pytest.mark.parametrize("func", BENCHMARK_CASES)
+def test_benchmark_url_cold(
+    benchmark: BenchmarkFixture,
+    func: Callable[..., Any],
+) -> None:
+    """Same cases as test_benchmark_url but with the _urlsplit LRU cache
+    cleared before every round."""
+
+    def factory():
+        for args, kwargs in BENCHMARK_CASES[func]:
+            func(*args, **kwargs)
+
+    benchmark.pedantic(factory, setup=_urlsplit.cache_clear, rounds=100)
