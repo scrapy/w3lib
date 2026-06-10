@@ -653,7 +653,7 @@ class TestUrl:
         assert isinstance(safeurl, str)
         assert safeurl == "http://www.example.com/%C2%B5"
 
-        # page-encoding encoded bytes still end up as UTF-8 sequences in path
+        # page-encoding encoded bytes still end up as UTF-8 sequences in path and query
         safeurl = safe_url_string(b"http://www.example.com/\xb5", encoding="latin1")
         assert isinstance(safeurl, str)
         assert safeurl == "http://www.example.com/%C2%B5"
@@ -1814,7 +1814,9 @@ class TestPrivateHelpers:
     def test_urlsplit_pure_brackets_in_query_not_netloc(self):
         # Brackets detected in the query string (not the netloc) trigger
         # _check_bracketed_netloc with a bracket-free netloc → ValueError
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError, match="does not appear to be an IPv4 or IPv6 address"
+        ):
             _urlsplit_pure("//example.com?q=[1]")
 
     def test_urlsplit_pure_ipv4_in_brackets(self):

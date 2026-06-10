@@ -515,7 +515,7 @@ class TestGetMetaRefresh:
 
     def test_nonascii_url_latin1_query(self):
         # non-ascii chars in the url path and query (latin1)
-        # only query part should be kept latin1 encoded before percent escaping
+        # bytes decoded with latin1 are percent-encoded as UTF-8 in both path and query
         baseurl = "http://example.com"
         body = b"""<meta http-equiv="refresh" content="3; url=http://example.com/to\xa3?unit=\xb5">"""
         assert get_meta_refresh(body, baseurl, "latin1") == (
