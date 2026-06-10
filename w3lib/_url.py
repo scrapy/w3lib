@@ -784,7 +784,7 @@ def _urlsplit(
     falls back to the pure-Python implementation for relative URLs and any input
     that can_ada cannot parse.
     """
-    if scheme == "" and allow_fragments:
+    if scheme == "" and allow_fragments and "://" in url:
         try:
             return _to_split_result_from_can_ada(can_ada.parse(url))
         except (ValueError, UnicodeError):
