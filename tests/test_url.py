@@ -14,7 +14,17 @@ from w3lib._infra import (
     _ASCII_TAB_OR_NEWLINE,
     _C0_CONTROL_OR_SPACE,
 )
-from w3lib._url import _SPECIAL_SCHEMES, _urlunparse, _urlunsplit
+from w3lib._url import (
+    _PATH_SAFE_CHARS,
+    _SPECIAL_SCHEMES,
+    _idna,
+    _unquote,
+    _unquote_plus,
+    _urlsplit,
+    _urlsplit_pure,
+    _urlunparse,
+    _urlunsplit,
+)
 from w3lib.url import (
     add_or_replace_parameter,
     add_or_replace_parameters,
@@ -1773,3 +1783,77 @@ class TestPrivateHelpers:
     )
     def test_urlunparse(self, components, expected):
         assert _urlunparse(*components) == expected
+
+    def test_urlsplit_allow_fragments_false(self):
+        # allow_fragments=False bypasses can_ada and hits _urlsplit_pure directly
+        result = _urlsplit("http://example.com/path?q=1#frag", allow_fragments=False)
+        assert result.scheme == "http"
+        assert result.netloc == "example.com"
+        assert result.path == "/path"
+        assert result.query == "q=1#frag"
+        assert result.fragment == ""
+
+    def test_unquote_keeps_safe_byte_encoded(self):
+        # %2F decodes to '/' which is in _PATH_SAFE_CHARS, so it stays encoded
+        assert _unquote(b"/path/%2F/end", _PATH_SAFE_CHARS) == b"/path/%2F/end"
+
+    def test_unquote_plus_invalid_hex(self):
+        # %GG has invalid hex digits — stays as literal %GG
+        assert _unquote_plus(b"%GG") == b"%GG"
+
+    def test_unquote_plus_safe_byte(self):
+        # %41 decodes to 'A' which is in RFC3986_UNRESERVED (safe) — stays encoded
+        assert _unquote_plus(b"%41") == b"%41"
+
+    def test_urlsplit_pure_checknetloc_nfkc_error(self):
+        # U+FF1F FULLWIDTH QUESTION MARK normalises to '?' under NFKC,
+        # which is a reserved delimiter, so parsing raises ValueError.
+        with pytest.raises(ValueError, match="invalid characters under NFKC"):
+            _urlsplit_pure("http://example？com/path")
+
+    def test_urlsplit_pure_brackets_in_query_not_netloc(self):
+        # Brackets detected in the query string (not the netloc) trigger
+        # _check_bracketed_netloc with a bracket-free netloc → ValueError
+        with pytest.raises(ValueError):
+            _urlsplit_pure("//example.com?q=[1]")
+
+    def test_urlsplit_pure_ipv4_in_brackets(self):
+        # IPv4 literals inside brackets are forbidden by RFC 3986
+        with pytest.raises(ValueError, match="IPv4"):
+            _urlsplit_pure("//[192.168.1.1]/path")
+
+    def test_urlsplit_pure_protocol_relative_hash_before_query(self):
+        # //host#frag?tail: '#' is the first delimiter, sets delim = hash_pos
+        # then both question_pos and hash_pos are adjusted relative to delim
+        result = _urlsplit_pure("//host#frag?tail")
+        assert result.netloc == "host"
+        assert result.path == ""
+        assert result.fragment == "frag?tail"
+        assert result.query == ""
+
+    def test_urlsplit_pure_protocol_relative_query_only(self):
+        # //host?query: '?' is the first delimiter, question_pos adjusted
+        result = _urlsplit_pure("//host?query")
+        assert result.netloc == "host"
+        assert result.path == ""
+        assert result.query == "query"
+        assert result.fragment == ""
+
+    def test_urlsplit_pure_checknetloc_nfkc_no_delimiter(self):
+        # U+2126 OHM SIGN has NFKC form U+03A9 (OMEGA) — NFKC changes the text
+        # but does not introduce any reserved delimiter, so parsing succeeds.
+        result = _urlsplit_pure("http://hostΩ.example.com/path")
+        assert result.scheme == "http"
+        assert result.path == "/path"
+
+    def test_urlsplit_pure_valid_ipv6_bracketed(self):
+        # A valid IPv6 literal is not an IPv4Address, so _check_bracketed_host
+        # returns normally (the IPv4 branch is the False path).
+        result = _urlsplit_pure("//[::1]/path")
+        assert result.hostname == "::1"
+        assert result.path == "/path"
+
+    def test_idna_non_ascii(self):
+        # Non-ASCII hostname goes through NFKC normalisation and IDNA encoding
+        _encoded, decoded = _idna("新华网.中国")
+        assert decoded == "xn--xkrr14bows.xn--fiqs8s"
