@@ -414,7 +414,7 @@ class TestGetBaseUrl:
             <head><title>Dummy</title><basefoo href='http://example.org/something' /></head>\
             <body>blahablsdfsal&amp;</body>\
             </html>"""
-        assert get_base_url(text, baseurl) == "https://example.org"
+        assert get_base_url(text, baseurl) == "https://example.org/"
 
     def test_get_base_url_utf8(self):
         baseurl = "https://example.org"
@@ -520,7 +520,7 @@ class TestGetMetaRefresh:
         body = b"""<meta http-equiv="refresh" content="3; url=http://example.com/to\xa3?unit=\xb5">"""
         assert get_meta_refresh(body, baseurl, "latin1") == (
             3,
-            "http://example.com/to%C2%A3?unit=%B5",
+            "http://example.com/to%C2%A3?unit=%C2%B5",
         )
 
     def test_commented_meta_refresh(self):
