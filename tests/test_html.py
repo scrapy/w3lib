@@ -121,6 +121,17 @@ class TestReplaceTags:
             == "Click here"
         )
 
+    def test_replace_tags_no_catastrophic_backtracking(self):
+        # Regression test: `_tag_re` previously used `.*?`, which backtracks
+        # quadratically on many "<a" starts with no ">" (same class as the
+        # ReDoS fixes in get_base_url / get_meta_refresh). The time bound is
+        # generous; the fixed code runs in well under a millisecond.
+        evil = "<a" * 50000
+        start = time.perf_counter()
+        assert replace_tags(evil) == evil  # incomplete tags (no ">") are untouched
+        assert replace_tags(evil + "<b>x</b>") == evil + "x"
+        assert time.perf_counter() - start < 2
+
 
 class TestRemoveComments:
     def test_returns_unicode(self):
@@ -213,6 +224,16 @@ class TestRemoveTags:
             )
             == ""
         )
+
+    def test_remove_tags_no_catastrophic_backtracking(self):
+        # Regression test: `_tags_re` previously used `.*?` with a `([^ >/]+)`
+        # group that did not exclude "<", backtracking quadratically on many
+        # "<a" starts with no ">". Must stay fast and still strip real tags.
+        evil = "<a" * 30000
+        start = time.perf_counter()
+        assert remove_tags(evil) == evil
+        assert remove_tags(evil + "<b>x</b>") == evil + "x"
+        assert time.perf_counter() - start < 2
 
 
 class TestRemoveTagsWithContent:

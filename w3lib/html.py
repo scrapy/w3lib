@@ -21,7 +21,7 @@ _ent_re = re.compile(
     r"&((?P<named>[a-z\d]+)|#(?P<dec>\d+)|#x(?P<hex>[a-f\d]+))(?P<semicolon>;?)",
     re.IGNORECASE,
 )
-_tag_re = re.compile(r"<[a-zA-Z\/!].*?>", re.DOTALL)
+_tag_re = re.compile(r"<[a-zA-Z\/!][^<>]*>", re.DOTALL)
 _baseurl_re = re.compile(
     r"<base\s[^<>]*href\s*=\s*[\"\']\s*([^\"\'\s]+)\s*[\"\']", re.IGNORECASE
 )
@@ -37,7 +37,7 @@ _meta_refresh_re2 = re.compile(
 _cdata_re = re.compile(
     r"((?P<cdata_s><!\[CDATA\[)(?P<cdata_d>.*?)(?P<cdata_e>\]\]>))", re.DOTALL
 )
-_tags_re = re.compile("</?([^ >/]+).*?>", re.DOTALL | re.IGNORECASE)
+_tags_re = re.compile("</?([^ <>/]+)[^<>]*>", re.DOTALL | re.IGNORECASE)
 _meta_tag_re = re.compile(r"<meta\b[^<>]*>", re.IGNORECASE)
 
 
