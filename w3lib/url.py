@@ -382,7 +382,13 @@ def url_query_cleaner(
 def _add_or_replace_parameters(url: str, params: dict[bytes, bytes]) -> str:
     parsed = _urlsplit(url)
 
-    current_args = _parse_qsl(parsed.query, keep_blank_values=True)
+    # Normalize semicolon separators to ampersands (issue #164).
+    # Semicolons are a historic but valid query-param separator used by many
+    # CGI/PHP/legacy applications. We normalise here so that all params are
+    # preserved; the output always uses the canonical "&" separator.
+    normalized_query = parsed.query.replace(";", "&")
+    current_args = _parse_qsl(normalized_query, keep_blank_values=True)
+
 
     new_args: list[tuple[bytes, bytes]] = []
     seen_params: set[bytes] = set()

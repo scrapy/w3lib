@@ -1015,11 +1015,22 @@ class TestUrl:
             == "http://domain/test?arg1=v3&arg2=v2"
         )
 
-    @pytest.mark.xfail(reason="https://github.com/scrapy/w3lib/issues/164")
-    def test_add_or_replace_parameter_fail(self):
+    def test_add_or_replace_parameter_semicolon_separator(self):
+        # Semicolons are a valid historic query-param separator (issue #164).
+        # Parameters must be preserved, not silently dropped.
         assert (
             add_or_replace_parameter("http://domain/test?arg1=v1;arg2=v2", "arg1", "v3")
             == "http://domain/test?arg1=v3&arg2=v2"
+        )
+        # Replacing the second parameter also works
+        assert (
+            add_or_replace_parameter("http://domain/test?arg1=v1;arg2=v2", "arg2", "v3")
+            == "http://domain/test?arg1=v1&arg2=v3"
+        )
+        # Mixed separators
+        assert (
+            add_or_replace_parameter("http://domain/test?a=1;b=2&c=3", "b", "99")
+            == "http://domain/test?a=1&b=99&c=3"
         )
 
     def test_add_or_replace_parameters(self):
