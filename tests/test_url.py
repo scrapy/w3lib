@@ -1472,6 +1472,23 @@ class TestCanonicalizeUrl:
             == "http://xn--p8j9a0d9c9a.xn--q9jyb4c/?maxResults=5&query=%E3%82%B5"
         )
 
+    def test_canonicalize_idns_with_port(self):
+        # https://github.com/scrapy/w3lib/issues/222
+        # IDNA encoding must apply to the host only, not the port.
+        assert (
+            canonicalize_url("https://тест.тест:33")
+            == "https://xn--e1aybc.xn--e1aybc:33/"
+        )
+        # ... and not to the userinfo either (which stays case-sensitive).
+        assert (
+            canonicalize_url("sftp://UsEr:PaSs@тест.тест:33/")
+            == "sftp://UsEr:PaSs@xn--e1aybc.xn--e1aybc:33/"
+        )
+        # An IDNA host without a port is still encoded correctly.
+        assert (
+            canonicalize_url("https://тест.тест/") == "https://xn--e1aybc.xn--e1aybc/"
+        )
+
     def test_quoted_slash_and_question_sign(self):
         assert (
             canonicalize_url("http://foo.com/AC%2FDC+rocks%3f/?yeah=1")

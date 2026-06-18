@@ -575,13 +575,33 @@ __all__ = [
 ]
 
 
+def _idna_netloc(netloc: str) -> str:
+    """Apply IDNA encoding to the host part of ``netloc`` only.
+
+    ``_idna_str`` must not be applied to the whole netloc: it would mangle the
+    userinfo and the port of a non-ASCII host. For example the ``:33`` in
+    ``тест.тест:33`` would be folded into the last IDNA label, producing
+    ``xn--:33-qdd4dec`` instead of ``xn--e1aybc.xn--e1aybc:33``.
+    See https://github.com/scrapy/w3lib/issues/222.
+    """
+    userinfo, at, hostport = netloc.rpartition("@")
+    if hostport.startswith("["):
+        # IPv6 literals are ASCII, so IDNA is a no-op; leave the bracketed host
+        # (and any port) untouched.
+        return netloc
+    host, colon, port = hostport.rpartition(":")
+    if not colon:
+        host, port = hostport, ""
+    return userinfo + at + _idna_str(host) + colon + port
+
+
 def _safe_ParseResult(
     parts: ParseResult, encoding: str = "utf8", path_encoding: str = "utf8"
 ) -> tuple[str, str, str, str, str, str]:
     # IDNA encoding can fail for too long labels (>63 characters)
     # or missing labels (e.g. http://.example.com)
     try:
-        netloc = _idna_str(parts.netloc)
+        netloc = _idna_netloc(parts.netloc)
     except UnicodeError:
         netloc = parts.netloc
 
