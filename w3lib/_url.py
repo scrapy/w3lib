@@ -285,7 +285,7 @@ def _unquote_plus(
         return bytes(data)
 
     hex_decode_table = _hex_decode_table()
-    safe_table = _safe_table()
+    safe_table = _safe_table(b"")
 
     data_length = len(data)
     decode_limit = data_length - 2
