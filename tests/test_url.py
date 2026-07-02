@@ -915,6 +915,8 @@ class TestUrl:
         assert url_query_parameter("product.html?id=", "id", keep_blank_values=1) == ""
         # only the first one is returned
         assert url_query_parameter("product.html?id=200&id=201&id=202", "id") == "200"
+        # query delimiter at index 1 of a short relative URL
+        assert url_query_parameter("a?id=200", "id") == "200"
 
     @pytest.mark.xfail
     def test_url_query_parameter_2(self):
@@ -1440,6 +1442,14 @@ class TestCanonicalizeUrl:
             canonicalize_url("http://[::1]/do?a=1#frag", keep_fragments=True)
             == "http://[::1]/do?a=1#frag"
         )
+
+    def test_remove_fragments_relative_url(self):
+        # The fragment/query delimiter must be detected even when it sits at
+        # index 0 or 1 of a relative URL (no authority to skip over).
+        assert canonicalize_url("a#frag") == "a"
+        assert canonicalize_url("a#frag", keep_fragments=True) == "a#frag"
+        assert canonicalize_url("a?b=1#frag") == "a?b=1"
+        assert canonicalize_url("?b=1") == "/?b=1"
 
     def test_dont_convert_safe_characters(self):
         # dont convert safe characters to percent encoding representation
