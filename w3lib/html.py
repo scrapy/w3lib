@@ -21,9 +21,9 @@ _ent_re = re.compile(
     r"&((?P<named>[a-z\d]+)|#(?P<dec>\d+)|#x(?P<hex>[a-f\d]+))(?P<semicolon>;?)",
     re.IGNORECASE,
 )
-_tag_re = re.compile(r"<[a-zA-Z\/!].*?>", re.DOTALL)
+_tag_re = re.compile(r"<[a-zA-Z\/!][^<>]*>")
 _baseurl_re = re.compile(
-    r"<base\s[^>]*href\s*=\s*[\"\']\s*([^\"\'\s]+)\s*[\"\']", re.IGNORECASE
+    r"<base\s[^<>]*href\s*=\s*[\"\']\s*([^\"\'\s]+)\s*[\"\']", re.IGNORECASE
 )
 _meta_refresh_re = re.compile(
     r'<meta\s[^>]*http-equiv[^>]*refresh[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)',
@@ -37,8 +37,8 @@ _meta_refresh_re2 = re.compile(
 _cdata_re = re.compile(
     r"((?P<cdata_s><!\[CDATA\[)(?P<cdata_d>.*?)(?P<cdata_e>\]\]>))", re.DOTALL
 )
-_tags_re = re.compile("</?([^ >/]+).*?>", re.DOTALL | re.IGNORECASE)
-_meta_tag_re = re.compile(r"<meta\b[^>]*>", re.IGNORECASE)
+_tags_re = re.compile("</?([^ <>/]+)[^<>]*>", re.IGNORECASE)
+_meta_tag_re = re.compile(r"<meta\b[^<>]*>", re.IGNORECASE)
 
 
 HTML5_WHITESPACE = " \t\n\r\x0c"
@@ -231,9 +231,9 @@ def remove_tags(
 def _build_remove_tags_pattern(tags_tuple: tuple[str, ...]) -> re.Pattern[str]:
     tags = "|".join(re.escape(tag) for tag in tags_tuple)
     pattern = rf"""
-        <(?P<tag>{tags})\b[^>]*>.*?</(?P=tag)>
+        <(?P<tag>{tags})\b[^<>]*>.*?</(?P=tag)>
         |
-        <(?P<tag2>{tags})\b[^>]*/>
+        <(?P<tag2>{tags})\b[^<>]*/>
     """
     return re.compile(pattern, re.IGNORECASE | re.DOTALL | re.VERBOSE)
 

@@ -646,8 +646,12 @@ def _urlsplit(  # pylint: disable=too-many-locals,too-many-statements
         scheme = m.group(1).lower()
         url = url[m.end() :]
 
+    # The scan skips the leading "//" of an authority; for URLs without an
+    # authority it must start at 0, otherwise a "?" or "#" at index 0 or 1
+    # (e.g. relative URLs like "a?b" or "a#f") is never recorded.
+    scan_start = 2 if url[:2] == "//" else 0
     slash_pos = question_pos = hash_pos = open_br_pos = closing_br_pos = -1
-    for idx, char in enumerate(url[2:], 2):
+    for idx, char in enumerate(url[scan_start:], scan_start):
         if char == "/" and slash_pos == -1:
             slash_pos = idx
         elif char == "?" and question_pos == -1:
@@ -658,7 +662,13 @@ def _urlsplit(  # pylint: disable=too-many-locals,too-many-statements
             open_br_pos = idx
         elif char == "]" and closing_br_pos == -1:
             closing_br_pos = idx
-        if slash_pos != question_pos != hash_pos != open_br_pos != closing_br_pos != -1:
+        if -1 not in (
+            slash_pos,
+            question_pos,
+            hash_pos,
+            open_br_pos,
+            closing_br_pos,
+        ):
             break
 
     if url[:2] == "//":
