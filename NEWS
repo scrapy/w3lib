@@ -1,6 +1,13 @@
 w3lib release notes
 ===================
 
+Unreleased
+----------
+
+- :func:`~w3lib.url.canonicalize_url` no longer corrupts an
+  internationalized host when a port or userinfo is present; only the host
+  is IDNA-encoded (#275).
+
 2.4.1 (2026-03-20)
 ------------------
 
