@@ -26,7 +26,6 @@ from ._url import (
     RFC3986_UNRESERVED as RFC3986_UNRESERVED,
     RFC3986_USERINFO_SAFE_CHARS as RFC3986_USERINFO_SAFE_CHARS,
     _idna_bytes,
-    _idna_str,
     _parse_qs,
     _parse_qsl,
     _quote,
@@ -578,12 +577,40 @@ __all__ = [
 def _safe_ParseResult(
     parts: ParseResult, encoding: str = "utf8", path_encoding: str = "utf8"
 ) -> tuple[str, str, str, str, str, str]:
-    # IDNA encoding can fail for too long labels (>63 characters)
-    # or missing labels (e.g. http://.example.com)
-    try:
-        netloc = _idna_str(parts.netloc)
-    except UnicodeError:
-        netloc = parts.netloc
+    # Only the host may be IDNA-encoded. Encoding the whole netloc corrupts
+    # any userinfo or port, because the "idna" codec would treat e.g.
+    # "тест:33" as a single domain label (see gh-222). Rebuild the netloc from
+    # its parts, IDNA-encoding just the host, mirroring safe_url_string().
+    netloc_buf = bytearray()
+
+    if parts.username is not None or parts.password is not None:
+        if parts.username is not None:
+            netloc_buf += parts.username.encode(encoding)
+        if parts.password is not None:
+            netloc_buf.append(58)  # ord(":")
+            netloc_buf += parts.password.encode(encoding)
+        netloc_buf.append(64)  # ord("@")
+
+    if parts.hostname is not None:
+        if ":" in parts.hostname:
+            # IPv6 address: urlsplit() strips the brackets from the hostname,
+            # but they are required in the netloc when rebuilding the URL.
+            netloc_buf.append(91)  # ord("[")
+            netloc_buf += parts.hostname.encode("ascii")
+            netloc_buf.append(93)  # ord("]")
+        else:
+            # IDNA encoding can fail for too long labels (>63 characters)
+            # or missing labels (e.g. http://.example.com)
+            try:
+                netloc_buf += _idna_bytes(parts.hostname)
+            except UnicodeError:
+                netloc_buf += parts.hostname.encode(encoding)
+
+    if parts.port is not None:
+        netloc_buf.append(58)  # ord(":")
+        netloc_buf += str(parts.port).encode(encoding)
+
+    netloc = netloc_buf.decode()
 
     tmp_buf = bytearray()
 

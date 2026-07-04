@@ -1491,6 +1491,18 @@ class TestCanonicalizeUrl:
             == "http://xn--p8j9a0d9c9a.xn--q9jyb4c/?maxResults=5&query=%E3%82%B5"
         )
 
+    def test_canonicalize_idns_with_port(self):
+        # A port (or userinfo) must not be IDNA-encoded together with the host
+        # (gh-222); only the host is encoded.
+        assert (
+            canonicalize_url("https://тест.тест:33")
+            == "https://xn--e1aybc.xn--e1aybc:33/"
+        )
+        assert (
+            canonicalize_url("http://u:p@тест.тест:33/x")
+            == "http://u:p@xn--e1aybc.xn--e1aybc:33/x"
+        )
+
     def test_quoted_slash_and_question_sign(self):
         assert (
             canonicalize_url("http://foo.com/AC%2FDC+rocks%3f/?yeah=1")
