@@ -1714,6 +1714,11 @@ class TestDataURI:
         with pytest.raises(ValueError, match="not a data URI"):
             parse_data_uri("http://example.com/")
 
+    def test_data_prefixed_scheme(self):
+        for uri in ("datax:,A%20brief%20note", "database:,A%20brief%20note"):
+            with pytest.raises(ValueError, match="not a data URI"):
+                parse_data_uri(uri)
+
     def test_scheme_case_insensitive(self):
         result = parse_data_uri("DATA:,A%20brief%20note")
         assert result.data == b"A brief note"
