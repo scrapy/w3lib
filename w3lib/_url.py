@@ -672,8 +672,6 @@ def _urlsplit(  # pylint: disable=too-many-locals,too-many-statements
             break
 
     if url[:2] == "//":
-        if (open_br_pos != -1) != (closing_br_pos != -1):
-            raise ValueError("Invalid IPv6 URL")
         delim = len(url)
 
         if 0 < slash_pos < delim:
@@ -682,6 +680,17 @@ def _urlsplit(  # pylint: disable=too-many-locals,too-many-statements
             delim = question_pos
         if 0 < hash_pos < delim:
             delim = hash_pos
+
+        # Brackets only delimit an IPv6 host when they fall inside the
+        # authority. A "[" or "]" in the path, query or fragment is an
+        # ordinary character and must not drive IPv6 host parsing.
+        if not 2 <= open_br_pos < delim:
+            open_br_pos = -1
+        if not 2 <= closing_br_pos < delim:
+            closing_br_pos = -1
+
+        if (open_br_pos != -1) != (closing_br_pos != -1):
+            raise ValueError("Invalid IPv6 URL")
 
         netloc = url[2:delim]
         if open_br_pos != -1 and closing_br_pos != -1:

@@ -390,6 +390,13 @@ SAFE_URL_URL_CASES = (
     ("https://example\uff20.com", ValueError),
     # changed after NFKC normalisation
     ("https://examplｅ.com", "https://example.com"),
+    # "[" and "]" outside the authority are ordinary characters and must not
+    # be treated as IPv6 host delimiters.
+    ("https://example.com/[x]", "https://example.com/%5Bx%5D"),
+    ("https://example.com/a]b", "https://example.com/a%5Db"),
+    ("http://example.com/search?tags[]=a", "http://example.com/search?tags%5B%5D=a"),
+    ("https://example.com/a#f[1]", "https://example.com/a#f%5B1%5D"),
+    ("http://[::1]:8080/p?q=[1]", "http://[::1]:8080/p?q=%5B1%5D"),
 )
 
 
