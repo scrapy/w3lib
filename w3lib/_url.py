@@ -51,7 +51,7 @@ _SCHEME_CHARS = frozenset(scheme_chars)
 _USES_PARAMS = frozenset(uses_params)
 _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE = str.maketrans("", "", _ASCII_TAB_OR_NEWLINE)
 _C0_CONTROL_OR_SPACE_RE = re.compile(rf"[{_C0_CONTROL_OR_SPACE}]")
-_SCHEME_RE = re.compile(rf"^([{scheme_chars}]*):")
+_SCHEME_RE = re.compile(rf"^([a-zA-Z][{scheme_chars}]*):")
 
 _IPV_FUTURE_RE = re.compile(r"\Av[a-fA-F0-9]+\..+\Z")
 _NETLOC_DELIMS_RE = re.compile(r"[/?#@:]")
