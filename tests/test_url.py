@@ -648,6 +648,15 @@ class TestUrl:
         assert isinstance(safeurl, str)
         assert safeurl == "http://www.example.com/%C2%A3?unit=%C2%B5"
 
+    def test_safe_url_string_invalid_scheme(self):
+        # A scheme must start with a letter (RFC 3986); a leading digit or
+        # symbol, or an empty scheme, is not a scheme. In particular an empty
+        # scheme must not promote the rest into a scheme-relative URL, which
+        # would expose an attacker-controlled host.
+        assert safe_url_string("://evil.com/path") == "://evil.com/path"
+        assert safe_url_string("1x://evil.com/path") == "1x://evil.com/path"
+        assert safe_url_string("+x://evil.com/path") == "+x://evil.com/path"
+
     def test_safe_url_string_bytes_input(self):
         safeurl = safe_url_string(b"http://www.example.com/")
         assert isinstance(safeurl, str)
