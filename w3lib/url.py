@@ -649,6 +649,10 @@ def canonicalize_url(
     # UTF-8 can handle all Unicode characters,
     # so we should be covered regarding URL normalization,
     # if not for proper URL expected by remote website.
+    if isinstance(url, bytes):
+        # decode first (as parse_url would, UTF-8) so bytes input gets the
+        # same tab/newline/control stripping as str input below.
+        url = to_unicode(url)
     if isinstance(url, str):
         url = _strip(url)
     try:
