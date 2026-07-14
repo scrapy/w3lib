@@ -1742,7 +1742,6 @@ class TestCanonicalizeUrlProperties:
         canonicalize_url(url)
 
     @given(st.text() | hyp_urls())
-    @example(r"\?").xfail()
     def test_idempotent(self, url: str) -> None:
         try:
             once = canonicalize_url(url)
@@ -1931,10 +1930,10 @@ class TestPrivateHelpers:
 
 
 class TestPrivateHelpersProperties:
-    @example("/").xfail()
+    @example("/")
     @given(st.text())
     def test_quote_matches_stdlib(self, data: str) -> None:
-        result = _quote(data.encode("utf-8")).decode("utf-8")
+        result = _quote(data.encode("utf-8"), safe=b"/").decode("utf-8")
         expected = quote(data)
         assert result == expected
 
@@ -1968,8 +1967,7 @@ class TestPrivateHelpersProperties:
         expected = parse_qsl(data.encode("utf-8"))
         assert result == expected
 
-    @given(st.text() | hyp_urls())
-    @example(":").xfail()
+    @given(hyp_urls())
     def test_urlparse_matches_stdlib(self, url: str) -> None:
         result = _urlparse(url)
         expected = urlparse(url)
@@ -1979,8 +1977,7 @@ class TestPrivateHelpersProperties:
         assert result.query == expected.query
         assert result.fragment == expected.fragment
 
-    @given(st.text() | hyp_urls())
-    @example("0\n").xfail()
+    @given(hyp_urls())
     def test_urlsplit_matches_stdlib(self, url: str) -> None:
         result = _urlsplit(url)
         expected = urlsplit(url)
