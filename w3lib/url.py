@@ -521,7 +521,7 @@ def parse_data_uri(uri: str | bytes) -> ParseDataURIResult:
     scheme, _, uri = uri.partition(b":")
     if not scheme or not uri:
         raise ValueError("invalid URI")
-    if scheme[:4].lower() != b"data":
+    if scheme.lower() != b"data":
         raise ValueError("not a data URI")
 
     # RFC 3986 section 2.1 allows percent encoding to escape characters that

@@ -414,6 +414,13 @@ SAFE_URL_URL_CASES = (
     ("https://example\uff20.com", ValueError),
     # changed after NFKC normalisation
     ("https://examplｅ.com", "https://example.com"),
+    # "[" and "]" outside the authority are ordinary characters and must not
+    # be treated as IPv6 host delimiters.
+    ("https://example.com/[x]", "https://example.com/%5Bx%5D"),
+    ("https://example.com/a]b", "https://example.com/a%5Db"),
+    ("http://example.com/search?tags[]=a", "http://example.com/search?tags%5B%5D=a"),
+    ("https://example.com/a#f[1]", "https://example.com/a#f%5B1%5D"),
+    ("http://[::1]:8080/p?q=[1]", "http://[::1]:8080/p?q=%5B1%5D"),
 )
 
 
@@ -664,6 +671,15 @@ class TestUrl:
         safeurl = safe_url_string("http://www.example.com/%C2%A3?unit=µ")
         assert isinstance(safeurl, str)
         assert safeurl == "http://www.example.com/%C2%A3?unit=%C2%B5"
+
+    def test_safe_url_string_invalid_scheme(self):
+        # A scheme must start with a letter (RFC 3986); a leading digit or
+        # symbol, or an empty scheme, is not a scheme. In particular an empty
+        # scheme must not promote the rest into a scheme-relative URL, which
+        # would expose an attacker-controlled host.
+        assert safe_url_string("://evil.com/path") == "://evil.com/path"
+        assert safe_url_string("1x://evil.com/path") == "1x://evil.com/path"
+        assert safe_url_string("+x://evil.com/path") == "+x://evil.com/path"
 
     def test_safe_url_string_bytes_input(self):
         safeurl = safe_url_string(b"http://www.example.com/")
@@ -1817,6 +1833,11 @@ class TestDataURI:
         with pytest.raises(ValueError, match="not a data URI"):
             parse_data_uri("http://example.com/")
 
+    def test_data_prefixed_scheme(self):
+        for uri in ("datax:,A%20brief%20note", "database:,A%20brief%20note"):
+            with pytest.raises(ValueError, match="not a data URI"):
+                parse_data_uri(uri)
+
     def test_scheme_case_insensitive(self):
         result = parse_data_uri("DATA:,A%20brief%20note")
         assert result.data == b"A brief note"
@@ -1861,6 +1882,10 @@ class TestParseQsl:
             (b"%C5%81=%C3%A9", [(b"\xc5\x81", b"\xc3\xa9")]),
             (b"\x81=\xa9", [(b"\x81", b"\xa9")]),
             (b"%81=%A9", [(b"\x81", b"\xa9")]),
+            ("%41%42%43=%61%62%63", [(b"ABC", b"abc")]),
+            ("%2D%2E%5F%7E=%30%39", [(b"-._~", b"09")]),
+            (b"%41%42%43=%61%62%63", [(b"ABC", b"abc")]),
+            (b"%2D%2E%5F%7E=%30%39", [(b"-._~", b"09")]),
         ],
     )
     def test_parse_qsl(self, qs, output):
