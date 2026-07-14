@@ -1518,6 +1518,12 @@ class TestCanonicalizeUrl:
             canonicalize_url("http://はじめよう.みんな/?query=サ&maxResults=5")
             == "http://xn--p8j9a0d9c9a.xn--q9jyb4c/?maxResults=5&query=%E3%82%B5"
         )
+        # non-ASCII domain with an explicit port: IDNA encoding must only
+        # apply to the host, not swallow the port separator
+        assert (
+            canonicalize_url("http://www.bücher.de:8080/?q=bücher")
+            == "http://www.xn--bcher-kva.de:8080/?q=b%C3%BCcher"
+        )
 
     def test_quoted_slash_and_question_sign(self):
         assert (

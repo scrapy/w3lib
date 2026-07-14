@@ -26,7 +26,6 @@ from ._url import (
     RFC3986_UNRESERVED as RFC3986_UNRESERVED,
     RFC3986_USERINFO_SAFE_CHARS as RFC3986_USERINFO_SAFE_CHARS,
     _idna_bytes,
-    _idna_str,
     _parse_qs,
     _parse_qsl,
     _quote,
@@ -575,44 +574,6 @@ __all__ = [
 ]
 
 
-def _safe_ParseResult(
-    parts: ParseResult, encoding: str = "utf8", path_encoding: str = "utf8"
-) -> tuple[str, str, str, str, str, str]:
-    # IDNA encoding can fail for too long labels (>63 characters)
-    # or missing labels (e.g. http://.example.com)
-    try:
-        netloc = _idna_str(parts.netloc)
-    except UnicodeError:
-        netloc = parts.netloc
-
-    tmp_buf = bytearray()
-
-    _quote_into(parts.path.encode(path_encoding), tmp_buf, _PATH_SAFE_CHARS)
-    path = tmp_buf.decode()
-    tmp_buf.clear()
-
-    _quote_into(parts.params.encode(encoding), tmp_buf, _SAFE_CHARS)
-    params = tmp_buf.decode()
-    tmp_buf.clear()
-
-    _quote_into(parts.query.encode(encoding), tmp_buf, _SAFE_CHARS)
-    query = tmp_buf.decode()
-    tmp_buf.clear()
-
-    _quote_into(parts.fragment.encode(encoding), tmp_buf, _SAFE_CHARS)
-    fragment = tmp_buf.decode()
-    tmp_buf.clear()
-
-    return (
-        parts.scheme,
-        netloc,
-        path,
-        params,
-        query,
-        fragment,
-    )
-
-
 def canonicalize_url(
     url: str | bytes | ParseResult,
     keep_blank_values: bool = True,
@@ -649,20 +610,13 @@ def canonicalize_url(
     # UTF-8 can handle all Unicode characters,
     # so we should be covered regarding URL normalization,
     # if not for proper URL expected by remote website.
-    if isinstance(url, bytes):
-        # decode first (as parse_url would, UTF-8) so bytes input gets the
-        # same tab/newline/control stripping as str input below.
-        url = to_unicode(url)
-    if isinstance(url, str):
-        url = _strip(url)
+    if isinstance(url, ParseResult):
+        url = _urlunparse(*url)
     try:
-        scheme, netloc, path, params, query, fragment = _safe_ParseResult(
-            parse_url(url), encoding=encoding or "utf8"
-        )
+        url = safe_url_string(url, encoding=encoding or "utf8")
     except UnicodeEncodeError:
-        scheme, netloc, path, params, query, fragment = _safe_ParseResult(
-            parse_url(url), encoding="utf8"
-        )
+        url = safe_url_string(url, encoding="utf8")
+    scheme, netloc, path, params, query, fragment = _urlparse(url)
 
     # 1. decode query-string as UTF-8 (or keep raw bytes),
     #    sort values,
