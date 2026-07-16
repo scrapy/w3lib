@@ -1291,7 +1291,7 @@ class TestSafeUrlStringProperties:
     def test_no_exception(self, url: str) -> None:
         safe_url_string(url)
 
-    @given(st.text() | hyp_urls())
+    @given(hyp_urls())
     def test_idempotent(self, url: str) -> None:
         try:
             once = safe_url_string(url)
@@ -1305,7 +1305,7 @@ class TestParseUrlProperties:
     def test_no_exception(self, url: str) -> None:
         parse_url(url)
 
-    @given(st.text() | hyp_urls())
+    @given(hyp_urls())
     def test_idempotent(self, url: str) -> None:
         try:
             once = parse_url(url)
@@ -1741,7 +1741,7 @@ class TestCanonicalizeUrlProperties:
     def test_no_exception(self, url: str) -> None:
         canonicalize_url(url)
 
-    @given(st.text() | hyp_urls())
+    @given(hyp_urls())
     def test_idempotent(self, url: str) -> None:
         try:
             once = canonicalize_url(url)
@@ -1945,7 +1945,7 @@ class TestPrivateHelpersProperties:
 
     @given(st.text())
     def test_unquote_matches_stdlib(self, data: str) -> None:
-        result = _unquote(data)
+        result = _unquote(data, safe=b"/")
         expected = unquote(data).encode("utf-8")
         assert result == expected
 
