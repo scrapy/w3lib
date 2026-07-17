@@ -431,6 +431,22 @@ def _urlencode(query: _QueryType) -> bytes:
     return b"&".join(result)
 
 
+def _split_params(scheme: str, url: str) -> tuple[str, str]:
+    """Split the params from the path, as urlib.parse.urlparse does."""
+    if scheme in _USES_PARAMS:
+        semi_idx = url.find(";")
+
+        if semi_idx != -1:
+            slash_idx = url.rfind("/")
+
+            if slash_idx != -1 and slash_idx < semi_idx:
+                semi_idx = url.find(";", slash_idx)
+
+            return url[:semi_idx], url[semi_idx + 1 :]
+
+    return url, ""
+
+
 def _urlparse(
     url: str,
     scheme: str = "",
@@ -441,18 +457,7 @@ def _urlparse(
         return ParseResult(scheme, "", "", "", "", "")
 
     scheme, netloc, url, query, fragment = _urlsplit(url, scheme, allow_fragments)
-    params = ""
-
-    if scheme in _USES_PARAMS:
-        semi_idx = url.find(";")
-
-        if semi_idx != -1:
-            slash_idx = url.rfind("/")
-
-            if slash_idx != -1 and slash_idx < semi_idx:
-                semi_idx = url.find(";", slash_idx)
-
-            url, params = url[:semi_idx], url[semi_idx + 1 :]
+    url, params = _split_params(scheme, url)
 
     return ParseResult(scheme, netloc, url, params, query, fragment)
 
