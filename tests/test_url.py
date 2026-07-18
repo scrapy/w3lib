@@ -1679,6 +1679,17 @@ class TestDataURI:
         assert result.media_type_parameters == {"charset": "iso-8859-7"}
         assert result.data == b"\xbe\xd3\xbe"
 
+    def test_empty_quoted_charset(self):
+        result = parse_data_uri('data:text/plain;charset="",hi')
+        assert result.media_type == "text/plain"
+        assert result.media_type_parameters == {"charset": ""}
+        assert result.data == b"hi"
+
+        result = parse_data_uri('data:;charset="",A%20brief%20note')
+        assert result.media_type == "text/plain"
+        assert result.media_type_parameters == {"charset": ""}
+        assert result.data == b"A brief note"
+
     def test_mediatype_parameters(self):
         result = parse_data_uri(
             "data:text/plain;"
