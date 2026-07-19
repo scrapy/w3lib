@@ -33,6 +33,17 @@ class TestRemoveEntities:
             == "redirectTo=search&searchtext=MR0221Y&aff=buyat&affsrc=d_data&cm_mmc=buyat-_-ELECTRICAL & SEASONAL-_-MR0221Y-_-9-carat gold \xbdoz solid crucifix pendant"
         )
 
+    def test_case_sensitive_named_entities(self):
+        # HTML named entities are case-sensitive: &Gt;/&Lt; are the "much
+        # greater/less-than" signs, not the &gt;/&lt; characters, and &apos;
+        # must be decoded rather than dropped.
+        assert replace_entities("&Gt;") == "≫"
+        assert replace_entities("&Lt;") == "≪"
+        assert replace_entities("x &gt; y &lt; z") == "x > y < z"
+        assert replace_entities("it&apos;s") == "it's"
+        # legacy upper-case spellings still resolve
+        assert replace_entities("&AMP; &COPY;") == "& \xa9"
+
     def test_keep_entities(self):
         # keep some entities
         assert (

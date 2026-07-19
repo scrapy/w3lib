@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import functools
 import re
-from html.entities import name2codepoint
+from html.entities import html5
 from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
@@ -85,13 +85,19 @@ def replace_entities(
         elif groups.get("hex"):
             number = int(groups["hex"], 16)
         else:
-            # guaranteed to be named
+            # Guaranteed to be named. HTML entity names are case-sensitive
+            # (&Gt; is U+226B, not the &gt; character), so resolve the exact-
+            # cased name against the HTML5 table that html.unescape uses,
+            # rather than the HTML 4 name2codepoint with a .lower() fallback --
+            # that fallback silently mapped case-only variants to the wrong
+            # character and dropped names missing from the HTML 4 set.
             entity_name = groups["named"]
             if entity_name.lower() in keep:
                 return m.group(0)
-            number = name2codepoint.get(entity_name) or name2codepoint.get(
-                entity_name.lower()
-            )
+            key = entity_name + ";" if groups.get("semicolon") else entity_name
+            char = html5.get(key)
+            if char is not None:
+                return char
         if number is not None:
             # Numeric character references in the 80-9F range are typically
             # interpreted by browsers as representing the characters mapped
