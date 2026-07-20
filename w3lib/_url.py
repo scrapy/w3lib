@@ -54,7 +54,9 @@ _C0_CONTROL_OR_SPACE_RE = re.compile(rf"[{_C0_CONTROL_OR_SPACE}]")
 _SCHEME_RE = re.compile(rf"^([a-zA-Z][{scheme_chars}]*):")
 
 _IPV_FUTURE_RE = re.compile(r"\Av[a-fA-F0-9]+\..+\Z")
-_NETLOC_DELIMS_RE = re.compile(r"[/?#@:]")
+# "\" terminates the authority of a special-scheme URL just like "/" under the
+# URL living standard, so it belongs with the other authority delimiters here.
+_NETLOC_DELIMS_RE = re.compile(r"[/?#@:\\]")
 _NETLOC_STRIP_CHARS = str.maketrans("", "", "@:#?")
 
 

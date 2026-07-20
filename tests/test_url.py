@@ -388,6 +388,10 @@ SAFE_URL_URL_CASES = (
     ("https://example\uff03.com", ValueError),
     ("https://example\uff1f.com", ValueError),
     ("https://example\uff20.com", ValueError),
+    # "\" ends the authority of a special-scheme URL, and both of these
+    # normalise to "\" under NFKC, so they must be rejected like the others.
+    ("https://evil.com\uff3c.example.com", ValueError),
+    ("https://evil.com\ufe68.example.com", ValueError),
     # changed after NFKC normalisation
     ("https://examplｅ.com", "https://example.com"),
     # "[" and "]" outside the authority are ordinary characters and must not
