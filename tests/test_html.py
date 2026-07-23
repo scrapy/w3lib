@@ -1,5 +1,7 @@
 import time
 
+import pytest
+
 from w3lib.html import (
     get_base_url,
     get_meta_refresh,
@@ -221,8 +223,14 @@ class TestRemoveTags:
             == ""
         )
 
-    def test_remove_tags_no_catastrophic_backtracking(self):
-        evil = "<a" * 30000
+    @pytest.mark.parametrize(
+        "evil",
+        [
+            pytest.param("<a" * 30000, id="repeated-with-bracket"),
+            pytest.param("<" + "a" * 400000, id="repeated-without-bracket"),
+        ],
+    )
+    def test_remove_tags_no_catastrophic_backtracking(self, evil: str) -> None:
         start = time.perf_counter()
         assert remove_tags(evil) == evil
         assert remove_tags(evil + "<b>x</b>") == evil + "x"
