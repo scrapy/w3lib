@@ -223,7 +223,13 @@ class TestRemoveTags:
             == ""
         )
 
-    @pytest.mark.parametrize("evil", ["<a" * 30000, "<" + "a" * 400000])
+    @pytest.mark.parametrize(
+        "evil",
+        [
+            pytest.param("<a" * 30000, id="repeated-with-bracket"),
+            pytest.param("<" + "a" * 400000, id="repeated-without-bracket"),
+        ],
+    )
     def test_remove_tags_no_catastrophic_backtracking(self, evil: str) -> None:
         start = time.perf_counter()
         assert remove_tags(evil) == evil
