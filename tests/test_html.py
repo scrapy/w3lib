@@ -522,6 +522,21 @@ class TestGetMetaRefresh:
         ) == (3.0, "http://example.org/next/")
         assert time.perf_counter() - start < 2
 
+    def test_get_meta_refresh_no_catastrophic_backtracking_single_tag(self):
+        evil = "<meta " + "http-equiv refresh " * 50000 + ">"
+        start = time.perf_counter()
+        assert get_meta_refresh(evil, ignore_tags=()) == (None, None)
+        good = (
+            "<meta "
+            + "http-equiv refresh " * 50000
+            + 'http-equiv="refresh" content="3;url=http://example.org/next/">'
+        )
+        assert get_meta_refresh(good, ignore_tags=()) == (
+            3.0,
+            "http://example.org/next/",
+        )
+        assert time.perf_counter() - start < 2
+
     def test_without_url(self):
         # refresh without url should return (None, None)
         baseurl = "http://example.org"
