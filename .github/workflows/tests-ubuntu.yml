@@ -39,4 +39,4 @@ jobs:
                   tox -e py
 
             - name: Upload coverage report
-              uses: codecov/codecov-action@v5
+              uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac  # v5
