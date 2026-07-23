@@ -380,6 +380,15 @@ although this is inside a cdata! &amp; &quot;</node1><node2>blah&blahblahblahbla
     def test_cdata_at_end(self):
         assert unquote_markup("foo<![CDATA[bar]]>") == "foobar"
 
+    def test_unterminated_cdata(self) -> None:
+        assert unquote_markup("foo<![CDATA[bar") == "foo<![CDATA[bar"
+
+    def test_no_cdata_catastrophic_backtracking(self) -> None:
+        evil = "<![CDATA[x" * 200000
+        start = time.perf_counter()
+        assert unquote_markup(evil) == evil
+        assert time.perf_counter() - start < 2
+
 
 class TestGetBaseUrl:
     def test_get_base_url(self):

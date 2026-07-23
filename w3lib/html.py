@@ -34,9 +34,8 @@ _meta_refresh_re2 = re.compile(
     re.DOTALL | re.IGNORECASE,
 )
 
-_cdata_re = re.compile(
-    r"((?P<cdata_s><!\[CDATA\[)(?P<cdata_d>.*?)(?P<cdata_e>\]\]>))", re.DOTALL
-)
+_CDATA_START = "<![CDATA["
+_CDATA_END = "]]>"
 _tags_re = re.compile(
     r"""
     </?             # opening angle bracket, optional slash for a closing tag
@@ -317,8 +316,16 @@ def unquote_markup(
     ret = []
     offset = 0
 
-    for match in _cdata_re.finditer(utext):
-        start, end = match.span(1)
+    # Scan for CDATA sections linearly.
+    while True:
+        start = utext.find(_CDATA_START, offset)
+        if start == -1:
+            break
+        data_start = start + len(_CDATA_START)
+        end = utext.find(_CDATA_END, data_start)
+        if end == -1:
+            # Unterminated CDATA
+            break
 
         if offset < start:
             ret.append(
@@ -329,8 +336,8 @@ def unquote_markup(
                 )
             )
 
-        ret.append(match.group("cdata_d"))
-        offset = end
+        ret.append(utext[data_start:end])
+        offset = end + len(_CDATA_END)
 
     if offset < len(utext):
         ret.append(
