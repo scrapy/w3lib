@@ -37,7 +37,18 @@ _meta_refresh_re2 = re.compile(
 _cdata_re = re.compile(
     r"((?P<cdata_s><!\[CDATA\[)(?P<cdata_d>.*?)(?P<cdata_e>\]\]>))", re.DOTALL
 )
-_tags_re = re.compile("</?([^ <>/]+)[^<>]*>", re.IGNORECASE)
+_tags_re = re.compile(
+    r"""
+    </?             # opening angle bracket, optional slash for a closing tag
+    ([^ <>/]+)      # tag name (captured): a run of non-space, non-bracket chars,
+    (?![^ <>/])     # pinned to its maximal length by this lookahead so it can't
+                    # overlap the run below and backtrack quadratically on an
+                    # unterminated tag (a "<" with a long run and no ">")
+    [^<>]*          # the rest of the tag: attributes, whitespace, etc.
+    >               # closing angle bracket
+    """,
+    re.IGNORECASE | re.VERBOSE,
+)
 _meta_tag_re = re.compile(r"<meta\b[^<>]*>", re.IGNORECASE)
 
 
