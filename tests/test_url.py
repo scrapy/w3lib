@@ -481,8 +481,6 @@ KNOWN_SAFE_URL_STRING_URL_ISSUES = {
     "http://192.168.0.256",  # Invalid IP address
     "http://192.168.0.0.0",  # Invalid IP address / domain name
     "https://example.com:",  # Removes the :
-    # Encodes / after the first one in the path
-    "https://example.com/a/b",
     # Some path characters that RFC 2396 and RFC 3986 require escaping (%)
     # are not escaped.
     f"https://example.com/{PATH_TO_ENCODE}",
