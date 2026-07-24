@@ -1,3 +1,7 @@
+import time
+
+import pytest
+
 from w3lib.html import (
     get_base_url,
     get_meta_refresh,
@@ -119,6 +123,13 @@ class TestReplaceTags:
             == "Click here"
         )
 
+    def test_replace_tags_no_catastrophic_backtracking(self):
+        evil = "<a" * 50000
+        start = time.perf_counter()
+        assert replace_tags(evil) == evil  # incomplete tags (no ">") are untouched
+        assert replace_tags(evil + "<b>x</b>") == evil + "x"
+        assert time.perf_counter() - start < 2
+
 
 class TestRemoveComments:
     def test_returns_unicode(self):
@@ -212,6 +223,19 @@ class TestRemoveTags:
             == ""
         )
 
+    @pytest.mark.parametrize(
+        "evil",
+        [
+            pytest.param("<a" * 30000, id="repeated-with-bracket"),
+            pytest.param("<" + "a" * 400000, id="repeated-without-bracket"),
+        ],
+    )
+    def test_remove_tags_no_catastrophic_backtracking(self, evil: str) -> None:
+        start = time.perf_counter()
+        assert remove_tags(evil) == evil
+        assert remove_tags(evil + "<b>x</b>") == evil + "x"
+        assert time.perf_counter() - start < 2
+
 
 class TestRemoveTagsWithContent:
     def test_returns_unicode(self):
@@ -260,6 +284,18 @@ class TestRemoveTagsWithContent:
             remove_tags_with_content("<span></span><s></s>", which_ones=("s",))
             == "<span></span>"
         )
+
+    def test_no_catastrophic_backtracking(self):
+        evil = "<script " * 50000
+        start = time.perf_counter()
+        assert remove_tags_with_content(evil, which_ones=("script",)) == evil
+        assert (
+            remove_tags_with_content(
+                evil + "<script>x</script>", which_ones=("script",)
+            )
+            == evil
+        )
+        assert time.perf_counter() - start < 2
 
 
 class TestReplaceEscapeChars:
@@ -344,6 +380,15 @@ although this is inside a cdata! &amp; &quot;</node1><node2>blah&blahblahblahbla
     def test_cdata_at_end(self):
         assert unquote_markup("foo<![CDATA[bar]]>") == "foobar"
 
+    def test_unterminated_cdata(self) -> None:
+        assert unquote_markup("foo<![CDATA[bar") == "foo<![CDATA[bar"
+
+    def test_no_cdata_catastrophic_backtracking(self) -> None:
+        evil = "<![CDATA[x" * 200000
+        start = time.perf_counter()
+        assert unquote_markup(evil) == evil
+        assert time.perf_counter() - start < 2
+
 
 class TestGetBaseUrl:
     def test_get_base_url(self):
@@ -359,6 +404,19 @@ class TestGetBaseUrl:
             get_base_url(text, baseurl.encode("ascii"))
             == "http://example.org/something"
         )
+
+    def test_get_base_url_no_catastrophic_backtracking(self):
+        prefix = "<base " * 30000
+        start = time.perf_counter()
+        assert get_base_url(prefix, "http://example.com/") == "http://example.com/"
+        assert (
+            get_base_url(
+                prefix + '<base href="http://example.org/found/">',
+                "http://example.com/",
+            )
+            == "http://example.org/found/"
+        )
+        assert time.perf_counter() - start < 2
 
     def test_base_url_in_comment(self):
         assert get_base_url("""<!-- <base href="http://example.com/"/> -->""") == ""
@@ -462,6 +520,31 @@ class TestGetMetaRefresh:
             <body>blahablsdfsal&amp;</body>
             </html>"""
         assert get_meta_refresh(body, baseurl) == (5, "http://example.org/newpage")
+
+    def test_get_meta_refresh_no_catastrophic_backtracking(self):
+        prefix = "<meta " * 80000
+        start = time.perf_counter()
+        assert get_meta_refresh(prefix) == (None, None)
+        assert get_meta_refresh(
+            prefix
+            + '<meta http-equiv="refresh" content="3; url=http://example.org/next/">'
+        ) == (3.0, "http://example.org/next/")
+        assert time.perf_counter() - start < 2
+
+    def test_get_meta_refresh_no_catastrophic_backtracking_single_tag(self):
+        evil = "<meta " + "http-equiv refresh " * 50000 + ">"
+        start = time.perf_counter()
+        assert get_meta_refresh(evil, ignore_tags=()) == (None, None)
+        good = (
+            "<meta "
+            + "http-equiv refresh " * 50000
+            + 'http-equiv="refresh" content="3;url=http://example.org/next/">'
+        )
+        assert get_meta_refresh(good, ignore_tags=()) == (
+            3.0,
+            "http://example.org/next/",
+        )
+        assert time.perf_counter() - start < 2
 
     def test_without_url(self):
         # refresh without url should return (None, None)

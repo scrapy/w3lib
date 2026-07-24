@@ -53,10 +53,12 @@ _SCHEME_CHARS = frozenset(scheme_chars)
 _USES_PARAMS = frozenset(uses_params)
 _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE = str.maketrans("", "", _ASCII_TAB_OR_NEWLINE)
 _C0_CONTROL_OR_SPACE_RE = re.compile(rf"[{_C0_CONTROL_OR_SPACE}]")
-_SCHEME_RE = re.compile(rf"^([{scheme_chars}]*):")
+_SCHEME_RE = re.compile(rf"^([a-zA-Z][{scheme_chars}]*):")
 
 _IPV_FUTURE_RE = re.compile(r"\Av[a-fA-F0-9]+\..+\Z")
-_NETLOC_DELIMS_RE = re.compile(r"[/?#@:]")
+# "\" terminates the authority of a special-scheme URL just like "/" under the
+# URL living standard, so it belongs with the other authority delimiters here.
+_NETLOC_DELIMS_RE = re.compile(r"[/?#@:\\]")
 _NETLOC_STRIP_CHARS = str.maketrans("", "", "@:#?")
 
 
@@ -287,7 +289,7 @@ def _unquote_plus(
         return bytes(data)
 
     hex_decode_table = _hex_decode_table()
-    safe_table = _safe_table()
+    safe_table = _safe_table(b"")
 
     data_length = len(data)
     decode_limit = data_length - 2
@@ -652,8 +654,12 @@ def _urlsplit_pure(  # pylint: disable=too-many-locals,too-many-statements
         scheme = m.group(1).lower()
         url = url[m.end() :]
 
+    # The scan skips the leading "//" of an authority; for URLs without an
+    # authority it must start at 0, otherwise a "?" or "#" at index 0 or 1
+    # (e.g. relative URLs like "a?b" or "a#f") is never recorded.
+    scan_start = 2 if url[:2] == "//" else 0
     slash_pos = question_pos = hash_pos = open_br_pos = closing_br_pos = -1
-    for idx, char in enumerate(url[2:], 2):
+    for idx, char in enumerate(url[scan_start:], scan_start):
         if char == "/" and slash_pos == -1:
             slash_pos = idx
         elif char == "?" and question_pos == -1:
@@ -664,12 +670,16 @@ def _urlsplit_pure(  # pylint: disable=too-many-locals,too-many-statements
             open_br_pos = idx
         elif char == "]" and closing_br_pos == -1:
             closing_br_pos = idx
-        if slash_pos != question_pos != hash_pos != open_br_pos != closing_br_pos != -1:
+        if -1 not in (
+            slash_pos,
+            question_pos,
+            hash_pos,
+            open_br_pos,
+            closing_br_pos,
+        ):
             break
 
     if url[:2] == "//":
-        if (open_br_pos != -1) != (closing_br_pos != -1):
-            raise ValueError("Invalid IPv6 URL")
         delim = len(url)
 
         if 0 < slash_pos < delim:
@@ -678,6 +688,17 @@ def _urlsplit_pure(  # pylint: disable=too-many-locals,too-many-statements
             delim = question_pos
         if 0 < hash_pos < delim:
             delim = hash_pos
+
+        # Brackets only delimit an IPv6 host when they fall inside the
+        # authority. A "[" or "]" in the path, query or fragment is an
+        # ordinary character and must not drive IPv6 host parsing.
+        if not 2 <= open_br_pos < delim:
+            open_br_pos = -1
+        if not 2 <= closing_br_pos < delim:
+            closing_br_pos = -1
+
+        if (open_br_pos != -1) != (closing_br_pos != -1):
+            raise ValueError("Invalid IPv6 URL")
 
         netloc = url[2:delim]
         if open_br_pos != -1 and closing_br_pos != -1:

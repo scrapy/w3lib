@@ -398,8 +398,19 @@ SAFE_URL_URL_CASES = (
     ("https://example\uff03.com", ValueError),
     ("https://example\uff1f.com", ValueError),
     ("https://example\uff20.com", ValueError),
+    # "\" ends the authority of a special-scheme URL, and both of these
+    # normalise to "\" under NFKC, so they must be rejected like the others.
+    ("https://evil.com\uff3c.example.com", ValueError),
+    ("https://evil.com\ufe68.example.com", ValueError),
     # changed after NFKC normalisation
     ("https://examplｅ.com", "https://example.com/"),
+    # "[" and "]" outside the authority are ordinary characters and must not
+    # be treated as IPv6 host delimiters.
+    ("https://example.com/[x]", "https://example.com/%5Bx%5D"),
+    ("https://example.com/a]b", "https://example.com/a%5Db"),
+    ("http://example.com/search?tags[]=a", "http://example.com/search?tags%5B%5D=a"),
+    ("https://example.com/a#f[1]", "https://example.com/a#f%5B1%5D"),
+    ("http://[::1]:8080/p?q=[1]", "http://[::1]:8080/p?q=%5B1%5D"),
 )
 
 
@@ -642,6 +653,15 @@ class TestUrl:
         safeurl = safe_url_string("http://www.example.com/%C2%A3?unit=µ")
         assert isinstance(safeurl, str)
         assert safeurl == "http://www.example.com/%C2%A3?unit=%C2%B5"
+
+    def test_safe_url_string_invalid_scheme(self):
+        # A scheme must start with a letter (RFC 3986); a leading digit or
+        # symbol, or an empty scheme, is not a scheme. In particular an empty
+        # scheme must not promote the rest into a scheme-relative URL, which
+        # would expose an attacker-controlled host.
+        assert safe_url_string("://evil.com/path") == "://evil.com/path"
+        assert safe_url_string("1x://evil.com/path") == "1x://evil.com/path"
+        assert safe_url_string("+x://evil.com/path") == "+x://evil.com/path"
 
     def test_safe_url_string_bytes_input(self):
         safeurl = safe_url_string(b"http://www.example.com/")
@@ -917,6 +937,8 @@ class TestUrl:
         assert url_query_parameter("product.html?id=", "id", keep_blank_values=1) == ""
         # only the first one is returned
         assert url_query_parameter("product.html?id=200&id=201&id=202", "id") == "200"
+        # query delimiter at index 1 of a short relative URL
+        assert url_query_parameter("a?id=200", "id") == "200"
 
     @pytest.mark.xfail
     def test_url_query_parameter_2(self):
@@ -1434,6 +1456,23 @@ class TestCanonicalizeUrl:
             == "http://user:pass@www.example.com/do?a=1#frag"
         )
 
+    def test_remove_fragments_ipv6_host(self):
+        # The fragment delimiter must still be detected when the netloc is a
+        # bracketed IPv6 literal and the URL also has a query string.
+        assert canonicalize_url("http://[::1]/do?a=1#frag") == "http://[::1]/do?a=1"
+        assert (
+            canonicalize_url("http://[::1]/do?a=1#frag", keep_fragments=True)
+            == "http://[::1]/do?a=1#frag"
+        )
+
+    def test_remove_fragments_relative_url(self):
+        # The fragment/query delimiter must be detected even when it sits at
+        # index 0 or 1 of a relative URL (no authority to skip over).
+        assert canonicalize_url("a#frag") == "a"
+        assert canonicalize_url("a#frag", keep_fragments=True) == "a#frag"
+        assert canonicalize_url("a?b=1#frag") == "a?b=1"
+        assert canonicalize_url("?b=1") == "/?b=1"
+
     def test_dont_convert_safe_characters(self):
         # dont convert safe characters to percent encoding representation
         assert (
@@ -1697,6 +1736,11 @@ class TestDataURI:
         with pytest.raises(ValueError, match="not a data URI"):
             parse_data_uri("http://example.com/")
 
+    def test_data_prefixed_scheme(self):
+        for uri in ("datax:,A%20brief%20note", "database:,A%20brief%20note"):
+            with pytest.raises(ValueError, match="not a data URI"):
+                parse_data_uri(uri)
+
     def test_scheme_case_insensitive(self):
         result = parse_data_uri("DATA:,A%20brief%20note")
         assert result.data == b"A brief note"
@@ -1741,6 +1785,10 @@ class TestParseQsl:
             (b"%C5%81=%C3%A9", [(b"\xc5\x81", b"\xc3\xa9")]),
             (b"\x81=\xa9", [(b"\x81", b"\xa9")]),
             (b"%81=%A9", [(b"\x81", b"\xa9")]),
+            ("%41%42%43=%61%62%63", [(b"ABC", b"abc")]),
+            ("%2D%2E%5F%7E=%30%39", [(b"-._~", b"09")]),
+            (b"%41%42%43=%61%62%63", [(b"ABC", b"abc")]),
+            (b"%2D%2E%5F%7E=%30%39", [(b"-._~", b"09")]),
         ],
     )
     def test_parse_qsl(self, qs, output):
@@ -1802,8 +1850,9 @@ class TestPrivateHelpers:
         assert _unquote_plus(b"%GG") == b"%GG"
 
     def test_unquote_plus_safe_byte(self):
-        # %41 decodes to 'A' which is in RFC3986_UNRESERVED (safe) — stays encoded
-        assert _unquote_plus(b"%41") == b"%41"
+        # _unquote_plus keeps no bytes safe, so percent-encoded unreserved
+        # bytes such as %41 ('A') are decoded rather than left encoded.
+        assert _unquote_plus(b"%41") == b"A"
 
     def test_urlsplit_pure_checknetloc_nfkc_error(self):
         # U+FF1F FULLWIDTH QUESTION MARK normalises to '?' under NFKC,
@@ -1812,12 +1861,11 @@ class TestPrivateHelpers:
             _urlsplit_pure("http://example？com/path")
 
     def test_urlsplit_pure_brackets_in_query_not_netloc(self):
-        # Brackets detected in the query string (not the netloc) trigger
-        # _check_bracketed_netloc with a bracket-free netloc → ValueError
-        with pytest.raises(
-            ValueError, match="does not appear to be an IPv4 or IPv6 address"
-        ):
-            _urlsplit_pure("//example.com?q=[1]")
+        # Brackets in the query string are ordinary characters, not IPv6 host
+        # delimiters, so parsing succeeds and leaves the netloc untouched.
+        result = _urlsplit_pure("//example.com?q=[1]")
+        assert result.netloc == "example.com"
+        assert result.query == "q=[1]"
 
     def test_urlsplit_pure_ipv4_in_brackets(self):
         # IPv4 literals inside brackets are forbidden by RFC 3986
