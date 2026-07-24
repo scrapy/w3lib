@@ -54,7 +54,9 @@ _C0_CONTROL_OR_SPACE_RE = re.compile(rf"[{_C0_CONTROL_OR_SPACE}]")
 _SCHEME_RE = re.compile(rf"^([a-zA-Z][{scheme_chars}]*):")
 
 _IPV_FUTURE_RE = re.compile(r"\Av[a-fA-F0-9]+\..+\Z")
-_NETLOC_DELIMS_RE = re.compile(r"[/?#@:]")
+# "\" terminates the authority of a special-scheme URL just like "/" under the
+# URL living standard, so it belongs with the other authority delimiters here.
+_NETLOC_DELIMS_RE = re.compile(r"[/?#@:\\]")
 _NETLOC_STRIP_CHARS = str.maketrans("", "", "@:#?")
 
 
@@ -650,6 +652,21 @@ def _urlsplit(  # pylint: disable=too-many-locals,too-many-statements
     if m := _SCHEME_RE.match(url):
         scheme = m.group(1).lower()
         url = url[m.end() :]
+
+    # The URL living standard treats "\" like "/" for special-scheme URLs, but
+    # only in the authority and path; a "\" in the query or fragment is left
+    # alone. Without this, "http://evil.com\@good.com/" is read as userinfo
+    # "evil.com\" plus host "good.com", while a browser ends the authority at
+    # the "\" and connects to "evil.com".
+    if scheme in _SPECIAL_SCHEMES and "\\" in url:
+        cut = len(url)
+        question_idx = url.find("?")
+        if question_idx != -1:
+            cut = question_idx
+        hash_idx = url.find("#")
+        if hash_idx != -1 and hash_idx < cut:
+            cut = hash_idx
+        url = url[:cut].replace("\\", "/") + url[cut:]
 
     # The scan skips the leading "//" of an authority; for URLs without an
     # authority it must start at 0, otherwise a "?" or "#" at index 0 or 1

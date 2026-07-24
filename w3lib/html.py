@@ -25,19 +25,52 @@ _tag_re = re.compile(r"<[a-zA-Z\/!][^<>]*>")
 _baseurl_re = re.compile(
     r"<base\s[^<>]*href\s*=\s*[\"\']\s*([^\"\'\s]+)\s*[\"\']", re.IGNORECASE
 )
+
+
+def _upto(literal: str) -> str:
+    # Match up to and including the first occurrence of ``literal`` within a tag.
+    # This is a "tempered greedy token": unlike ``[^>]*literal``, it commits to
+    # the first match at each step, so chaining several of them cannot explore a
+    # product of positions and backtrack super-linearly on a crafted <meta> tag.
+    return rf"(?:(?!{literal})[^>])*{literal}"
+
+
+# The interval/url payload shared by both orderings: ``content="3; url=..."``.
+_META_INT_URL = (
+    r'\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)'
+)
 _meta_refresh_re = re.compile(
-    r'<meta\s[^>]*http-equiv[^>]*refresh[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)',
+    r"<meta\s"
+    + _upto("http-equiv")
+    + _upto("refresh")
+    + _upto("content")
+    + _META_INT_URL,
     re.DOTALL | re.IGNORECASE,
 )
 _meta_refresh_re2 = re.compile(
-    r'<meta\s[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)[^>]*?\shttp-equiv\s*=[^>]*refresh',
+    r"<meta\s"
+    + _upto("content")
+    + _META_INT_URL
+    + _upto(r"\shttp-equiv")
+    + r"\s*="
+    + _upto("refresh"),
     re.DOTALL | re.IGNORECASE,
 )
 
-_cdata_re = re.compile(
-    r"((?P<cdata_s><!\[CDATA\[)(?P<cdata_d>.*?)(?P<cdata_e>\]\]>))", re.DOTALL
+_CDATA_START = "<![CDATA["
+_CDATA_END = "]]>"
+_tags_re = re.compile(
+    r"""
+    </?             # opening angle bracket, optional slash for a closing tag
+    ([^ <>/]+)      # tag name (captured): a run of non-space, non-bracket chars,
+    (?![^ <>/])     # pinned to its maximal length by this lookahead so it can't
+                    # overlap the run below and backtrack quadratically on an
+                    # unterminated tag (a "<" with a long run and no ">")
+    [^<>]*          # the rest of the tag: attributes, whitespace, etc.
+    >               # closing angle bracket
+    """,
+    re.IGNORECASE | re.VERBOSE,
 )
-_tags_re = re.compile("</?([^ <>/]+)[^<>]*>", re.IGNORECASE)
 _meta_tag_re = re.compile(r"<meta\b[^<>]*>", re.IGNORECASE)
 
 
@@ -306,8 +339,16 @@ def unquote_markup(
     ret = []
     offset = 0
 
-    for match in _cdata_re.finditer(utext):
-        start, end = match.span(1)
+    # Scan for CDATA sections linearly.
+    while True:
+        start = utext.find(_CDATA_START, offset)
+        if start == -1:
+            break
+        data_start = start + len(_CDATA_START)
+        end = utext.find(_CDATA_END, data_start)
+        if end == -1:
+            # Unterminated CDATA
+            break
 
         if offset < start:
             ret.append(
@@ -318,8 +359,8 @@ def unquote_markup(
                 )
             )
 
-        ret.append(match.group("cdata_d"))
-        offset = end
+        ret.append(utext[data_start:end])
+        offset = end + len(_CDATA_END)
 
     if offset < len(utext):
         ret.append(

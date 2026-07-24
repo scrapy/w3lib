@@ -220,6 +220,10 @@ SAFE_URL_URL_CASES = (
         f"https://{USERNAME_ENCODED}:{PASSWORD_ENCODED}@example.com",
     ),
     ("https://@\\example.com", ValueError),
+    # "\" ends the authority of a special-scheme URL, so a "\" before "@" is
+    # not a userinfo separator: the host is what precedes the "\".
+    ("https://evil.com\\@good.com/", "https://evil.com/@good.com/"),
+    ("https://good.com\\@evil.com/", "https://good.com/@evil.com/"),
     ("https://\x80:\x80@example.com", "https://%C2%80:%C2%80@example.com"),
     # Host
     ("https://example.com", "https://example.com"),
@@ -319,6 +323,12 @@ SAFE_URL_URL_CASES = (
     ("https://example.com/a", "https://example.com/a"),
     ("https://example.com\\a", "https://example.com/a"),
     ("https://example.com/a\\b", "https://example.com/a/b"),
+    # "\" is only converted to "/" before the query/fragment; inside them it
+    # is percent-encoded as usual.
+    ("https://example.com\\a?b\\c", "https://example.com/a?b%5Cc"),
+    ("https://example.com\\a#b\\c", "https://example.com/a#b%5Cc"),
+    ("https://example.com\\a?b\\c#d\\e", "https://example.com/a?b%5Cc#d%5Ce"),
+    ("https://example.com\\a#b?c\\d", "https://example.com/a#b?c%5Cd"),
     (
         f"https://example.com/{PATH_SAFE}",
         f"https://example.com/{PATH_SAFE}",
@@ -388,6 +398,10 @@ SAFE_URL_URL_CASES = (
     ("https://example\uff03.com", ValueError),
     ("https://example\uff1f.com", ValueError),
     ("https://example\uff20.com", ValueError),
+    # "\" ends the authority of a special-scheme URL, and both of these
+    # normalise to "\" under NFKC, so they must be rejected like the others.
+    ("https://evil.com\uff3c.example.com", ValueError),
+    ("https://evil.com\ufe68.example.com", ValueError),
     # changed after NFKC normalisation
     ("https://examplｅ.com", "https://example.com"),
     # "[" and "]" outside the authority are ordinary characters and must not
@@ -473,12 +487,6 @@ KNOWN_SAFE_URL_STRING_URL_ISSUES = {
     "http://192.168.0.256",  # Invalid IP address
     "http://192.168.0.0.0",  # Invalid IP address / domain name
     "https://example.com:",  # Removes the :
-    # Does not convert \ to /
-    "https://example.com\\a",
-    "https://example.com\\a\\b",
-    # Encodes \ and / after the first one in the path
-    "https://example.com/a/b",
-    "https://example.com/a\\b",
     # Some path characters that RFC 2396 and RFC 3986 require escaping (%)
     # are not escaped.
     f"https://example.com/{PATH_TO_ENCODE}",
