@@ -323,6 +323,12 @@ SAFE_URL_URL_CASES = (
     ("https://example.com/a", "https://example.com/a"),
     ("https://example.com\\a", "https://example.com/a"),
     ("https://example.com/a\\b", "https://example.com/a/b"),
+    # "\" is only converted to "/" before the query/fragment; inside them it
+    # is percent-encoded as usual.
+    ("https://example.com\\a?b\\c", "https://example.com/a?b%5Cc"),
+    ("https://example.com\\a#b\\c", "https://example.com/a#b%5Cc"),
+    ("https://example.com\\a?b\\c#d\\e", "https://example.com/a?b%5Cc#d%5Ce"),
+    ("https://example.com\\a#b?c\\d", "https://example.com/a#b?c%5Cd"),
     (
         f"https://example.com/{PATH_SAFE}",
         f"https://example.com/{PATH_SAFE}",
