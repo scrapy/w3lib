@@ -1355,17 +1355,20 @@ class TestCanonicalizeUrl:
             == "http://www.example.com/r%C3%A9sum%C3%A9?country=%D0%A0%D0%BE%D1%81%D1%81%D0%B8%D1%8F"
         )
 
-    def test_canonicalize_url_remove_ascii_tab_and_newlines(self):
+    @pytest.mark.parametrize(
+        "url",
+        [
+            pytest.param("http://exa\tmple.com/a\r\nb?q=a\tb", id="str"),
+            pytest.param(b"http://exa\tmple.com/a\r\nb?q=a\tb", id="bytes"),
+        ],
+    )
+    def test_canonicalize_url_remove_ascii_tab_and_newlines(self, url):
         # ASCII tab and newline are removed from anywhere in the URL, matching
         # safe_url_string() and the WHATWG/urlsplit behavior. This must not
         # depend on whether the input is str or bytes: a tab in the host of a
         # bytes URL was previously left in place, so the canonical form kept a
         # host a browser would connect to differently.
-        for url in (
-            "http://exa\tmple.com/a\r\nb?q=a\tb",
-            b"http://exa\tmple.com/a\r\nb?q=a\tb",
-        ):
-            assert canonicalize_url(url) == "http://example.com/ab?q=ab", repr(url)
+        assert canonicalize_url(url) == "http://example.com/ab?q=ab"
 
     def test_normalize_percent_encoding_in_paths(self):
         assert (
