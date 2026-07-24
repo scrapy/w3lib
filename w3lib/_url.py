@@ -654,6 +654,21 @@ def _urlsplit_pure(  # pylint: disable=too-many-locals,too-many-statements
         scheme = m.group(1).lower()
         url = url[m.end() :]
 
+    # The URL living standard treats "\" like "/" for special-scheme URLs, but
+    # only in the authority and path; a "\" in the query or fragment is left
+    # alone. Without this, "http://evil.com\@good.com/" is read as userinfo
+    # "evil.com\" plus host "good.com", while a browser ends the authority at
+    # the "\" and connects to "evil.com".
+    if scheme in _SPECIAL_SCHEMES and "\\" in url:
+        cut = len(url)
+        question_idx = url.find("?")
+        if question_idx != -1:
+            cut = question_idx
+        hash_idx = url.find("#")
+        if hash_idx != -1 and hash_idx < cut:
+            cut = hash_idx
+        url = url[:cut].replace("\\", "/") + url[cut:]
+
     # The scan skips the leading "//" of an authority; for URLs without an
     # authority it must start at 0, otherwise a "?" or "#" at index 0 or 1
     # (e.g. relative URLs like "a?b" or "a#f") is never recorded.
