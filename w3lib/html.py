@@ -25,12 +25,35 @@ _tag_re = re.compile(r"<[a-zA-Z\/!][^<>]*>")
 _baseurl_re = re.compile(
     r"<base\s[^<>]*href\s*=\s*[\"\']\s*([^\"\'\s]+)\s*[\"\']", re.IGNORECASE
 )
+
+
+def _upto(literal: str) -> str:
+    # Match up to and including the first occurrence of ``literal`` within a tag.
+    # This is a "tempered greedy token": unlike ``[^>]*literal``, it commits to
+    # the first match at each step, so chaining several of them cannot explore a
+    # product of positions and backtrack super-linearly on a crafted <meta> tag.
+    return rf"(?:(?!{literal})[^>])*{literal}"
+
+
+# The interval/url payload shared by both orderings: ``content="3; url=..."``.
+_META_INT_URL = (
+    r'\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)'
+)
 _meta_refresh_re = re.compile(
-    r'<meta\s[^>]*http-equiv[^>]*refresh[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)',
+    r"<meta\s"
+    + _upto("http-equiv")
+    + _upto("refresh")
+    + _upto("content")
+    + _META_INT_URL,
     re.DOTALL | re.IGNORECASE,
 )
 _meta_refresh_re2 = re.compile(
-    r'<meta\s[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)[^>]*?\shttp-equiv\s*=[^>]*refresh',
+    r"<meta\s"
+    + _upto("content")
+    + _META_INT_URL
+    + _upto(r"\shttp-equiv")
+    + r"\s*="
+    + _upto("refresh"),
     re.DOTALL | re.IGNORECASE,
 )
 
