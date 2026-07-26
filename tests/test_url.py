@@ -244,6 +244,10 @@ SAFE_URL_URL_CASES = (
         f"https://{USERNAME_ENCODED}:{PASSWORD_ENCODED}@example.com",
     ),
     ("https://@\\example.com", ValueError),
+    # "\" ends the authority of a special-scheme URL, so a "\" before "@" is
+    # not a userinfo separator: the host is what precedes the "\".
+    ("https://evil.com\\@good.com/", "https://evil.com/@good.com/"),
+    ("https://good.com\\@evil.com/", "https://good.com/@evil.com/"),
     ("https://\x80:\x80@example.com", "https://%C2%80:%C2%80@example.com"),
     # Host
     ("https://example.com", "https://example.com"),
@@ -343,6 +347,12 @@ SAFE_URL_URL_CASES = (
     ("https://example.com/a", "https://example.com/a"),
     ("https://example.com\\a", "https://example.com/a"),
     ("https://example.com/a\\b", "https://example.com/a/b"),
+    # "\" is only converted to "/" before the query/fragment; inside them it
+    # is percent-encoded as usual.
+    ("https://example.com\\a?b\\c", "https://example.com/a?b%5Cc"),
+    ("https://example.com\\a#b\\c", "https://example.com/a#b%5Cc"),
+    ("https://example.com\\a?b\\c#d\\e", "https://example.com/a?b%5Cc#d%5Ce"),
+    ("https://example.com\\a#b?c\\d", "https://example.com/a#b?c%5Cd"),
     (
         f"https://example.com/{PATH_SAFE}",
         f"https://example.com/{PATH_SAFE}",
@@ -412,6 +422,10 @@ SAFE_URL_URL_CASES = (
     ("https://example\uff03.com", ValueError),
     ("https://example\uff1f.com", ValueError),
     ("https://example\uff20.com", ValueError),
+    # "\" ends the authority of a special-scheme URL, and both of these
+    # normalise to "\" under NFKC, so they must be rejected like the others.
+    ("https://evil.com\uff3c.example.com", ValueError),
+    ("https://evil.com\ufe68.example.com", ValueError),
     # changed after NFKC normalisation
     ("https://examplｅ.com", "https://example.com"),
     # "[" and "]" outside the authority are ordinary characters and must not
@@ -497,12 +511,6 @@ KNOWN_SAFE_URL_STRING_URL_ISSUES = {
     "http://192.168.0.256",  # Invalid IP address
     "http://192.168.0.0.0",  # Invalid IP address / domain name
     "https://example.com:",  # Removes the :
-    # Does not convert \ to /
-    "https://example.com\\a",
-    "https://example.com\\a\\b",
-    # Encodes \ and / after the first one in the path
-    "https://example.com/a/b",
-    "https://example.com/a\\b",
     # Some path characters that RFC 2396 and RFC 3986 require escaping (%)
     # are not escaped.
     f"https://example.com/{PATH_TO_ENCODE}",
@@ -1443,6 +1451,21 @@ class TestCanonicalizeUrl:
             == "http://www.example.com/r%C3%A9sum%C3%A9?country=%D0%A0%D0%BE%D1%81%D1%81%D0%B8%D1%8F"
         )
 
+    @pytest.mark.parametrize(
+        "url",
+        [
+            pytest.param("http://exa\tmple.com/a\r\nb?q=a\tb", id="str"),
+            pytest.param(b"http://exa\tmple.com/a\r\nb?q=a\tb", id="bytes"),
+        ],
+    )
+    def test_canonicalize_url_remove_ascii_tab_and_newlines(self, url):
+        # ASCII tab and newline are removed from anywhere in the URL, matching
+        # safe_url_string() and the WHATWG/urlsplit behavior. This must not
+        # depend on whether the input is str or bytes: a tab in the host of a
+        # bytes URL was previously left in place, so the canonical form kept a
+        # host a browser would connect to differently.
+        assert canonicalize_url(url) == "http://example.com/ab?q=ab"
+
     def test_normalize_percent_encoding_in_paths(self):
         assert (
             canonicalize_url("http://www.example.com/r%c3%a9sum%c3%a9")
@@ -1594,6 +1617,12 @@ class TestCanonicalizeUrl:
             canonicalize_url("http://はじめよう.みんな/?query=サ&maxResults=5")
             == "http://xn--p8j9a0d9c9a.xn--q9jyb4c/?maxResults=5&query=%E3%82%B5"
         )
+        # non-ASCII domain with an explicit port: IDNA encoding must only
+        # apply to the host, not swallow the port separator
+        assert (
+            canonicalize_url("http://www.bücher.de:8080/?q=bücher")
+            == "http://www.xn--bcher-kva.de:8080/?q=b%C3%BCcher"
+        )
 
     def test_quoted_slash_and_question_sign(self):
         assert (
@@ -1665,6 +1694,11 @@ class TestCanonicalizeUrl:
             canonicalize_url(parse_url("http://www.example.com/abc/def?x=1"))
             == "http://www.example.com/abc/def?x=1"
         )
+
+    def test_parse_url_parse_result(self):
+        # an already parsed url is returned as is
+        parts = parse_url("http://www.example.com/path;params?x=1#frag")
+        assert parse_url(parts) is parts
 
     def test_canonicalize_url_idempotence(self):
         for url, enc in [

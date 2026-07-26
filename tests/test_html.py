@@ -1,5 +1,7 @@
 import time
 
+import pytest
+
 from w3lib.html import (
     get_base_url,
     get_meta_refresh,
@@ -221,8 +223,14 @@ class TestRemoveTags:
             == ""
         )
 
-    def test_remove_tags_no_catastrophic_backtracking(self):
-        evil = "<a" * 30000
+    @pytest.mark.parametrize(
+        "evil",
+        [
+            pytest.param("<a" * 30000, id="repeated-with-bracket"),
+            pytest.param("<" + "a" * 400000, id="repeated-without-bracket"),
+        ],
+    )
+    def test_remove_tags_no_catastrophic_backtracking(self, evil: str) -> None:
         start = time.perf_counter()
         assert remove_tags(evil) == evil
         assert remove_tags(evil + "<b>x</b>") == evil + "x"
@@ -372,6 +380,15 @@ although this is inside a cdata! &amp; &quot;</node1><node2>blah&blahblahblahbla
     def test_cdata_at_end(self):
         assert unquote_markup("foo<![CDATA[bar]]>") == "foobar"
 
+    def test_unterminated_cdata(self) -> None:
+        assert unquote_markup("foo<![CDATA[bar") == "foo<![CDATA[bar"
+
+    def test_no_cdata_catastrophic_backtracking(self) -> None:
+        evil = "<![CDATA[x" * 200000
+        start = time.perf_counter()
+        assert unquote_markup(evil) == evil
+        assert time.perf_counter() - start < 2
+
 
 class TestGetBaseUrl:
     def test_get_base_url(self):
@@ -512,6 +529,21 @@ class TestGetMetaRefresh:
             prefix
             + '<meta http-equiv="refresh" content="3; url=http://example.org/next/">'
         ) == (3.0, "http://example.org/next/")
+        assert time.perf_counter() - start < 2
+
+    def test_get_meta_refresh_no_catastrophic_backtracking_single_tag(self):
+        evil = "<meta " + "http-equiv refresh " * 50000 + ">"
+        start = time.perf_counter()
+        assert get_meta_refresh(evil, ignore_tags=()) == (None, None)
+        good = (
+            "<meta "
+            + "http-equiv refresh " * 50000
+            + 'http-equiv="refresh" content="3;url=http://example.org/next/">'
+        )
+        assert get_meta_refresh(good, ignore_tags=()) == (
+            3.0,
+            "http://example.org/next/",
+        )
         assert time.perf_counter() - start < 2
 
     def test_without_url(self):

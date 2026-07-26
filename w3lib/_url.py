@@ -54,7 +54,9 @@ _C0_CONTROL_OR_SPACE_RE = re.compile(rf"[{_C0_CONTROL_OR_SPACE}]")
 _SCHEME_RE = re.compile(rf"^([a-zA-Z][{scheme_chars}]*):")
 
 _IPV_FUTURE_RE = re.compile(r"\Av[a-fA-F0-9]+\..+\Z")
-_NETLOC_DELIMS_RE = re.compile(r"[/?#@:]")
+# "\" terminates the authority of a special-scheme URL just like "/" under the
+# URL living standard, so it belongs with the other authority delimiters here.
+_NETLOC_DELIMS_RE = re.compile(r"[/?#@:\\]")
 _NETLOC_STRIP_CHARS = str.maketrans("", "", "@:#?")
 
 
@@ -431,6 +433,22 @@ def _urlencode(query: _QueryType) -> bytes:
     return b"&".join(result)
 
 
+def _split_params(scheme: str, url: str) -> tuple[str, str]:
+    """Split the params from the path, as urlib.parse.urlparse does."""
+    if scheme in _USES_PARAMS:
+        semi_idx = url.find(";")
+
+        if semi_idx != -1:
+            slash_idx = url.rfind("/")
+
+            if slash_idx != -1 and slash_idx < semi_idx:
+                semi_idx = url.find(";", slash_idx)
+
+            return url[:semi_idx], url[semi_idx + 1 :]
+
+    return url, ""
+
+
 def _urlparse(
     url: str,
     scheme: str = "",
@@ -441,18 +459,7 @@ def _urlparse(
         return ParseResult(scheme, "", "", "", "", "")
 
     scheme, netloc, url, query, fragment = _urlsplit(url, scheme, allow_fragments)
-    params = ""
-
-    if scheme in _USES_PARAMS:
-        semi_idx = url.find(";")
-
-        if semi_idx != -1:
-            slash_idx = url.rfind("/")
-
-            if slash_idx != -1 and slash_idx < semi_idx:
-                semi_idx = url.find(";", slash_idx)
-
-            url, params = url[:semi_idx], url[semi_idx + 1 :]
+    url, params = _split_params(scheme, url)
 
     return ParseResult(scheme, netloc, url, params, query, fragment)
 
@@ -646,6 +653,21 @@ def _urlsplit(  # pylint: disable=too-many-locals,too-many-statements
         scheme = m.group(1).lower()
         url = url[m.end() :]
 
+    # The URL living standard treats "\" like "/" for special-scheme URLs, but
+    # only in the authority and path; a "\" in the query or fragment is left
+    # alone. Without this, "http://evil.com\@good.com/" is read as userinfo
+    # "evil.com\" plus host "good.com", while a browser ends the authority at
+    # the "\" and connects to "evil.com".
+    if scheme in _SPECIAL_SCHEMES and "\\" in url:
+        cut = len(url)
+        question_idx = url.find("?")
+        if question_idx != -1:
+            cut = question_idx
+        hash_idx = url.find("#")
+        if hash_idx != -1 and hash_idx < cut:
+            cut = hash_idx
+        url = url[:cut].replace("\\", "/") + url[cut:]
+
     # The scan skips the leading "//" of an authority; for URLs without an
     # authority it must start at 0, otherwise a "?" or "#" at index 0 or 1
     # (e.g. relative URLs like "a?b" or "a#f") is never recorded.
@@ -791,10 +813,6 @@ def _idna(input_string: str) -> tuple[bytes, str]:
 
 def _idna_bytes(input_string: str) -> bytes:
     return _idna(input_string)[0]
-
-
-def _idna_str(input_string: str) -> str:
-    return _idna(input_string)[1]
 
 
 @functools.lru_cache
