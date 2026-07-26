@@ -26,11 +26,11 @@ from ._url import (
     RFC3986_UNRESERVED as RFC3986_UNRESERVED,
     RFC3986_USERINFO_SAFE_CHARS as RFC3986_USERINFO_SAFE_CHARS,
     _idna_bytes,
-    _idna_str,
     _parse_qs,
     _parse_qsl,
     _quote,
     _quote_into,
+    _split_params,
     _strip,
     _unquote,
     _url2pathname,
@@ -76,49 +76,12 @@ _SPECIAL_QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS.translate(None, delete=b"'")
 _FRAGMENT_SAFEST_CHARS = _PATH_SAFEST_CHARS
 
 
-def safe_url_string(
+def _safe_url_split(
     url: str | bytes,
     encoding: str = "utf8",
     path_encoding: str = "utf8",
     quote_path: bool = True,
-) -> str:
-    """Return a URL equivalent to *url* that a wide range of web browsers and
-    web servers consider valid.
-
-    *url* is parsed according to the rules of the `URL living standard`_,
-    and during serialization additional characters are percent-encoded to make
-    the URL valid by additional URL standards.
-
-    .. _URL living standard: https://url.spec.whatwg.org/
-
-    The returned URL should be valid by *all* of the following URL standards
-    known to be enforced by modern-day web browsers and web servers:
-
-    -   `URL living standard`_
-
-    -   `RFC 3986`_
-
-    -   `RFC 2396`_ and `RFC 2732`_, as interpreted by `Java 8’s java.net.URI
-        class`_.
-
-    .. _Java 8’s java.net.URI class: https://docs.oracle.com/javase/8/docs/api/java/net/URI.html
-    .. _RFC 2396: https://www.ietf.org/rfc/rfc2396.txt
-    .. _RFC 2732: https://www.ietf.org/rfc/rfc2732.txt
-    .. _RFC 3986: https://www.ietf.org/rfc/rfc3986.txt
-
-    If a bytes URL is given, it is first converted to `str` using the given
-    encoding (which defaults to 'utf-8'). If quote_path is True (default),
-    path_encoding ('utf-8' by default) is used to encode URL path component
-    which is then quoted. Otherwise, if quote_path is False, path component
-    is not encoded or quoted. Given encoding is used for query string
-    or form data.
-
-    When passing an encoding, you should use the encoding of the
-    original page (the page from which the URL was extracted from).
-
-    Calling this function on an already "safe" URL will return the URL
-    unmodified.
-    """
+) -> tuple[str, str, str, str, str]:
     # urlsplit() chokes on bytes input with non-ASCII chars,
     # so let's decode (to Unicode) using page encoding:
     #   - it is assumed that a raw bytes input comes from a document
@@ -194,13 +157,59 @@ def safe_url_string(
     else:
         fragment = parts.fragment
 
-    return _urlunsplit(
+    return (
         parts.scheme,
         netloc,
         path,
         query,
         fragment,
     )
+
+
+def safe_url_string(
+    url: str | bytes,
+    encoding: str = "utf8",
+    path_encoding: str = "utf8",
+    quote_path: bool = True,
+) -> str:
+    """Return a URL equivalent to *url* that a wide range of web browsers and
+    web servers consider valid.
+
+    *url* is parsed according to the rules of the `URL living standard`_,
+    and during serialization additional characters are percent-encoded to make
+    the URL valid by additional URL standards.
+
+    .. _URL living standard: https://url.spec.whatwg.org/
+
+    The returned URL should be valid by *all* of the following URL standards
+    known to be enforced by modern-day web browsers and web servers:
+
+    -   `URL living standard`_
+
+    -   `RFC 3986`_
+
+    -   `RFC 2396`_ and `RFC 2732`_, as interpreted by `Java 8’s java.net.URI
+        class`_.
+
+    .. _Java 8’s java.net.URI class: https://docs.oracle.com/javase/8/docs/api/java/net/URI.html
+    .. _RFC 2396: https://www.ietf.org/rfc/rfc2396.txt
+    .. _RFC 2732: https://www.ietf.org/rfc/rfc2732.txt
+    .. _RFC 3986: https://www.ietf.org/rfc/rfc3986.txt
+
+    If a bytes URL is given, it is first converted to `str` using the given
+    encoding (which defaults to 'utf-8'). If quote_path is True (default),
+    path_encoding ('utf-8' by default) is used to encode URL path component
+    which is then quoted. Otherwise, if quote_path is False, path component
+    is not encoded or quoted. Given encoding is used for query string
+    or form data.
+
+    When passing an encoding, you should use the encoding of the
+    original page (the page from which the URL was extracted from).
+
+    Calling this function on an already "safe" URL will return the URL
+    unmodified.
+    """
+    return _urlunsplit(*_safe_url_split(url, encoding, path_encoding, quote_path))
 
 
 _parent_dirs = re.compile(r"/?(\.\./)+")
@@ -575,44 +584,6 @@ __all__ = [
 ]
 
 
-def _safe_ParseResult(
-    parts: ParseResult, encoding: str = "utf8", path_encoding: str = "utf8"
-) -> tuple[str, str, str, str, str, str]:
-    # IDNA encoding can fail for too long labels (>63 characters)
-    # or missing labels (e.g. http://.example.com)
-    try:
-        netloc = _idna_str(parts.netloc)
-    except UnicodeError:
-        netloc = parts.netloc
-
-    tmp_buf = bytearray()
-
-    _quote_into(parts.path.encode(path_encoding), tmp_buf, _PATH_SAFE_CHARS)
-    path = tmp_buf.decode()
-    tmp_buf.clear()
-
-    _quote_into(parts.params.encode(encoding), tmp_buf, _SAFE_CHARS)
-    params = tmp_buf.decode()
-    tmp_buf.clear()
-
-    _quote_into(parts.query.encode(encoding), tmp_buf, _SAFE_CHARS)
-    query = tmp_buf.decode()
-    tmp_buf.clear()
-
-    _quote_into(parts.fragment.encode(encoding), tmp_buf, _SAFE_CHARS)
-    fragment = tmp_buf.decode()
-    tmp_buf.clear()
-
-    return (
-        parts.scheme,
-        netloc,
-        path,
-        params,
-        query,
-        fragment,
-    )
-
-
 def canonicalize_url(
     url: str | bytes | ParseResult,
     keep_blank_values: bool = True,
@@ -649,16 +620,15 @@ def canonicalize_url(
     # UTF-8 can handle all Unicode characters,
     # so we should be covered regarding URL normalization,
     # if not for proper URL expected by remote website.
-    if isinstance(url, str):
-        url = _strip(url)
+    if isinstance(url, ParseResult):
+        url = _urlunparse(*url)
     try:
-        scheme, netloc, path, params, query, fragment = _safe_ParseResult(
-            parse_url(url), encoding=encoding or "utf8"
+        scheme, netloc, path, query, fragment = _safe_url_split(
+            url, encoding=encoding or "utf8"
         )
     except UnicodeEncodeError:
-        scheme, netloc, path, params, query, fragment = _safe_ParseResult(
-            parse_url(url), encoding="utf8"
-        )
+        scheme, netloc, path, query, fragment = _safe_url_split(url, encoding="utf8")
+    path, params = _split_params(scheme, path)
 
     # 1. decode query-string as UTF-8 (or keep raw bytes),
     #    sort values,
