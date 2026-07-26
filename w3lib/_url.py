@@ -436,14 +436,11 @@ def _urlencode(query: _QueryType) -> bytes:
 def _split_params(scheme: str, url: str) -> tuple[str, str]:
     """Split the params from the path, as urlib.parse.urlparse does."""
     if scheme in _USES_PARAMS:
-        semi_idx = url.find(";")
+        # Only a ";" in the last segment starts the params; one in an earlier
+        # segment is an ordinary path character.
+        semi_idx = url.find(";", url.rfind("/") + 1)
 
         if semi_idx != -1:
-            slash_idx = url.rfind("/")
-
-            if slash_idx != -1 and slash_idx < semi_idx:
-                semi_idx = url.find(";", slash_idx)
-
             return url[:semi_idx], url[semi_idx + 1 :]
 
     return url, ""
