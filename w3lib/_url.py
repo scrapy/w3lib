@@ -815,10 +815,6 @@ def _idna_bytes(input_string: str) -> bytes:
     return _idna(input_string)[0]
 
 
-def _idna_str(input_string: str) -> str:
-    return _idna(input_string)[1]
-
-
 @functools.lru_cache
 def _nfkc_netloc(netloc: str) -> tuple[str, str]:
     cleaned = netloc.translate(_NETLOC_STRIP_CHARS)

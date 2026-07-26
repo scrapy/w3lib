@@ -1607,6 +1607,11 @@ class TestCanonicalizeUrl:
             == "http://www.example.com/abc/def?x=1"
         )
 
+    def test_parse_url_parse_result(self):
+        # an already parsed url is returned as is
+        parts = parse_url("http://www.example.com/path;params?x=1#frag")
+        assert parse_url(parts) is parts
+
     def test_canonicalize_url_idempotence(self):
         for url, enc in [
             ("http://www.bücher.de/résumé?q=résumé", "utf8"),
