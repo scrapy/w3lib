@@ -60,12 +60,24 @@ class TestRequestEncoding:
         extracted = http_content_type_encoding(header_value)
         assert extracted == "iso8859-4"
         assert http_content_type_encoding("something else") is None
-        # whitespace around "=" in charset parameter (RFC 7230 OWS)
-        assert http_content_type_encoding("text/html;charset = utf-8") == "utf-8"
-        assert http_content_type_encoding("text/html; charset = utf-8") == "utf-8"
-        assert http_content_type_encoding("text/html;charset=  utf-8") == "utf-8"
-        assert http_content_type_encoding("text/html; charset =  utf-8") == "utf-8"
-        assert http_content_type_encoding("text/html; charset  = utf-8") == "utf-8"
+        # valid quoted charset values (RFC 7231 sec. 3.1.1.1)
+        assert (
+            http_content_type_encoding('Content-Type: text/html; charset="utf-8"')
+            == "utf-8"
+        )
+        assert http_content_type_encoding('text/html;charset="UTF-8"') == "utf-8"
+        assert (
+            http_content_type_encoding('text/html; Charset="ISO-8859-4"') == "iso8859-4"
+        )
+        assert http_content_type_encoding("text/html;charset=utf-8") == "utf-8"
+        # invalid: whitespace around "=" is not allowed
+        assert http_content_type_encoding("text/html; charset = utf-8") is None
+        assert http_content_type_encoding('text/html; charset= "utf-8"') is None
+        # invalid: single quotes are not HTTP quoted-string
+        assert http_content_type_encoding("text/html; charset='utf-8'") is None
+        # invalid: incomplete quotes
+        assert http_content_type_encoding('text/html; charset="utf-8') is None
+        assert http_content_type_encoding('text/html; charset=utf-8"') is None
 
     def test_html_body_declared_encoding(self):
         for fragment in self.utf8_fragments:
