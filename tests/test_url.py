@@ -14,7 +14,7 @@ from w3lib._infra import (
     _ASCII_TAB_OR_NEWLINE,
     _C0_CONTROL_OR_SPACE,
 )
-from w3lib._url import _SPECIAL_SCHEMES, _urlunparse, _urlunsplit
+from w3lib._url import _SPECIAL_SCHEMES, _split_params, _urlunparse, _urlunsplit
 from w3lib.url import (
     add_or_replace_parameter,
     add_or_replace_parameters,
@@ -1612,6 +1612,27 @@ class TestCanonicalizeUrl:
         parts = parse_url("http://www.example.com/path;params?x=1#frag")
         assert parse_url(parts) is parts
 
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://www.example.com/public;/../admin/secret",
+            "http://www.example.com/dir;x/file",
+            "http://www.example.com/a;b/c",
+            "http://www.example.com/a;b/c;d",
+        ],
+    )
+    def test_parse_url_non_final_segment_semicolon(self, url):
+        # a ";" outside the last path segment is not a params delimiter
+        assert parse_url(url).path == urlparse(url).path
+        assert parse_url(url).params == urlparse(url).params
+
+    def test_canonicalize_url_non_final_segment_semicolon(self):
+        # the path after such a ";" still gets percent-encoding normalization
+        assert (
+            canonicalize_url("http://www.example.com/dir;x/a%7Eb")
+            == "http://www.example.com/dir;x/a~b"
+        )
+
     def test_canonicalize_url_idempotence(self):
         for url, enc in [
             ("http://www.bücher.de/résumé?q=résumé", "utf8"),
@@ -1859,3 +1880,28 @@ class TestPrivateHelpers:
     )
     def test_urlunparse(self, components, expected):
         assert _urlunparse(*components) == expected
+
+    @pytest.mark.parametrize(
+        ("path", "expected"),
+        [
+            # a ";" in the last segment starts the params
+            ("/a;b", ("/a", "b")),
+            ("/a/b;c", ("/a/b", "c")),
+            ("/a;b/c;d", ("/a;b/c", "d")),
+            ("/a;b/c;", ("/a;b/c", "")),
+            # a ";" in an earlier segment is an ordinary path character
+            ("/a;b/c", ("/a;b/c", "")),
+            ("/dir;x/file", ("/dir;x/file", "")),
+            ("/public;/../admin/secret", ("/public;/../admin/secret", "")),
+            # without a "/" the first ";" starts the params
+            ("a;b", ("a", "b")),
+            (";a", ("", "a")),
+            # no ";" at all
+            ("/a/b", ("/a/b", "")),
+            ("", ("", "")),
+        ],
+    )
+    def test_split_params(self, path, expected):
+        assert _split_params("http", path) == expected
+        # schemes that do not use params keep the path intact
+        assert _split_params("data", path) == (path, "")
