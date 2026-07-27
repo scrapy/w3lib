@@ -18,7 +18,10 @@ if TYPE_CHECKING:
     from w3lib._types import AnyUnicodeError
 
 _HEADER_ENCODING_RE = re.compile(
-    r'charset="([\w-]+)"|charset=([\w-]+)(?=$|[; \t])', re.IGNORECASE
+    r"(?:^|;[ \t]*)charset="
+    r'(?:"([\w-]+)"|([\w-]+))'
+    r"(?=[ \t]*(?:;|$))",
+    re.IGNORECASE,
 )
 
 

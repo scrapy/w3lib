@@ -78,6 +78,26 @@ class TestRequestEncoding:
         # invalid: incomplete quotes
         assert http_content_type_encoding('text/html; charset="utf-8') is None
         assert http_content_type_encoding('text/html; charset=utf-8"') is None
+        # valid: with additional parameters
+        assert (
+            http_content_type_encoding('text/html; charset="utf-8"; foo=bar') == "utf-8"
+        )
+        assert (
+            http_content_type_encoding('text/html; charset="utf-8" ; foo=bar')
+            == "utf-8"
+        )
+        assert (
+            http_content_type_encoding("text/html; charset=utf-8; foo=bar") == "utf-8"
+        )
+        assert http_content_type_encoding('foo=bar; charset="utf-8"') == "utf-8"
+        # invalid: trailing junk after closing quote
+        assert http_content_type_encoding('text/html; charset="utf-8"x') is None
+        assert http_content_type_encoding('text/html; charset="utf-8"extra') is None
+        # invalid: parameter name substring match
+        assert http_content_type_encoding('text/html; xcharset="utf-8"') is None
+        assert http_content_type_encoding("text/html; mycharset=utf-8") is None
+        # invalid: orphan quote in unquoted value
+        assert http_content_type_encoding('text/html; charset=utf-8x"') is None
 
     def test_html_body_declared_encoding(self):
         for fragment in self.utf8_fragments:
