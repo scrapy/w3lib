@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
     from w3lib._types import AnyUnicodeError
 
-_HEADER_ENCODING_RE = re.compile(r"charset=([\w-]+)", re.IGNORECASE)
+_HEADER_ENCODING_RE = re.compile(r"charset\s*=\s*([\w-]+)", re.IGNORECASE)
 
 
 def http_content_type_encoding(content_type: str | None) -> str | None:
