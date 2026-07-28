@@ -18,6 +18,7 @@ from w3lib._url import (
     _PATH_SAFE_CHARS,
     _SPECIAL_SCHEMES,
     _idna,
+    _split_params,
     _unquote,
     _unquote_plus,
     _urlsplit,
@@ -1367,6 +1368,21 @@ class TestCanonicalizeUrl:
             == "http://www.example.com/r%C3%A9sum%C3%A9?country=%D0%A0%D0%BE%D1%81%D1%81%D0%B8%D1%8F"
         )
 
+    @pytest.mark.parametrize(
+        "url",
+        [
+            pytest.param("http://exa\tmple.com/a\r\nb?q=a\tb", id="str"),
+            pytest.param(b"http://exa\tmple.com/a\r\nb?q=a\tb", id="bytes"),
+        ],
+    )
+    def test_canonicalize_url_remove_ascii_tab_and_newlines(self, url):
+        # ASCII tab and newline are removed from anywhere in the URL, matching
+        # safe_url_string() and the WHATWG/urlsplit behavior. This must not
+        # depend on whether the input is str or bytes: a tab in the host of a
+        # bytes URL was previously left in place, so the canonical form kept a
+        # host a browser would connect to differently.
+        assert canonicalize_url(url) == "http://example.com/ab?q=ab"
+
     def test_normalize_percent_encoding_in_paths(self):
         assert (
             canonicalize_url("http://www.example.com/r%c3%a9sum%c3%a9")
@@ -1518,6 +1534,12 @@ class TestCanonicalizeUrl:
             canonicalize_url("http://はじめよう.みんな/?query=サ&maxResults=5")
             == "http://xn--p8j9a0d9c9a.xn--q9jyb4c/?maxResults=5&query=%E3%82%B5"
         )
+        # non-ASCII domain with an explicit port: IDNA encoding must only
+        # apply to the host, not swallow the port separator
+        assert (
+            canonicalize_url("http://www.bücher.de:8080/?q=bücher")
+            == "http://www.xn--bcher-kva.de:8080/?q=b%C3%BCcher"
+        )
 
     def test_quoted_slash_and_question_sign(self):
         assert (
@@ -1588,6 +1610,37 @@ class TestCanonicalizeUrl:
         assert (
             canonicalize_url(parse_url("http://www.example.com/abc/def?x=1"))
             == "http://www.example.com/abc/def?x=1"
+        )
+
+    def test_parse_url_parse_result(self):
+        # an already parsed url is returned as is
+        parts = parse_url("http://www.example.com/path;params?x=1#frag")
+        assert parse_url(parts) is parts
+
+    @pytest.mark.parametrize(
+        ("url", "path", "params"),
+        [
+            # dot segments are removed from the path, unlike in urllib.parse
+            (
+                "http://www.example.com/public;/../admin/secret",
+                "/admin/secret",
+                "",
+            ),
+            ("http://www.example.com/dir;x/file", "/dir;x/file", ""),
+            ("http://www.example.com/a;b/c", "/a;b/c", ""),
+            ("http://www.example.com/a;b/c;d", "/a;b/c", "d"),
+        ],
+    )
+    def test_parse_url_non_final_segment_semicolon(self, url, path, params):
+        # a ";" outside the last path segment is not a params delimiter
+        assert parse_url(url).path == path
+        assert parse_url(url).params == params
+
+    def test_canonicalize_url_non_final_segment_semicolon(self):
+        # the path after such a ";" still gets percent-encoding normalization
+        assert (
+            canonicalize_url("http://www.example.com/dir;x/a%7Eb")
+            == "http://www.example.com/dir;x/a~b"
         )
 
     def test_canonicalize_url_idempotence(self):
@@ -1913,3 +1966,28 @@ class TestPrivateHelpers:
         # Non-ASCII hostname goes through NFKC normalisation and IDNA encoding
         _encoded, decoded = _idna("新华网.中国")
         assert decoded == "xn--xkrr14bows.xn--fiqs8s"
+
+    @pytest.mark.parametrize(
+        ("path", "expected"),
+        [
+            # a ";" in the last segment starts the params
+            ("/a;b", ("/a", "b")),
+            ("/a/b;c", ("/a/b", "c")),
+            ("/a;b/c;d", ("/a;b/c", "d")),
+            ("/a;b/c;", ("/a;b/c", "")),
+            # a ";" in an earlier segment is an ordinary path character
+            ("/a;b/c", ("/a;b/c", "")),
+            ("/dir;x/file", ("/dir;x/file", "")),
+            ("/public;/../admin/secret", ("/public;/../admin/secret", "")),
+            # without a "/" the first ";" starts the params
+            ("a;b", ("a", "b")),
+            (";a", ("", "a")),
+            # no ";" at all
+            ("/a/b", ("/a/b", "")),
+            ("", ("", "")),
+        ],
+    )
+    def test_split_params(self, path, expected):
+        assert _split_params("http", path) == expected
+        # schemes that do not use params keep the path intact
+        assert _split_params("data", path) == (path, "")

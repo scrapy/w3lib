@@ -17,7 +17,12 @@ if TYPE_CHECKING:
 
     from w3lib._types import AnyUnicodeError
 
-_HEADER_ENCODING_RE = re.compile(r"charset=([\w-]+)", re.IGNORECASE)
+_HEADER_ENCODING_RE = re.compile(
+    r"(?:^|;[ \t]*)charset="
+    r'(?:"([\w-]+)"|([\w-]+))'
+    r"(?=[ \t]*(?:;|$))",
+    re.IGNORECASE,
+)
 
 
 def http_content_type_encoding(content_type: str | None) -> str | None:
@@ -32,7 +37,7 @@ def http_content_type_encoding(content_type: str | None) -> str | None:
     if content_type:
         match = _HEADER_ENCODING_RE.search(content_type)
         if match:
-            return resolve_encoding(match.group(1))
+            return resolve_encoding(match.group(1) or match.group(2))
 
     return None
 
