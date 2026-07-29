@@ -17,8 +17,10 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
 
+# Character references are ASCII digits only; \d would also match the Unicode
+# decimal digits, which int() accepts but no HTML parser decodes.
 _ent_re = re.compile(
-    r"&((?P<named>[a-z\d]+)|#(?P<dec>\d+)|#x(?P<hex>[a-f\d]+))(?P<semicolon>;?)",
+    r"&((?P<named>[a-z0-9]+)|#(?P<dec>[0-9]+)|#x(?P<hex>[a-f0-9]+))(?P<semicolon>;?)",
     re.IGNORECASE,
 )
 _tag_re = re.compile(r"<[a-zA-Z\/!][^<>]*>")
@@ -36,9 +38,8 @@ def _upto(literal: str) -> str:
 
 
 # The interval/url payload shared by both orderings: ``content="3; url=..."``.
-_META_INT_URL = (
-    r'\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)'
-)
+# The interval is ASCII digits only, as in the HTML refresh steps.
+_META_INT_URL = r'\s*=\s*(?P<quote>["\'])(?P<int>([0-9]*\.)?[0-9]+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)'
 _meta_refresh_re = re.compile(
     r"<meta\s"
     + _upto("http-equiv")
