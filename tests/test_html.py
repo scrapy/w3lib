@@ -76,6 +76,17 @@ class TestRemoveEntities:
         assert replace_entities("x&#153;y", encoding="cp1252") == "x\u2122y"
         assert replace_entities("x&#x99;y", encoding="cp1252") == "x\u2122y"
 
+    def test_non_ascii_digits(self):
+        # character references are ASCII digits only, so these are plain text
+        assert (
+            replace_entities("&#\u0666\u0660;script&#\u0666\u0662;")
+            == "&#\u0666\u0660;script&#\u0666\u0662;"
+        )
+        assert replace_entities("&#x\u0663C;") == "&#x\u0663C;"
+        assert replace_entities("&#\u0660\u0666\u0660;") == "&#\u0660\u0666\u0660;"
+        # the named reference still ends where the ASCII digits do
+        assert replace_entities("&nbsp\u0664;") == "\xa0\u0664;"
+
     def test_missing_semicolon(self):
         for entity, result in (
             ("&lt&lt!", "<<!"),
@@ -570,6 +581,12 @@ class TestGetMetaRefresh:
         baseurl = "http://example.org"
         body = """<meta http-equiv="refresh" content="3; url=&#39;http://www.example.com/other&#39;">"""
         assert get_meta_refresh(body, baseurl) == (3, "http://www.example.com/other")
+
+    def test_non_ascii_digit_interval(self):
+        # the interval is ASCII digits only, so this is not a refresh
+        baseurl = "http://example.org"
+        body = """<meta http-equiv="refresh" content="٥; url=http://example.org/x">"""
+        assert get_meta_refresh(body, baseurl) == (None, None)
 
     def test_relative_redirects(self):
         # relative redirects
