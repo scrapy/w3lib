@@ -407,7 +407,7 @@ def _parse_qsl(
     return result
 
 
-def _urlencode(query: _QueryType) -> bytes:
+def _urlencode(query: _QueryType, separator: bytes = b"&") -> bytes:
     if hasattr(query, "items"):  # pragma: no cover
         query = query.items()  # type: ignore[assignment]
 
@@ -432,7 +432,7 @@ def _urlencode(query: _QueryType) -> bytes:
         result.append(bytes(tmp_buf))
         tmp_buf.clear()
 
-    return b"&".join(result)
+    return separator.join(result)
 
 
 def _split_params(scheme: str, url: str) -> tuple[str, str]:

@@ -1052,7 +1052,6 @@ class TestUrl:
             == "http://domain/test?arg1=v3&arg2=v2"
         )
 
-    @pytest.mark.xfail(reason="https://github.com/scrapy/w3lib/issues/164")
     def test_add_or_replace_parameter_semicolon(self):
         url = "http://domain/test?arg1=v1;arg2=v2;arg3=v3"
         assert (
@@ -1276,7 +1275,6 @@ class TestCanonicalizeUrl:
             == "http://www.example.com/do?a=1"
         )
 
-    @pytest.mark.xfail(reason="https://github.com/scrapy/w3lib/issues/164")
     def test_typical_usage_semicolon(self):
         assert (
             canonicalize_url(

@@ -427,7 +427,7 @@ def _add_or_replace_parameters(
         parsed.scheme,
         parsed.netloc,
         parsed.path,
-        _urlencode(new_args).decode(),
+        _urlencode(new_args, separator.encode()).decode(),
         parsed.fragment,
     )
 
@@ -444,7 +444,12 @@ def add_or_replace_parameter(
     'http://www.example.com/index.php?arg1=v1&arg2=v2&arg3=v3&arg4=v4'
     >>> w3lib.url.add_or_replace_parameter('http://www.example.com/index.php?arg1=v1&arg2=v2&arg3=v3', 'arg3', 'v3new')
     'http://www.example.com/index.php?arg1=v1&arg2=v2&arg3=v3new'
+    >>> w3lib.url.add_or_replace_parameter('http://www.example.com/index.php?arg1=v1;arg2=v2', 'arg3', 'v3', separator=';')
+    'http://www.example.com/index.php?arg1=v1;arg2=v2;arg3=v3'
     >>>
+
+    ``separator`` is used both to split the existing query and to join the
+    resulting one.
 
     """
     return _add_or_replace_parameters(
@@ -634,6 +639,10 @@ def canonicalize_url(
     >>> w3lib.url.canonicalize_url('http://www.example.com/r\u00e9sum\u00e9')
     'http://www.example.com/r%C3%A9sum%C3%A9'
     >>>
+    >>> # a query separator other than the default '&'
+    >>> w3lib.url.canonicalize_url('http://www.example.com/do?c=3;a=50', query_separator=';')
+    'http://www.example.com/do?a=50;c=3'
+    >>>
 
     For more examples, see the tests in `tests/test_url.py`.
     """
@@ -687,7 +696,7 @@ def canonicalize_url(
         if len(keyvals) > 1:
             keyvals.sort()
 
-        query = _urlencode(keyvals).decode()
+        query = _urlencode(keyvals, query_separator.encode()).decode()
         del keyvals
 
     # 2. decode percent-encoded sequences in path as UTF-8 (or keep raw bytes)
@@ -750,6 +759,9 @@ def parse_qsl_to_bytes(
         true value indicates that blanks should be retained as blank
         strings.  The default false value indicates that blank values
         are to be ignored and treated as if they were  not included.
+
+    separator: string used to separate query parameters, e.g. ``";"`` for
+        queries that use the legacy semicolon separator.
 
     """
     return _parse_qsl(qs, keep_blank_values, separator=separator.encode())
