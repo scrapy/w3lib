@@ -2,44 +2,89 @@
 Functions for dealing with markup text
 """
 
+from __future__ import annotations
+
+import functools
 import re
 from html.entities import name2codepoint
-from typing import Iterable, Match, AnyStr, Optional, Pattern, Tuple, Union
+from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
-from w3lib.util import to_unicode
 from w3lib.url import safe_url_string
-from w3lib._types import StrOrBytes
+from w3lib.util import to_unicode
 
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+
+# Character references are ASCII digits only; \d would also match the Unicode
+# decimal digits, which int() accepts but no HTML parser decodes.
 _ent_re = re.compile(
-    r"&((?P<named>[a-z\d]+)|#(?P<dec>\d+)|#x(?P<hex>[a-f\d]+))(?P<semicolon>;?)",
+    r"&((?P<named>[a-z0-9]+)|#(?P<dec>[0-9]+)|#x(?P<hex>[a-f0-9]+))(?P<semicolon>;?)",
     re.IGNORECASE,
 )
-_tag_re = re.compile(r"<[a-zA-Z\/!].*?>", re.DOTALL)
-_baseurl_re = re.compile(r"<base\s[^>]*href\s*=\s*[\"\']\s*([^\"\'\s]+)\s*[\"\']", re.I)
+_tag_re = re.compile(r"<[a-zA-Z\/!][^<>]*>")
+_baseurl_re = re.compile(
+    r"<base\s[^<>]*href\s*=\s*[\"\']\s*([^\"\'\s]+)\s*[\"\']", re.IGNORECASE
+)
+
+
+def _upto(literal: str) -> str:
+    # Match up to and including the first occurrence of ``literal`` within a tag.
+    # This is a "tempered greedy token": unlike ``[^>]*literal``, it commits to
+    # the first match at each step, so chaining several of them cannot explore a
+    # product of positions and backtrack super-linearly on a crafted <meta> tag.
+    return rf"(?:(?!{literal})[^>])*{literal}"
+
+
+# The interval/url payload shared by both orderings: ``content="3; url=..."``.
+# The interval is ASCII digits only, as in the HTML refresh steps.
+_META_INT_URL = r'\s*=\s*(?P<quote>["\'])(?P<int>([0-9]*\.)?[0-9]+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)'
 _meta_refresh_re = re.compile(
-    r'<meta\s[^>]*http-equiv[^>]*refresh[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)',
+    r"<meta\s"
+    + _upto("http-equiv")
+    + _upto("refresh")
+    + _upto("content")
+    + _META_INT_URL,
     re.DOTALL | re.IGNORECASE,
 )
 _meta_refresh_re2 = re.compile(
-    r'<meta\s[^>]*content\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)[^>]*?\shttp-equiv\s*=[^>]*refresh',
+    r"<meta\s"
+    + _upto("content")
+    + _META_INT_URL
+    + _upto(r"\shttp-equiv")
+    + r"\s*="
+    + _upto("refresh"),
     re.DOTALL | re.IGNORECASE,
 )
 
-_cdata_re = re.compile(
-    r"((?P<cdata_s><!\[CDATA\[)(?P<cdata_d>.*?)(?P<cdata_e>\]\]>))", re.DOTALL
+_CDATA_START = "<![CDATA["
+_CDATA_END = "]]>"
+_tags_re = re.compile(
+    r"""
+    </?             # opening angle bracket, optional slash for a closing tag
+    ([^ <>/]+)      # tag name (captured): a run of non-space, non-bracket chars,
+    (?![^ <>/])     # pinned to its maximal length by this lookahead so it can't
+                    # overlap the run below and backtrack quadratically on an
+                    # unterminated tag (a "<" with a long run and no ">")
+    [^<>]*          # the rest of the tag: attributes, whitespace, etc.
+    >               # closing angle bracket
+    """,
+    re.IGNORECASE | re.VERBOSE,
 )
+_meta_tag_re = re.compile(r"<meta\b[^<>]*>", re.IGNORECASE)
+
 
 HTML5_WHITESPACE = " \t\n\r\x0c"
 
 
 def replace_entities(
-    text: AnyStr,
+    text: str | bytes,
     keep: Iterable[str] = (),
     remove_illegal: bool = True,
     encoding: str = "utf-8",
 ) -> str:
-    """Remove entities from the given `text` by converting them to their
+    r"""Remove entities from the given `text` by converting them to their
     corresponding unicode character.
 
     `text` can be a unicode string or a byte string encoded in the given
@@ -59,28 +104,28 @@ def replace_entities(
 
     >>> import w3lib.html
     >>> w3lib.html.replace_entities(b'Price: &pound;100')
-    'Price: \\xa3100'
+    'Price: \xa3100'
     >>> print(w3lib.html.replace_entities(b'Price: &pound;100'))
     Price: £100
     >>>
 
     """
 
-    def convert_entity(m: Match[str]) -> str:
+    def convert_entity(m: re.Match[str]) -> str:
         groups = m.groupdict()
         number = None
         if groups.get("dec"):
             number = int(groups["dec"], 10)
         elif groups.get("hex"):
             number = int(groups["hex"], 16)
-        elif groups.get("named"):
+        else:
+            # guaranteed to be named
             entity_name = groups["named"]
             if entity_name.lower() in keep:
                 return m.group(0)
-            else:
-                number = name2codepoint.get(entity_name) or name2codepoint.get(
-                    entity_name.lower()
-                )
+            number = name2codepoint.get(entity_name) or name2codepoint.get(
+                entity_name.lower()
+            )
         if number is not None:
             # Numeric character references in the 80-9F range are typically
             # interpreted by browsers as representing the characters mapped
@@ -89,8 +134,7 @@ def replace_entities(
             try:
                 if 0x80 <= number <= 0x9F:
                     return bytes((number,)).decode("cp1252")
-                else:
-                    return chr(number)
+                return chr(number)
             except (ValueError, OverflowError):
                 pass
 
@@ -99,12 +143,14 @@ def replace_entities(
     return _ent_re.sub(convert_entity, to_unicode(text, encoding))
 
 
-def has_entities(text: AnyStr, encoding: Optional[str] = None) -> bool:
+def has_entities(text: str | bytes, encoding: str | None = None) -> bool:
     return bool(_ent_re.search(to_unicode(text, encoding)))
 
 
-def replace_tags(text: AnyStr, token: str = "", encoding: Optional[str] = None) -> str:
-    """Replace all markup tags found in the given `text` by the given token.
+def replace_tags(
+    text: str | bytes, token: str = "", encoding: str | None = None
+) -> str:
+    r"""Replace all markup tags found in the given `text` by the given token.
     By default `token` is an empty string so it just removes all tags.
 
     `text` can be a unicode string or a regular string encoded as `encoding`
@@ -117,8 +163,8 @@ def replace_tags(text: AnyStr, token: str = "", encoding: Optional[str] = None) 
     >>> import w3lib.html
     >>> w3lib.html.replace_tags('This text contains <a>some tag</a>')
     'This text contains some tag'
-    >>> w3lib.html.replace_tags('<p>Je ne parle pas <b>fran\\xe7ais</b></p>', ' -- ', 'latin-1')
-    ' -- Je ne parle pas  -- fran\\xe7ais --  -- '
+    >>> w3lib.html.replace_tags('<p>Je ne parle pas <b>fran\xe7ais</b></p>', ' -- ', 'latin-1')
+    ' -- Je ne parle pas  -- fran\xe7ais --  -- '
     >>>
 
     """
@@ -129,7 +175,7 @@ def replace_tags(text: AnyStr, token: str = "", encoding: Optional[str] = None) 
 _REMOVECOMMENTS_RE = re.compile("<!--.*?(?:-->|$)", re.DOTALL)
 
 
-def remove_comments(text: AnyStr, encoding: Optional[str] = None) -> str:
+def remove_comments(text: str | bytes, encoding: str | None = None) -> str:
     """Remove HTML Comments.
 
     >>> import w3lib.html
@@ -143,11 +189,21 @@ def remove_comments(text: AnyStr, encoding: Optional[str] = None) -> str:
     return _REMOVECOMMENTS_RE.sub("", utext)
 
 
+def _remove_tag(
+    m: re.Match[str], which_ones: set[str] | tuple[()], keep: set[str] | tuple[()]
+) -> str:
+    tag = m.group(1).lower()
+
+    should_remove = tag in which_ones if which_ones else tag not in keep
+
+    return "" if should_remove else m.group(0)
+
+
 def remove_tags(
-    text: AnyStr,
+    text: str | bytes,
     which_ones: Iterable[str] = (),
     keep: Iterable[str] = (),
-    encoding: Optional[str] = None,
+    encoding: str | None = None,
 ) -> str:
     """Remove HTML Tags only.
 
@@ -195,28 +251,29 @@ def remove_tags(
     if which_ones and keep:
         raise ValueError("Cannot use both which_ones and keep")
 
-    which_ones = {tag.lower() for tag in which_ones}
-    keep = {tag.lower() for tag in keep}
+    return _tags_re.sub(
+        functools.partial(
+            _remove_tag,
+            which_ones={tag.lower() for tag in which_ones} if which_ones else (),
+            keep={tag.lower() for tag in keep} if keep else (),
+        ),
+        to_unicode(text, encoding),
+    )
 
-    def will_remove(tag: str) -> bool:
-        tag = tag.lower()
-        if which_ones:
-            return tag in which_ones
-        else:
-            return tag not in keep
 
-    def remove_tag(m: Match[str]) -> str:
-        tag = m.group(1)
-        return "" if will_remove(tag) else m.group(0)
-
-    regex = "</?([^ >/]+).*?>"
-    retags = re.compile(regex, re.DOTALL | re.IGNORECASE)
-
-    return retags.sub(remove_tag, to_unicode(text, encoding))
+@functools.lru_cache(maxsize=256)
+def _build_remove_tags_pattern(tags_tuple: tuple[str, ...]) -> re.Pattern[str]:
+    tags = "|".join(re.escape(tag) for tag in tags_tuple)
+    pattern = rf"""
+        <(?P<tag>{tags})\b[^<>]*>.*?</(?P=tag)>
+        |
+        <(?P<tag2>{tags})\b[^<>]*/>
+    """
+    return re.compile(pattern, re.IGNORECASE | re.DOTALL | re.VERBOSE)
 
 
 def remove_tags_with_content(
-    text: AnyStr, which_ones: Iterable[str] = (), encoding: Optional[str] = None
+    text: str | bytes, which_ones: Iterable[str] = (), encoding: str | None = None
 ) -> str:
     """Remove tags and their content.
 
@@ -232,23 +289,24 @@ def remove_tags_with_content(
     """
 
     utext = to_unicode(text, encoding)
-    if which_ones:
-        tags = "|".join([rf"<{tag}\b.*?</{tag}>|<{tag}\s*/>" for tag in which_ones])
-        retags = re.compile(tags, re.DOTALL | re.IGNORECASE)
-        utext = retags.sub("", utext)
-    return utext
+
+    if not which_ones:
+        return utext
+
+    pattern = _build_remove_tags_pattern(tuple(sorted(set(which_ones))))
+    return pattern.sub("", utext)
 
 
 def replace_escape_chars(
-    text: AnyStr,
+    text: str | bytes,
     which_ones: Iterable[str] = ("\n", "\t", "\r"),
-    replace_by: StrOrBytes = "",
-    encoding: Optional[str] = None,
+    replace_by: str | bytes = "",
+    encoding: str | None = None,
 ) -> str:
-    """Remove escape characters.
+    r"""Remove escape characters.
 
     `which_ones` is a tuple of which escape characters we want to remove.
-    By default removes ``\\n``, ``\\t``, ``\\r``.
+    By default removes ``\n``, ``\t``, ``\r``.
 
     `replace_by` is the string to replace the escape characters by.
     It defaults to ``''``, meaning the escape characters are removed.
@@ -262,10 +320,10 @@ def replace_escape_chars(
 
 
 def unquote_markup(
-    text: AnyStr,
+    text: str | bytes,
     keep: Iterable[str] = (),
     remove_illegal: bool = True,
-    encoding: Optional[str] = None,
+    encoding: str | None = None,
 ) -> str:
     """
     This function receives markup as a text (always a unicode string or
@@ -278,33 +336,47 @@ def unquote_markup(
 
     """
 
-    def _get_fragments(
-        txt: str, pattern: Pattern[str]
-    ) -> Iterable[Union[str, Match[str]]]:
-        offset = 0
-        for match in pattern.finditer(txt):
-            match_s, match_e = match.span(1)
-            yield txt[offset:match_s]
-            yield match
-            offset = match_e
-        yield txt[offset:]
-
     utext = to_unicode(text, encoding)
-    ret_text = ""
-    for fragment in _get_fragments(utext, _cdata_re):
-        if isinstance(fragment, str):
-            # it's not a CDATA (so we try to remove its entities)
-            ret_text += replace_entities(
-                fragment, keep=keep, remove_illegal=remove_illegal
+    ret = []
+    offset = 0
+
+    # Scan for CDATA sections linearly.
+    while True:
+        start = utext.find(_CDATA_START, offset)
+        if start == -1:
+            break
+        data_start = start + len(_CDATA_START)
+        end = utext.find(_CDATA_END, data_start)
+        if end == -1:
+            # Unterminated CDATA
+            break
+
+        if offset < start:
+            ret.append(
+                replace_entities(
+                    utext[offset:start],
+                    keep=keep,
+                    remove_illegal=remove_illegal,
+                )
             )
-        else:
-            # it's a CDATA (so we just extract its content)
-            ret_text += fragment.group("cdata_d")
-    return ret_text
+
+        ret.append(utext[data_start:end])
+        offset = end + len(_CDATA_END)
+
+    if offset < len(utext):
+        ret.append(
+            replace_entities(
+                utext[offset:],
+                keep=keep,
+                remove_illegal=remove_illegal,
+            )
+        )
+
+    return "".join(ret)
 
 
 def get_base_url(
-    text: AnyStr, baseurl: StrOrBytes = "", encoding: str = "utf-8"
+    text: str | bytes, baseurl: str | bytes = "", encoding: str = "utf-8"
 ) -> str:
     """Return the base url if declared in the given HTML `text`,
     relative to the given base url.
@@ -313,23 +385,21 @@ def get_base_url(
 
     """
 
-    utext: str = remove_comments(text, encoding=encoding)
-    m = _baseurl_re.search(utext)
-    if m:
+    utext = remove_comments(text, encoding=encoding)
+    if m := _baseurl_re.search(utext):
         return urljoin(
             safe_url_string(baseurl), safe_url_string(m.group(1), encoding=encoding)
         )
-    else:
-        return safe_url_string(baseurl)
+    return safe_url_string(baseurl)
 
 
 def get_meta_refresh(
-    text: AnyStr,
+    text: str | bytes,
     baseurl: str = "",
     encoding: str = "utf-8",
     ignore_tags: Iterable[str] = ("script", "noscript"),
-) -> Tuple[Optional[float], Optional[str]]:
-    """Return  the http-equiv parameter of the HTML meta element from the given
+) -> tuple[None, None] | tuple[float, str]:
+    """Return the http-equiv parameter of the HTML meta element from the given
     HTML text and return a tuple ``(interval, url)`` where interval is an integer
     containing the delay in seconds (or zero if not present) and url is a
     string with the absolute url to redirect.
@@ -337,22 +407,28 @@ def get_meta_refresh(
     If no meta redirect is found, ``(None, None)`` is returned.
 
     """
+    utext = to_unicode(text, encoding)
 
-    try:
-        utext = to_unicode(text, encoding)
-    except UnicodeDecodeError:
-        print(text)
-        raise
-    utext = remove_tags_with_content(utext, ignore_tags)
-    utext = remove_comments(replace_entities(utext))
-    m = _meta_refresh_re.search(utext) or _meta_refresh_re2.search(utext)
-    if m:
-        interval = float(m.group("int"))
-        url = safe_url_string(m.group("url").strip(" \"'"), encoding)
-        url = urljoin(baseurl, url)
-        return interval, url
-    else:
-        return None, None
+    if ignore_tags:
+        utext = remove_tags_with_content(utext, ignore_tags)
+
+    utext = remove_comments(utext)
+
+    for tag in _meta_tag_re.finditer(utext):
+        raw_tag = tag.group(0)
+
+        if "refresh" not in raw_tag.lower():
+            continue
+
+        if "&" in raw_tag:
+            raw_tag = replace_entities(raw_tag)
+
+        if m := _meta_refresh_re.search(raw_tag) or _meta_refresh_re2.search(raw_tag):
+            interval = float(m.group("int"))
+            url = safe_url_string(m.group("url").strip(" \"'"), encoding)
+            return interval, urljoin(baseurl, url)
+
+    return None, None
 
 
 def strip_html5_whitespace(text: str) -> str:

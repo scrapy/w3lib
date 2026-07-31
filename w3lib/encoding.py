@@ -1,18 +1,31 @@
 """
 Functions for handling encoding of web pages
 """
-import re
+
+from __future__ import annotations
+
 import codecs
 import encodings
-from typing import Callable, Match, Optional, Tuple, Union, cast
+import re
+from re import Match
+from typing import TYPE_CHECKING, cast
 
-from w3lib._types import AnyUnicodeError, StrOrBytes
 import w3lib.util
 
-_HEADER_ENCODING_RE = re.compile(r"charset=([\w-]+)", re.I)
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from w3lib._types import AnyUnicodeError
+
+_HEADER_ENCODING_RE = re.compile(
+    r"(?:^|;[ \t]*)charset="
+    r'(?:"([\w-]+)"|([\w-]+))'
+    r"(?=[ \t]*(?:;|$))",
+    re.IGNORECASE,
+)
 
 
-def http_content_type_encoding(content_type: Optional[str]) -> Optional[str]:
+def http_content_type_encoding(content_type: str | None) -> str | None:
     """Extract the encoding in the content-type header
 
     >>> import w3lib.encoding
@@ -24,7 +37,7 @@ def http_content_type_encoding(content_type: Optional[str]) -> Optional[str]:
     if content_type:
         match = _HEADER_ENCODING_RE.search(content_type)
         if match:
-            return resolve_encoding(match.group(1))
+            return resolve_encoding(match.group(1) or match.group(2))
 
     return None
 
@@ -48,18 +61,14 @@ _CONTENT2_RE = _TEMPLATE % ("charset", r"(?P<charset2>[\w-]+)")
 _XML_ENCODING_RE = _TEMPLATE % ("encoding", r"(?P<xmlcharset>[\w-]+)")
 
 # check for meta tags, or xml decl. and stop search if a body tag is encountered
-# pylint: disable=consider-using-f-string
-_BODY_ENCODING_PATTERN = (
-    r"<\s*(?:meta%s(?:(?:\s+%s|\s+%s){2}|\s+%s)|\?xml\s[^>]+%s|body)"
-    % (_SKIP_ATTRS, _HTTPEQUIV_RE, _CONTENT_RE, _CONTENT2_RE, _XML_ENCODING_RE)
-)
-_BODY_ENCODING_STR_RE = re.compile(_BODY_ENCODING_PATTERN, re.I | re.VERBOSE)
+_BODY_ENCODING_PATTERN = rf"<\s*(?:meta{_SKIP_ATTRS}(?:(?:\s+{_HTTPEQUIV_RE}|\s+{_CONTENT_RE}){{2}}|\s+{_CONTENT2_RE})|\?xml\s[^>]+{_XML_ENCODING_RE}|body)"
+_BODY_ENCODING_STR_RE = re.compile(_BODY_ENCODING_PATTERN, re.IGNORECASE | re.VERBOSE)
 _BODY_ENCODING_BYTES_RE = re.compile(
-    _BODY_ENCODING_PATTERN.encode("ascii"), re.I | re.VERBOSE
+    _BODY_ENCODING_PATTERN.encode("ascii"), re.IGNORECASE | re.VERBOSE
 )
 
 
-def html_body_declared_encoding(html_body_str: StrOrBytes) -> Optional[str]:
+def html_body_declared_encoding(html_body_str: str | bytes) -> str | None:
     '''Return the encoding specified in meta tags in the html body,
     or ``None`` if no suitable encoding was found
 
@@ -83,7 +92,7 @@ def html_body_declared_encoding(html_body_str: StrOrBytes) -> Optional[str]:
 
     # html5 suggests the first 1024 bytes are sufficient, we allow for more
     chunk = html_body_str[:4096]
-    match: Union[Optional[Match[bytes]], Optional[Match[str]]]
+    match: Match[bytes] | Match[str] | None
     if isinstance(chunk, bytes):
         match = _BODY_ENCODING_BYTES_RE.search(chunk)
     else:
@@ -136,10 +145,10 @@ def _c18n_encoding(encoding: str) -> str:
     encoding aliases
     """
     normed = encodings.normalize_encoding(encoding).lower()
-    return cast(str, encodings.aliases.aliases.get(normed, normed))
+    return encodings.aliases.aliases.get(normed, normed)
 
 
-def resolve_encoding(encoding_alias: str) -> Optional[str]:
+def resolve_encoding(encoding_alias: str) -> str | None:
     """Return the encoding that `encoding_alias` maps to, or ``None``
     if the encoding cannot be interpreted
 
@@ -169,7 +178,7 @@ _BOM_TABLE = [
 _FIRST_CHARS = {c[0] for (c, _) in _BOM_TABLE}
 
 
-def read_bom(data: bytes) -> Union[Tuple[None, None], Tuple[str, bytes]]:
+def read_bom(data: bytes) -> tuple[None, None] | tuple[str, bytes]:
     r"""Read the byte order mark in the text, if present, and
     return the encoding represented by the BOM and the BOM.
 
@@ -177,13 +186,13 @@ def read_bom(data: bytes) -> Union[Tuple[None, None], Tuple[str, bytes]]:
 
     >>> import w3lib.encoding
     >>> w3lib.encoding.read_bom(b'\xfe\xff\x6c\x34')
-    ('utf-16-be', '\xfe\xff')
+    ('utf-16-be', b'\xfe\xff')
     >>> w3lib.encoding.read_bom(b'\xff\xfe\x34\x6c')
-    ('utf-16-le', '\xff\xfe')
+    ('utf-16-le', b'\xff\xfe')
     >>> w3lib.encoding.read_bom(b'\x00\x00\xfe\xff\x00\x00\x6c\x34')
-    ('utf-32-be', '\x00\x00\xfe\xff')
+    ('utf-32-be', b'\x00\x00\xfe\xff')
     >>> w3lib.encoding.read_bom(b'\xff\xfe\x00\x00\x34\x6c\x00\x00')
-    ('utf-32-le', '\xff\xfe\x00\x00')
+    ('utf-32-le', b'\xff\xfe\x00\x00')
     >>> w3lib.encoding.read_bom(b'\x01\x02\x03\x04')
     (None, None)
     >>>
@@ -201,25 +210,25 @@ def read_bom(data: bytes) -> Union[Tuple[None, None], Tuple[str, bytes]]:
 # Python decoder doesn't follow unicode standard when handling
 # bad utf-8 encoded strings. see http://bugs.python.org/issue8271
 codecs.register_error(
-    "w3lib_replace", lambda exc: ("\ufffd", cast(AnyUnicodeError, exc).end)
+    "w3lib_replace", lambda exc: ("\ufffd", cast("AnyUnicodeError", exc).end)
 )
 
 
 def to_unicode(data_str: bytes, encoding: str) -> str:
-    """Convert a str object to unicode using the encoding given
+    r"""Convert a str object to unicode using the encoding given
 
-    Characters that cannot be converted will be converted to ``\\ufffd`` (the
+    Characters that cannot be converted will be converted to ``\ufffd`` (the
     unicode replacement character).
     """
     return data_str.decode(encoding, "replace")
 
 
 def html_to_unicode(
-    content_type_header: Optional[str],
+    content_type_header: str | None,
     html_body_str: bytes,
     default_encoding: str = "utf8",
-    auto_detect_fun: Optional[Callable[[bytes], Optional[str]]] = None,
-) -> Tuple[str, str]:
+    auto_detect_fun: Callable[[bytes], str | None] | None = None,
+) -> tuple[str, str]:
     r'''Convert raw html bytes to unicode
 
     This attempts to make a reasonable guess at the content encoding of the
@@ -257,7 +266,7 @@ def html_to_unicode(
     that the header was not present.
 
     This method will not fail, if characters cannot be converted to unicode,
-    ``\\ufffd`` (the unicode replacement character) will be inserted instead.
+    ``\ufffd`` (the unicode replacement character) will be inserted instead.
 
     Returns a tuple of ``(<encoding used>, <unicode_string>)``
 
@@ -282,13 +291,12 @@ def html_to_unicode(
 
     '''
     bom_enc, bom = read_bom(html_body_str)
-    if bom_enc is not None:
-        bom = cast(bytes, bom)
+    if bom_enc is not None and bom is not None:
         return bom_enc, to_unicode(html_body_str[len(bom) :], bom_enc)
 
     enc = http_content_type_encoding(content_type_header)
     if enc is not None:
-        if enc == "utf-16" or enc == "utf-32":
+        if enc in {"utf-16", "utf-32"}:
             enc += "-be"
         return enc, to_unicode(html_body_str, enc)
     enc = html_body_declared_encoding(html_body_str)

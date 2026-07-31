@@ -1,12 +1,25 @@
+from __future__ import annotations
+
 from base64 import b64encode
-from typing import Any, List, MutableMapping, Optional, AnyStr, Sequence, Union, Mapping
+from collections.abc import Mapping, MutableMapping, Sequence
+from io import BytesIO
+from typing import Any, TypeAlias, overload
+
 from w3lib.util import to_bytes, to_unicode
 
-HeadersDictInput = Mapping[bytes, Union[Any, Sequence[bytes]]]
-HeadersDictOutput = MutableMapping[bytes, List[bytes]]
+HeadersDictInput: TypeAlias = Mapping[bytes, Any | Sequence[bytes]]
+HeadersDictOutput: TypeAlias = MutableMapping[bytes, list[bytes]]
 
 
-def headers_raw_to_dict(headers_raw: Optional[bytes]) -> Optional[HeadersDictOutput]:
+@overload
+def headers_raw_to_dict(headers_raw: bytes) -> HeadersDictOutput: ...
+
+
+@overload
+def headers_raw_to_dict(headers_raw: None) -> None: ...
+
+
+def headers_raw_to_dict(headers_raw: bytes | None) -> HeadersDictOutput | None:
     r"""
     Convert raw headers (single multi-line bytestring)
     to a dictionary.
@@ -32,26 +45,36 @@ def headers_raw_to_dict(headers_raw: Optional[bytes]) -> Optional[HeadersDictOut
 
     if headers_raw is None:
         return None
-    headers = headers_raw.splitlines()
-    headers_tuples = [header.split(b":", 1) for header in headers]
+
+    if not headers_raw:
+        return {}
 
     result_dict: HeadersDictOutput = {}
-    for header_item in headers_tuples:
-        if not len(header_item) == 2:
+
+    for header in BytesIO(headers_raw):
+        key, sep, value = header.partition(b":")
+        if not sep:
             continue
 
-        item_key = header_item[0].strip()
-        item_value = header_item[1].strip()
+        key, value = key.strip(), value.strip()
 
-        if item_key in result_dict:
-            result_dict[item_key].append(item_value)
+        if key in result_dict:
+            result_dict[key].append(value)
         else:
-            result_dict[item_key] = [item_value]
+            result_dict[key] = [value]
 
     return result_dict
 
 
-def headers_dict_to_raw(headers_dict: Optional[HeadersDictInput]) -> Optional[bytes]:
+@overload
+def headers_dict_to_raw(headers_dict: HeadersDictInput) -> bytes: ...
+
+
+@overload
+def headers_dict_to_raw(headers_dict: None) -> None: ...
+
+
+def headers_dict_to_raw(headers_dict: HeadersDictInput | None) -> bytes | None:
     r"""
     Returns a raw HTTP headers representation of headers
 
@@ -73,25 +96,36 @@ def headers_dict_to_raw(headers_dict: Optional[HeadersDictInput]) -> Optional[by
 
     if headers_dict is None:
         return None
-    raw_lines = []
+
+    if not headers_dict:
+        return b""
+
+    parts = bytearray()
+
     for key, value in headers_dict.items():
         if isinstance(value, bytes):
-            raw_lines.append(b": ".join([key, value]))
+            if parts:
+                parts.extend(b"\r\n")
+            parts.extend(key + b": " + value)
+
         elif isinstance(value, (list, tuple)):
             for v in value:
-                raw_lines.append(b": ".join([key, v]))
-    return b"\r\n".join(raw_lines)
+                if parts:
+                    parts.extend(b"\r\n")
+                parts.extend(key + b": " + v)
+
+    return bytes(parts)
 
 
 def basic_auth_header(
-    username: AnyStr, password: AnyStr, encoding: str = "ISO-8859-1"
+    username: str | bytes, password: str | bytes, encoding: str = "ISO-8859-1"
 ) -> bytes:
     """
     Return an `Authorization` header field value for `HTTP Basic Access Authentication (RFC 2617)`_
 
     >>> import w3lib.http
     >>> w3lib.http.basic_auth_header('someuser', 'somepass')
-    'Basic c29tZXVzZXI6c29tZXBhc3M='
+    b'Basic c29tZXVzZXI6c29tZXBhc3M='
 
     .. _HTTP Basic Access Authentication (RFC 2617): http://www.ietf.org/rfc/rfc2617.txt
 

@@ -1,41 +1,15 @@
-from unittest import TestCase
+import pytest
 
-from pytest import deprecated_call, raises
-
-from w3lib.util import (
-    str_to_unicode,
-    to_bytes,
-    to_native_str,
-    to_unicode,
-    unicode_to_str,
-)
+from w3lib.util import to_bytes, to_unicode
 
 
-class StrToUnicodeTestCase(TestCase):
-    def test_deprecation(self):
-        with deprecated_call():
-            str_to_unicode("")
-
-
-class ToBytesTestCase(TestCase):
+class TestToBytes:
     def test_type_error(self):
-        with raises(TypeError):
-            to_bytes(True)  # type: ignore
+        with pytest.raises(TypeError):
+            to_bytes(True)  # type: ignore[arg-type]
 
 
-class ToNativeStrTestCase(TestCase):
-    def test_deprecation(self):
-        with deprecated_call():
-            to_native_str("")
-
-
-class ToUnicodeTestCase(TestCase):
+class TestToUnicode:
     def test_type_error(self):
-        with raises(TypeError):
-            to_unicode(True)  # type: ignore
-
-
-class UnicodeToStrTestCase(TestCase):
-    def test_deprecation(self):
-        with deprecated_call():
-            unicode_to_str("")
+        with pytest.raises(TypeError):
+            to_unicode(True)  # type: ignore[arg-type]
