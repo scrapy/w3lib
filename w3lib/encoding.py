@@ -27,6 +27,30 @@ _HEADER_ENCODING_RE = re.compile(
     r"(?![^\s;,])",
     re.IGNORECASE,
 )
+# https://mimesniff.spec.whatwg.org/commit-snapshots/39aa53511b13953d84fef8d4131d6f61d0ccbde6/#parse-a-mime-type
+# Parameters are ";"-separated name=value pairs whose value is either a token
+# or a quoted-string, and a quoted-string is opaque
+# (https://fetch.spec.whatwg.org/commit-snapshots/586cd2a44c2a865b37c166dc0740f3fb8bb220d6/#collect-an-http-quoted-string),
+# so it has to be consumed as a whole: a "charset=" written inside one belongs
+# to that value and is not a parameter of its own.
+_HEADER_PARAMETER_RE = re.compile(
+    r"(?:^|;)[ \t]*(?P<name>[^\s;=]+)="
+    r'(?:"(?P<quoted>[^"\\]*(?:\\.[^"\\]*)*)"(?![^\s;,])'
+    r"|(?P<token>[^;,\s]*))"
+)
+_ENCODING_LABEL_RE = re.compile(r"[\w-]+")
+
+
+def _quoted_aware_charset(content_type: str) -> str | None:
+    for match in _HEADER_PARAMETER_RE.finditer(content_type):
+        if match.group("name").lower() != "charset":
+            continue
+        label = match.group("quoted")
+        if label is None:
+            label = match.group("token")
+        if _ENCODING_LABEL_RE.fullmatch(label):
+            return resolve_encoding(label)
+    return None
 
 
 def http_content_type_encoding(content_type: str | None) -> str | None:
@@ -41,7 +65,12 @@ def http_content_type_encoding(content_type: str | None) -> str | None:
     if content_type:
         match = _HEADER_ENCODING_RE.search(content_type)
         if match:
-            return resolve_encoding(match.group(1) or match.group(2))
+            # A match inside a quoted-string must be preceded by that string's
+            # opening quote, so if no '"' precedes it the fast answer is
+            # correct; only otherwise walk the parameters.
+            if content_type.find('"', 0, match.start()) < 0:
+                return resolve_encoding(match.group(1) or match.group(2))
+            return _quoted_aware_charset(content_type)
 
     return None
 
