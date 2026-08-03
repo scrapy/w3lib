@@ -98,6 +98,28 @@ class TestRequestEncoding:
         assert http_content_type_encoding("text/html; mycharset=utf-8") is None
         # invalid: orphan quote in unquoted value
         assert http_content_type_encoding('text/html; charset=utf-8x"') is None
+        # the parameter is still found when the header does not end right
+        # after it
+        assert (
+            http_content_type_encoding("text/html;charset=utf-8, text/html") == "utf-8"
+        )
+        assert (
+            http_content_type_encoding('text/html; charset="utf-8", text/html')
+            == "utf-8"
+        )
+        assert (
+            http_content_type_encoding("Content-Type: text/html; charset=utf-8\r\n")
+            == "utf-8"
+        )
+        # comma-joined headers with differing essences: the first charset
+        # wins, unlike Fetch's extract-a-MIME-type where the last valid MIME
+        # type's would
+        assert (
+            http_content_type_encoding(
+                "text/html; charset=utf-8, text/plain; charset=utf-16"
+            )
+            == "utf-8"
+        )
 
     def test_html_body_declared_encoding(self):
         for fragment in self.utf8_fragments:

@@ -17,10 +17,14 @@ if TYPE_CHECKING:
 
     from w3lib._types import AnyUnicodeError
 
+# The value ends at whitespace, ";", "," or the end of the header. Comma is
+# not parameter syntax; stopping the value at "," approximates Fetch's
+# "extract a MIME type" for comma-joined duplicate headers, keeping the first
+# charset rather than the last valid MIME type's.
 _HEADER_ENCODING_RE = re.compile(
-    r"(?:^|;[ \t]*)charset="
+    r"(?:^|;)[ \t]*charset="
     r'(?:"([\w-]+)"|([\w-]+))'
-    r"(?=[ \t]*(?:;|$))",
+    r"(?![^\s;,])",
     re.IGNORECASE,
 )
 
