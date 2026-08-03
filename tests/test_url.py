@@ -1536,6 +1536,18 @@ class TestCanonicalizeUrl:
             == "http://www.xn--bcher-kva.de:8080/?q=b%C3%BCcher"
         )
 
+    def test_canonicalize_idns_with_userinfo(self):
+        # userinfo must survive with its "@" delimiter instead of being
+        # folded into the IDNA host label
+        assert (
+            canonicalize_url("http://user@例え.jp/path")
+            == "http://user@xn--r8jz45g.jp/path"
+        )
+        assert (
+            canonicalize_url("http://user:pass@例え.jp:8080/p")
+            == "http://user:pass@xn--r8jz45g.jp:8080/p"
+        )
+
     def test_quoted_slash_and_question_sign(self):
         assert (
             canonicalize_url("http://foo.com/AC%2FDC+rocks%3f/?yeah=1")
