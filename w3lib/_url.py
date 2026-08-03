@@ -341,6 +341,7 @@ def _unquote_plus(
 def _parse_qs(
     qs: str | bytes,
     keep_blank_values: bool = False,
+    separator: bytes = b"&",
 ) -> dict[bytes, list[bytes]]:
     """Reimplementation of urllib.parse.parse_qs which:
     - Doesn't use _coerce_args or _coerce_result
@@ -354,7 +355,7 @@ def _parse_qs(
 
     result: dict[bytes, list[bytes]] = {}
 
-    for field in qs.split(b"&"):
+    for field in qs.split(separator):
         if not field:
             continue
 
@@ -377,6 +378,7 @@ def _parse_qs(
 def _parse_qsl(
     qs: str | bytes,
     keep_blank_values: bool = False,
+    separator: bytes = b"&",
 ) -> list[tuple[bytes, bytes]]:
     """Reimplementation of urllib.parse.parse_qsl which:
     - Doesn't use _coerce_args or _coerce_result
@@ -391,7 +393,7 @@ def _parse_qsl(
 
     result: list[tuple[bytes, bytes]] = []
 
-    for field in qs.split(b"&"):
+    for field in qs.split(separator):
         if not field:
             continue
 
@@ -405,7 +407,7 @@ def _parse_qsl(
     return result
 
 
-def _urlencode(query: _QueryType) -> bytes:
+def _urlencode(query: _QueryType, separator: bytes = b"&") -> bytes:
     if hasattr(query, "items"):  # pragma: no cover
         query = query.items()  # type: ignore[assignment]
 
@@ -430,7 +432,7 @@ def _urlencode(query: _QueryType) -> bytes:
         result.append(bytes(tmp_buf))
         tmp_buf.clear()
 
-    return b"&".join(result)
+    return separator.join(result)
 
 
 def _split_params(scheme: str, url: str) -> tuple[str, str]:

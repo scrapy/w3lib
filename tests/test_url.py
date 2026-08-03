@@ -941,6 +941,10 @@ class TestUrl:
         assert url_query_parameter("product.html?id=200&id=201&id=202", "id") == "200"
         # query delimiter at index 1 of a short relative URL
         assert url_query_parameter("a?id=200", "id") == "200"
+        assert (
+            url_query_parameter("product.html?id=200;foo=bar", "id", separator=";")
+            == "200"
+        )
 
     @pytest.mark.xfail
     def test_url_query_parameter_2(self):
@@ -1046,6 +1050,17 @@ class TestUrl:
         assert (
             add_or_replace_parameter("http://domain/test?arg1=v1;arg2=v2", "arg1", "v3")
             == "http://domain/test?arg1=v3&arg2=v2"
+        )
+
+    def test_add_or_replace_parameter_semicolon(self):
+        url = "http://domain/test?arg1=v1;arg2=v2;arg3=v3"
+        assert (
+            add_or_replace_parameter(url, "arg4", "v4", separator=";")
+            == "http://domain/test?arg1=v1;arg2=v2;arg3=v3;arg4=v4"
+        )
+        assert (
+            add_or_replace_parameter(url, "arg3", "nv3", separator=";")
+            == "http://domain/test?arg1=v1;arg2=v2;arg3=nv3"
         )
 
     def test_add_or_replace_parameters(self):
@@ -1258,6 +1273,14 @@ class TestCanonicalizeUrl:
         assert (
             canonicalize_url("http://www.example.com/do?&a=1")
             == "http://www.example.com/do?a=1"
+        )
+
+    def test_typical_usage_semicolon(self):
+        assert (
+            canonicalize_url(
+                "http://www.example.com/do?c=1;b=2;a=3", query_separator=";"
+            )
+            == "http://www.example.com/do?a=3;b=2;c=1"
         )
 
     def test_port_number(self):
