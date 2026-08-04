@@ -60,22 +60,11 @@ _meta_refresh_re2 = re.compile(
 
 _CDATA_START = "<![CDATA["
 _CDATA_END = "]]>"
-_tags_re = re.compile(
-    r"""
-    </?             # opening angle bracket, optional slash for a closing tag
-    ([^ <>/]+)      # tag name (captured): a run of non-space, non-bracket chars,
-    (?![^ <>/])     # pinned to its maximal length by this lookahead so it can't
-                    # overlap the run below and backtrack quadratically on an
-                    # unterminated tag (a "<" with a long run and no ">")
-    [^<>]*          # the rest of the tag: attributes, whitespace, etc.
-    >               # closing angle bracket
-    """,
-    re.IGNORECASE | re.VERBOSE,
-)
 _meta_tag_re = re.compile(r"<meta\b[^<>]*>", re.IGNORECASE)
 
 
 HTML5_WHITESPACE = " \t\n\r\x0c"
+_TAG_NAME_END = " <>/"
 
 
 def replace_entities(
@@ -189,14 +178,65 @@ def remove_comments(text: str | bytes, encoding: str | None = None) -> str:
     return _REMOVECOMMENTS_RE.sub("", utext)
 
 
-def _remove_tag(
-    m: re.Match[str], which_ones: set[str] | tuple[()], keep: set[str] | tuple[()]
+def _read_tag(text: str, start: int) -> tuple[int, str] | None:
+    position = start + 1
+    if position >= len(text):
+        return None
+    if text[position] == "/":
+        position += 1
+    if position >= len(text) or text[position] in _TAG_NAME_END:
+        return None
+
+    tag_start = position
+    while position < len(text) and text[position] not in _TAG_NAME_END:
+        position += 1
+    tag = text[tag_start:position]
+
+    quote: str | None = None
+    after_equals = False
+    while position < len(text):
+        char = text[position]
+        if quote is not None:
+            if char == quote:
+                quote = None
+                after_equals = False
+        elif char == "<":
+            return None
+        elif char == ">":
+            return position + 1, tag
+        elif char in "\"'" and after_equals:
+            quote = char
+        elif char == "=":
+            after_equals = True
+        elif after_equals and char not in HTML5_WHITESPACE:
+            after_equals = False
+        position += 1
+    return None
+
+
+def _remove_tags(
+    text: str, which_ones: set[str] | tuple[()], keep: set[str] | tuple[()]
 ) -> str:
-    tag = m.group(1).lower()
-
-    should_remove = tag in which_ones if which_ones else tag not in keep
-
-    return "" if should_remove else m.group(0)
+    result = []
+    position = 0
+    while position < len(text):
+        start = text.find("<", position)
+        if start == -1:
+            result.append(text[position:])
+            break
+        result.append(text[position:start])
+        tag = _read_tag(text, start)
+        if tag is None:
+            result.append(text[start])
+            position = start + 1
+            continue
+        end, tag_name = tag
+        tag_name = tag_name.lower()
+        should_remove = tag_name in which_ones if which_ones else tag_name not in keep
+        if not should_remove:
+            result.append(text[start:end])
+        position = end
+    return "".join(result)
 
 
 def remove_tags(
@@ -251,13 +291,10 @@ def remove_tags(
     if which_ones and keep:
         raise ValueError("Cannot use both which_ones and keep")
 
-    return _tags_re.sub(
-        functools.partial(
-            _remove_tag,
-            which_ones={tag.lower() for tag in which_ones} if which_ones else (),
-            keep={tag.lower() for tag in keep} if keep else (),
-        ),
+    return _remove_tags(
         to_unicode(text, encoding),
+        which_ones={tag.lower() for tag in which_ones} if which_ones else (),
+        keep={tag.lower() for tag in keep} if keep else (),
     )
 
 

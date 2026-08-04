@@ -207,6 +207,20 @@ class TestRemoveTags:
             == '<p align="center" class="one">texty</p>'
         )
 
+    def test_remove_tags_with_gt_in_quoted_attribute(self):
+        assert remove_tags('<a title="x>y">texty</a>') == "texty"
+        assert remove_tags("<a title='x>y'>texty</a>") == "texty"
+        assert (
+            remove_tags('<a title="x>y">texty</a>', which_ones=("b",))
+            == '<a title="x>y">texty</a>'
+        )
+        assert remove_tags('<p>a<br title="x>y" />b</p>', keep=("br",)) == (
+            'a<br title="x>y" />b'
+        )
+
+    def test_remove_tags_with_unquoted_quote_in_attribute(self):
+        assert remove_tags('<a b=c"d>keep</a>') == "keep"
+
     def test_remove_empty_tags(self):
         # text with empty tags
         assert remove_tags("a<br />b<br/>c") == "abc"
