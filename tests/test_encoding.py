@@ -108,6 +108,22 @@ class TestRequestEncoding:
             == "utf-8"
         )
         assert http_content_type_encoding('text/html; foo="bar; charset=utf-7"') is None
+        assert (
+            http_content_type_encoding('text/html; foo="bar; charset=utf-7;"') is None
+        )
+        assert (
+            http_content_type_encoding(
+                'text/html; foo="bar; charset=utf-7;"; charset="utf-8"'
+            )
+            == "utf-8"
+        )
+        # an invalid charset value is skipped and the scan continues
+        assert (
+            http_content_type_encoding(
+                'text/html; foo="bar; charset=utf-7;"; charset=""; charset=utf-8'
+            )
+            == "utf-8"
+        )
         # the parameter is still found when the header does not end right
         # after it
         assert (
