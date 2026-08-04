@@ -11,6 +11,8 @@ import unicodedata
 from typing import TYPE_CHECKING
 from urllib.parse import ParseResult, scheme_chars, uses_netloc, uses_params
 
+import can_ada
+
 from w3lib._infra import _ASCII_TAB_OR_NEWLINE, _C0_CONTROL_OR_SPACE
 
 if TYPE_CHECKING:
@@ -629,16 +631,20 @@ def _check_bracketed_host(hostname: str) -> None:
         raise ValueError("An IPv4 address cannot be in brackets")
 
 
-@functools.lru_cache
-def _urlsplit(  # pylint: disable=too-many-locals,too-many-statements
+def _urlsplit_pure(  # pylint: disable=too-many-locals,too-many-statements
     url: str,
     scheme: str = "",
     allow_fragments: bool = True,
 ) -> _SplitResult:
-    """Reimplementation of urllib.parse.urlsplit which:
+    """Pure-Python reimplementation of urllib.parse.urlsplit.
+
+    Used as fallback for relative/unparseable URLs.
+
+    Unlike the standard library implementation, this one:
+
     - Doesn't use _coerce_args or _coerce_result
     - Does manual single-pass scanning instead of repeated .find/.split calls
-    - Have reduced string allocations by slicing once using computed indices
+    - Reduces string allocations by slicing once using computed indices
     - Avoids extra computations as much as possible
     """
     if not url:
@@ -755,6 +761,75 @@ def _urlsplit(  # pylint: disable=too-many-locals,too-many-statements
         hostname,
         port or None,
     )
+
+
+def _to_split_result_from_can_ada(parsed: can_ada.URL) -> _SplitResult:
+    """Map a can_ada URL object to _SplitResult.
+
+    Can_ada applies WHATWG normalization: default ports are stripped, paths are
+    resolved (``..`` segments removed), scheme and hostname are lowercased, and
+    non-ASCII characters are percent-encoded as UTF-8.
+    """
+    scheme = parsed.protocol[:-1]  # strip trailing ':'
+
+    username: str | None = parsed.username or None
+    password: str | None = parsed.password or None
+
+    # can_ada's .host = hostname:port (no auth prefix, brackets kept for IPv6)
+    if username is not None:
+        netloc = (
+            f"{username}:{password}@{parsed.host}"
+            if password is not None
+            else f"{username}@{parsed.host}"
+        )
+    else:
+        netloc = parsed.host
+
+    # can_ada includes '['/']' brackets in .hostname for IPv6
+    hostname = parsed.hostname
+    if hostname.startswith("[") and hostname.endswith("]"):
+        hostname = hostname[1:-1]
+
+    # can_ada returns '' for absent or default port
+    port: str | None = parsed.port or None
+
+    search = parsed.search
+    query = search[1:] if search else ""  # strip leading '?'
+
+    hash_str = parsed.hash
+    fragment = hash_str[1:] if hash_str else ""  # strip leading '#'
+
+    return _SplitResult(
+        scheme,
+        netloc,
+        parsed.pathname,
+        query,
+        fragment,
+        username,
+        password,
+        hostname,
+        port,
+    )
+
+
+@functools.lru_cache
+def _urlsplit(
+    url: str,
+    scheme: str = "",
+    allow_fragments: bool = True,
+) -> _SplitResult:
+    """URL splitting with can_ada fast path for absolute URLs.
+
+    Uses the WHATWG-compliant can_ada parser for well-formed absolute URLs and
+    falls back to the pure-Python implementation for relative URLs and any input
+    that can_ada cannot parse.
+    """
+    if scheme == "" and allow_fragments and "://" in url:
+        try:
+            return _to_split_result_from_can_ada(can_ada.parse(url))
+        except (ValueError, UnicodeError):
+            pass
+    return _urlsplit_pure(url, scheme, allow_fragments)
 
 
 def _url2pathname(url: str) -> str:
