@@ -1661,6 +1661,24 @@ class TestCanonicalizeUrl:
         assert parse_url(url).path == urlparse(url).path
         assert parse_url(url).params == urlparse(url).params
 
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://exa\tmple.com/p",
+            "http://exa\nmple.com/p",
+            "http://exa\rmple.com/p",
+            "https://good.com\t.evil.com/a\r\nb?q=a\tb#f\tr",
+            "http://example.com:8\t0/",
+        ],
+    )
+    def test_parse_url_remove_ascii_tab_and_newlines(self, url):
+        # urlsplit drops every ASCII tab and newline from the URL, so a tab in
+        # the host cannot survive into parse_url()'s netloc and report a host a
+        # browser would not connect to.
+        assert parse_url(url).netloc == urlparse(url).netloc
+        assert parse_url(url).hostname == urlparse(url).hostname
+        assert "\t" not in parse_url(url).netloc
+
     def test_canonicalize_url_non_final_segment_semicolon(self):
         # the path after such a ";" still gets percent-encoding normalization
         assert (

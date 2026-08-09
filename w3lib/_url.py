@@ -644,6 +644,14 @@ def _urlsplit(  # pylint: disable=too-many-locals,too-many-statements
     if not url:
         return _SplitResult(scheme, "", "", "", "")
 
+    # urllib.parse.urlsplit removes every ASCII tab and newline from anywhere in
+    # the URL before parsing (the WHATWG "remove all ASCII tab or newline"
+    # step). This reimplementation only stripped leading C0/space, so a tab or
+    # newline embedded in the authority survived: parse_url("http://exa\tmple.com")
+    # reported host "exa\tmple.com" while urlsplit and browsers drop the tab and
+    # resolve "example.com".
+    url = url.translate(_ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE)
+    scheme = scheme.translate(_ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE)
     url, scheme = url.lstrip(_C0_CONTROL_OR_SPACE), scheme.strip(_C0_CONTROL_OR_SPACE)
 
     netloc = query = fragment = ""
