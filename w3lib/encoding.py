@@ -214,13 +214,31 @@ codecs.register_error(
 )
 
 
+def _gb18030_replace(exc: UnicodeError) -> tuple[str, int]:
+    error = cast("AnyUnicodeError", exc)
+    if error.object[error.start] == 0x80:
+        return "\u20ac", error.start + 1
+    return "\ufffd", error.end
+
+
+# The GB18030 decoder of the Encoding Standard decodes a lead 0x80 as the euro
+# sign, for GBK compatibility, while the Python codec rejects it.
+# https://encoding.spec.whatwg.org/#gb18030-decoder
+codecs.register_error("w3lib_gb18030_replace", _gb18030_replace)
+
+
 def to_unicode(data_str: bytes, encoding: str) -> str:
     r"""Convert a str object to unicode using the encoding given
 
     Characters that cannot be converted will be converted to ``\ufffd`` (the
     unicode replacement character).
     """
-    return data_str.decode(encoding, "replace")
+    errors = (
+        "w3lib_gb18030_replace"
+        if codecs.lookup(encoding).name == "gb18030"
+        else "replace"
+    )
+    return data_str.decode(encoding, errors)
 
 
 def html_to_unicode(

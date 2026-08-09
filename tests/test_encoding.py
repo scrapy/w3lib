@@ -5,6 +5,8 @@ import random
 from io import BytesIO
 from typing import Any
 
+import pytest
+
 from w3lib.encoding import (
     html_body_declared_encoding,
     html_to_unicode,
@@ -161,6 +163,20 @@ class TestUnicodeDecoding:
 
     def test_invalid_utf8(self):
         assert to_unicode(b"\xc2\xc2\xa3", "utf-8") == "\ufffd\xa3"
+
+    @pytest.mark.parametrize(
+        ("data", "expected"),
+        [
+            (b"\x80", "\u20ac"),
+            (b"100\x80", "100\u20ac"),
+            (b"\xff\x80", "\ufffd\u20ac"),
+            (b"\x81\x80", "\u4e90"),
+            (b"\xa2\xe3", "\u20ac"),
+            (b"\xff", "\ufffd"),
+        ],
+    )
+    def test_gb18030(self, data: bytes, expected: str) -> None:
+        assert to_unicode(data, "gb18030") == expected
 
 
 def ct(charset: str | None) -> str | None:
