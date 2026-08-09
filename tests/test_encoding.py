@@ -164,6 +164,7 @@ class TestUnicodeDecoding:
     def test_invalid_utf8(self):
         assert to_unicode(b"\xc2\xc2\xa3", "utf-8") == "\ufffd\xa3"
 
+    @pytest.mark.parametrize("encoding", ["gb18030", "GB18030", "gb18030_2000"])
     @pytest.mark.parametrize(
         ("data", "expected"),
         [
@@ -175,8 +176,8 @@ class TestUnicodeDecoding:
             (b"\xff", "\ufffd"),
         ],
     )
-    def test_gb18030(self, data: bytes, expected: str) -> None:
-        assert to_unicode(data, "gb18030") == expected
+    def test_gb18030(self, data: bytes, expected: str, encoding: str) -> None:
+        assert to_unicode(data, encoding) == expected
 
 
 def ct(charset: str | None) -> str | None:

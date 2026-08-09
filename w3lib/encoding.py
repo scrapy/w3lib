@@ -233,9 +233,11 @@ def to_unicode(data_str: bytes, encoding: str) -> str:
     Characters that cannot be converted will be converted to ``\ufffd`` (the
     unicode replacement character).
     """
+    # Every name that resolves to gb18030 contains "18030", so the substring
+    # check keeps the codec lookup out of the common case.
     errors = (
         "w3lib_gb18030_replace"
-        if codecs.lookup(encoding).name == "gb18030"
+        if "18030" in encoding and codecs.lookup(encoding).name == "gb18030"
         else "replace"
     )
     return data_str.decode(encoding, errors)
