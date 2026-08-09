@@ -67,6 +67,18 @@ _BODY_ENCODING_BYTES_RE = re.compile(
     _BODY_ENCODING_PATTERN.encode("ascii"), re.IGNORECASE | re.VERBOSE
 )
 
+# Fallback for meta tags that do not follow the spec closely enough for the
+# patterns above, e.g. <meta httpequiv="ContentType" content="…charset=gbk">
+_LENIENT_ENCODING_PATTERN = (
+    r"""<\s*(?:meta\s+[^>]*?charset\s*=\s*["']?\s*(?P<charset3>[\w-]+)|body)"""
+)
+_LENIENT_ENCODING_STR_RE = re.compile(
+    _LENIENT_ENCODING_PATTERN, re.IGNORECASE | re.VERBOSE
+)
+_LENIENT_ENCODING_BYTES_RE = re.compile(
+    _LENIENT_ENCODING_PATTERN.encode("ascii"), re.IGNORECASE | re.VERBOSE
+)
+
 
 def html_body_declared_encoding(html_body_str: str | bytes) -> str | None:
     '''Return the encoding specified in meta tags in the html body,
@@ -98,14 +110,24 @@ def html_body_declared_encoding(html_body_str: str | bytes) -> str | None:
     else:
         match = _BODY_ENCODING_STR_RE.search(chunk)
 
+    encoding = None
     if match:
         encoding = (
             match.group("charset")
             or match.group("charset2")
             or match.group("xmlcharset")
         )
-        if encoding:
-            return resolve_encoding(w3lib.util.to_unicode(encoding))
+
+    if not encoding:
+        if isinstance(chunk, bytes):
+            match = _LENIENT_ENCODING_BYTES_RE.search(chunk)
+        else:
+            match = _LENIENT_ENCODING_STR_RE.search(chunk)
+        if match:
+            encoding = match.group("charset3")
+
+    if encoding:
+        return resolve_encoding(w3lib.util.to_unicode(encoding))
 
     return None
 
