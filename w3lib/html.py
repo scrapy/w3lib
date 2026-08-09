@@ -72,7 +72,10 @@ _tags_re = re.compile(
     """,
     re.IGNORECASE | re.VERBOSE,
 )
-_meta_tag_re = re.compile(r"<meta\b[^<>]*>", re.IGNORECASE)
+# The tag body, without the closing angle bracket, which is not required: a tag
+# left unterminated by the next "<" or by the end of the text is still parsed,
+# as browsers do.
+_meta_tag_re = re.compile(r"<meta\b[^<>]*", re.IGNORECASE)
 
 
 HTML5_WHITESPACE = " \t\n\r\x0c"
