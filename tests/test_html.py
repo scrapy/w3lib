@@ -532,6 +532,15 @@ class TestGetMetaRefresh:
             </html>"""
         assert get_meta_refresh(body, baseurl) == (5, "http://example.org/newpage")
 
+    def test_get_meta_refresh_unterminated_tag(self):
+        baseurl = "http://example.org"
+        body = """<meta http-equiv="refresh" content="5;url=newpage"</head>"""
+        assert get_meta_refresh(body, baseurl) == (5, "http://example.org/newpage")
+        assert get_meta_refresh(body[:-7], baseurl) == (
+            5,
+            "http://example.org/newpage",
+        )
+
     def test_get_meta_refresh_no_catastrophic_backtracking(self):
         prefix = "<meta " * 80000
         start = time.perf_counter()
