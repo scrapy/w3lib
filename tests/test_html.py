@@ -447,6 +447,34 @@ class TestGetBaseUrl:
             == "http://example_3.com/"
         )
 
+    def test_base_url_in_script(self):
+        baseurl = "https://example.org"
+        # A browser does not parse tags inside <script>/<noscript>, so a <base>
+        # written there is ignored and relative URLs resolve against baseurl.
+        assert (
+            get_base_url(
+                """<script>var t = "<base href='http://evil.example/'>";</script>""",
+                baseurl,
+            )
+            == "https://example.org"
+        )
+        assert (
+            get_base_url(
+                """<noscript><base href="http://evil.example/"></noscript>""",
+                baseurl,
+            )
+            == "https://example.org"
+        )
+        # a real <base> after the ignored one is still picked up
+        assert (
+            get_base_url(
+                """<script><base href="http://evil.example/"></script>"""
+                """<base href="http://example.org/found/">""",
+                baseurl,
+            )
+            == "http://example.org/found/"
+        )
+
     def test_relative_url_with_absolute_path(self):
         baseurl = "https://example.org"
         text = """\

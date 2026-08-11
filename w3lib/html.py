@@ -388,7 +388,12 @@ def get_base_url(
 
     """
 
-    utext = remove_comments(text, encoding=encoding)
+    # A browser never parses tags inside <script>/<noscript>, so a <base>
+    # written as text there is ignored; drop that content first (as
+    # get_meta_refresh does) to avoid resolving links against a base URL the
+    # browser does not honor.
+    utext = remove_tags_with_content(text, ("script", "noscript"), encoding=encoding)
+    utext = remove_comments(utext)
     if m := _baseurl_re.search(utext):
         return urljoin(
             safe_url_string(baseurl), safe_url_string(m.group(1), encoding=encoding)
