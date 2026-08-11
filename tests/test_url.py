@@ -14,7 +14,13 @@ from w3lib._infra import (
     _ASCII_TAB_OR_NEWLINE,
     _C0_CONTROL_OR_SPACE,
 )
-from w3lib._url import _SPECIAL_SCHEMES, _split_params, _urlunparse, _urlunsplit
+from w3lib._url import (
+    _SPECIAL_SCHEMES,
+    _split_params,
+    _urlsplit,
+    _urlunparse,
+    _urlunsplit,
+)
 from w3lib.url import (
     add_or_replace_parameter,
     add_or_replace_parameters,
@@ -1678,6 +1684,12 @@ class TestCanonicalizeUrl:
         assert parse_url(url).netloc == urlparse(url).netloc
         assert parse_url(url).hostname == urlparse(url).hostname
         assert "\t" not in parse_url(url).netloc
+
+    def test_urlsplit_remove_ascii_tab_and_newlines_from_scheme(self):
+        # the default-scheme argument gets the same tab/newline removal as the
+        # URL itself, matching urllib.parse.urlsplit
+        assert _urlsplit("//example.com/p", "ht\ttp").scheme == "http"
+        assert _urlsplit("//example.com/p", "ht\ntt\rp").scheme == "htttp"
 
     def test_canonicalize_url_non_final_segment_semicolon(self):
         # the path after such a ";" still gets percent-encoding normalization
