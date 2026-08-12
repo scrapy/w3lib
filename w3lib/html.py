@@ -24,8 +24,18 @@ _ent_re = re.compile(
     re.IGNORECASE,
 )
 _tag_re = re.compile(r"<[a-zA-Z\/!][^<>]*>")
-_baseurl_re = re.compile(
-    r"<base\s[^<>]*href\s*=\s*[\"\']\s*([^\"\'\s]+)\s*[\"\']", re.IGNORECASE
+# Scan for the first honored <base href>, consuming comments and
+# <script>/<noscript> content (where a browser never parses tags) along the
+# way. Ignorable regions come first in the alternation, so a <base> inside one
+# is consumed before it can match; unterminated regions swallow the rest of
+# the document, as a browser does.
+_base_scan_re = re.compile(
+    r"""
+      <!--.*?(?:-->|$)
+    | <(?P<t>script|noscript)\b[^<>]*>.*?(?:</(?P=t)>|$)
+    | <base\s[^<>]*href\s*=\s*["']\s*(?P<url>[^"'\s]+)\s*["']
+    """,
+    re.IGNORECASE | re.DOTALL | re.VERBOSE,
 )
 
 
@@ -388,16 +398,12 @@ def get_base_url(
 
     """
 
-    # A browser never parses tags inside <script>/<noscript>, so a <base>
-    # written as text there is ignored; drop that content first (as
-    # get_meta_refresh does) to avoid resolving links against a base URL the
-    # browser does not honor.
-    utext = remove_tags_with_content(text, ("script", "noscript"), encoding=encoding)
-    utext = remove_comments(utext)
-    if m := _baseurl_re.search(utext):
-        return urljoin(
-            safe_url_string(baseurl), safe_url_string(m.group(1), encoding=encoding)
-        )
+    utext = to_unicode(text, encoding)
+    for m in _base_scan_re.finditer(utext):
+        if url := m.group("url"):
+            return urljoin(
+                safe_url_string(baseurl), safe_url_string(url, encoding=encoding)
+            )
     return safe_url_string(baseurl)
 
 

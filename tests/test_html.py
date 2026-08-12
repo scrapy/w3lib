@@ -474,6 +474,33 @@ class TestGetBaseUrl:
             )
             == "http://example.org/found/"
         )
+        # an unterminated <script> swallows the rest of the document, as in a
+        # browser
+        assert (
+            get_base_url(
+                """<script><base href="http://evil.example/">""",
+                baseurl,
+            )
+            == "https://example.org"
+        )
+        assert (
+            get_base_url(
+                """<noscript foo="bar"><base href="http://evil.example/">""",
+                baseurl,
+            )
+            == "https://example.org"
+        )
+
+    def test_base_url_split_by_comment(self):
+        # A comment inside the <base> tag is not stripped: browsers do not
+        # parse comments within a tag, so the tag is broken and ignored.
+        assert (
+            get_base_url(
+                """<base h<!--c-->ref="http://example.com/">""",
+                "https://example.org",
+            )
+            == "https://example.org"
+        )
 
     def test_relative_url_with_absolute_path(self):
         baseurl = "https://example.org"
