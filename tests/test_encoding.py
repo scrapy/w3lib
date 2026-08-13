@@ -168,7 +168,13 @@ class TestRequestEncoding:
             html_body_declared_encoding(
                 b"""<meta http-equiv="Fake-Content-Type-Header" content="text/html; charset=utf-8">"""
             )
-            is None
+            == "utf-8"
+        )
+        assert (
+            html_body_declared_encoding(
+                b"""<meta httpequiv="ContentType" content="text/html; charset=gbk" />"""
+            )
+            == "gb18030"
         )
 
     def test_html_body_declared_encoding_unicode(self):
@@ -193,7 +199,7 @@ class TestRequestEncoding:
             html_body_declared_encoding(
                 """<meta http-equiv="Fake-Content-Type-Header" content="text/html; charset=utf-8">"""
             )
-            is None
+            == "utf-8"
         )
 
 

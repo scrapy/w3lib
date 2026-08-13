@@ -75,29 +75,18 @@ def http_content_type_encoding(content_type: str | None) -> str | None:
     return None
 
 
-# regexp for parsing HTTP meta tags
-_TEMPLATE = r"""%s\s*=\s*["']?\s*%s\s*["']?"""
-_SKIP_ATTRS = """(?:\\s+
-    [^=<>/\\s"'\x00-\x1f\x7f]+  # Attribute name
-    (?:\\s*=\\s*
-    (?:  # ' and " are entity encoded (&apos;, &quot;), so no need for \', \"
-        '[^']*'   # attr in '
-        |
-        "[^"]*"   # attr in "
-        |
-        [^'"\\s]+  # attr having no ' nor "
-    ))?
-)*?"""  # must be used with re.VERBOSE flag
-_HTTPEQUIV_RE = _TEMPLATE % ("http-equiv", "Content-Type")
-_CONTENT_RE = _TEMPLATE % ("content", r"(?P<mime>[^;]+);\s*charset=(?P<charset>[\w-]+)")
-_CONTENT2_RE = _TEMPLATE % ("charset", r"(?P<charset2>[\w-]+)")
-_XML_ENCODING_RE = _TEMPLATE % ("encoding", r"(?P<xmlcharset>[\w-]+)")
-
-# check for meta tags, or xml decl. and stop search if a body tag is encountered
-_BODY_ENCODING_PATTERN = rf"<\s*(?:meta{_SKIP_ATTRS}(?:(?:\s+{_HTTPEQUIV_RE}|\s+{_CONTENT_RE}){{2}}|\s+{_CONTENT2_RE})|\?xml\s[^>]+{_XML_ENCODING_RE}|body)"
-_BODY_ENCODING_STR_RE = re.compile(_BODY_ENCODING_PATTERN, re.IGNORECASE | re.VERBOSE)
+# Check for a charset in a meta tag or an xml declaration, and stop the search
+# if a body tag is encountered. Any meta tag with a charset counts, however it
+# spells its other attributes, e.g. <meta httpequiv="ContentType"
+# content="text/html; charset=gbk">.
+_BODY_ENCODING_PATTERN = (
+    r"""<\s*(?:meta\s+[^>]*?charset\s*=\s*["']?\s*(?P<charset>[\w-]+)"""
+    r"""|\?xml\s[^>]+encoding\s*=\s*["']?\s*(?P<xmlcharset>[\w-]+)"""
+    r"""|body)"""
+)
+_BODY_ENCODING_STR_RE = re.compile(_BODY_ENCODING_PATTERN, re.IGNORECASE)
 _BODY_ENCODING_BYTES_RE = re.compile(
-    _BODY_ENCODING_PATTERN.encode("ascii"), re.IGNORECASE | re.VERBOSE
+    _BODY_ENCODING_PATTERN.encode("ascii"), re.IGNORECASE
 )
 
 
@@ -132,11 +121,7 @@ def html_body_declared_encoding(html_body_str: str | bytes) -> str | None:
         match = _BODY_ENCODING_STR_RE.search(chunk)
 
     if match:
-        encoding = (
-            match.group("charset")
-            or match.group("charset2")
-            or match.group("xmlcharset")
-        )
+        encoding = match.group("charset") or match.group("xmlcharset")
         if encoding:
             return resolve_encoding(w3lib.util.to_unicode(encoding))
 
