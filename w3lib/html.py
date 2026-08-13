@@ -267,8 +267,14 @@ def remove_tags(
 @functools.lru_cache(maxsize=256)
 def _build_remove_tags_pattern(tags_tuple: tuple[str, ...]) -> re.Pattern[str]:
     tags = "|".join(re.escape(tag) for tag in tags_tuple)
+    # The end tag closes on the tag name followed by whitespace, "/" or ">",
+    # so `</script >`, `</script\n>`, `</script/>` and `</script foo>` all end
+    # the element, as browsers treat them. Requiring a bare `</tag>` left the
+    # content (and anything it hides, e.g. a <meta refresh>) in place. The
+    # trailing run stays [^<>]* so it can't cross into the next tag and match
+    # super-linearly.
     pattern = rf"""
-        <(?P<tag>{tags})\b[^<>]*>.*?</(?P=tag)>
+        <(?P<tag>{tags})\b[^<>]*>.*?</(?P=tag)(?=[\s/>])[^<>]*>
         |
         <(?P<tag2>{tags})\b[^<>]*/>
     """

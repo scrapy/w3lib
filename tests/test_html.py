@@ -308,6 +308,26 @@ class TestRemoveTagsWithContent:
         )
         assert time.perf_counter() - start < 2
 
+    def test_end_tag_with_whitespace_or_attrs(self):
+        # Browsers end an element on the tag name followed by whitespace, "/"
+        # or ">", so these all close <script> and its content must be removed.
+        for body in (
+            "<script>x</script >",
+            "<script>x</script\n>",
+            "<script>x</script\t>",
+            "<script>x</script/>",
+            '<script>x</script foo="bar">',
+            "<SCRIPT>x</SCRIPT >",
+        ):
+            assert remove_tags_with_content(body, which_ones=("script",)) == ""
+        # A different tag name must not close it.
+        assert (
+            remove_tags_with_content(
+                "<script>a</scriptx>b</script>", which_ones=("script",)
+            )
+            == ""
+        )
+
 
 class TestReplaceEscapeChars:
     def test_returns_unicode(self):
@@ -540,6 +560,18 @@ class TestGetMetaRefresh:
             5,
             "http://example.org/newpage",
         )
+
+    def test_get_meta_refresh_meta_hidden_in_script(self):
+        # A <meta refresh> that only exists as text inside a <script> closed
+        # with a trailing-space end tag must be dropped with the script, the
+        # same way a browser never acts on it.
+        baseurl = "http://good.example/"
+        body = (
+            "<script>var x = "
+            '\'<meta http-equiv="refresh" content="0;url=http://evil.example/">\';'
+            "</script >"
+        )
+        assert get_meta_refresh(body, baseurl) == (None, None)
 
     def test_get_meta_refresh_no_catastrophic_backtracking(self):
         prefix = "<meta " * 80000
