@@ -467,6 +467,61 @@ class TestGetBaseUrl:
             == "http://example_3.com/"
         )
 
+    def test_base_url_in_script(self):
+        baseurl = "https://example.org"
+        # A browser does not parse tags inside <script>/<noscript>, so a <base>
+        # written there is ignored and relative URLs resolve against baseurl.
+        assert (
+            get_base_url(
+                """<script>var t = "<base href='http://evil.example/'>";</script>""",
+                baseurl,
+            )
+            == "https://example.org"
+        )
+        assert (
+            get_base_url(
+                """<noscript><base href="http://evil.example/"></noscript>""",
+                baseurl,
+            )
+            == "https://example.org"
+        )
+        # a real <base> after the ignored one is still picked up
+        assert (
+            get_base_url(
+                """<script><base href="http://evil.example/"></script>"""
+                """<base href="http://example.org/found/">""",
+                baseurl,
+            )
+            == "http://example.org/found/"
+        )
+        # an unterminated <script> swallows the rest of the document, as in a
+        # browser
+        assert (
+            get_base_url(
+                """<script><base href="http://evil.example/">""",
+                baseurl,
+            )
+            == "https://example.org"
+        )
+        assert (
+            get_base_url(
+                """<noscript foo="bar"><base href="http://evil.example/">""",
+                baseurl,
+            )
+            == "https://example.org"
+        )
+
+    def test_base_url_split_by_comment(self):
+        # A comment inside the <base> tag is not stripped: browsers do not
+        # parse comments within a tag, so the tag is broken and ignored.
+        assert (
+            get_base_url(
+                """<base h<!--c-->ref="http://example.com/">""",
+                "https://example.org",
+            )
+            == "https://example.org"
+        )
+
     def test_relative_url_with_absolute_path(self):
         baseurl = "https://example.org"
         text = """\
