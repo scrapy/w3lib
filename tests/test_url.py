@@ -48,11 +48,11 @@ SAFE_URL_ENCODING_CASES: list[tuple[str | None, str | bytes, str | type[Exceptio
     # Queries are UTF-8-encoded if the scheme is not special, ws or wss.
     ("iso-8859-1", "a://example.com?©", "a://example.com?%C2%A9"),
     *(
-        ("iso-8859-1", f"{scheme}://example.com?©", f"{scheme}://example.com?%C2%A9")
+        ("iso-8859-1", f"{scheme}://example.com?©", f"{scheme}://example.com/?%C2%A9")
         for scheme in ("ws", "wss")
     ),
     *(
-        ("iso-8859-1", f"{scheme}://example.com?©", f"{scheme}://example.com?%A9")
+        ("iso-8859-1", f"{scheme}://example.com?©", f"{scheme}://example.com/?%A9")
         for scheme in _SPECIAL_SCHEMES
         if scheme not in {"ws", "wss"}
     ),
@@ -345,9 +345,9 @@ SAFE_URL_URL_CASES = (
     # Query
     ("https://example.com?", "https://example.com?"),
     ("https://example.com/?", "https://example.com/?"),
-    ("https://example.com?a", "https://example.com?a"),
-    ("https://example.com?a=", "https://example.com?a="),
-    ("https://example.com?a=b", "https://example.com?a=b"),
+    ("https://example.com?a", "https://example.com/?a"),
+    ("https://example.com?a=", "https://example.com/?a="),
+    ("https://example.com?a=b", "https://example.com/?a=b"),
     (
         f"a://example.com?{QUERY_SAFE}",
         f"a://example.com?{QUERY_SAFE}",
@@ -359,19 +359,19 @@ SAFE_URL_URL_CASES = (
     *(
         (
             f"{scheme}://example.com?{SPECIAL_QUERY_SAFE}",
-            f"{scheme}://example.com?{SPECIAL_QUERY_SAFE}",
+            f"{scheme}://example.com/?{SPECIAL_QUERY_SAFE}",
         )
         for scheme in _SPECIAL_SCHEMES
     ),
     *(
         (
             f"{scheme}://example.com?{SPECIAL_QUERY_TO_ENCODE}",
-            f"{scheme}://example.com?{SPECIAL_QUERY_ENCODED}",
+            f"{scheme}://example.com/?{SPECIAL_QUERY_ENCODED}",
         )
         for scheme in _SPECIAL_SCHEMES
     ),
-    ("https://example.com?ñ", "https://example.com?%C3%B1"),
-    ("https://example.com?ñ%C3%B1", "https://example.com?%C3%B1%C3%B1"),
+    ("https://example.com?ñ", "https://example.com/?%C3%B1"),
+    ("https://example.com?ñ%C3%B1", "https://example.com/?%C3%B1%C3%B1"),
     # Fragment
     ("https://example.com#", "https://example.com#"),
     ("https://example.com/#", "https://example.com/#"),

@@ -157,6 +157,12 @@ def _safe_url_split(
     else:
         fragment = parts.fragment
 
+    # Without a path, the query follows the authority directly, e.g.
+    # “https://example.com?a=b”, and code that builds an HTTP request target
+    # out of the path and the query ends up sending “?a=b” as the target.
+    if not path and query and parts.scheme in _SPECIAL_SCHEMES:
+        path = "/"
+
     return (
         parts.scheme,
         netloc,
