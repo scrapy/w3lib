@@ -62,7 +62,8 @@ class TestRequestEncoding:
         extracted = http_content_type_encoding(header_value)
         assert extracted == "iso8859-4"
         assert http_content_type_encoding("something else") is None
-        # valid quoted charset values (RFC 7231 sec. 3.1.1.1)
+        # valid quoted charset values
+        # (https://mimesniff.spec.whatwg.org/#parse-a-mime-type)
         assert (
             http_content_type_encoding('Content-Type: text/html; charset="utf-8"')
             == "utf-8"
@@ -100,6 +101,53 @@ class TestRequestEncoding:
         assert http_content_type_encoding("text/html; mycharset=utf-8") is None
         # invalid: orphan quote in unquoted value
         assert http_content_type_encoding('text/html; charset=utf-8x"') is None
+        # a quoted-string is opaque: a charset written inside another
+        # parameter's value belongs to that value
+        assert (
+            http_content_type_encoding(
+                'text/html; foo="bar; charset=utf-7;"; charset=utf-8'
+            )
+            == "utf-8"
+        )
+        assert http_content_type_encoding('text/html; foo="bar; charset=utf-7"') is None
+        assert (
+            http_content_type_encoding('text/html; foo="bar; charset=utf-7;"') is None
+        )
+        assert (
+            http_content_type_encoding(
+                'text/html; foo="bar; charset=utf-7;"; charset="utf-8"'
+            )
+            == "utf-8"
+        )
+        # an invalid charset value is skipped and the scan continues
+        assert (
+            http_content_type_encoding(
+                'text/html; foo="bar; charset=utf-7;"; charset=""; charset=utf-8'
+            )
+            == "utf-8"
+        )
+        # the parameter is still found when the header does not end right
+        # after it
+        assert (
+            http_content_type_encoding("text/html;charset=utf-8, text/html") == "utf-8"
+        )
+        assert (
+            http_content_type_encoding('text/html; charset="utf-8", text/html')
+            == "utf-8"
+        )
+        assert (
+            http_content_type_encoding("Content-Type: text/html; charset=utf-8\r\n")
+            == "utf-8"
+        )
+        # comma-joined headers with differing essences: the first charset
+        # wins, unlike Fetch's extract-a-MIME-type where the last valid MIME
+        # type's would
+        assert (
+            http_content_type_encoding(
+                "text/html; charset=utf-8, text/plain; charset=utf-16"
+            )
+            == "utf-8"
+        )
 
     def test_html_body_declared_encoding(self):
         for fragment in self.utf8_fragments:
