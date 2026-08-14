@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from inspect import isclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -18,7 +19,7 @@ from urllib.parse import (
 )
 
 import pytest
-from hypothesis import example, given, strategies as st
+from hypothesis import HealthCheck, assume, example, given, settings, strategies as st
 from hypothesis.provisional import urls as hyp_urls
 
 from w3lib._infra import (
@@ -2095,14 +2096,22 @@ class TestPrivateHelpersProperties:
         expected = unquote_plus(data).encode("utf-8")
         assert result == expected
 
+    # assume() rejects most generated inputs on Python 3.10, tripping the check
+    @settings(suppress_health_check=[HealthCheck.filter_too_much])
     @given(st.text())
     def test_parse_qs_matches_stdlib(self, data: str) -> None:
+        if sys.version_info < (3, 11):
+            # https://github.com/python/cpython/issues/74668
+            assume(data.isascii())
         result = _parse_qs(data)
         expected = parse_qs(data.encode("utf-8"))
         assert result == expected
 
+    @settings(suppress_health_check=[HealthCheck.filter_too_much])
     @given(st.text())
     def test_parse_qsl_matches_stdlib(self, data: str) -> None:
+        if sys.version_info < (3, 11):
+            assume(data.isascii())
         result = _parse_qsl(data)
         expected = parse_qsl(data.encode("utf-8"))
         assert result == expected
