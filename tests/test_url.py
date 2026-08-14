@@ -377,7 +377,7 @@ SAFE_URL_URL_CASES = (
     *(
         (
             f"{scheme}://example.com?{SPECIAL_QUERY_TO_ENCODE}",
-            f"{scheme}://example.com?{SPECIAL_QUERY_ENCODED}",
+            f"{scheme}://example.com/?{SPECIAL_QUERY_ENCODED}",
         )
         for scheme in _SPECIAL_SCHEMES
     ),
@@ -946,6 +946,10 @@ class TestUrl:
         assert url_query_parameter("product.html?id=200&id=201&id=202", "id") == "200"
         # query delimiter at index 1 of a short relative URL
         assert url_query_parameter("a?id=200", "id") == "200"
+        assert (
+            url_query_parameter("product.html?id=200;foo=bar", "id", separator=";")
+            == "200"
+        )
 
     @pytest.mark.xfail
     def test_url_query_parameter_2(self):
@@ -1051,6 +1055,17 @@ class TestUrl:
         assert (
             add_or_replace_parameter("http://domain/test?arg1=v1;arg2=v2", "arg1", "v3")
             == "http://domain/test?arg1=v3&arg2=v2"
+        )
+
+    def test_add_or_replace_parameter_semicolon(self):
+        url = "http://domain/test?arg1=v1;arg2=v2;arg3=v3"
+        assert (
+            add_or_replace_parameter(url, "arg4", "v4", separator=";")
+            == "http://domain/test?arg1=v1;arg2=v2;arg3=v3;arg4=v4"
+        )
+        assert (
+            add_or_replace_parameter(url, "arg3", "nv3", separator=";")
+            == "http://domain/test?arg1=v1;arg2=v2;arg3=nv3"
         )
 
     def test_add_or_replace_parameters(self):
@@ -1263,6 +1278,14 @@ class TestCanonicalizeUrl:
         assert (
             canonicalize_url("http://www.example.com/do?&a=1")
             == "http://www.example.com/do?a=1"
+        )
+
+    def test_typical_usage_semicolon(self):
+        assert (
+            canonicalize_url(
+                "http://www.example.com/do?c=1;b=2;a=3", query_separator=";"
+            )
+            == "http://www.example.com/do?a=3;b=2;c=1"
         )
 
     def test_port_number(self):
@@ -1541,6 +1564,18 @@ class TestCanonicalizeUrl:
             == "http://www.xn--bcher-kva.de:8080/?q=b%C3%BCcher"
         )
 
+    def test_canonicalize_idns_with_userinfo(self):
+        # userinfo must survive with its "@" delimiter instead of being
+        # folded into the IDNA host label
+        assert (
+            canonicalize_url("http://user@例え.jp/path")
+            == "http://user@xn--r8jz45g.jp/path"
+        )
+        assert (
+            canonicalize_url("http://user:pass@例え.jp:8080/p")
+            == "http://user:pass@xn--r8jz45g.jp:8080/p"
+        )
+
     def test_quoted_slash_and_question_sign(self):
         assert (
             canonicalize_url("http://foo.com/AC%2FDC+rocks%3f/?yeah=1")
@@ -1635,6 +1670,30 @@ class TestCanonicalizeUrl:
         # a ";" outside the last path segment is not a params delimiter
         assert parse_url(url).path == path
         assert parse_url(url).params == params
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://exa\tmple.com/p",
+            "http://exa\nmple.com/p",
+            "http://exa\rmple.com/p",
+            "https://good.com\t.evil.com/a\r\nb?q=a\tb#f\tr",
+            "http://example.com:8\t1/",
+        ],
+    )
+    def test_parse_url_remove_ascii_tab_and_newlines(self, url):
+        # urlsplit drops every ASCII tab and newline from the URL, so a tab in
+        # the host cannot survive into parse_url()'s netloc and report a host a
+        # browser would not connect to.
+        assert parse_url(url).netloc == urlparse(url).netloc
+        assert parse_url(url).hostname == urlparse(url).hostname
+        assert "\t" not in parse_url(url).netloc
+
+    def test_urlsplit_remove_ascii_tab_and_newlines_from_scheme(self):
+        # the default-scheme argument gets the same tab/newline removal as the
+        # URL itself, matching urllib.parse.urlsplit
+        assert _urlsplit("//example.com/p", "ht\ttp").scheme == "http"
+        assert _urlsplit("//example.com/p", "ht\ntt\rp").scheme == "htttp"
 
     def test_canonicalize_url_non_final_segment_semicolon(self):
         # the path after such a ";" still gets percent-encoding normalization

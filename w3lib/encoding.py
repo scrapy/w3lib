@@ -17,12 +17,40 @@ if TYPE_CHECKING:
 
     from w3lib._types import AnyUnicodeError
 
+# The value ends at whitespace, ";", "," or the end of the header. Comma is
+# not parameter syntax; stopping the value at "," approximates Fetch's
+# "extract a MIME type" for comma-joined duplicate headers, keeping the first
+# charset rather than the last valid MIME type's.
 _HEADER_ENCODING_RE = re.compile(
-    r"(?:^|;[ \t]*)charset="
+    r"(?:^|;)[ \t]*charset="
     r'(?:"([\w-]+)"|([\w-]+))'
-    r"(?=[ \t]*(?:;|$))",
+    r"(?![^\s;,])",
     re.IGNORECASE,
 )
+# https://mimesniff.spec.whatwg.org/commit-snapshots/39aa53511b13953d84fef8d4131d6f61d0ccbde6/#parse-a-mime-type
+# Parameters are ";"-separated name=value pairs whose value is either a token
+# or a quoted-string, and a quoted-string is opaque
+# (https://fetch.spec.whatwg.org/commit-snapshots/586cd2a44c2a865b37c166dc0740f3fb8bb220d6/#collect-an-http-quoted-string),
+# so it has to be consumed as a whole: a "charset=" written inside one belongs
+# to that value and is not a parameter of its own.
+_HEADER_PARAMETER_RE = re.compile(
+    r"(?:^|;)[ \t]*(?P<name>[^\s;=]+)="
+    r'(?:"(?P<quoted>[^"\\]*(?:\\.[^"\\]*)*)"(?![^\s;,])'
+    r"|(?P<token>[^;,\s]*))"
+)
+_ENCODING_LABEL_RE = re.compile(r"[\w-]+")
+
+
+def _quoted_aware_charset(content_type: str) -> str | None:
+    for match in _HEADER_PARAMETER_RE.finditer(content_type):
+        if match.group("name").lower() != "charset":
+            continue
+        label = match.group("quoted")
+        if label is None:
+            label = match.group("token")
+        if _ENCODING_LABEL_RE.fullmatch(label):
+            return resolve_encoding(label)
+    return None
 
 
 def http_content_type_encoding(content_type: str | None) -> str | None:
@@ -37,34 +65,28 @@ def http_content_type_encoding(content_type: str | None) -> str | None:
     if content_type:
         match = _HEADER_ENCODING_RE.search(content_type)
         if match:
-            return resolve_encoding(match.group(1) or match.group(2))
+            # A match inside a quoted-string must be preceded by that string's
+            # opening quote, so if no '"' precedes it the fast answer is
+            # correct; only otherwise walk the parameters.
+            if content_type.find('"', 0, match.start()) < 0:
+                return resolve_encoding(match.group(1) or match.group(2))
+            return _quoted_aware_charset(content_type)
 
     return None
 
 
-# regexp for parsing HTTP meta tags
-_TEMPLATE = r"""%s\s*=\s*["']?\s*%s\s*["']?"""
-_SKIP_ATTRS = """(?:\\s+
-    [^=<>/\\s"'\x00-\x1f\x7f]+  # Attribute name
-    (?:\\s*=\\s*
-    (?:  # ' and " are entity encoded (&apos;, &quot;), so no need for \', \"
-        '[^']*'   # attr in '
-        |
-        "[^"]*"   # attr in "
-        |
-        [^'"\\s]+  # attr having no ' nor "
-    ))?
-)*?"""  # must be used with re.VERBOSE flag
-_HTTPEQUIV_RE = _TEMPLATE % ("http-equiv", "Content-Type")
-_CONTENT_RE = _TEMPLATE % ("content", r"(?P<mime>[^;]+);\s*charset=(?P<charset>[\w-]+)")
-_CONTENT2_RE = _TEMPLATE % ("charset", r"(?P<charset2>[\w-]+)")
-_XML_ENCODING_RE = _TEMPLATE % ("encoding", r"(?P<xmlcharset>[\w-]+)")
-
-# check for meta tags, or xml decl. and stop search if a body tag is encountered
-_BODY_ENCODING_PATTERN = rf"<\s*(?:meta{_SKIP_ATTRS}(?:(?:\s+{_HTTPEQUIV_RE}|\s+{_CONTENT_RE}){{2}}|\s+{_CONTENT2_RE})|\?xml\s[^>]+{_XML_ENCODING_RE}|body)"
-_BODY_ENCODING_STR_RE = re.compile(_BODY_ENCODING_PATTERN, re.IGNORECASE | re.VERBOSE)
+# Check for a charset in a meta tag or an xml declaration, and stop the search
+# if a body tag is encountered. Any meta tag with a charset counts, however it
+# spells its other attributes, e.g. <meta httpequiv="ContentType"
+# content="text/html; charset=gbk">.
+_BODY_ENCODING_PATTERN = (
+    r"""<\s*(?:meta\s+[^>]*?charset\s*=\s*["']?\s*(?P<charset>[\w-]+)"""
+    r"""|\?xml\s[^>]+encoding\s*=\s*["']?\s*(?P<xmlcharset>[\w-]+)"""
+    r"""|body)"""
+)
+_BODY_ENCODING_STR_RE = re.compile(_BODY_ENCODING_PATTERN, re.IGNORECASE)
 _BODY_ENCODING_BYTES_RE = re.compile(
-    _BODY_ENCODING_PATTERN.encode("ascii"), re.IGNORECASE | re.VERBOSE
+    _BODY_ENCODING_PATTERN.encode("ascii"), re.IGNORECASE
 )
 
 
@@ -99,11 +121,7 @@ def html_body_declared_encoding(html_body_str: str | bytes) -> str | None:
         match = _BODY_ENCODING_STR_RE.search(chunk)
 
     if match:
-        encoding = (
-            match.group("charset")
-            or match.group("charset2")
-            or match.group("xmlcharset")
-        )
+        encoding = match.group("charset") or match.group("xmlcharset")
         if encoding:
             return resolve_encoding(w3lib.util.to_unicode(encoding))
 
@@ -214,13 +232,33 @@ codecs.register_error(
 )
 
 
+def _gb18030_replace(exc: UnicodeError) -> tuple[str, int]:
+    error = cast("AnyUnicodeError", exc)
+    if error.object[error.start] == 0x80:
+        return "\u20ac", error.start + 1
+    return "\ufffd", error.end
+
+
+# The GB18030 decoder of the Encoding Standard decodes a lead 0x80 as the euro
+# sign, for GBK compatibility, while the Python codec rejects it.
+# https://encoding.spec.whatwg.org/#gb18030-decoder
+codecs.register_error("w3lib_gb18030_replace", _gb18030_replace)
+
+
 def to_unicode(data_str: bytes, encoding: str) -> str:
     r"""Convert a str object to unicode using the encoding given
 
     Characters that cannot be converted will be converted to ``\ufffd`` (the
     unicode replacement character).
     """
-    return data_str.decode(encoding, "replace")
+    # Every name that resolves to gb18030 contains "18030", so the substring
+    # check keeps the codec lookup out of the common case.
+    errors = (
+        "w3lib_gb18030_replace"
+        if "18030" in encoding and codecs.lookup(encoding).name == "gb18030"
+        else "replace"
+    )
+    return data_str.decode(encoding, errors)
 
 
 def html_to_unicode(

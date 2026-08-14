@@ -17,13 +17,25 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
 
+# Character references are ASCII digits only; \d would also match the Unicode
+# decimal digits, which int() accepts but no HTML parser decodes.
 _ent_re = re.compile(
-    r"&((?P<named>[a-z\d]+)|#(?P<dec>\d+)|#x(?P<hex>[a-f\d]+))(?P<semicolon>;?)",
+    r"&((?P<named>[a-z0-9]+)|#(?P<dec>[0-9]+)|#x(?P<hex>[a-f0-9]+))(?P<semicolon>;?)",
     re.IGNORECASE,
 )
 _tag_re = re.compile(r"<[a-zA-Z\/!][^<>]*>")
-_baseurl_re = re.compile(
-    r"<base\s[^<>]*href\s*=\s*[\"\']\s*([^\"\'\s]+)\s*[\"\']", re.IGNORECASE
+# Scan for the first honored <base href>, consuming comments and
+# <script>/<noscript> content (where a browser never parses tags) along the
+# way. Ignorable regions come first in the alternation, so a <base> inside one
+# is consumed before it can match; unterminated regions swallow the rest of
+# the document, as a browser does.
+_base_scan_re = re.compile(
+    r"""
+      <!--.*?(?:-->|$)
+    | <(?P<t>script|noscript)\b[^<>]*>.*?(?:</(?P=t)>|$)
+    | <base\s[^<>]*href\s*=\s*["']\s*(?P<url>[^"'\s]+)\s*["']
+    """,
+    re.IGNORECASE | re.DOTALL | re.VERBOSE,
 )
 
 
@@ -36,9 +48,8 @@ def _upto(literal: str) -> str:
 
 
 # The interval/url payload shared by both orderings: ``content="3; url=..."``.
-_META_INT_URL = (
-    r'\s*=\s*(?P<quote>["\'])(?P<int>(\d*\.)?\d+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)'
-)
+# The interval is ASCII digits only, as in the HTML refresh steps.
+_META_INT_URL = r'\s*=\s*(?P<quote>["\'])(?P<int>([0-9]*\.)?[0-9]+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)'
 _meta_refresh_re = re.compile(
     r"<meta\s"
     + _upto("http-equiv")
@@ -71,7 +82,10 @@ _tags_re = re.compile(
     """,
     re.IGNORECASE | re.VERBOSE,
 )
-_meta_tag_re = re.compile(r"<meta\b[^<>]*>", re.IGNORECASE)
+# The tag body, without the closing angle bracket, which is not required: a tag
+# left unterminated by the next "<" or by the end of the text is still parsed,
+# as browsers do.
+_meta_tag_re = re.compile(r"<meta\b[^<>]*", re.IGNORECASE)
 
 
 HTML5_WHITESPACE = " \t\n\r\x0c"
@@ -263,8 +277,14 @@ def remove_tags(
 @functools.lru_cache(maxsize=256)
 def _build_remove_tags_pattern(tags_tuple: tuple[str, ...]) -> re.Pattern[str]:
     tags = "|".join(re.escape(tag) for tag in tags_tuple)
+    # The end tag closes on the tag name followed by whitespace, "/" or ">",
+    # so `</script >`, `</script\n>`, `</script/>` and `</script foo>` all end
+    # the element, as browsers treat them. Requiring a bare `</tag>` left the
+    # content (and anything it hides, e.g. a <meta refresh>) in place. The
+    # trailing run stays [^<>]* so it can't cross into the next tag and match
+    # super-linearly.
     pattern = rf"""
-        <(?P<tag>{tags})\b[^<>]*>.*?</(?P=tag)>
+        <(?P<tag>{tags})\b[^<>]*>.*?</(?P=tag)(?=[\s/>])[^<>]*>
         |
         <(?P<tag2>{tags})\b[^<>]*/>
     """
@@ -384,11 +404,12 @@ def get_base_url(
 
     """
 
-    utext = remove_comments(text, encoding=encoding)
-    if m := _baseurl_re.search(utext):
-        return urljoin(
-            safe_url_string(baseurl), safe_url_string(m.group(1), encoding=encoding)
-        )
+    utext = to_unicode(text, encoding)
+    for m in _base_scan_re.finditer(utext):
+        if url := m.group("url"):
+            return urljoin(
+                safe_url_string(baseurl), safe_url_string(url, encoding=encoding)
+            )
     return safe_url_string(baseurl)
 
 
