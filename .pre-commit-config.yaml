@@ -31,6 +31,11 @@ repos:
       hooks:
           - id: yamlfmt
     - repo: https://github.com/rhysd/actionlint
-      rev: v1.7.10
+      rev: v1.7.12
       hooks:
           - id: actionlint
+    - repo: https://github.com/zizmorcore/zizmor-pre-commit
+      rev: v1.29.0
+      hooks:
+          - id: zizmor
+            args: [--no-progress, --fix]

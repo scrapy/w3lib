@@ -341,6 +341,7 @@ def _unquote_plus(
 def _parse_qs(
     qs: str | bytes,
     keep_blank_values: bool = False,
+    separator: bytes = b"&",
 ) -> dict[bytes, list[bytes]]:
     """Reimplementation of urllib.parse.parse_qs which:
     - Doesn't use _coerce_args or _coerce_result
@@ -354,7 +355,7 @@ def _parse_qs(
 
     result: dict[bytes, list[bytes]] = {}
 
-    for field in qs.split(b"&"):
+    for field in qs.split(separator):
         if not field:
             continue
 
@@ -377,6 +378,7 @@ def _parse_qs(
 def _parse_qsl(
     qs: str | bytes,
     keep_blank_values: bool = False,
+    separator: bytes = b"&",
 ) -> list[tuple[bytes, bytes]]:
     """Reimplementation of urllib.parse.parse_qsl which:
     - Doesn't use _coerce_args or _coerce_result
@@ -391,7 +393,7 @@ def _parse_qsl(
 
     result: list[tuple[bytes, bytes]] = []
 
-    for field in qs.split(b"&"):
+    for field in qs.split(separator):
         if not field:
             continue
 
@@ -405,7 +407,7 @@ def _parse_qsl(
     return result
 
 
-def _urlencode(query: _QueryType) -> bytes:
+def _urlencode(query: _QueryType, separator: bytes = b"&") -> bytes:
     if hasattr(query, "items"):  # pragma: no cover
         query = query.items()  # type: ignore[assignment]
 
@@ -430,20 +432,17 @@ def _urlencode(query: _QueryType) -> bytes:
         result.append(bytes(tmp_buf))
         tmp_buf.clear()
 
-    return b"&".join(result)
+    return separator.join(result)
 
 
 def _split_params(scheme: str, url: str) -> tuple[str, str]:
     """Split the params from the path, as urlib.parse.urlparse does."""
     if scheme in _USES_PARAMS:
-        semi_idx = url.find(";")
+        # Only a ";" in the last segment starts the params; one in an earlier
+        # segment is an ordinary path character.
+        semi_idx = url.find(";", url.rfind("/") + 1)
 
         if semi_idx != -1:
-            slash_idx = url.rfind("/")
-
-            if slash_idx != -1 and slash_idx < semi_idx:
-                semi_idx = url.find(";", slash_idx)
-
             return url[:semi_idx], url[semi_idx + 1 :]
 
     return url, ""
@@ -645,6 +644,17 @@ def _urlsplit(  # pylint: disable=too-many-locals,too-many-statements
     if not url:
         return _SplitResult(scheme, "", "", "", "")
 
+    # urllib.parse.urlsplit removes every ASCII tab and newline from anywhere in
+    # the URL before parsing (the WHATWG "remove all ASCII tab or newline"
+    # step). This reimplementation only stripped leading C0/space, so a tab or
+    # newline embedded in the authority survived: parse_url("http://exa\tmple.com")
+    # reported host "exa\tmple.com" while urlsplit and browsers drop the tab and
+    # resolve "example.com". The membership checks keep the common tab-free path
+    # free of translate calls and string allocations.
+    if "\t" in url or "\n" in url or "\r" in url:
+        url = url.translate(_ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE)
+    if "\t" in scheme or "\n" in scheme or "\r" in scheme:
+        scheme = scheme.translate(_ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE)
     url, scheme = url.lstrip(_C0_CONTROL_OR_SPACE), scheme.strip(_C0_CONTROL_OR_SPACE)
 
     netloc = query = fragment = ""

@@ -76,6 +76,17 @@ class TestRemoveEntities:
         assert replace_entities("x&#153;y", encoding="cp1252") == "x\u2122y"
         assert replace_entities("x&#x99;y", encoding="cp1252") == "x\u2122y"
 
+    def test_non_ascii_digits(self):
+        # character references are ASCII digits only, so these are plain text
+        assert (
+            replace_entities("&#\u0666\u0660;script&#\u0666\u0662;")
+            == "&#\u0666\u0660;script&#\u0666\u0662;"
+        )
+        assert replace_entities("&#x\u0663C;") == "&#x\u0663C;"
+        assert replace_entities("&#\u0660\u0666\u0660;") == "&#\u0660\u0666\u0660;"
+        # the named reference still ends where the ASCII digits do
+        assert replace_entities("&nbsp\u0664;") == "\xa0\u0664;"
+
     def test_missing_semicolon(self):
         for entity, result in (
             ("&lt&lt!", "<<!"),
@@ -297,6 +308,26 @@ class TestRemoveTagsWithContent:
         )
         assert time.perf_counter() - start < 2
 
+    def test_end_tag_with_whitespace_or_attrs(self):
+        # Browsers end an element on the tag name followed by whitespace, "/"
+        # or ">", so these all close <script> and its content must be removed.
+        for body in (
+            "<script>x</script >",
+            "<script>x</script\n>",
+            "<script>x</script\t>",
+            "<script>x</script/>",
+            '<script>x</script foo="bar">',
+            "<SCRIPT>x</SCRIPT >",
+        ):
+            assert remove_tags_with_content(body, which_ones=("script",)) == ""
+        # A different tag name must not close it.
+        assert (
+            remove_tags_with_content(
+                "<script>a</scriptx>b</script>", which_ones=("script",)
+            )
+            == ""
+        )
+
 
 class TestReplaceEscapeChars:
     def test_returns_unicode(self):
@@ -436,6 +467,61 @@ class TestGetBaseUrl:
             == "http://example_3.com/"
         )
 
+    def test_base_url_in_script(self):
+        baseurl = "https://example.org"
+        # A browser does not parse tags inside <script>/<noscript>, so a <base>
+        # written there is ignored and relative URLs resolve against baseurl.
+        assert (
+            get_base_url(
+                """<script>var t = "<base href='http://evil.example/'>";</script>""",
+                baseurl,
+            )
+            == "https://example.org"
+        )
+        assert (
+            get_base_url(
+                """<noscript><base href="http://evil.example/"></noscript>""",
+                baseurl,
+            )
+            == "https://example.org"
+        )
+        # a real <base> after the ignored one is still picked up
+        assert (
+            get_base_url(
+                """<script><base href="http://evil.example/"></script>"""
+                """<base href="http://example.org/found/">""",
+                baseurl,
+            )
+            == "http://example.org/found/"
+        )
+        # an unterminated <script> swallows the rest of the document, as in a
+        # browser
+        assert (
+            get_base_url(
+                """<script><base href="http://evil.example/">""",
+                baseurl,
+            )
+            == "https://example.org"
+        )
+        assert (
+            get_base_url(
+                """<noscript foo="bar"><base href="http://evil.example/">""",
+                baseurl,
+            )
+            == "https://example.org"
+        )
+
+    def test_base_url_split_by_comment(self):
+        # A comment inside the <base> tag is not stripped: browsers do not
+        # parse comments within a tag, so the tag is broken and ignored.
+        assert (
+            get_base_url(
+                """<base h<!--c-->ref="http://example.com/">""",
+                "https://example.org",
+            )
+            == "https://example.org"
+        )
+
     def test_relative_url_with_absolute_path(self):
         baseurl = "https://example.org"
         text = """\
@@ -521,6 +607,27 @@ class TestGetMetaRefresh:
             </html>"""
         assert get_meta_refresh(body, baseurl) == (5, "http://example.org/newpage")
 
+    def test_get_meta_refresh_unterminated_tag(self):
+        baseurl = "http://example.org"
+        body = """<meta http-equiv="refresh" content="5;url=newpage"</head>"""
+        assert get_meta_refresh(body, baseurl) == (5, "http://example.org/newpage")
+        assert get_meta_refresh(body[:-7], baseurl) == (
+            5,
+            "http://example.org/newpage",
+        )
+
+    def test_get_meta_refresh_meta_hidden_in_script(self):
+        # A <meta refresh> that only exists as text inside a <script> closed
+        # with a trailing-space end tag must be dropped with the script, the
+        # same way a browser never acts on it.
+        baseurl = "http://good.example/"
+        body = (
+            "<script>var x = "
+            '\'<meta http-equiv="refresh" content="0;url=http://evil.example/">\';'
+            "</script >"
+        )
+        assert get_meta_refresh(body, baseurl) == (None, None)
+
     def test_get_meta_refresh_no_catastrophic_backtracking(self):
         prefix = "<meta " * 80000
         start = time.perf_counter()
@@ -570,6 +677,12 @@ class TestGetMetaRefresh:
         baseurl = "http://example.org"
         body = """<meta http-equiv="refresh" content="3; url=&#39;http://www.example.com/other&#39;">"""
         assert get_meta_refresh(body, baseurl) == (3, "http://www.example.com/other")
+
+    def test_non_ascii_digit_interval(self):
+        # the interval is ASCII digits only, so this is not a refresh
+        baseurl = "http://example.org"
+        body = """<meta http-equiv="refresh" content="٥; url=http://example.org/x">"""
+        assert get_meta_refresh(body, baseurl) == (None, None)
 
     def test_relative_redirects(self):
         # relative redirects

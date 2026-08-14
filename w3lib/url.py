@@ -157,6 +157,12 @@ def _safe_url_split(
     else:
         fragment = parts.fragment
 
+    # Without a path, the query follows the authority directly, e.g.
+    # “https://example.com?a=b”, and code that builds an HTTP request target
+    # out of the path and the query ends up sending “?a=b” as the target.
+    if not path and query and parts.scheme in _SPECIAL_SCHEMES:
+        path = "/"
+
     return (
         parts.scheme,
         netloc,
@@ -246,6 +252,8 @@ def url_query_parameter(
     parameter: str,
     default: None = None,
     keep_blank_values: bool | int = 0,
+    *,
+    separator: str = "&",
 ) -> str | None: ...
 
 
@@ -255,6 +263,8 @@ def url_query_parameter(
     parameter: str,
     default: str,
     keep_blank_values: bool | int = 0,
+    *,
+    separator: str = "&",
 ) -> str: ...
 
 
@@ -263,6 +273,8 @@ def url_query_parameter(
     parameter: str,
     default: str | None = None,
     keep_blank_values: bool | int = 0,
+    *,
+    separator: str = "&",
 ) -> str | None:
     """Return the value of a url parameter, given the url and parameter name
     NOTE: If url contains multiple parameters, the first leftmost one is returned
@@ -294,7 +306,9 @@ def url_query_parameter(
     """
 
     queryparams = _parse_qs(
-        _urlsplit(str(url)).query, keep_blank_values=bool(keep_blank_values)
+        _urlsplit(str(url)).query,
+        keep_blank_values=bool(keep_blank_values),
+        separator=separator.encode(),
     )
     parameter_bytes = parameter.encode()
     if parameter_bytes in queryparams:
@@ -388,10 +402,14 @@ def url_query_cleaner(
     return url
 
 
-def _add_or_replace_parameters(url: str, params: dict[bytes, bytes]) -> str:
+def _add_or_replace_parameters(
+    url: str, params: dict[bytes, bytes], *, separator: str = "&"
+) -> str:
     parsed = _urlsplit(url)
 
-    current_args = _parse_qsl(parsed.query, keep_blank_values=True)
+    current_args = _parse_qsl(
+        parsed.query, keep_blank_values=True, separator=separator.encode()
+    )
 
     new_args: list[tuple[bytes, bytes]] = []
     seen_params: set[bytes] = set()
@@ -415,12 +433,14 @@ def _add_or_replace_parameters(url: str, params: dict[bytes, bytes]) -> str:
         parsed.scheme,
         parsed.netloc,
         parsed.path,
-        _urlencode(new_args).decode(),
+        _urlencode(new_args, separator.encode()).decode(),
         parsed.fragment,
     )
 
 
-def add_or_replace_parameter(url: str, name: str, new_value: str) -> str:
+def add_or_replace_parameter(
+    url: str, name: str, new_value: str, *, separator: str = "&"
+) -> str:
     """Add or remove a parameter to a given url
 
     >>> import w3lib.url
@@ -430,13 +450,22 @@ def add_or_replace_parameter(url: str, name: str, new_value: str) -> str:
     'http://www.example.com/index.php?arg1=v1&arg2=v2&arg3=v3&arg4=v4'
     >>> w3lib.url.add_or_replace_parameter('http://www.example.com/index.php?arg1=v1&arg2=v2&arg3=v3', 'arg3', 'v3new')
     'http://www.example.com/index.php?arg1=v1&arg2=v2&arg3=v3new'
+    >>> w3lib.url.add_or_replace_parameter('http://www.example.com/index.php?arg1=v1;arg2=v2', 'arg3', 'v3', separator=';')
+    'http://www.example.com/index.php?arg1=v1;arg2=v2;arg3=v3'
     >>>
 
+    ``separator`` is used both to split the existing query and to join the
+    resulting one.
+
     """
-    return _add_or_replace_parameters(url, {name.encode(): new_value.encode()})
+    return _add_or_replace_parameters(
+        url, {name.encode(): new_value.encode()}, separator=separator
+    )
 
 
-def add_or_replace_parameters(url: str, new_parameters: dict[str, str]) -> str:
+def add_or_replace_parameters(
+    url: str, new_parameters: dict[str, str], *, separator: str = "&"
+) -> str:
     """Add or remove a parameters to a given url
 
     >>> import w3lib.url
@@ -449,7 +478,9 @@ def add_or_replace_parameters(url: str, new_parameters: dict[str, str]) -> str:
 
     """
     return _add_or_replace_parameters(
-        url, {k.encode(): v.encode() for k, v in new_parameters.items()}
+        url,
+        {k.encode(): v.encode() for k, v in new_parameters.items()},
+        separator=separator,
     )
 
 
@@ -589,6 +620,8 @@ def canonicalize_url(
     keep_blank_values: bool = True,
     keep_fragments: bool = False,
     encoding: str | None = None,
+    *,
+    query_separator: str = "&",
 ) -> str:
     r"""Canonicalize the given url by applying the following procedures:
 
@@ -611,6 +644,10 @@ def canonicalize_url(
     >>> # UTF-8 conversion + percent-encoding of non-ASCII characters
     >>> w3lib.url.canonicalize_url('http://www.example.com/r\u00e9sum\u00e9')
     'http://www.example.com/r%C3%A9sum%C3%A9'
+    >>>
+    >>> # a query separator other than the default '&'
+    >>> w3lib.url.canonicalize_url('http://www.example.com/do?c=3;a=50', query_separator=';')
+    'http://www.example.com/do?a=50;c=3'
     >>>
 
     For more examples, see the tests in `tests/test_url.py`.
@@ -658,12 +695,14 @@ def canonicalize_url(
     # IRIs (namely, to be able to include non-ASCII characters) can only be
     # used if the query part is encoded in UTF-8.
     if query:
-        keyvals = _parse_qsl(query, keep_blank_values)
+        keyvals = _parse_qsl(
+            query, keep_blank_values, separator=query_separator.encode()
+        )
 
         if len(keyvals) > 1:
             keyvals.sort()
 
-        query = _urlencode(keyvals).decode()
+        query = _urlencode(keyvals, query_separator.encode()).decode()
         del keyvals
 
     # 2. decode percent-encoded sequences in path as UTF-8 (or keep raw bytes)
@@ -711,7 +750,7 @@ def parse_url(
 
 
 def parse_qsl_to_bytes(
-    qs: str, keep_blank_values: bool = False
+    qs: str, keep_blank_values: bool = False, *, separator: str = "&"
 ) -> list[tuple[bytes, bytes]]:
     """Parse a query given as a string argument.
 
@@ -727,6 +766,8 @@ def parse_qsl_to_bytes(
         strings.  The default false value indicates that blank values
         are to be ignored and treated as if they were  not included.
 
-    """
+    separator: string used to separate query parameters, e.g. ``";"`` for
+        queries that use the legacy semicolon separator.
 
-    return _parse_qsl(qs, keep_blank_values)
+    """
+    return _parse_qsl(qs, keep_blank_values, separator=separator.encode())

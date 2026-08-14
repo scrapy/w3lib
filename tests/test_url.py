@@ -32,6 +32,7 @@ from w3lib._url import (
     _parse_qs,
     _parse_qsl,
     _quote,
+    _split_params,
     _unquote,
     _unquote_plus,
     _urlparse,
@@ -72,11 +73,11 @@ SAFE_URL_ENCODING_CASES: list[tuple[str | None, str | bytes, str | type[Exceptio
     # Queries are UTF-8-encoded if the scheme is not special, ws or wss.
     ("iso-8859-1", "a://example.com?©", "a://example.com?%C2%A9"),
     *(
-        ("iso-8859-1", f"{scheme}://example.com?©", f"{scheme}://example.com?%C2%A9")
+        ("iso-8859-1", f"{scheme}://example.com?©", f"{scheme}://example.com/?%C2%A9")
         for scheme in ("ws", "wss")
     ),
     *(
-        ("iso-8859-1", f"{scheme}://example.com?©", f"{scheme}://example.com?%A9")
+        ("iso-8859-1", f"{scheme}://example.com?©", f"{scheme}://example.com/?%A9")
         for scheme in _SPECIAL_SCHEMES
         if scheme not in {"ws", "wss"}
     ),
@@ -369,9 +370,9 @@ SAFE_URL_URL_CASES = (
     # Query
     ("https://example.com?", "https://example.com?"),
     ("https://example.com/?", "https://example.com/?"),
-    ("https://example.com?a", "https://example.com?a"),
-    ("https://example.com?a=", "https://example.com?a="),
-    ("https://example.com?a=b", "https://example.com?a=b"),
+    ("https://example.com?a", "https://example.com/?a"),
+    ("https://example.com?a=", "https://example.com/?a="),
+    ("https://example.com?a=b", "https://example.com/?a=b"),
     (
         f"a://example.com?{QUERY_SAFE}",
         f"a://example.com?{QUERY_SAFE}",
@@ -383,19 +384,19 @@ SAFE_URL_URL_CASES = (
     *(
         (
             f"{scheme}://example.com?{SPECIAL_QUERY_SAFE}",
-            f"{scheme}://example.com?{SPECIAL_QUERY_SAFE}",
+            f"{scheme}://example.com/?{SPECIAL_QUERY_SAFE}",
         )
         for scheme in _SPECIAL_SCHEMES
     ),
     *(
         (
             f"{scheme}://example.com?{SPECIAL_QUERY_TO_ENCODE}",
-            f"{scheme}://example.com?{SPECIAL_QUERY_ENCODED}",
+            f"{scheme}://example.com/?{SPECIAL_QUERY_ENCODED}",
         )
         for scheme in _SPECIAL_SCHEMES
     ),
-    ("https://example.com?ñ", "https://example.com?%C3%B1"),
-    ("https://example.com?ñ%C3%B1", "https://example.com?%C3%B1%C3%B1"),
+    ("https://example.com?ñ", "https://example.com/?%C3%B1"),
+    ("https://example.com?ñ%C3%B1", "https://example.com/?%C3%B1%C3%B1"),
     # Fragment
     ("https://example.com#", "https://example.com#"),
     ("https://example.com/#", "https://example.com/#"),
@@ -965,6 +966,10 @@ class TestUrl:
         assert url_query_parameter("product.html?id=200&id=201&id=202", "id") == "200"
         # query delimiter at index 1 of a short relative URL
         assert url_query_parameter("a?id=200", "id") == "200"
+        assert (
+            url_query_parameter("product.html?id=200;foo=bar", "id", separator=";")
+            == "200"
+        )
 
     @pytest.mark.xfail
     def test_url_query_parameter_2(self):
@@ -1070,6 +1075,17 @@ class TestUrl:
         assert (
             add_or_replace_parameter("http://domain/test?arg1=v1;arg2=v2", "arg1", "v3")
             == "http://domain/test?arg1=v3&arg2=v2"
+        )
+
+    def test_add_or_replace_parameter_semicolon(self):
+        url = "http://domain/test?arg1=v1;arg2=v2;arg3=v3"
+        assert (
+            add_or_replace_parameter(url, "arg4", "v4", separator=";")
+            == "http://domain/test?arg1=v1;arg2=v2;arg3=v3;arg4=v4"
+        )
+        assert (
+            add_or_replace_parameter(url, "arg3", "nv3", separator=";")
+            == "http://domain/test?arg1=v1;arg2=v2;arg3=nv3"
         )
 
     def test_add_or_replace_parameters(self):
@@ -1348,6 +1364,14 @@ class TestCanonicalizeUrl:
             == "http://www.example.com/do?a=1"
         )
 
+    def test_typical_usage_semicolon(self):
+        assert (
+            canonicalize_url(
+                "http://www.example.com/do?c=1;b=2;a=3", query_separator=";"
+            )
+            == "http://www.example.com/do?a=3;b=2;c=1"
+        )
+
     def test_port_number(self):
         assert (
             canonicalize_url("http://www.example.com:8888/do?a=1&b=2&c=3")
@@ -1624,6 +1648,18 @@ class TestCanonicalizeUrl:
             == "http://www.xn--bcher-kva.de:8080/?q=b%C3%BCcher"
         )
 
+    def test_canonicalize_idns_with_userinfo(self):
+        # userinfo must survive with its "@" delimiter instead of being
+        # folded into the IDNA host label
+        assert (
+            canonicalize_url("http://user@例え.jp/path")
+            == "http://user@xn--r8jz45g.jp/path"
+        )
+        assert (
+            canonicalize_url("http://user:pass@例え.jp:8080/p")
+            == "http://user:pass@xn--r8jz45g.jp:8080/p"
+        )
+
     def test_quoted_slash_and_question_sign(self):
         assert (
             canonicalize_url("http://foo.com/AC%2FDC+rocks%3f/?yeah=1")
@@ -1699,6 +1735,51 @@ class TestCanonicalizeUrl:
         # an already parsed url is returned as is
         parts = parse_url("http://www.example.com/path;params?x=1#frag")
         assert parse_url(parts) is parts
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://www.example.com/public;/../admin/secret",
+            "http://www.example.com/dir;x/file",
+            "http://www.example.com/a;b/c",
+            "http://www.example.com/a;b/c;d",
+        ],
+    )
+    def test_parse_url_non_final_segment_semicolon(self, url):
+        # a ";" outside the last path segment is not a params delimiter
+        assert parse_url(url).path == urlparse(url).path
+        assert parse_url(url).params == urlparse(url).params
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://exa\tmple.com/p",
+            "http://exa\nmple.com/p",
+            "http://exa\rmple.com/p",
+            "https://good.com\t.evil.com/a\r\nb?q=a\tb#f\tr",
+            "http://example.com:8\t0/",
+        ],
+    )
+    def test_parse_url_remove_ascii_tab_and_newlines(self, url):
+        # urlsplit drops every ASCII tab and newline from the URL, so a tab in
+        # the host cannot survive into parse_url()'s netloc and report a host a
+        # browser would not connect to.
+        assert parse_url(url).netloc == urlparse(url).netloc
+        assert parse_url(url).hostname == urlparse(url).hostname
+        assert "\t" not in parse_url(url).netloc
+
+    def test_urlsplit_remove_ascii_tab_and_newlines_from_scheme(self):
+        # the default-scheme argument gets the same tab/newline removal as the
+        # URL itself, matching urllib.parse.urlsplit
+        assert _urlsplit("//example.com/p", "ht\ttp").scheme == "http"
+        assert _urlsplit("//example.com/p", "ht\ntt\rp").scheme == "htttp"
+
+    def test_canonicalize_url_non_final_segment_semicolon(self):
+        # the path after such a ";" still gets percent-encoding normalization
+        assert (
+            canonicalize_url("http://www.example.com/dir;x/a%7Eb")
+            == "http://www.example.com/dir;x/a~b"
+        )
 
     def test_canonicalize_url_idempotence(self):
         for url, enc in [
@@ -1961,6 +2042,31 @@ class TestPrivateHelpers:
     )
     def test_urlunparse(self, components, expected):
         assert _urlunparse(*components) == expected
+
+    @pytest.mark.parametrize(
+        ("path", "expected"),
+        [
+            # a ";" in the last segment starts the params
+            ("/a;b", ("/a", "b")),
+            ("/a/b;c", ("/a/b", "c")),
+            ("/a;b/c;d", ("/a;b/c", "d")),
+            ("/a;b/c;", ("/a;b/c", "")),
+            # a ";" in an earlier segment is an ordinary path character
+            ("/a;b/c", ("/a;b/c", "")),
+            ("/dir;x/file", ("/dir;x/file", "")),
+            ("/public;/../admin/secret", ("/public;/../admin/secret", "")),
+            # without a "/" the first ";" starts the params
+            ("a;b", ("a", "b")),
+            (";a", ("", "a")),
+            # no ";" at all
+            ("/a/b", ("/a/b", "")),
+            ("", ("", "")),
+        ],
+    )
+    def test_split_params(self, path, expected):
+        assert _split_params("http", path) == expected
+        # schemes that do not use params keep the path intact
+        assert _split_params("data", path) == (path, "")
 
 
 class TestPrivateHelpersProperties:
