@@ -75,6 +75,13 @@ def http_content_type_encoding(content_type: str | None) -> str | None:
     return None
 
 
+# Comments are skipped by the WHATWG prescan before it looks for a meta
+# charset, so a declaration written inside one is not honored (and a commented
+# body tag does not stop the scan). The sibling scanners get_base_url and
+# get_meta_refresh strip comments for the same reason; strip them here too.
+_COMMENT_STR_RE = re.compile(r"<!--.*?(?:-->|$)", re.DOTALL)
+_COMMENT_BYTES_RE = re.compile(rb"<!--.*?(?:-->|$)", re.DOTALL)
+
 # Check for a charset in a meta tag or an xml declaration, and stop the search
 # if a body tag is encountered. Any meta tag with a charset counts, however it
 # spells its other attributes, e.g. <meta httpequiv="ContentType"
@@ -116,9 +123,9 @@ def html_body_declared_encoding(html_body_str: str | bytes) -> str | None:
     chunk = html_body_str[:4096]
     match: Match[bytes] | Match[str] | None
     if isinstance(chunk, bytes):
-        match = _BODY_ENCODING_BYTES_RE.search(chunk)
+        match = _BODY_ENCODING_BYTES_RE.search(_COMMENT_BYTES_RE.sub(b"", chunk))
     else:
-        match = _BODY_ENCODING_STR_RE.search(chunk)
+        match = _BODY_ENCODING_STR_RE.search(_COMMENT_STR_RE.sub("", chunk))
 
     if match:
         encoding = match.group("charset") or match.group("xmlcharset")
