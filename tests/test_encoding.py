@@ -176,6 +176,13 @@ class TestRequestEncoding:
             )
             == "gb18030"
         )
+        # a charset declared inside a comment is not honored, and a commented
+        # body tag does not stop the scan
+        assert html_body_declared_encoding(b'<!-- <meta charset="utf-7"> -->') is None
+        assert (
+            html_body_declared_encoding(b'<!-- <body> --><meta charset="utf-8">')
+            == "utf-8"
+        )
 
     def test_html_body_declared_encoding_unicode(self):
         # html_body_declared_encoding should work when unicode body is passed
