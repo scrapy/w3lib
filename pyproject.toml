@@ -29,6 +29,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 requires-python = ">=3.10"
+dependencies = ["can_ada>=3.0.0"]
 dynamic = ["version"]
 
 [project.urls]

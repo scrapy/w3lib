@@ -476,14 +476,14 @@ class TestGetBaseUrl:
                 """<script>var t = "<base href='http://evil.example/'>";</script>""",
                 baseurl,
             )
-            == "https://example.org"
+            == "https://example.org/"
         )
         assert (
             get_base_url(
                 """<noscript><base href="http://evil.example/"></noscript>""",
                 baseurl,
             )
-            == "https://example.org"
+            == "https://example.org/"
         )
         # a real <base> after the ignored one is still picked up
         assert (
@@ -501,14 +501,14 @@ class TestGetBaseUrl:
                 """<script><base href="http://evil.example/">""",
                 baseurl,
             )
-            == "https://example.org"
+            == "https://example.org/"
         )
         assert (
             get_base_url(
                 """<noscript foo="bar"><base href="http://evil.example/">""",
                 baseurl,
             )
-            == "https://example.org"
+            == "https://example.org/"
         )
 
     def test_base_url_split_by_comment(self):
@@ -519,7 +519,7 @@ class TestGetBaseUrl:
                 """<base h<!--c-->ref="http://example.com/">""",
                 "https://example.org",
             )
-            == "https://example.org"
+            == "https://example.org/"
         )
 
     def test_relative_url_with_absolute_path(self):
@@ -558,7 +558,7 @@ class TestGetBaseUrl:
             <head><title>Dummy</title><basefoo href='http://example.org/something' /></head>\
             <body>blahablsdfsal&amp;</body>\
             </html>"""
-        assert get_base_url(text, baseurl) == "https://example.org"
+        assert get_base_url(text, baseurl) == "https://example.org/"
 
     def test_get_base_url_utf8(self):
         baseurl = "https://example.org"
@@ -711,12 +711,12 @@ class TestGetMetaRefresh:
 
     def test_nonascii_url_latin1_query(self):
         # non-ascii chars in the url path and query (latin1)
-        # only query part should be kept latin1 encoded before percent escaping
+        # bytes decoded with latin1 are percent-encoded as UTF-8 in both path and query
         baseurl = "http://example.com"
         body = b"""<meta http-equiv="refresh" content="3; url=http://example.com/to\xa3?unit=\xb5">"""
         assert get_meta_refresh(body, baseurl, "latin1") == (
             3,
-            "http://example.com/to%C2%A3?unit=%B5",
+            "http://example.com/to%C2%A3?unit=%C2%B5",
         )
 
     def test_commented_meta_refresh(self):
