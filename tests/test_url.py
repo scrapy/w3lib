@@ -1678,6 +1678,11 @@ class TestCanonicalizeUrl:
             canonicalize_url("http://foo.com/100%25/path")
             == "http://foo.com/100%25/path"
         )
+        # idempotency: second canonicalization must be stable
+        url = "http://foo.com/cmp/Supermercados-Dia%25"
+        assert canonicalize_url(canonicalize_url(url)) == canonicalize_url(url)
+        # double-encoded percent must stay double-encoded
+        assert canonicalize_url("http://foo.com/%2525") == "http://foo.com/%2525"
 
     def test_canonicalize_urlparsed(self):
         # canonicalize_url() can be passed an already urlparse'd URL
