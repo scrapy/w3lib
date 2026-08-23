@@ -216,6 +216,19 @@ class TestCodecsEncoding:
         assert resolve_encoding(" Latin-1") == "cp1252"
         assert resolve_encoding("gb_2312-80") == "gb18030"
         assert resolve_encoding("unknown encoding") is None
+        # utf-7 is not in the Encoding Standard and enables charset-smuggling,
+        # so it must not resolve, however it is spelled.
+        for alias in ("utf-7", "utf7", "U7", "unicode-1-1-utf-7", "UTF_7"):
+            assert resolve_encoding(alias) is None, alias
+
+    def test_resolve_encoding_utf7_not_smuggled(self):
+        # a utf-7 charset from the header or a meta tag is ignored, so the
+        # "+ADw-script+AD4-" payload stays inert instead of decoding to markup
+        assert http_content_type_encoding("text/html; charset=utf-7") is None
+        assert html_body_declared_encoding(b'<meta charset="utf-7">') is None
+        enc, body = html_to_unicode("text/html; charset=utf-7", b"+ADw-script+AD4-")
+        assert enc != "utf-7"
+        assert "<script>" not in body
 
 
 class TestUnicodeDecoding:

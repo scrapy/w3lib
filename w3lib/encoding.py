@@ -188,9 +188,17 @@ def resolve_encoding(encoding_alias: str) -> str | None:
     c18n_encoding = _c18n_encoding(encoding_alias)
     translated = DEFAULT_ENCODING_TRANSLATION.get(c18n_encoding, c18n_encoding)
     try:
-        return codecs.lookup(translated).name
+        name = codecs.lookup(translated).name
     except LookupError:
         return None
+    # UTF-7 has no label in the WHATWG Encoding Standard this module follows and
+    # browsers dropped it. It re-spells "<", ">" and "&" using only ASCII bytes
+    # (e.g. "+ADw-" for "<"), so a response that declares charset=utf-7 lets a
+    # byte sequence a browser shows as inert text decode into live markup. Refuse
+    # it so callers fall back to a safe default instead of the smuggled encoding.
+    if name == "utf-7":
+        return None
+    return name
 
 
 _BOM_TABLE = [
