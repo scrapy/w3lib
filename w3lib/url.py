@@ -10,6 +10,7 @@ import codecs
 import os
 import posixpath
 import re
+from ipaddress import IPv6Address, ip_address
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple, cast, overload
 from urllib.parse import ParseResult
@@ -634,12 +635,18 @@ def canonicalize_url(
 ) -> str:
     r"""Canonicalize the given url by applying the following procedures:
 
+    .. versionchanged:: VERSION
+        Dot segments (``.`` and ``..``) in the path are now resolved, and
+        IPv6 addresses in the host are now normalized.
+
     - make the URL safe
     - sort query arguments, first by key, then by value
     - normalize all spaces (in query arguments) '+' (plus symbol)
     - normalize percent encodings case (%2f -> %2F)
     - remove query arguments with blank values (unless `keep_blank_values` is True)
     - remove fragments (unless `keep_fragments` is True)
+    - resolve dot segments (``.`` and ``..``) in the path
+    - normalize IPv6 addresses in the host
 
     The url passed can be bytes or unicode, while the url returned is
     always a native str (bytes in Python 2, unicode in Python 3).
@@ -657,6 +664,10 @@ def canonicalize_url(
     >>> # a query separator other than the default '&'
     >>> w3lib.url.canonicalize_url('http://www.example.com/do?c=3;a=50', query_separator=';')
     'http://www.example.com/do?a=50;c=3'
+    >>>
+    >>> # resolving dot segments and normalizing an IPv6 address
+    >>> w3lib.url.canonicalize_url('http://[::0:1]/a/../b')
+    'http://[::1]/b'
     >>>
 
     For more examples, see the tests in `tests/test_url.py`.
@@ -718,6 +729,12 @@ def canonicalize_url(
     #    and percent-encode path again (this normalizes to upper-case %XX)
     path = _quote(_unquotepath(path), _PATH_SAFE_CHARS).decode() if path else "/"
 
+    # 3. resolve dot segments (RFC 3986, section 5.2.4)
+    resolved_path = _parent_dirs.sub("", posixpath.normpath(path))
+    if not resolved_path.endswith("/") and path.endswith(("/", "/.", "/..")):
+        resolved_path += "/"
+    path = resolved_path
+
     fragment = "" if not keep_fragments else fragment
 
     # Apply lowercase to the domain, but not to the userinfo.
@@ -729,8 +746,27 @@ def canonicalize_url(
     )
     netloc = (netloc[: uinf_sep_idx + 1] + host) if uinf_sep_idx != -1 else host
 
+    netloc = _normalize_ipv6_host(netloc)
+
     # every part should be safe already
     return _urlunparse(scheme, netloc, path, params, query, fragment)
+
+
+def _normalize_ipv6_host(netloc: str) -> str:
+    """Normalize an IPv6 address in the host part of *netloc*, if any (RFC 5952)."""
+    if "[" not in netloc:
+        return netloc
+    bracket_start = netloc.index("[")
+    bracket_end = netloc.find("]", bracket_start)
+    if bracket_end == -1:
+        return netloc
+    try:
+        address = ip_address(netloc[bracket_start + 1 : bracket_end])
+    except ValueError:
+        return netloc
+    if not isinstance(address, IPv6Address):
+        return netloc
+    return f"{netloc[:bracket_start]}[{address}]{netloc[bracket_end + 1 :]}"
 
 
 def _unquotepath(path: str) -> bytes:

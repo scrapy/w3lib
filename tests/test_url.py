@@ -42,6 +42,7 @@ from w3lib._url import (
     _urlunsplit,
 )
 from w3lib.url import (
+    _normalize_ipv6_host,
     add_http_if_no_scheme,
     add_or_replace_parameter,
     add_or_replace_parameters,
@@ -1651,6 +1652,46 @@ class TestCanonicalizeUrl:
             == "sftp://UsEr:PaSsWoRd@www.example.com/"
         )
 
+    def test_resolve_dot_segments(self):
+        assert (
+            canonicalize_url("http://www.example.com/a/b/../../c")
+            == "http://www.example.com/c"
+        )
+        assert (
+            canonicalize_url("http://www.example.com/a/./b")
+            == "http://www.example.com/a/b"
+        )
+        # a trailing ".." leaves a directory reference, regardless of
+        # whether it is followed by a literal trailing slash
+        assert (
+            canonicalize_url("http://www.example.com/a/b/..")
+            == "http://www.example.com/a/"
+        )
+        assert (
+            canonicalize_url("http://www.example.com/a/b/../")
+            == "http://www.example.com/a/"
+        )
+        # dot segments beyond the root are dropped, not turned into "../"
+        assert (
+            canonicalize_url("http://www.example.com/../a")
+            == "http://www.example.com/a"
+        )
+        # percent-encoded dots are decoded before dot segments are resolved
+        assert (
+            canonicalize_url("http://www.example.com/%2E%2E/a")
+            == "http://www.example.com/a"
+        )
+
+    def test_normalize_ipv6_host(self):
+        assert canonicalize_url("http://[::0:1]/") == "http://[::1]/"
+        assert (
+            canonicalize_url("http://[2001:0DB8:0000:0000:0000:0000:0000:0001]:8080/a")
+            == "http://[2001:db8::1]:8080/a"
+        )
+        assert (
+            canonicalize_url("http://user:pass@[::1]/a") == "http://user:pass@[::1]/a"
+        )
+
     def test_canonicalize_idns(self):
         assert (
             canonicalize_url("http://www.bücher.de?q=bücher")
@@ -2087,6 +2128,24 @@ class TestPrivateHelpers:
         assert _split_params("http", path) == expected
         # schemes that do not use params keep the path intact
         assert _split_params("data", path) == (path, "")
+
+    @pytest.mark.parametrize(
+        ("netloc", "expected"),
+        [
+            # no brackets at all
+            ("example.com", "example.com"),
+            # unclosed bracket
+            ("[::1", "[::1"),
+            # content between brackets is not a valid IP address
+            ("[not-an-address]", "[not-an-address]"),
+            # an IPv4 address in brackets is left untouched
+            ("[127.0.0.1]", "[127.0.0.1]"),
+            # a valid IPv6 address is normalized
+            ("[::0:1]", "[::1]"),
+        ],
+    )
+    def test_normalize_ipv6_host(self, netloc, expected):
+        assert _normalize_ipv6_host(netloc) == expected
 
 
 class TestPrivateHelpersProperties:
