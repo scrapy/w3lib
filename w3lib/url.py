@@ -235,9 +235,10 @@ def safe_download_url(
     safe_url = safe_url_string(url, encoding, path_encoding)
     scheme, netloc, path, query, _ = _urlsplit(safe_url)
     if path:
-        path = _parent_dirs.sub("", posixpath.normpath(path))
-        if safe_url[-1] == "/" and path[-1] != "/":
-            path = f"{path}/"
+        normalized_path = _parent_dirs.sub("", posixpath.normpath(path))
+        if path.endswith("/") and not normalized_path.endswith("/"):
+            normalized_path = f"{normalized_path}/"
+        path = normalized_path
     else:
         path = "/"
     return _urlunsplit(scheme, netloc, path, query, "")

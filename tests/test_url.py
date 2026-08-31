@@ -924,6 +924,16 @@ class TestUrl:
             == "http://www.example.org/dir/"
         )
 
+        # trailing slash handling
+        assert (
+            safe_download_url("http://www.example.org/dir/?a=b")
+            == "http://www.example.org/dir/?a=b"
+        )
+        assert (
+            safe_download_url("http://www.example.org/dir?a=b/")
+            == "http://www.example.org/dir?a=b/"
+        )
+
         # Encoding related tests
         assert (
             safe_download_url(
