@@ -88,6 +88,7 @@ enable = [
     "useless-suppression",
 ]
 disable = [
+    "duplicate-code",
     "fixme",
     "import-error",
     "import-outside-toplevel",
