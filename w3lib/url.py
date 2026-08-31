@@ -92,7 +92,7 @@ def _safe_url_split(
     parts = _urlsplit(
         _strip(to_unicode(url, encoding=encoding, errors="percentencode"))
     )
-    tmp_buf = bytearray()
+    tmp_buf = bytearray()  # utf-8 bytes
 
     if parts.username is not None or parts.password is not None:
         if parts.username is not None:
@@ -124,12 +124,12 @@ def _safe_url_split(
                 tmp_buf += _idna_bytes(parts.hostname)
             except UnicodeError:
                 # IDNA encoding can fail for too long labels (>63 characters) or
-                # missing labels (e.g. http://.example.com)
-                tmp_buf += parts.hostname.encode(encoding)
+                # missing labels (e.g. http://.example.com).
+                tmp_buf += parts.hostname.encode()
 
     if parts.port is not None:
         tmp_buf.append(58)  # ord(":")
-        tmp_buf += str(parts.port).encode(encoding)
+        tmp_buf += str(parts.port).encode("ascii")
 
     netloc = tmp_buf.decode()
     tmp_buf.clear()

@@ -802,6 +802,16 @@ class TestUrl:
             == f"http://www.{'éxamplé' * 11}.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9"
         )
 
+        # the fallback works when a non-UTF-8 page encoding is given
+        assert (
+            safe_url_string("http://.éxamplé.com/", encoding="latin1")
+            == "http://.éxamplé.com/"
+        )
+        assert (
+            safe_url_string("http://.éxamplé.com:80/?q=a", encoding="utf-16")
+            == "http://.éxamplé.com:80/?%FF%FEq%00=%00a%00"
+        )
+
     def test_safe_url_port_number(self):
         assert (
             safe_url_string("http://www.example.com:80/résumé?q=résumé")
