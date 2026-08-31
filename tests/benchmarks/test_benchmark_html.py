@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -23,6 +24,12 @@ if TYPE_CHECKING:
     from pytest_codspeed import BenchmarkFixture  # type: ignore[import-not-found]
 
     from tests.benchmarks import CasesMapType
+
+
+pytestmark = [
+    pytest.mark.benchmark,
+    pytest.mark.skipif("PyPy" in sys.version, reason="CodSpeed doesn't support PyPy"),
+]
 
 
 BENCHMARK_CASES: CasesMapType = {

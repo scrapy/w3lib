@@ -255,7 +255,9 @@ class TestUnicodeDecoding:
 
 
 def ct(charset: str | None) -> str | None:
-    return "Content-Type: text/html; charset=" + charset if charset else None
+    if charset is None:
+        return None
+    return "Content-Type: text/html; charset=" + charset
 
 
 def norm_encoding(enc: str) -> str:
@@ -271,8 +273,8 @@ class TestHtmlConversion:
         assert isinstance(body_unicode, str)
         assert body_unicode == unicode_string
 
+    @staticmethod
     def _assert_encoding(
-        self,
         content_type: str | None,
         body: bytes,
         expected_encoding: str,
@@ -295,8 +297,6 @@ class TestHtmlConversion:
         expected
         """
         self._assert_encoding("utf-8", b"\xc2\xa3", "utf-8", "\xa3")
-        # something like this in the scrapy tests - but that's invalid?
-        # self._assert_encoding('', "\xa3", 'utf-8', "\xa3")
         # iso-8859-1 is overridden to cp1252
         self._assert_encoding("iso-8859-1", b"\xa3", "cp1252", "\xa3")
         self._assert_encoding("", b"\xc2\xa3", "utf-8", "\xa3")
