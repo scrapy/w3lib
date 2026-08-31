@@ -1974,6 +1974,12 @@ class TestDataURI:
         }
         assert result.data == b"\xce\x8e\xce\xa3\xce\x8e"
 
+    def test_mediatype_parameter_empty_quoted_value(self):
+        result = parse_data_uri('data:text/plain;foo="",AAA')
+        assert result.media_type == "text/plain"
+        assert result.media_type_parameters == {"foo": ""}
+        assert result.data == b"AAA"
+
     def test_base64(self):
         result = parse_data_uri("data:text/plain;base64,SGVsbG8sIHdvcmxkLg%3D%3D")
         assert result.media_type == "text/plain"
