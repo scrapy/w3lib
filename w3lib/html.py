@@ -23,7 +23,13 @@ _ent_re = re.compile(
     r"&((?P<named>[a-z0-9]+)|#(?P<dec>[0-9]+)|#x(?P<hex>[a-f0-9]+))(?P<semicolon>;?)",
     re.IGNORECASE,
 )
-_tag_re = re.compile(r"<[a-zA-Z\/!][^<>]*>")
+# A tag body runs up to the first ">" that is not inside a quoted attribute
+# value. A quote only opens a value right after "=" (optionally after
+# whitespace); a quote anywhere else is an ordinary character, so "<a b=c"d>" is
+# a single tag. The (?=...) split makes the choice after "=" unambiguous, so the
+# scan stays linear on adversarial input instead of backtracking on quotes.
+_TAG_BODY = r'(?:[^<>=]|=(?:[ \t\r\n\f]*(?:"[^"]*"|\'[^\']*\')|(?![ \t\r\n\f]*["\'])))*'
+_tag_re = re.compile(r"<[a-zA-Z/!]" + _TAG_BODY + r">")
 # Scan for the first honored <base href>, consuming comments and
 # <script>/<noscript> content (where a browser never parses tags) along the
 # way. Ignorable regions come first in the alternation, so a <base> inside one
@@ -77,7 +83,9 @@ _tags_re = re.compile(
     (?![^ <>/])     # pinned to its maximal length by this lookahead so it can't
                     # overlap the run below and backtrack quadratically on an
                     # unterminated tag (a "<" with a long run and no ">")
-    [^<>]*          # the rest of the tag: attributes, whitespace, etc.
+    """
+    + _TAG_BODY  # the rest of the tag, skipping ">" inside quoted attributes
+    + r"""
     >               # closing angle bracket
     """,
     re.IGNORECASE | re.VERBOSE,
