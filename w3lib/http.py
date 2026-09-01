@@ -5,7 +5,7 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from io import BytesIO
 from typing import Any, TypeAlias, overload
 
-from w3lib._util import to_bytes, to_unicode
+from w3lib._util import to_unicode
 
 HeadersDictInput: TypeAlias = Mapping[bytes, Any | Sequence[bytes]]
 HeadersDictOutput: TypeAlias = MutableMapping[bytes, list[bytes]]
@@ -135,4 +135,4 @@ def basic_auth_header(
     # XXX: RFC 2617 doesn't define encoding, but ISO-8859-1
     # seems to be the most widely used encoding here. See also:
     # http://greenbytes.de/tech/webdav/draft-ietf-httpauth-basicauth-enc-latest.html
-    return b"Basic " + b64encode(to_bytes(auth, encoding=encoding))
+    return b"Basic " + b64encode(auth.encode(encoding=encoding))
