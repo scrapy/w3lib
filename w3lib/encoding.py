@@ -10,7 +10,7 @@ import re
 from re import Match
 from typing import TYPE_CHECKING, cast
 
-import w3lib.util
+import w3lib._util
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -130,7 +130,7 @@ def html_body_declared_encoding(html_body_str: str | bytes) -> str | None:
     if match:
         encoding = match.group("charset") or match.group("xmlcharset")
         if encoding:
-            return resolve_encoding(w3lib.util.to_unicode(encoding))
+            return resolve_encoding(w3lib._util.to_unicode(encoding))
 
     return None
 

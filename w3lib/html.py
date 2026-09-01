@@ -10,8 +10,8 @@ from html.entities import name2codepoint
 from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
+from w3lib._util import to_unicode
 from w3lib.url import safe_url_string
-from w3lib.util import to_unicode
 
 if TYPE_CHECKING:
     from collections.abc import Iterable

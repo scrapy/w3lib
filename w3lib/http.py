@@ -5,7 +5,7 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from io import BytesIO
 from typing import Any, TypeAlias, overload
 
-from w3lib.util import to_bytes, to_unicode
+from w3lib._util import to_bytes, to_unicode
 
 HeadersDictInput: TypeAlias = Mapping[bytes, Any | Sequence[bytes]]
 HeadersDictOutput: TypeAlias = MutableMapping[bytes, list[bytes]]

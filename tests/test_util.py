@@ -1,6 +1,6 @@
 import pytest
 
-from w3lib.util import to_bytes, to_unicode
+from w3lib._util import to_bytes, to_unicode
 
 
 class TestToBytes:
