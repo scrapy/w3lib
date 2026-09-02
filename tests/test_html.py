@@ -80,8 +80,8 @@ class TestRemoveEntities:
         # The result must always be encodable (regression check).
         replace_entities("&#xD800;", remove_illegal=False).encode("utf-8")
         # Code points just outside the surrogate range remain valid.
-        assert replace_entities("x&#xE000;y") == "xy"
-        assert replace_entities("x&#xD7FF;y") == "x퟿y"
+        assert replace_entities("x&#xE000;y") == "x\ue000y"
+        assert replace_entities("x&#xD7FF;y") == "x\ud7ffy"
 
     def test_browser_hack(self):
         # check browser hack for numeric character references in the 80-9F range
