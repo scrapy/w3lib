@@ -221,6 +221,15 @@ def safe_url_string(
 
 _parent_dirs = re.compile(r"/?(\.\./)+")
 
+# Percent-encoded forms of the single-dot and double-dot path segments of the
+# URL living standard, which clients resolve like "." and "..".
+_encoded_dot_segments = {
+    "%2e": ".",
+    ".%2e": "..",
+    "%2e.": "..",
+    "%2e%2e": "..",
+}
+
 
 def safe_download_url(
     url: str | bytes, encoding: str = "utf8", path_encoding: str = "utf8"
@@ -235,6 +244,11 @@ def safe_download_url(
     safe_url = safe_url_string(url, encoding, path_encoding)
     scheme, netloc, path, query, _ = _urlsplit(safe_url)
     if path:
+        if "%" in path:
+            path = "/".join(
+                _encoded_dot_segments.get(segment.lower(), segment)
+                for segment in path.split("/")
+            )
         normalized_path = _parent_dirs.sub("", posixpath.normpath(path))
         if path.endswith("/") and not normalized_path.endswith("/"):
             normalized_path = f"{normalized_path}/"
