@@ -594,7 +594,7 @@ def parse_data_uri(uri: str | bytes) -> ParseDataURIResult:
 
     while m := _mediatype_parameter_pattern.match(uri):
         attribute, value, value_quoted = m.groups()
-        if value_quoted:
+        if value_quoted is not None:
             value = re.sub(rb"\\(.)", rb"\1", value_quoted)
         media_type_params[attribute.decode()] = value.decode()
         uri = uri[m.end() :]
