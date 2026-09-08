@@ -140,6 +140,13 @@ def replace_entities(
                 entity_name.lower()
             )
         if number is not None:
+            # A null or surrogate reference is a parse error that the tokenizer
+            # resolves to U+FFFD; chr() would instead emit a NUL or a lone
+            # surrogate, which is not a Unicode scalar value and fails to
+            # encode. Out-of-range references keep the remove_illegal handling.
+            # https://html.spec.whatwg.org/commit-snapshots/3e7b72c44ce144cee7db859cd0647af6646b6793/#numeric-character-reference-end-state
+            if number == 0 or 0xD800 <= number <= 0xDFFF:
+                return "\ufffd"
             # Numeric character references in the 80-9F range are typically
             # interpreted by browsers as representing the characters mapped
             # to bytes 80-9F in the Windows-1252 encoding. For more info

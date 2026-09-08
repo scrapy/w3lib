@@ -87,6 +87,19 @@ class TestRemoveEntities:
         # the named reference still ends where the ASCII digits do
         assert replace_entities("&nbsp\u0664;") == "\xa0\u0664;"
 
+    def test_null_and_surrogate_references(self):
+        # the tokenizer resolves a null or surrogate reference to U+FFFD; chr()
+        # would emit a NUL or a lone surrogate, which cannot be UTF-8 encoded
+        assert replace_entities("a&#0;b") == "a\ufffdb"
+        assert replace_entities("a&#x0;b", remove_illegal=False) == "a\ufffdb"
+        assert replace_entities("&#xD800;") == "\ufffd"
+        assert replace_entities("&#xdfff;") == "\ufffd"
+        assert replace_entities("&#55296;", remove_illegal=False) == "\ufffd"
+        assert replace_entities("&#xD800") == "\ufffd"
+        # the neighbours of the surrogate range are ordinary code points
+        assert replace_entities("&#xD7FF;&#xE000;") == "\ud7ff\ue000"
+        assert replace_entities("&#xD800;").encode("utf-8") == b"\xef\xbf\xbd"
+
     def test_missing_semicolon(self):
         for entity, result in (
             ("&lt&lt!", "<<!"),
@@ -683,6 +696,13 @@ class TestGetMetaRefresh:
         baseurl = "http://example.org"
         body = """<meta http-equiv="refresh" content="٥; url=http://example.org/x">"""
         assert get_meta_refresh(body, baseurl) == (None, None)
+
+    def test_surrogate_reference_in_url(self):
+        # a surrogate reference in the URL resolves to U+FFFD, as in a browser,
+        # instead of a lone surrogate that safe_url_string cannot encode
+        baseurl = "http://example.org"
+        body = """<meta http-equiv="refresh" content="0;url=/a&#xD800;b">"""
+        assert get_meta_refresh(body, baseurl) == (0, "http://example.org/a%EF%BF%BDb")
 
     def test_relative_redirects(self):
         # relative redirects
