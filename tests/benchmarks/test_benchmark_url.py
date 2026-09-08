@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
+from tests.benchmarks import BENCHMARK_MARKS, CasesMapType
 from w3lib._url import _urlsplit
 from w3lib.url import (
     add_or_replace_parameter,
@@ -26,7 +27,7 @@ if TYPE_CHECKING:
 
     from pytest_codspeed import BenchmarkFixture  # type: ignore[import-not-found]
 
-    from tests.benchmarks import CasesMapType
+pytestmark = BENCHMARK_MARKS
 
 BENCHMARK_CASES: CasesMapType = {
     parse_url: [

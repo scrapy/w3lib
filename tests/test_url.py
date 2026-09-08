@@ -693,6 +693,16 @@ class TestUrl:
         assert safe_url_string("1x://evil.com/path") == "1x://evil.com/path"
         assert safe_url_string("+x://evil.com/path") == "+x://evil.com/path"
 
+    def test_safe_url_string_unclosed_bracket(self):
+        for url in (
+            "http://[::1",
+            "http://[::1/p]",
+            "http://[::1?q=[a]",
+            "http://[::1#f]",
+        ):
+            with pytest.raises(ValueError, match="Invalid IPv6 URL"):
+                safe_url_string(url)
+
     def test_safe_url_string_bytes_input(self):
         safeurl = safe_url_string(b"http://www.example.com/")
         assert isinstance(safeurl, str)
@@ -1947,6 +1957,16 @@ class TestCanonicalizeUrl:
         assert canonicalize_url("https://example.com ") == "https://example.com/"
         assert canonicalize_url(" https://example.com ") == "https://example.com/"
 
+    def test_unclosed_bracket(self):
+        for url in (
+            "http://[::1",
+            "http://[::1/p]",
+            "http://[::1?q=[a]",
+            "http://[::1#f]",
+        ):
+            with pytest.raises(ValueError, match="Invalid IPv6 URL"):
+                canonicalize_url(url)
+
 
 class TestCanonicalizeUrlProperties:
     @given(hyp_urls())
@@ -1957,7 +1977,7 @@ class TestCanonicalizeUrlProperties:
     def test_idempotent(self, url: str) -> None:
         try:
             once = canonicalize_url(url)
-        except (ValueError, KeyError):
+        except ValueError:
             return
         assert canonicalize_url(once) == once
 
