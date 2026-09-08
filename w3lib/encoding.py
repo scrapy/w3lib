@@ -348,13 +348,12 @@ def html_to_unicode(
         return bom_enc, to_unicode(html_body_str[len(bom) :], bom_enc)
 
     enc = http_content_type_encoding(content_type_header)
-    if enc is not None:
-        if enc in {"utf-16", "utf-32"}:
-            enc += "-be"
-        return enc, to_unicode(html_body_str, enc)
-    enc = html_body_declared_encoding(html_body_str)
-    if enc is None and (auto_detect_fun is not None):
+    if enc is None:
+        enc = html_body_declared_encoding(html_body_str)
+    if enc is None and auto_detect_fun is not None:
         enc = auto_detect_fun(html_body_str)
     if enc is None:
         enc = default_encoding
+    elif enc in {"utf-16", "utf-32"}:
+        enc += "-be"
     return enc, to_unicode(html_body_str, enc)
