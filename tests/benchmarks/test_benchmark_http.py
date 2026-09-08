@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import sys
 from collections import OrderedDict
 from typing import TYPE_CHECKING, Any
 
 import pytest
 
+from tests.benchmarks import BENCHMARK_MARKS, CasesMapType
 from w3lib.http import basic_auth_header, headers_dict_to_raw, headers_raw_to_dict
 
 if TYPE_CHECKING:
@@ -13,14 +13,8 @@ if TYPE_CHECKING:
 
     from pytest_codspeed import BenchmarkFixture  # type: ignore[import-not-found]
 
-    from tests.benchmarks import CasesMapType
 
-
-pytestmark = [
-    pytest.mark.benchmark,
-    pytest.mark.skipif("PyPy" in sys.version, reason="CodSpeed doesn't support PyPy"),
-]
-
+pytestmark = BENCHMARK_MARKS
 
 BENCHMARK_CASES: CasesMapType = {
     basic_auth_header: [

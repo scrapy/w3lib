@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import sys
 from typing import TYPE_CHECKING, Any
 
 import pytest
 
+from tests.benchmarks import BENCHMARK_MARKS, CasesMapType
 from w3lib.html import (
     get_base_url,
     get_meta_refresh,
@@ -23,14 +23,8 @@ if TYPE_CHECKING:
 
     from pytest_codspeed import BenchmarkFixture  # type: ignore[import-not-found]
 
-    from tests.benchmarks import CasesMapType
 
-
-pytestmark = [
-    pytest.mark.benchmark,
-    pytest.mark.skipif("PyPy" in sys.version, reason="CodSpeed doesn't support PyPy"),
-]
-
+pytestmark = BENCHMARK_MARKS
 
 BENCHMARK_CASES: CasesMapType = {
     replace_entities: [
