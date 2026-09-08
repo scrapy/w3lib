@@ -240,13 +240,6 @@ def read_bom(data: bytes) -> tuple[None, None] | tuple[str, bytes]:
     return None, None
 
 
-# Python decoder doesn't follow unicode standard when handling
-# bad utf-8 encoded strings. see http://bugs.python.org/issue8271
-codecs.register_error(
-    "w3lib_replace", lambda exc: ("\ufffd", cast("AnyUnicodeError", exc).end)
-)
-
-
 def _gb18030_replace(exc: UnicodeError) -> tuple[str, int]:
     error = cast("AnyUnicodeError", exc)
     if error.object[error.start] == 0x80:
@@ -348,13 +341,12 @@ def html_to_unicode(
         return bom_enc, to_unicode(html_body_str[len(bom) :], bom_enc)
 
     enc = http_content_type_encoding(content_type_header)
-    if enc is not None:
-        if enc in {"utf-16", "utf-32"}:
-            enc += "-be"
-        return enc, to_unicode(html_body_str, enc)
-    enc = html_body_declared_encoding(html_body_str)
-    if enc is None and (auto_detect_fun is not None):
+    if enc is None:
+        enc = html_body_declared_encoding(html_body_str)
+    if enc is None and auto_detect_fun is not None:
         enc = auto_detect_fun(html_body_str)
     if enc is None:
         enc = default_encoding
+    elif enc in {"utf-16", "utf-32"}:
+        enc += "-be"
     return enc, to_unicode(html_body_str, enc)

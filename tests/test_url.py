@@ -812,6 +812,16 @@ class TestUrl:
             == f"http://www.{'éxamplé' * 11}.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9"
         )
 
+        # the fallback works when a non-UTF-8 page encoding is given
+        assert (
+            safe_url_string("http://.éxamplé.com/", encoding="latin1")
+            == "http://.éxamplé.com/"
+        )
+        assert (
+            safe_url_string("http://.éxamplé.com:80/?q=a", encoding="utf-16")
+            == "http://.éxamplé.com:80/?%FF%FEq%00=%00a%00"
+        )
+
     def test_safe_url_port_number(self):
         assert (
             safe_url_string("http://www.example.com:80/résumé?q=résumé")
@@ -932,6 +942,16 @@ class TestUrl:
         assert (
             safe_download_url(b"http://www.example.org/dir/")
             == "http://www.example.org/dir/"
+        )
+
+        # trailing slash handling
+        assert (
+            safe_download_url("http://www.example.org/dir/?a=b")
+            == "http://www.example.org/dir/?a=b"
+        )
+        assert (
+            safe_download_url("http://www.example.org/dir?a=b/")
+            == "http://www.example.org/dir?a=b/"
         )
 
         # Encoding related tests
@@ -1738,6 +1758,22 @@ class TestCanonicalizeUrl:
         )
         assert canonicalize_url("http://foo.com/AC%2FDC/") == "http://foo.com/AC%2FDC/"
 
+    def test_quoted_percent_sign(self):
+        # a quoted percent sign (%25) must stay encoded, not decode to a bare %
+        assert (
+            canonicalize_url("http://foo.com/cmp/Supermercados-Dia%25")
+            == "http://foo.com/cmp/Supermercados-Dia%25"
+        )
+        assert (
+            canonicalize_url("http://foo.com/100%25/path")
+            == "http://foo.com/100%25/path"
+        )
+        # idempotency: second canonicalization must be stable
+        url = "http://foo.com/cmp/Supermercados-Dia%25"
+        assert canonicalize_url(canonicalize_url(url)) == canonicalize_url(url)
+        # double-encoded percent must stay double-encoded
+        assert canonicalize_url("http://foo.com/%2525") == "http://foo.com/%2525"
+
     def test_canonicalize_urlparsed(self):
         # canonicalize_url() can be passed an already urlparse'd URL
         assert (
@@ -1993,6 +2029,12 @@ class TestDataURI:
             "bar": 'foo;"foo ;/ ,',
         }
         assert result.data == b"\xce\x8e\xce\xa3\xce\x8e"
+
+    def test_mediatype_parameter_empty_quoted_value(self):
+        result = parse_data_uri('data:text/plain;foo="",AAA')
+        assert result.media_type == "text/plain"
+        assert result.media_type_parameters == {"foo": ""}
+        assert result.data == b"AAA"
 
     def test_base64(self):
         result = parse_data_uri("data:text/plain;base64,SGVsbG8sIHdvcmxkLg%3D%3D")

@@ -92,7 +92,7 @@ def _safe_url_split(
     parts = _urlsplit(
         _strip(to_unicode(url, encoding=encoding, errors="percentencode"))
     )
-    tmp_buf = bytearray()
+    tmp_buf = bytearray()  # utf-8 bytes
 
     if parts.username is not None or parts.password is not None:
         if parts.username is not None:
@@ -124,12 +124,12 @@ def _safe_url_split(
                 tmp_buf += _idna_bytes(parts.hostname)
             except UnicodeError:
                 # IDNA encoding can fail for too long labels (>63 characters) or
-                # missing labels (e.g. http://.example.com)
-                tmp_buf += parts.hostname.encode(encoding)
+                # missing labels (e.g. http://.example.com).
+                tmp_buf += parts.hostname.encode()
 
     if parts.port is not None:
         tmp_buf.append(58)  # ord(":")
-        tmp_buf += str(parts.port).encode(encoding)
+        tmp_buf += str(parts.port).encode("ascii")
 
     netloc = tmp_buf.decode()
     tmp_buf.clear()
@@ -235,9 +235,10 @@ def safe_download_url(
     safe_url = safe_url_string(url, encoding, path_encoding)
     scheme, netloc, path, query, _ = _urlsplit(safe_url)
     if path:
-        path = _parent_dirs.sub("", posixpath.normpath(path))
-        if safe_url[-1] == "/" and path[-1] != "/":
-            path = f"{path}/"
+        normalized_path = _parent_dirs.sub("", posixpath.normpath(path))
+        if path.endswith("/") and not normalized_path.endswith("/"):
+            normalized_path = f"{normalized_path}/"
+        path = normalized_path
     else:
         path = "/"
     return _urlunsplit(scheme, netloc, path, query, "")
@@ -594,7 +595,7 @@ def parse_data_uri(uri: str | bytes) -> ParseDataURIResult:
 
     while m := _mediatype_parameter_pattern.match(uri):
         attribute, value, value_quoted = m.groups()
-        if value_quoted:
+        if value_quoted is not None:
             value = re.sub(rb"\\(.)", rb"\1", value_quoted)
         media_type_params[attribute.decode()] = value.decode()
         uri = uri[m.end() :]
@@ -776,7 +777,8 @@ def _unquotepath(path: str) -> bytes:
     # percent-escaped characters, they get lost.
     # e.g., '%a3' becomes 'REPLACEMENT CHARACTER' (U+FFFD)
     return _unquote(
-        path.replace("%2f", "%252F")
+        path.replace("%25", "%2525")
+        .replace("%2f", "%252F")
         .replace("%2F", "%252F")
         .replace("%3f", "%253F")
         .replace("%3F", "%253F")

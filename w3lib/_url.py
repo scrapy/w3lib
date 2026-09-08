@@ -776,7 +776,7 @@ def _url2pathname(url: str) -> str:
     # These branches are handled by `_urlparse`
     if url[:3] == "///":  # pragma: no cover
         url = url[2:]
-    elif url[12:] == "//localhost/":  # pragma: no cover
+    elif url[:12] == "//localhost/":  # pragma: no cover
         url = url[11:]
 
     if not _IS_WINDOWS:

@@ -396,6 +396,13 @@ class TestHtmlConversion:
         self._assert_encoding("utf-16", "hi".encode("utf-16-be"), "utf-16-be", "hi")
         self._assert_encoding("utf-32", "hi".encode("utf-32-be"), "utf-32-be", "hi")
 
+        # the same label from the body or from auto-detection decodes the same
+        # way as from the header
+        encoding, _ = html_to_unicode(None, b'<meta charset="utf-16">')
+        assert encoding == "utf-16-be"
+        encoding, _ = html_to_unicode(None, b"", auto_detect_fun=lambda x: "utf-16")
+        assert encoding == "utf-16-be"
+
     def test_python_crash(self):
         random.seed(42)
         buf = BytesIO()
