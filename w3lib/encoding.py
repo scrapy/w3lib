@@ -130,7 +130,7 @@ def html_body_declared_encoding(html_body_str: str | bytes) -> str | None:
     if match:
         encoding = match.group("charset") or match.group("xmlcharset")
         if encoding:
-            return resolve_encoding(w3lib._util.to_unicode(encoding))
+            return resolve_encoding(w3lib._util.to_unicode(encoding))  # pylint: disable=protected-access
 
     return None
 
