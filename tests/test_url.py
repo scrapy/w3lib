@@ -980,6 +980,30 @@ class TestUrl:
             == "http://www.example.org/%A3?%C2%A3"
         )
 
+    def test_safe_download_url_encoded_dot_segments(self):
+        # "%2e", ".%2e", "%2e." and "%2e%2e" are the percent-encoded forms of
+        # the single-dot and double-dot path segments of the URL living
+        # standard, resolved by clients like "." and "..".
+        assert (
+            safe_download_url("http://www.example.org/dir/%2e%2e/secret")
+            == "http://www.example.org/secret"
+        )
+        assert (
+            safe_download_url(
+                "http://www.example.org/%2E%2E/%2E%2E/images/%2e%2e/image"
+            )
+            == "http://www.example.org/image"
+        )
+        assert (
+            safe_download_url("http://www.example.org/dir/.%2e/%2e./a/%2e/b")
+            == "http://www.example.org/a/b"
+        )
+        # Segments that merely contain "%2e" are not dot segments.
+        assert (
+            safe_download_url("http://www.example.org/a%2eb/%2ec/")
+            == "http://www.example.org/a%2eb/%2ec/"
+        )
+
     def test_is_url(self):
         assert is_url("http://www.example.org")
         assert is_url("https://www.example.org")
