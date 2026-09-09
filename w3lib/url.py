@@ -794,6 +794,8 @@ def _unquotepath(path: str) -> bytes:
         path.replace("%25", "%2525")
         .replace("%2f", "%252F")
         .replace("%2F", "%252F")
+        .replace("%3b", "%253B")
+        .replace("%3B", "%253B")
         .replace("%3f", "%253F")
         .replace("%3F", "%253F")
     )
