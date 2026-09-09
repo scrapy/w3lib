@@ -1,9 +1,12 @@
 import pytest
 
-from w3lib.util import to_bytes, to_unicode
+from w3lib._util import to_unicode
+
+with pytest.warns(DeprecationWarning, match="The w3lib.util module is deprecated."):
+    from w3lib.util import to_bytes
 
 
-class TestToBytes:
+class TestToBytesDeprecated:
     def test_type_error(self):
         with pytest.raises(TypeError):
             to_bytes(True)  # type: ignore[arg-type]

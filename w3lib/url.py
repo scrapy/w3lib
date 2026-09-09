@@ -41,7 +41,7 @@ from ._url import (
     _urlunparse,
     _urlunsplit,
 )
-from .util import to_unicode
+from ._util import to_unicode
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
