@@ -147,11 +147,33 @@ class TestReplaceTags:
             == "Click here"
         )
 
+    def test_replace_tags_gt_in_attribute(self):
+        # A ">" inside a quoted attribute value does not end the tag.
+        assert replace_tags('<a title="x>y">t</a>') == "t"
+        assert replace_tags("<a title='x>y'>t</a>") == "t"
+        assert replace_tags('<a title = "x>y">t</a>') == "t"
+        # A quote that does not open a value (not right after "=") stays an
+        # ordinary character, so the tag still ends at the first ">".
+        assert replace_tags('<a b=c"d>keep</a>') == "keep"
+
     def test_replace_tags_no_catastrophic_backtracking(self):
         evil = "<a" * 50000
         start = time.perf_counter()
         assert replace_tags(evil) == evil  # incomplete tags (no ">") are untouched
         assert replace_tags(evil + "<b>x</b>") == evil + "x"
+        assert time.perf_counter() - start < 2
+
+    @pytest.mark.parametrize(
+        "evil",
+        [
+            pytest.param("<a " + '="' * 100000, id="eq-quote"),
+            pytest.param("<a " + '= "' * 100000, id="eq-space-quote"),
+            pytest.param("<a " + 'a="b' * 100000, id="attr-run"),
+        ],
+    )
+    def test_replace_tags_no_catastrophic_backtracking_quotes(self, evil: str) -> None:
+        start = time.perf_counter()
+        replace_tags(evil)
         assert time.perf_counter() - start < 2
 
 
@@ -247,6 +269,15 @@ class TestRemoveTags:
             == ""
         )
 
+    def test_remove_tags_gt_in_attribute(self):
+        # A ">" inside a quoted attribute value does not end the tag.
+        assert remove_tags('<a title="x>y">t</a>') == "t"
+        assert remove_tags("<a title='x>y'>t</a>") == "t"
+        assert remove_tags('<p title="a>b" class="c">x</p>', which_ones=("p",)) == "x"
+        # A quote that does not open a value (not right after "=") stays an
+        # ordinary character, so the tag still ends at the first ">".
+        assert remove_tags('<a b=c"d>keep</a>') == "keep"
+
     @pytest.mark.parametrize(
         "evil",
         [
@@ -258,6 +289,19 @@ class TestRemoveTags:
         start = time.perf_counter()
         assert remove_tags(evil) == evil
         assert remove_tags(evil + "<b>x</b>") == evil + "x"
+        assert time.perf_counter() - start < 2
+
+    @pytest.mark.parametrize(
+        "evil",
+        [
+            pytest.param("<a " + '="' * 100000, id="eq-quote"),
+            pytest.param("<a " + '= "' * 100000, id="eq-space-quote"),
+            pytest.param("<a " + 'a="b' * 100000, id="attr-run"),
+        ],
+    )
+    def test_remove_tags_no_catastrophic_backtracking_quotes(self, evil: str) -> None:
+        start = time.perf_counter()
+        remove_tags(evil)
         assert time.perf_counter() - start < 2
 
 
