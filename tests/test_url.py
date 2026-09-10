@@ -1798,6 +1798,22 @@ class TestCanonicalizeUrl:
         # double-encoded percent must stay double-encoded
         assert canonicalize_url("http://foo.com/%2525") == "http://foo.com/%2525"
 
+    def test_quoted_semicolon(self):
+        # a quoted semicolon (%3B) must stay encoded
+        assert canonicalize_url("http://foo.com/x%3B") == "http://foo.com/x%3B"
+        assert canonicalize_url("http://foo.com/%3b") == "http://foo.com/%3B"
+        # idempotency: second canonicalization must be stable
+        for url in (
+            "http://foo.com/x%3B",
+            "http://foo.com/%0A%3BpE%7C",
+        ):
+            once = canonicalize_url(url)
+            assert canonicalize_url(once) == once
+        # an unencoded semicolon still marks a params component
+        assert canonicalize_url("http://foo.com/x;b") == "http://foo.com/x;b"
+        # double-encoded semicolon must stay double-encoded
+        assert canonicalize_url("http://foo.com/%253B") == "http://foo.com/%253B"
+
     def test_canonicalize_urlparsed(self):
         # canonicalize_url() can be passed an already urlparse'd URL
         assert (
