@@ -1290,6 +1290,41 @@ class TestUrl:
         assert x.startswith("file:///")
         assert file_uri_to_path(x).lower() == str(Path(fn).absolute()).lower()
 
+    @pytest.mark.skipif(os.name != "nt", reason="Windows UNC paths")
+    @pytest.mark.parametrize(
+        ("path", "uri"),
+        [
+            (r"\\server\share\file.txt", "file://server/share/file.txt"),
+            (
+                r"\\server\shared folder\café #1.txt",
+                "file://server/shared%20folder/caf%C3%A9%20%231.txt",
+            ),
+        ],
+    )
+    def test_path_to_file_uri_unc(self, path, uri):
+        assert path_to_file_uri(path) == uri
+        assert path_to_file_uri(Path(path)) == uri
+        assert file_uri_to_path(path_to_file_uri(path)) == path
+
+    @pytest.mark.skipif(os.name != "nt", reason="Windows UNC paths")
+    @pytest.mark.parametrize(
+        ("uri", "path"),
+        [
+            ("file://server/share/file.txt", r"\\server\share\file.txt"),
+            (
+                "file://server/shared%20folder/caf%C3%A9%20%231.txt",
+                r"\\server\shared folder\café #1.txt",
+            ),
+            ("//server/share/file.txt", r"\\server\share\file.txt"),
+        ],
+    )
+    def test_file_uri_to_path_unc(self, uri, path):
+        assert file_uri_to_path(uri) == path
+
+    @pytest.mark.parametrize("host", ["localhost", "LOCALHOST"])
+    def test_file_uri_to_path_localhost(self, host):
+        assert file_uri_to_path(f"file://{host}/foo/bar") == f"{os.sep}foo{os.sep}bar"
+
     def test_file_uri_to_path(self):
         if os.name == "nt":
             assert (

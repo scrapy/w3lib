@@ -504,14 +504,21 @@ def path_to_file_uri(path: str | os.PathLike[str]) -> str:
     """Convert local filesystem path to legal File URIs as described in:
     http://en.wikipedia.org/wiki/File_URI_scheme
     """
-    return f"file:///{pathname2url(str(Path(path).absolute())).lstrip('/')}"
+    absolute_path = Path(path).absolute()
+    if os.name == "nt" and absolute_path.drive.startswith("\\\\"):
+        return absolute_path.as_uri()
+    return f"file:///{pathname2url(str(absolute_path)).lstrip('/')}"
 
 
 def file_uri_to_path(uri: str) -> str:
     """Convert File URI to local filesystem path according to:
     http://en.wikipedia.org/wiki/File_URI_scheme
     """
-    return _url2pathname(_urlparse(uri)[2])
+    parsed = _urlparse(uri)
+    path = parsed.path
+    if os.name == "nt" and parsed.netloc and parsed.netloc.lower() != "localhost":
+        path = f"//{parsed.netloc}{path}"
+    return _url2pathname(path)
 
 
 def any_to_uri(uri_or_path: str) -> str:
