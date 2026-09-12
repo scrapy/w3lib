@@ -154,7 +154,13 @@ def replace_entities(
             try:
                 if 0x80 <= number <= 0x9F:
                     return bytes((number,)).decode("cp1252")
-                return chr(number)
+                # Surrogate code points (U+D800-U+DFFF) are not valid Unicode
+                # scalar values. chr() accepts them but returns a lone surrogate
+                # that cannot be encoded (e.g. to UTF-8), which breaks callers.
+                # Treat them as illegal, the same as the out-of-range references
+                # handled by the except clause below.
+                if not 0xD800 <= number <= 0xDFFF:
+                    return chr(number)
             except (ValueError, OverflowError):
                 pass
 
