@@ -1040,6 +1040,19 @@ class TestUrl:
             == "200"
         )
 
+    @pytest.mark.parametrize(
+        ("url", "expected"),
+        [
+            (b"product.html?id=200", "200"),
+            (b"product.html?id=", ""),
+            (b"product.html?id=caf%C3%A9", "café"),
+            ("product.html?id=café".encode(), "café"),
+            (b"product.html?other=1&id=200", "200"),
+        ],
+    )
+    def test_url_query_parameter_bytes(self, url: bytes, expected: str) -> None:
+        assert url_query_parameter(url, "id", keep_blank_values=True) == expected
+
     @pytest.mark.xfail
     def test_url_query_parameter_2(self):
         """
