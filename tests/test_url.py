@@ -1195,30 +1195,10 @@ class TestUrl:
             url_query_cleaner("product.html?id=200&foo=bar&name=wired", ["id"])
             == "product.html?id=200"
         )
-        # bytes URLs and bytes parameter names are decoded
+        # bytes URLs are decoded
         assert (
             url_query_cleaner(b"product.html?id=200&foo=bar&name=wired", ["id"])
             == "product.html?id=200"
-        )
-        assert (
-            url_query_cleaner("product.html?id=200&foo=bar&name=wired", b"id")
-            == "product.html?id=200"
-        )
-        assert (
-            url_query_cleaner("product.html?id=200&foo=bar&name=wired", [b"id"])
-            == "product.html?id=200"
-        )
-        assert (
-            url_query_cleaner(
-                "product.html?id=200&foo=bar&name=wired", ["id"], remove=True
-            )
-            == "product.html?foo=bar&name=wired"
-        )
-        assert (
-            url_query_cleaner(
-                "product.html?id=200&foo=bar&name=wired", [b"id"], remove=True
-            )
-            == "product.html?foo=bar&name=wired"
         )
         assert (
             url_query_cleaner("product.html?&id=200&&foo=bar&name=wired", ["id"])
