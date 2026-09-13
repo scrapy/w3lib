@@ -382,9 +382,11 @@ def url_query_cleaner(
     base, _, query = url.partition("?")
 
     if not query or (not parameterlist and not remove):
-        return base if not keep_fragments else f"{base}#{fragment}"
+        return base if not (keep_fragments and fragment) else f"{base}#{fragment}"
 
-    param_lookup = frozenset(parameterlist)
+    param_lookup = frozenset(
+        p.decode() if isinstance(p, bytes) else p for p in parameterlist
+    )
 
     seen: set[str] | None = set() if unique else None
     result: list[str] = []
