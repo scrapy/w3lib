@@ -51,7 +51,7 @@ _SCHEME_CHARS = frozenset(scheme_chars)
 _USES_PARAMS = frozenset(uses_params)
 _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE = str.maketrans("", "", _ASCII_TAB_OR_NEWLINE)
 _C0_CONTROL_OR_SPACE_RE = re.compile(rf"[{_C0_CONTROL_OR_SPACE}]")
-_SCHEME_RE = re.compile(rf"^([a-zA-Z][{scheme_chars}]*):")
+_SCHEME_RE = re.compile(rf"^([a-zA-Z][{re.escape(scheme_chars)}]*):")
 
 _IPV_FUTURE_RE = re.compile(r"\Av[a-fA-F0-9]+\..+\Z")
 # "\" terminates the authority of a special-scheme URL just like "/" under the
@@ -520,12 +520,13 @@ class _SplitResult:  # pylint: disable=too-many-instance-attributes
             self.hostname = f"{hostname.lower()}{delim}{zone}"
 
         if self.port is not None:
-            try:
-                self.port = int(self.port)
-            except ValueError:
+            if isinstance(self.port, str) and not (
+                self.port.isascii() and self.port.isdigit()
+            ):
                 raise ValueError(
                     f"Port could not be cast to integer value as {self.port}"
-                ) from None
+                )
+            self.port = int(self.port)
 
             if self.port not in range(65535 + 1):
                 raise ValueError("Port out of range 0-65535")
@@ -783,22 +784,20 @@ def _url2pathname(url: str) -> str:
         if "%" not in url:
             return url
 
-        return _unquote(url, _PATH_SAFE_CHARS).decode(_FS_ENCODING, _FS_ERRORS)
+        return _unquote(url).decode(_FS_ENCODING, _FS_ERRORS)
 
     if url[:3] == "///":
         url = url[1:]
     url = url.replace(":", "|")
     if "|" not in url:
-        return _unquote(url.replace("/", "\\").encode(), _PATH_SAFE_CHARS).decode(
+        return _unquote(url.replace("/", "\\").encode()).decode(
             _FS_ENCODING, _FS_ERRORS
         )
     comp = url.split("|")
     if len(comp) != 2 or comp[0][-1] not in string.ascii_letters:
         raise OSError(f"Bad URL: {url}")
     drive = comp[0][-1].upper()
-    tail = _unquote(comp[1].replace("/", "\\"), _PATH_SAFE_CHARS).decode(
-        _FS_ENCODING, _FS_ERRORS
-    )
+    tail = _unquote(comp[1].replace("/", "\\")).decode(_FS_ENCODING, _FS_ERRORS)
     return f"{drive}:{tail}"
 
 
