@@ -334,7 +334,7 @@ def url_query_parameter(
 
 def url_query_cleaner(
     url: str | bytes,
-    parameterlist: str | bytes | Sequence[str | bytes] = (),
+    parameterlist: str | Sequence[str] = (),
     sep: str = "&",
     kvsep: str = "=",
     remove: bool = False,
@@ -382,7 +382,7 @@ def url_query_cleaner(
     base, _, query = url.partition("?")
 
     if not query or (not parameterlist and not remove):
-        return base if not keep_fragments else f"{base}#{fragment}"
+        return base if not (keep_fragments and fragment) else f"{base}#{fragment}"
 
     param_lookup = frozenset(parameterlist)
 

@@ -1208,6 +1208,11 @@ class TestUrl:
             url_query_cleaner("product.html?id=200&foo=bar&name=wired", ["id"])
             == "product.html?id=200"
         )
+        # bytes URLs are decoded
+        assert (
+            url_query_cleaner(b"product.html?id=200&foo=bar&name=wired", ["id"])
+            == "product.html?id=200"
+        )
         assert (
             url_query_cleaner("product.html?&id=200&&foo=bar&name=wired", ["id"])
             == "product.html?id=200"
@@ -1287,6 +1292,15 @@ class TestUrl:
                 "product.html?id=200&foo=bar&name=wired", ["id"], keep_fragments=True
             )
             == "product.html?id=200"
+        )
+        # no stray "#" when there is no fragment
+        assert (
+            url_query_cleaner("product.html", ["id"], keep_fragments=True)
+            == "product.html"
+        )
+        assert (
+            url_query_cleaner("product.html?", ["id"], keep_fragments=True)
+            == "product.html"
         )
 
     def test_path_to_file_uri(self):
