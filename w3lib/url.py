@@ -322,7 +322,7 @@ def url_query_parameter(
     """
 
     queryparams = _parse_qs(
-        _urlsplit(str(url)).query,
+        _urlsplit(to_unicode(url)).query,
         keep_blank_values=bool(keep_blank_values),
         separator=separator.encode(),
     )
