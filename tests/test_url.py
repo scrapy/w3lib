@@ -346,6 +346,9 @@ SAFE_URL_URL_CASES = (
     ("https://example.com:bad_port", ValueError),
     ("https://example.com:-1", ValueError),
     ("https://example.com:66000", ValueError),
+    ("https://example.com:8_0", ValueError),
+    ("https://example.com:+80", ValueError),
+    ("https://example.com:٨٠", ValueError),
     # Path
     ("https://example.com/", "https://example.com/"),
     ("https://example.com/a", "https://example.com/a"),
@@ -1039,6 +1042,9 @@ class TestUrl:
             url_query_parameter("product.html?id=200;foo=bar", "id", separator=";")
             == "200"
         )
+        # ASCII tab and newlines are removed, like urllib.parse does
+        assert url_query_parameter("product.html?id=200\n", "id") == "200"
+        assert url_query_parameter("product.html?id=2\t00", "id") == "200"
 
     @pytest.mark.parametrize(
         ("url", "expected"),
@@ -1150,6 +1156,12 @@ class TestUrl:
         assert (
             add_or_replace_parameter(url, "arg1", "v3")
             == "http://domain/test?arg1=v3&arg2=v2"
+        )
+
+        # ASCII tab and newlines are removed, like urllib.parse does
+        assert (
+            add_or_replace_parameter("http://example.com/?a=1\n", "b", "2")
+            == "http://example.com/?a=1&b=2"
         )
 
     @pytest.mark.xfail(reason="https://github.com/scrapy/w3lib/issues/164")
@@ -1366,6 +1378,7 @@ class TestUrl:
                 file_uri_to_path("/path/to/test%20file.txt?bar=baz")
                 == r"\path\to\test file.txt"
             )
+            assert file_uri_to_path("file:///C:/temp/50%25.txt") == r"C:\temp\50%.txt"
         else:
             assert file_uri_to_path("file:///path/to/test.txt") == "/path/to/test.txt"
             assert file_uri_to_path("/path/to/test.txt") == "/path/to/test.txt"
@@ -1380,6 +1393,9 @@ class TestUrl:
                 file_uri_to_path("/path/to/test%20file.txt?bar=baz")
                 == "/path/to/test file.txt"
             )
+            assert file_uri_to_path("file:///dir/50%25.txt") == "/dir/50%.txt"
+            assert file_uri_to_path("file:///dir/%41bc") == "/dir/Abc"
+            assert file_uri_to_path(path_to_file_uri("/dir/50%.txt")) == "/dir/50%.txt"
 
         assert file_uri_to_path("test.txt") == "test.txt"
         assert file_uri_to_path("") == ""
@@ -2234,6 +2250,31 @@ class TestParseQsl:
 
 
 class TestPrivateHelpers:
+    @pytest.mark.parametrize(
+        ("url", "expected"),
+        [
+            ("http://example.com/path", ("http", "example.com", "/path", "", "")),
+            (
+                "http://example.com/path?query",
+                ("http", "example.com", "/path", "query", ""),
+            ),
+            (
+                "http://example.com/path#fragment",
+                ("http", "example.com", "/path", "", "fragment"),
+            ),
+            (
+                "http://example.com/path?query#fragment",
+                ("http", "example.com", "/path", "query", "fragment"),
+            ),
+            (
+                "a,b://example.com/path?query#fragment",
+                ("", "", "a,b://example.com/path", "query", "fragment"),
+            ),
+        ],
+    )
+    def test_urlsplit(self, url: str, expected: tuple[str, str, str, str, str]) -> None:
+        assert tuple(_urlsplit(url)) == expected
+
     @pytest.mark.parametrize(
         ("components", "expected"),
         [
