@@ -2369,7 +2369,7 @@ class TestPrivateHelpersProperties:
 
     @given(st.text())
     def test_unquote_matches_stdlib(self, data: str) -> None:
-        result = _unquote(data, safe=b"/")
+        result = _unquote(data)
         expected = unquote(data).encode("utf-8")
         assert result == expected
 
