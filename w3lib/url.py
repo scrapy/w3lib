@@ -328,7 +328,7 @@ def url_query_parameter(
     )
     parameter_bytes = parameter.encode()
     if parameter_bytes in queryparams:
-        return queryparams[parameter_bytes][0].decode()
+        return queryparams[parameter_bytes][0].decode(errors="replace")
     return default
 
 
