@@ -29,11 +29,14 @@ _base_re = re.compile("<base", re.IGNORECASE)
 # <script>/<noscript> content (where a browser never parses tags) along the
 # way. Ignorable regions come first in the alternation, so a <base> inside one
 # is consumed before it can match; unterminated regions swallow the rest of
-# the document, as a browser does.
+# the document, as a browser does. Their content is consumed in runs of
+# characters that cannot start the closing delimiter, so that the large inline
+# scripts of real pages cost a tight loop per run rather than a match attempt
+# per character.
 _base_scan_re = re.compile(
     r"""
-      <!--.*?(?:-->|$)
-    | <(?P<t>script|noscript)\b[^<>]*>.*?(?:</(?P=t)>|$)
+      <!--[^-]*(?:-(?!->)[^-]*)*(?:-->|$)
+    | <(?P<t>script|noscript)\b[^<>]*>[^<]*(?:<(?!/(?P=t)>)[^<]*)*(?:</(?P=t)>|$)
     | <base\s[^<>]*href\s*=\s*["']\s*(?P<url>[^"'\s]+)\s*["']
     """,
     re.IGNORECASE | re.DOTALL | re.VERBOSE,
