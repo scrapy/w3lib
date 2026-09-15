@@ -10,8 +10,7 @@ from urllib.parse import (
     parse_qsl,
     quote,
     quote_plus,
-    unquote,
-    unquote_plus,
+    unquote_to_bytes,
     urlparse,
     urlsplit,
     urlunparse,
@@ -2369,14 +2368,14 @@ class TestPrivateHelpersProperties:
 
     @given(st.text())
     def test_unquote_matches_stdlib(self, data: str) -> None:
-        result = _unquote(data, safe=b"/")
-        expected = unquote(data).encode("utf-8")
+        result = _unquote(data)
+        expected = unquote_to_bytes(data)
         assert result == expected
 
     @given(st.text())
     def test_unquote_plus_matches_stdlib(self, data: str) -> None:
         result = _unquote_plus(data)
-        expected = unquote_plus(data).encode("utf-8")
+        expected = unquote_to_bytes(data.replace("+", " "))
         assert result == expected
 
     # assume() rejects most generated inputs on Python 3.10, tripping the check
