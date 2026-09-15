@@ -1058,6 +1058,18 @@ class TestUrl:
     def test_url_query_parameter_bytes(self, url: bytes, expected: str) -> None:
         assert url_query_parameter(url, "id", keep_blank_values=True) == expected
 
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "product.html?id=b%a3",
+            b"product.html?id=b%a3",
+        ],
+    )
+    def test_url_query_parameter_non_utf8_escape(self, url: str | bytes) -> None:
+        # a percent-escape that is not valid UTF-8 decodes to U+FFFD, as with
+        # urllib.parse.parse_qs(), instead of raising
+        assert url_query_parameter(url, "id") == "b\ufffd"
+
     @pytest.mark.xfail
     def test_url_query_parameter_2(self):
         """
