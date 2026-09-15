@@ -449,6 +449,20 @@ class TestGetBaseUrl:
             == "http://example.org/something"
         )
 
+    def test_get_base_url_uppercase(self):
+        assert (
+            get_base_url("""<BASE HREF="http://example.org/">""", "https://example.org")
+            == "http://example.org/"
+        )
+
+    def test_get_base_url_missing(self):
+        assert (
+            get_base_url(
+                "<html><head></head><body></body></html>", "https://example.org"
+            )
+            == "https://example.org"
+        )
+
     def test_get_base_url_no_catastrophic_backtracking(self):
         prefix = "<base " * 30000
         start = time.perf_counter()

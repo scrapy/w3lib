@@ -24,15 +24,19 @@ _ent_re = re.compile(
     re.IGNORECASE,
 )
 _tag_re = re.compile(r"<[a-zA-Z\/!][^<>]*>")
+_base_re = re.compile("<base", re.IGNORECASE)
 # Scan for the first honored <base href>, consuming comments and
 # <script>/<noscript> content (where a browser never parses tags) along the
 # way. Ignorable regions come first in the alternation, so a <base> inside one
 # is consumed before it can match; unterminated regions swallow the rest of
-# the document, as a browser does.
+# the document, as a browser does. Their content is consumed in runs of
+# characters that cannot start the closing delimiter, so that the large inline
+# scripts of real pages cost a tight loop per run rather than a match attempt
+# per character.
 _base_scan_re = re.compile(
     r"""
-      <!--.*?(?:-->|$)
-    | <(?P<t>script|noscript)\b[^<>]*>.*?(?:</(?P=t)>|$)
+      <!--[^-]*(?:-(?!->)[^-]*)*(?:-->|$)
+    | <(?P<t>script|noscript)\b[^<>]*>[^<]*(?:<(?!/(?P=t)>)[^<]*)*(?:</(?P=t)>|$)
     | <base\s[^<>]*href\s*=\s*["']\s*(?P<url>[^"'\s]+)\s*["']
     """,
     re.IGNORECASE | re.DOTALL | re.VERBOSE,
@@ -412,11 +416,12 @@ def get_base_url(
     """
 
     utext = to_unicode(text, encoding)
-    for m in _base_scan_re.finditer(utext):
-        if url := m.group("url"):
-            return urljoin(
-                safe_url_string(baseurl), safe_url_string(url, encoding=encoding)
-            )
+    if _base_re.search(utext):
+        for m in _base_scan_re.finditer(utext):
+            if url := m.group("url"):
+                return urljoin(
+                    safe_url_string(baseurl), safe_url_string(url, encoding=encoding)
+                )
     return safe_url_string(baseurl)
 
 
