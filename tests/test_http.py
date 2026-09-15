@@ -81,7 +81,6 @@ class TestHttp:
             ]
         )
         assert headers_dict_to_raw(dct) == b""
-        assert headers_dict_to_raw(dct) == b""
 
         dct = OrderedDict([(b"Content-type", 1), (b"Accept", [b"gzip"])])
         assert headers_dict_to_raw(dct) == b"Accept: gzip"

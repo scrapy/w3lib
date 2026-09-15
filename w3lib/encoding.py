@@ -10,7 +10,7 @@ import re
 from re import Match
 from typing import TYPE_CHECKING, cast
 
-import w3lib.util
+import w3lib._util
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -130,7 +130,7 @@ def html_body_declared_encoding(html_body_str: str | bytes) -> str | None:
     if match:
         encoding = match.group("charset") or match.group("xmlcharset")
         if encoding:
-            return resolve_encoding(w3lib.util.to_unicode(encoding))
+            return resolve_encoding(w3lib._util.to_unicode(encoding))  # pylint: disable=protected-access
 
     return None
 
@@ -188,9 +188,17 @@ def resolve_encoding(encoding_alias: str) -> str | None:
     c18n_encoding = _c18n_encoding(encoding_alias)
     translated = DEFAULT_ENCODING_TRANSLATION.get(c18n_encoding, c18n_encoding)
     try:
-        return codecs.lookup(translated).name
+        name = codecs.lookup(translated).name
     except LookupError:
         return None
+    # UTF-7 has no label in the WHATWG Encoding Standard this module follows and
+    # browsers dropped it. It re-spells "<", ">" and "&" using only ASCII bytes
+    # (e.g. "+ADw-" for "<"), so a response that declares charset=utf-7 lets a
+    # byte sequence a browser shows as inert text decode into live markup. Refuse
+    # it so callers fall back to a safe default instead of the smuggled encoding.
+    if name == "utf-7":
+        return None
+    return name
 
 
 _BOM_TABLE = [
@@ -230,13 +238,6 @@ def read_bom(data: bytes) -> tuple[None, None] | tuple[str, bytes]:
             if data.startswith(bom):
                 return encoding, bom
     return None, None
-
-
-# Python decoder doesn't follow unicode standard when handling
-# bad utf-8 encoded strings. see http://bugs.python.org/issue8271
-codecs.register_error(
-    "w3lib_replace", lambda exc: ("\ufffd", cast("AnyUnicodeError", exc).end)
-)
 
 
 def _gb18030_replace(exc: UnicodeError) -> tuple[str, int]:
@@ -340,13 +341,12 @@ def html_to_unicode(
         return bom_enc, to_unicode(html_body_str[len(bom) :], bom_enc)
 
     enc = http_content_type_encoding(content_type_header)
-    if enc is not None:
-        if enc in {"utf-16", "utf-32"}:
-            enc += "-be"
-        return enc, to_unicode(html_body_str, enc)
-    enc = html_body_declared_encoding(html_body_str)
-    if enc is None and (auto_detect_fun is not None):
+    if enc is None:
+        enc = html_body_declared_encoding(html_body_str)
+    if enc is None and auto_detect_fun is not None:
         enc = auto_detect_fun(html_body_str)
     if enc is None:
         enc = default_encoding
+    elif enc in {"utf-16", "utf-32"}:
+        enc += "-be"
     return enc, to_unicode(html_body_str, enc)

@@ -216,6 +216,19 @@ class TestCodecsEncoding:
         assert resolve_encoding(" Latin-1") == "cp1252"
         assert resolve_encoding("gb_2312-80") == "gb18030"
         assert resolve_encoding("unknown encoding") is None
+        # utf-7 is not in the Encoding Standard and enables charset-smuggling,
+        # so it must not resolve, however it is spelled.
+        for alias in ("utf-7", "utf7", "U7", "unicode-1-1-utf-7", "UTF_7"):
+            assert resolve_encoding(alias) is None, alias
+
+    def test_resolve_encoding_utf7_not_smuggled(self):
+        # a utf-7 charset from the header or a meta tag is ignored, so the
+        # "+ADw-script+AD4-" payload stays inert instead of decoding to markup
+        assert http_content_type_encoding("text/html; charset=utf-7") is None
+        assert html_body_declared_encoding(b'<meta charset="utf-7">') is None
+        enc, body = html_to_unicode("text/html; charset=utf-7", b"+ADw-script+AD4-")
+        assert enc != "utf-7"
+        assert "<script>" not in body
 
 
 class TestUnicodeDecoding:
@@ -242,7 +255,9 @@ class TestUnicodeDecoding:
 
 
 def ct(charset: str | None) -> str | None:
-    return "Content-Type: text/html; charset=" + charset if charset else None
+    if charset is None:
+        return None
+    return "Content-Type: text/html; charset=" + charset
 
 
 def norm_encoding(enc: str) -> str:
@@ -258,8 +273,8 @@ class TestHtmlConversion:
         assert isinstance(body_unicode, str)
         assert body_unicode == unicode_string
 
+    @staticmethod
     def _assert_encoding(
-        self,
         content_type: str | None,
         body: bytes,
         expected_encoding: str,
@@ -282,8 +297,6 @@ class TestHtmlConversion:
         expected
         """
         self._assert_encoding("utf-8", b"\xc2\xa3", "utf-8", "\xa3")
-        # something like this in the scrapy tests - but that's invalid?
-        # self._assert_encoding('', "\xa3", 'utf-8', "\xa3")
         # iso-8859-1 is overridden to cp1252
         self._assert_encoding("iso-8859-1", b"\xa3", "cp1252", "\xa3")
         self._assert_encoding("", b"\xc2\xa3", "utf-8", "\xa3")
@@ -382,6 +395,13 @@ class TestHtmlConversion:
         # if there is no BOM,  big endian should be chosen
         self._assert_encoding("utf-16", "hi".encode("utf-16-be"), "utf-16-be", "hi")
         self._assert_encoding("utf-32", "hi".encode("utf-32-be"), "utf-32-be", "hi")
+
+        # the same label from the body or from auto-detection decodes the same
+        # way as from the header
+        encoding, _ = html_to_unicode(None, b'<meta charset="utf-16">')
+        assert encoding == "utf-16-be"
+        encoding, _ = html_to_unicode(None, b"", auto_detect_fun=lambda x: "utf-16")
+        assert encoding == "utf-16-be"
 
     def test_python_crash(self):
         random.seed(42)

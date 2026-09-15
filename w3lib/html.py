@@ -10,8 +10,8 @@ from html.entities import name2codepoint
 from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
+from w3lib._util import to_unicode
 from w3lib.url import safe_url_string
-from w3lib.util import to_unicode
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -24,15 +24,19 @@ _ent_re = re.compile(
     re.IGNORECASE,
 )
 _tag_re = re.compile(r"<[a-zA-Z\/!][^<>]*>")
+_base_re = re.compile("<base", re.IGNORECASE)
 # Scan for the first honored <base href>, consuming comments and
 # <script>/<noscript> content (where a browser never parses tags) along the
 # way. Ignorable regions come first in the alternation, so a <base> inside one
 # is consumed before it can match; unterminated regions swallow the rest of
-# the document, as a browser does.
+# the document, as a browser does. Their content is consumed in runs of
+# characters that cannot start the closing delimiter, so that the large inline
+# scripts of real pages cost a tight loop per run rather than a match attempt
+# per character.
 _base_scan_re = re.compile(
     r"""
-      <!--.*?(?:-->|$)
-    | <(?P<t>script|noscript)\b[^<>]*>.*?(?:</(?P=t)>|$)
+      <!--[^-]*(?:-(?!->)[^-]*)*(?:-->|$)
+    | <(?P<t>script|noscript)\b[^<>]*>[^<]*(?:<(?!/(?P=t)>)[^<]*)*(?:</(?P=t)>|$)
     | <base\s[^<>]*href\s*=\s*["']\s*(?P<url>[^"'\s]+)\s*["']
     """,
     re.IGNORECASE | re.DOTALL | re.VERBOSE,
@@ -140,6 +144,13 @@ def replace_entities(
                 entity_name.lower()
             )
         if number is not None:
+            # A null or surrogate reference is a parse error that the tokenizer
+            # resolves to U+FFFD; chr() would instead emit a NUL or a lone
+            # surrogate, which is not a Unicode scalar value and fails to
+            # encode. Out-of-range references keep the remove_illegal handling.
+            # https://html.spec.whatwg.org/commit-snapshots/3e7b72c44ce144cee7db859cd0647af6646b6793/#numeric-character-reference-end-state
+            if number == 0 or 0xD800 <= number <= 0xDFFF:
+                return "\ufffd"
             # Numeric character references in the 80-9F range are typically
             # interpreted by browsers as representing the characters mapped
             # to bytes 80-9F in the Windows-1252 encoding. For more info
@@ -405,11 +416,12 @@ def get_base_url(
     """
 
     utext = to_unicode(text, encoding)
-    for m in _base_scan_re.finditer(utext):
-        if url := m.group("url"):
-            return urljoin(
-                safe_url_string(baseurl), safe_url_string(url, encoding=encoding)
-            )
+    if _base_re.search(utext):
+        for m in _base_scan_re.finditer(utext):
+            if url := m.group("url"):
+                return urljoin(
+                    safe_url_string(baseurl), safe_url_string(url, encoding=encoding)
+                )
     return safe_url_string(baseurl)
 
 
