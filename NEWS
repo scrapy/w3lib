@@ -18,9 +18,20 @@ New features:
   *query_separator* for :func:`~w3lib.url.canonicalize_url`) keyword argument,
   to support query strings that use a separator other than ``&`` (#167).
 
-- Improved the performance of most :mod:`w3lib.html` functions (#256), and of
-  most :mod:`w3lib.url` functions, :func:`~w3lib.url.safe_url_string` in
-  particular being 4.2x faster (#257).
+- Improved the performance of most :mod:`w3lib.url` functions,
+  :func:`~w3lib.url.safe_url_string` in particular (#257), and of some
+  :mod:`w3lib.html` functions (#256).
+
+- :func:`~w3lib.html.get_base_url` is now several times faster on typical
+  pages, which have no ``<base>`` tag (#331).
+
+Deprecations and removals:
+
+- The ``w3lib.util`` module is deprecated, and now emits a
+  :exc:`DeprecationWarning` on import (#322).
+
+- The undocumented ``w3lib_replace`` codec error handler is no longer
+  registered (#318).
 
 Security and correctness fixes:
 
@@ -30,8 +41,12 @@ Security and correctness fixes:
   let a URL resolve to a different host or path than the one these functions
   reported:
 
-    - A scheme starting with a digit or a symbol is no longer accepted; a
-      scheme must now start with a letter (#278).
+    - A scheme starting with a digit or a symbol, or containing a comma, is
+      no longer accepted (#278, #327).
+
+    - A port with a sign, an underscore or non-ASCII digits, such as ``:+80``
+      or ``:8_0``, now raises :exc:`ValueError` instead of being read as a
+      number (#327).
 
     - ``\`` is now treated like ``/`` in the authority and path of
       special-scheme URLs (#285).
@@ -44,7 +59,9 @@ Security and correctness fixes:
 
     - Percent-encoded unreserved characters (e.g. ``%41``) in query
       parameter names and values are now decoded, so equivalent URLs no
-      longer canonicalize differently (#273).
+      longer canonicalize differently (#273), while a percent-encoded
+      semicolon (``%3B``) in the path is now kept encoded, since decoding it
+      turned it into a path parameter delimiter (#323).
 
     - ASCII tab, carriage return and line feed characters are now stripped
       from the whole URL, including the host, for both ``str`` and ``bytes``
@@ -63,7 +80,35 @@ Security and correctness fixes:
 
   Additionally, :func:`~w3lib.url.safe_url_string` now adds a ``/`` path to a
   URL that has a query but no path, since some HTTP clients otherwise send
-  the query alone as the request target (#297).
+  the query alone as the request target (#297), and no longer raises
+  :exc:`UnicodeDecodeError` for a host that cannot be IDNA-encoded, such as
+  one with an empty label, when *encoding* is not UTF-8 (#319).
+
+- :func:`~w3lib.url.canonicalize_url` now resolves dot segments (``.`` and
+  ``..``) in the path and normalizes IPv6 addresses in the host, so that
+  equivalent URLs canonicalize the same (#308).
+
+- :func:`~w3lib.url.safe_download_url` now resolves percent-encoded dot
+  segments, such as ``%2e`` or ``%2e%2e``, like ``.`` and ``..`` (#320), and
+  decides whether the path keeps its trailing ``/`` based on the path alone,
+  rather than on whether the whole URL ends with ``/`` (#311).
+
+- :func:`~w3lib.url.url_query_parameter` now accepts a ``bytes`` URL, instead
+  of parsing its ``b'…'`` representation (#325), and replaces undecodable
+  bytes in the returned value with U+FFFD instead of raising
+  :exc:`UnicodeDecodeError` (#330).
+
+- :func:`~w3lib.url.url_query_cleaner` with *keep_fragments* no longer appends
+  an empty ``#`` to a URL that has no fragment, and the type hint of its
+  *parameterlist* argument no longer claims to accept ``bytes`` items, which
+  never matched anything (#326).
+
+- :func:`~w3lib.url.path_to_file_uri` and :func:`~w3lib.url.file_uri_to_path`
+  now round-trip Windows UNC paths, ``\\server\share\file`` becoming
+  ``file://server/share/file`` (#324), and
+  :func:`~w3lib.url.file_uri_to_path` now decodes every percent-escape in the
+  path, including those of characters that are safe in a URL path, such as
+  ``%25`` or ``%41`` (#327).
 
 - Fixed excessive backtracking on malformed input, which could be used for
   denial of service, in :func:`~w3lib.html.get_base_url` (#264),
@@ -78,7 +123,8 @@ Security and correctness fixes:
   would ignore it (#303).
 
 - :func:`~w3lib.url.parse_data_uri` no longer accepts a scheme that merely
-  starts with ``data``, such as ``database:`` (#276).
+  starts with ``data``, such as ``database:`` (#276), and no longer raises on
+  an empty quoted parameter value, such as ``charset=""`` (#310).
 
 - :func:`~w3lib.html.get_meta_refresh` now detects a ``<meta>`` refresh tag
   left unterminated by a closing ``>`` (#298), and no longer treats a
@@ -89,6 +135,16 @@ Security and correctness fixes:
 - :func:`~w3lib.html.replace_entities` and :func:`~w3lib.html.get_meta_refresh`
   now only treat ASCII digits as numeric character references and refresh
   intervals, matching browsers (#292).
+
+- :func:`~w3lib.html.replace_entities` now resolves a null or surrogate
+  numeric character reference, such as ``&#0;`` or ``&#xD800;``, to U+FFFD,
+  as browsers do, instead of producing a NUL or a lone surrogate that cannot
+  be encoded (#321).
+
+- :func:`~w3lib.encoding.resolve_encoding`, and with it every function that
+  detects the encoding of a response, no longer resolves UTF-7, which
+  browsers do not support and which lets ASCII-only bytes smuggle markup
+  past filters (#307).
 
 - :func:`~w3lib.encoding.http_content_type_encoding` now recognizes a quoted
   ``charset`` parameter value, and no longer stops matching a valid
@@ -103,13 +159,15 @@ Security and correctness fixes:
 
 - :func:`~w3lib.encoding.html_to_unicode` now decodes a lead ``0x80`` byte as
   the euro sign when the encoding is GB18030, matching the WHATWG Encoding
-  Standard (#300).
+  Standard (#300), and decodes a BOM-less ``utf-16`` or ``utf-32`` encoding
+  declared in the body or auto-detected as big-endian, as it already did for
+  one declared in the ``Content-Type`` header (#317).
 
 - :func:`~w3lib.html.get_meta_refresh` no longer prints the HTML content it
   was given to stdout when a :exc:`UnicodeDecodeError` is raised (#256).
 
 - Tests, benchmarking and CI improvements (#247, #259, #262, #281, #296,
-  #304).
+  #304, #313, #314, #329).
 
 2.4.1 (2026-03-20)
 ------------------
