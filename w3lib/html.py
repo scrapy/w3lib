@@ -412,11 +412,12 @@ def get_base_url(
     """
 
     utext = to_unicode(text, encoding)
-    for m in _base_scan_re.finditer(utext):
-        if url := m.group("url"):
-            return urljoin(
-                safe_url_string(baseurl), safe_url_string(url, encoding=encoding)
-            )
+    if "<base" in utext.lower():
+        for m in _base_scan_re.finditer(utext):
+            if url := m.group("url"):
+                return urljoin(
+                    safe_url_string(baseurl), safe_url_string(url, encoding=encoding)
+                )
     return safe_url_string(baseurl)
 
 

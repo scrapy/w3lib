@@ -165,6 +165,23 @@ BENCHMARK_CASES: CasesMapType = {
     get_base_url: [
         (
             (
+                "<html><head><title>Dummy</title></head><body>"
+                + "<p>hello world</p>" * 20000
+                + "</body></html>",
+                "https://example.org",
+            ),
+            {},
+        ),
+        (
+            (
+                "<html><head><base href='http://example.org/something' /></head>"
+                "<body>" + "<p>hello world</p>" * 20000 + "</body></html>",
+                "https://example.org",
+            ),
+            {},
+        ),
+        (
+            (
                 """<html><head><title>Dummy</title><base href='http://example.org/something' /></head><body>blahablsdfsal&amp;</body></html>""",
                 "https://example.org",
             ),
