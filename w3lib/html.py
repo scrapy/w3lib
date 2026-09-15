@@ -24,6 +24,7 @@ _ent_re = re.compile(
     re.IGNORECASE,
 )
 _tag_re = re.compile(r"<[a-zA-Z\/!][^<>]*>")
+_base_re = re.compile("<base", re.IGNORECASE)
 # Scan for the first honored <base href>, consuming comments and
 # <script>/<noscript> content (where a browser never parses tags) along the
 # way. Ignorable regions come first in the alternation, so a <base> inside one
@@ -412,7 +413,7 @@ def get_base_url(
     """
 
     utext = to_unicode(text, encoding)
-    if "<base" in utext.lower():
+    if _base_re.search(utext):
         for m in _base_scan_re.finditer(utext):
             if url := m.group("url"):
                 return urljoin(
