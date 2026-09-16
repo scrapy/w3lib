@@ -855,6 +855,15 @@ http://www.example.org/index.php" />
         body = '<meta http-equiv="refresh" content="junk" content="3; url=/next">'
         assert get_meta_refresh(body, baseurl) == (3.0, "http://example.org/next")
 
+    def test_http_equiv_without_refresh(self) -> None:
+        # "refresh" elsewhere in the tag gets it scanned, but the pragma is
+        # only the http-equiv attribute with refresh in its value
+        baseurl = "http://example.org"
+        body = '<meta http-equiv="content-type" content="3; url=/refresh">'
+        assert get_meta_refresh(body, baseurl) == (None, None)
+        body = '<meta http-equiv="content-type" http-equiv="refresh" content="3; url=/next">'
+        assert get_meta_refresh(body, baseurl) == (3.0, "http://example.org/next")
+
     def test_unquoted_whitespace(self) -> None:
         body = "<meta http-equiv=refresh content=3; url=/next>"
         assert get_meta_refresh(body, "http://example.org") == (None, None)
