@@ -254,21 +254,20 @@ def _gb18030_replace(exc: UnicodeError) -> tuple[str, int]:
 codecs.register_error("w3lib_gb18030_replace", _gb18030_replace)
 
 
-def _errors(encoding: str) -> str:
-    # Every name that resolves to gb18030 contains "18030", so the substring
-    # check keeps the codec lookup out of the common case.
-    if "18030" in encoding and codecs.lookup(encoding).name == "gb18030":
-        return "w3lib_gb18030_replace"
-    return "replace"
-
-
 def to_unicode(data_str: bytes, encoding: str) -> str:
     r"""Convert a str object to unicode using the encoding given
 
     Characters that cannot be converted will be converted to ``\ufffd`` (the
     unicode replacement character).
     """
-    return data_str.decode(encoding, _errors(encoding))
+    # Every name that resolves to gb18030 contains "18030", so the substring
+    # check keeps the codec lookup out of the common case.
+    errors = (
+        "w3lib_gb18030_replace"
+        if "18030" in encoding and codecs.lookup(encoding).name == "gb18030"
+        else "replace"
+    )
+    return data_str.decode(encoding, errors)
 
 
 class EncodingDecision(Protocol):
@@ -285,8 +284,8 @@ class EncodingDecision(Protocol):
     def ascii_compatible(self) -> bool:
         """Whether ASCII bytes decode to the same ASCII characters."""
 
-    def decode(self, body: bytes, max_chars: int | None = None) -> str:
-        """Decode *body*, or only its first *max_chars* characters."""
+    def decode(self, body: bytes) -> str:
+        """Decode *body*."""
 
 
 class EncodingBackend(Protocol):
@@ -325,9 +324,8 @@ class EncodingContext:
 
     *body*, *content_type* and *encoding* are the arguments that
     :meth:`EncodingBackend.resolve` gets, on first access to
-    :attr:`decision`, :attr:`encoding`, :attr:`text`,
-    :attr:`request_encoding` or :meth:`text_prefix`. Nothing is decoded
-    until :attr:`text` or :meth:`text_prefix` is read.
+    :attr:`decision`, :attr:`encoding`, :attr:`text` or
+    :attr:`request_encoding`. Nothing is decoded until :attr:`text` is read.
     """
 
     def __init__(
@@ -360,12 +358,6 @@ class EncodingContext:
         """The whole body decoded."""
         return self.decision.decode(self.body)
 
-    def text_prefix(self, max_chars: int) -> str:
-        """Return the first *max_chars* characters of the decoded body."""
-        if "text" in self.__dict__:
-            return self.text[:max_chars]
-        return self.decision.decode(self.body, max_chars)
-
     @property
     def request_encoding(self) -> str:
         """Encoding for URLs found in the document, in the Python spelling.
@@ -394,19 +386,8 @@ class _Decision:
     def ascii_compatible(self) -> bool:
         return _ASCII.decode(self.name, "replace") == _ASCII.decode()
 
-    def decode(self, body: bytes, max_chars: int | None = None) -> str:
-        body = body.removeprefix(self._bom)
-        errors = _errors(self.name)
-        if max_chars is not None and len(body) > 4 * max_chars:
-            # No codec needs more than 4 bytes per character, so this prefix
-            # decodes to enough characters unless the codec spends bytes on
-            # state switches, e.g. the escape sequences of ISO-2022-JP.
-            decoder = codecs.getincrementaldecoder(self.name)(errors)
-            text = decoder.decode(body[: 4 * max_chars])
-            if len(text) >= max_chars:
-                return text[:max_chars]
-        text = body.decode(self.name, errors)
-        return text if max_chars is None else text[:max_chars]
+    def decode(self, body: bytes) -> str:
+        return to_unicode(body.removeprefix(self._bom), self.name)
 
 
 class DefaultEncodingBackend:

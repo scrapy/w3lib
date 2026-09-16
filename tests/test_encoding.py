@@ -473,9 +473,7 @@ class TestEncodingContext:
         )
         assert not backend.calls
         assert context.encoding == "cp1252"
-        assert context.text_prefix(3) == "caf"
         assert context.text == "café"
-        assert context.text_prefix(3) == "caf"
         assert backend.calls == [(b"caf\xe9", "text/html; charset=latin1", None)]
 
     def test_explicit_encoding(self):
@@ -511,24 +509,3 @@ class TestEncodingContext:
 class TestDefaultEncodingBackend:
     def test_default_encoding(self):
         assert DefaultEncodingBackend("ascii").resolve(b"").name == "ascii"
-
-    @pytest.mark.parametrize(
-        ("body", "encoding"),
-        [
-            ("日本語" * 5000, "utf-8"),
-            ("日本語" * 5000, "gb18030"),
-            ("日本語" * 5000, "utf-16-le"),
-            ("日本語 " * 5000, "iso2022_jp"),
-        ],
-    )
-    def test_decode_prefix(self, body, encoding):
-        decision = DefaultEncodingBackend().resolve(b"", encoding=encoding)
-        data = body.encode(encoding)
-        assert decision.decode(data) == body
-        for max_chars in (0, 1, 2, 4096, len(body) + 1):
-            assert decision.decode(data, max_chars) == body[:max_chars]
-
-    def test_decode_prefix_gb18030_euro(self):
-        decision = DefaultEncodingBackend().resolve(b"", encoding="gb18030")
-        data = b"\x80" * 5
-        assert decision.decode(data, 1) == "\u20ac"
