@@ -7,8 +7,9 @@ from __future__ import annotations
 import codecs
 import encodings
 import re
+from functools import cached_property
 from re import Match
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Protocol, cast
 
 import w3lib._util
 
@@ -253,20 +254,206 @@ def _gb18030_replace(exc: UnicodeError) -> tuple[str, int]:
 codecs.register_error("w3lib_gb18030_replace", _gb18030_replace)
 
 
+def _errors(encoding: str) -> str:
+    # Every name that resolves to gb18030 contains "18030", so the substring
+    # check keeps the codec lookup out of the common case.
+    if "18030" in encoding and codecs.lookup(encoding).name == "gb18030":
+        return "w3lib_gb18030_replace"
+    return "replace"
+
+
 def to_unicode(data_str: bytes, encoding: str) -> str:
     r"""Convert a str object to unicode using the encoding given
 
     Characters that cannot be converted will be converted to ``\ufffd`` (the
     unicode replacement character).
     """
-    # Every name that resolves to gb18030 contains "18030", so the substring
-    # check keeps the codec lookup out of the common case.
-    errors = (
-        "w3lib_gb18030_replace"
-        if "18030" in encoding and codecs.lookup(encoding).name == "gb18030"
-        else "replace"
-    )
-    return data_str.decode(encoding, errors)
+    return data_str.decode(encoding, _errors(encoding))
+
+
+class EncodingDecision(Protocol):
+    """Encoding that an :class:`EncodingBackend` chose for a document.
+
+    .. versionadded:: VERSION
+    """
+
+    @property
+    def name(self) -> str:
+        """Name of the encoding, as the backend spells it."""
+
+    @property
+    def ascii_compatible(self) -> bool:
+        """Whether ASCII bytes decode to the same ASCII characters."""
+
+    def decode(self, body: bytes, max_chars: int | None = None) -> str:
+        """Decode *body*, or only its first *max_chars* characters."""
+
+
+class EncodingBackend(Protocol):
+    """Policy that chooses and decodes the encoding of a document.
+
+    .. versionadded:: VERSION
+
+    :class:`DefaultEncodingBackend` follows the WHATWG detection rules with
+    Python codecs. Another implementation can plug in a different detection
+    or decoder, and since the same decision names the encoding and decodes
+    the text, both always agree.
+
+    *policy_id* names the policy, so that data recorded under one policy
+    can be told apart from data recorded under another.
+    """
+
+    policy_id: str
+
+    def resolve(
+        self,
+        body: bytes,
+        content_type: str = "",
+        encoding: str | None = None,
+    ) -> EncodingDecision:
+        """Choose the encoding of *body*.
+
+        *content_type* is the value of the Content-Type header, and *encoding*
+        is an encoding label that the caller asks for explicitly.
+        """
+
+
+class EncodingContext:
+    """Encoding of a document, resolved and decoded lazily.
+
+    .. versionadded:: VERSION
+
+    *body*, *content_type* and *encoding* are the arguments that
+    :meth:`EncodingBackend.resolve` gets, on first access to
+    :attr:`decision`, :attr:`encoding`, :attr:`text`,
+    :attr:`request_encoding` or :meth:`text_prefix`. Nothing is decoded
+    until :attr:`text` or :meth:`text_prefix` is read.
+    """
+
+    def __init__(
+        self,
+        body: bytes,
+        content_type: str = "",
+        *,
+        backend: EncodingBackend,
+        encoding: str | None = None,
+    ):
+        self.body: bytes = body
+        self.content_type: str = content_type
+        self.backend: EncodingBackend = backend
+        self.explicit_encoding: str | None = encoding
+
+    @cached_property
+    def decision(self) -> EncodingDecision:
+        """Encoding chosen by the backend."""
+        return self.backend.resolve(
+            self.body, self.content_type, self.explicit_encoding
+        )
+
+    @property
+    def encoding(self) -> str:
+        """Name of the encoding chosen by the backend."""
+        return self.decision.name
+
+    @cached_property
+    def text(self) -> str:
+        """The whole body decoded."""
+        return self.decision.decode(self.body)
+
+    def text_prefix(self, max_chars: int) -> str:
+        """Return the first *max_chars* characters of the decoded body."""
+        if "text" in self.__dict__:
+            return self.text[:max_chars]
+        return self.decision.decode(self.body, max_chars)
+
+    @property
+    def request_encoding(self) -> str:
+        """Encoding for URLs found in the document, in the Python spelling.
+
+        It is UTF-8 when the document encoding is not ASCII-compatible or
+        Python has no codec for it.
+        """
+        if not self.decision.ascii_compatible:
+            return "utf-8"
+        try:
+            codecs.lookup(self.encoding)
+        except LookupError:
+            return "utf-8"
+        return self.encoding
+
+
+_ASCII = bytes(range(128))
+
+
+class _Decision:
+    def __init__(self, name: str, bom: bytes = b""):
+        self.name = name
+        self._bom = bom
+
+    @property
+    def ascii_compatible(self) -> bool:
+        return _ASCII.decode(self.name, "replace") == _ASCII.decode()
+
+    def decode(self, body: bytes, max_chars: int | None = None) -> str:
+        body = body.removeprefix(self._bom)
+        errors = _errors(self.name)
+        if max_chars is not None and len(body) > 4 * max_chars:
+            # No codec needs more than 4 bytes per character, so this prefix
+            # decodes to enough characters unless the codec spends bytes on
+            # state switches, e.g. the escape sequences of ISO-2022-JP.
+            decoder = codecs.getincrementaldecoder(self.name)(errors)
+            text = decoder.decode(body[: 4 * max_chars])
+            if len(text) >= max_chars:
+                return text[:max_chars]
+        text = body.decode(self.name, errors)
+        return text if max_chars is None else text[:max_chars]
+
+
+class DefaultEncodingBackend:
+    """:class:`EncodingBackend` built on the functions of this module.
+
+    .. versionadded:: VERSION
+
+    It chooses the encoding the way :func:`html_to_unicode` does, and
+    decodes with Python codecs the way :func:`to_unicode` does.
+    *default_encoding* is the fallback, and *auto_detect_func* sniffs the
+    encoding before falling back to it, as the same parameters of
+    :func:`html_to_unicode` do. An *encoding* passed to :meth:`resolve` only
+    yields to a byte order mark.
+    """
+
+    policy_id = "w3lib"
+
+    def __init__(
+        self,
+        default_encoding: str = "utf8",
+        auto_detect_func: Callable[[bytes], str | None] | None = None,
+    ):
+        self._default_encoding = default_encoding
+        self._auto_detect_func = auto_detect_func
+
+    def resolve(
+        self,
+        body: bytes,
+        content_type: str = "",
+        encoding: str | None = None,
+    ) -> EncodingDecision:
+        """Choose the encoding of *body*."""
+        bom_enc, bom = read_bom(body)
+        if bom_enc is not None and bom is not None:
+            return _Decision(bom_enc, bom)
+        enc = (
+            (resolve_encoding(encoding) if encoding else None)
+            or http_content_type_encoding(content_type)
+            or html_body_declared_encoding(body)
+        )
+        if enc is None and self._auto_detect_func is not None:
+            enc = self._auto_detect_func(body)
+        if enc is None:
+            enc = self._default_encoding
+        elif enc in {"utf-16", "utf-32"}:
+            enc += "-be"
+        return _Decision(enc)
 
 
 def html_to_unicode(
@@ -336,17 +523,6 @@ def html_to_unicode(
     >>>
 
     '''
-    bom_enc, bom = read_bom(html_body_str)
-    if bom_enc is not None and bom is not None:
-        return bom_enc, to_unicode(html_body_str[len(bom) :], bom_enc)
-
-    enc = http_content_type_encoding(content_type_header)
-    if enc is None:
-        enc = html_body_declared_encoding(html_body_str)
-    if enc is None and auto_detect_fun is not None:
-        enc = auto_detect_fun(html_body_str)
-    if enc is None:
-        enc = default_encoding
-    elif enc in {"utf-16", "utf-32"}:
-        enc += "-be"
-    return enc, to_unicode(html_body_str, enc)
+    backend = DefaultEncodingBackend(default_encoding, auto_detect_fun)
+    decision = backend.resolve(html_body_str, content_type_header or "")
+    return decision.name, decision.decode(html_body_str)
