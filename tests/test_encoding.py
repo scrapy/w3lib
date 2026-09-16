@@ -505,6 +505,25 @@ class TestEncodingContext:
         )
         assert context.request_encoding == expected
 
+    def test_request_encoding_unknown_codec(self):
+        class Decision:
+            name = "x-user-defined"
+            ascii_compatible = True
+
+            def decode(self, body: bytes) -> str:
+                return body.decode("ascii")
+
+        class Backend:
+            policy_id = "test"
+
+            def resolve(
+                self, body: bytes, content_type: str = "", encoding: str | None = None
+            ) -> EncodingDecision:
+                return Decision()
+
+        context = EncodingContext(b"", backend=Backend())
+        assert context.request_encoding == "utf-8"
+
 
 class TestDefaultEncodingBackend:
     def test_default_encoding(self):
