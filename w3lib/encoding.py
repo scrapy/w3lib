@@ -420,21 +420,39 @@ class DefaultEncodingBackend:
         encoding: str | None = None,
     ) -> EncodingDecision:
         """Choose the encoding of *body*."""
-        bom_enc, bom = read_bom(body)
-        if bom_enc is not None and bom is not None:
-            return _Decision(bom_enc, bom)
-        enc = (
-            (resolve_encoding(encoding) if encoding else None)
-            or http_content_type_encoding(content_type)
-            or html_body_declared_encoding(body)
+        return _Decision(
+            *_resolve(
+                body,
+                content_type,
+                encoding,
+                self._default_encoding,
+                self._auto_detect_func,
+            )
         )
-        if enc is None and self._auto_detect_func is not None:
-            enc = self._auto_detect_func(body)
-        if enc is None:
-            enc = self._default_encoding
-        elif enc in {"utf-16", "utf-32"}:
-            enc += "-be"
-        return _Decision(enc)
+
+
+def _resolve(
+    body: bytes,
+    content_type: str | None,
+    encoding: str | None,
+    default_encoding: str,
+    auto_detect_func: Callable[[bytes], str | None] | None,
+) -> tuple[str, bytes]:
+    bom_enc, bom = read_bom(body)
+    if bom_enc is not None and bom is not None:
+        return bom_enc, bom
+    enc = (
+        (resolve_encoding(encoding) if encoding else None)
+        or http_content_type_encoding(content_type)
+        or html_body_declared_encoding(body)
+    )
+    if enc is None and auto_detect_func is not None:
+        enc = auto_detect_func(body)
+    if enc is None:
+        enc = default_encoding
+    elif enc in {"utf-16", "utf-32"}:
+        enc += "-be"
+    return enc, b""
 
 
 def html_to_unicode(
@@ -504,6 +522,7 @@ def html_to_unicode(
     >>>
 
     '''
-    backend = DefaultEncodingBackend(default_encoding, auto_detect_fun)
-    decision = backend.resolve(html_body_str, content_type_header or "")
-    return decision.name, decision.decode(html_body_str)
+    enc, bom = _resolve(
+        html_body_str, content_type_header, None, default_encoding, auto_detect_fun
+    )
+    return enc, to_unicode(html_body_str[len(bom) :], enc)
