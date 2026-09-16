@@ -437,17 +437,16 @@ def get_meta_refresh(
         interval: float | None = None
         url: str | None = None
         for name, value in iter_tag_attributes(attrs):
-            if value is None:
-                continue
-            if name == "http-equiv" and "refresh" in value.lower():
-                has_refresh_pragma = True
-            elif (
-                name == "content"
-                and interval is None
-                and (m := _meta_refresh_content_re.match(value))
-            ):
-                interval = float(m.group("int"))
-                url = m.group("url")
+            match name:
+                case "http-equiv":
+                    if "refresh" in value.lower():
+                        has_refresh_pragma = True
+                case "content":
+                    if interval is None and (
+                        m := _meta_refresh_content_re.match(value)
+                    ):
+                        interval = float(m.group("int"))
+                        url = m.group("url")
 
         if has_refresh_pragma and interval is not None:
             assert url is not None

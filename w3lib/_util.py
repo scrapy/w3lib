@@ -23,36 +23,26 @@ def to_unicode(
     return text.decode(encoding, errors)
 
 
+# One attribute: a name and, optionally, a quoted or unquoted value.
 _attr_re = re.compile(
-    r"""\s*(?:
-        (?P<name>[^\s<>/=]+)                              # attribute name
-        (?:\s*=\s*(?P<value>"[^"]*"|'[^']*'|[^\s"'>]*))?  # optional value
-      | [<>/=]                                            # stray character
-      | \Z                                                # end of input
-    )""",
+    r"""(?P<name>[^\s<>/=]+)  # name
+    (?:\s*=\s*(?P<value>"[^"]*"|'[^']*'|[^\s"'>]*))?""",  # optional value
     re.VERBOSE,
 )
 
 
-def iter_tag_attributes(attrs: str) -> Iterable[tuple[str, str | None]]:
-    """Yield ``(name, value)`` for every attribute in ``attrs``, the text of
-    one tag after its name.
+def iter_tag_attributes(attrs: str) -> Iterable[tuple[str, str]]:
+    """Yield ``(name, value)`` for every attribute with a value in ``attrs``,
+    the text of one tag after its name, in order.
 
-    ``name`` is lowercased. ``value`` is ``None`` for a valueless attribute and
-    the value without its quotes otherwise.
+    ``name`` is lowercased, and ``value`` has its quotes removed, if any.
     """
-    pos = 0
-    while pos < len(attrs):
-        # A single attribute of an already-isolated tag (no "<"/">" inside), anchored
-        # with .match() at the current scan position. It always matches and always
-        # advances, so scanning the whole tag stays linear even on crafted input.
-        attr = _attr_re.match(attrs, pos)
-        assert attr is not None
-        pos = attr.end()
-        name = attr.group("name")
-        if name is None:
-            continue
+    # finditer() matches one attribute at a time, from where the previous one
+    # ended, so a crafted tag cannot make it backtrack across attributes.
+    for attr in _attr_re.finditer(attrs):
         value = attr.group("value")
-        if value is not None and value[:1] in ('"', "'"):
+        if value is None:
+            continue
+        if value[:1] in ('"', "'"):
             value = value[1:-1]
-        yield name.lower(), value
+        yield attr.group("name").lower(), value
