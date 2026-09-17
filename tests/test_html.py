@@ -149,10 +149,10 @@ class TestReplaceTags:
 
     def test_replace_tags_no_catastrophic_backtracking(self):
         evil = "<a" * 50000
-        start = time.perf_counter()
+        start = time.process_time()
         assert replace_tags(evil) == evil  # incomplete tags (no ">") are untouched
         assert replace_tags(evil + "<b>x</b>") == evil + "x"
-        assert time.perf_counter() - start < 2
+        assert time.process_time() - start < 2
 
 
 class TestRemoveComments:
@@ -255,10 +255,10 @@ class TestRemoveTags:
         ],
     )
     def test_remove_tags_no_catastrophic_backtracking(self, evil: str) -> None:
-        start = time.perf_counter()
+        start = time.process_time()
         assert remove_tags(evil) == evil
         assert remove_tags(evil + "<b>x</b>") == evil + "x"
-        assert time.perf_counter() - start < 2
+        assert time.process_time() - start < 2
 
 
 class TestRemoveTagsWithContent:
@@ -311,7 +311,7 @@ class TestRemoveTagsWithContent:
 
     def test_no_catastrophic_backtracking(self):
         evil = "<script " * 50000
-        start = time.perf_counter()
+        start = time.process_time()
         assert remove_tags_with_content(evil, which_ones=("script",)) == evil
         assert (
             remove_tags_with_content(
@@ -319,7 +319,7 @@ class TestRemoveTagsWithContent:
             )
             == evil
         )
-        assert time.perf_counter() - start < 2
+        assert time.process_time() - start < 2
 
     def test_end_tag_with_whitespace_or_attrs(self):
         # Browsers end an element on the tag name followed by whitespace, "/"
@@ -429,9 +429,9 @@ although this is inside a cdata! &amp; &quot;</node1><node2>blah&blahblahblahbla
 
     def test_no_cdata_catastrophic_backtracking(self) -> None:
         evil = "<![CDATA[x" * 200000
-        start = time.perf_counter()
+        start = time.process_time()
         assert unquote_markup(evil) == evil
-        assert time.perf_counter() - start < 2
+        assert time.process_time() - start < 2
 
 
 class TestGetBaseUrl:
@@ -465,7 +465,7 @@ class TestGetBaseUrl:
 
     def test_get_base_url_no_catastrophic_backtracking(self):
         prefix = "<base " * 30000
-        start = time.perf_counter()
+        start = time.process_time()
         assert get_base_url(prefix, "http://example.com/") == "http://example.com/"
         assert (
             get_base_url(
@@ -474,7 +474,7 @@ class TestGetBaseUrl:
             )
             == "http://example.org/found/"
         )
-        assert time.perf_counter() - start < 2
+        assert time.process_time() - start < 2
 
     def test_base_url_in_comment(self):
         assert get_base_url("""<!-- <base href="http://example.com/"/> -->""") == ""
@@ -657,17 +657,17 @@ class TestGetMetaRefresh:
 
     def test_get_meta_refresh_no_catastrophic_backtracking(self):
         prefix = "<meta " * 80000
-        start = time.perf_counter()
+        start = time.process_time()
         assert get_meta_refresh(prefix) == (None, None)
         assert get_meta_refresh(
             prefix
             + '<meta http-equiv="refresh" content="3; url=http://example.org/next/">'
         ) == (3.0, "http://example.org/next/")
-        assert time.perf_counter() - start < 2
+        assert time.process_time() - start < 2
 
     def test_get_meta_refresh_no_catastrophic_backtracking_single_tag(self):
         evil = "<meta " + "http-equiv refresh " * 50000 + ">"
-        start = time.perf_counter()
+        start = time.process_time()
         assert get_meta_refresh(evil, ignore_tags=()) == (None, None)
         good = (
             "<meta "
@@ -678,7 +678,7 @@ class TestGetMetaRefresh:
             3.0,
             "http://example.org/next/",
         )
-        assert time.perf_counter() - start < 2
+        assert time.process_time() - start < 2
 
     def test_without_url(self):
         # refresh without url should return (None, None)
@@ -872,12 +872,12 @@ http://www.example.org/index.php" />
         # a long run of whitespace inside a refresh tag must be skipped in
         # one step, not retried from every position
         evil = '<meta http-equiv="refresh" ' + " " * 200000
-        start = time.perf_counter()
+        start = time.process_time()
         assert get_meta_refresh(evil + ">", "http://example.org") == (None, None)
         assert get_meta_refresh(
             evil + 'content="3; url=/next">', "http://example.org"
         ) == (3.0, "http://example.org/next")
-        assert time.perf_counter() - start < 2
+        assert time.process_time() - start < 2
 
     def test_non_refresh_meta_is_skipped(self):
         baseurl = "http://example.org"
