@@ -23,10 +23,11 @@ def to_unicode(
     return text.decode(encoding, errors)
 
 
-# One attribute: a name and, optionally, a quoted or unquoted value.
+# One attribute: a name and, optionally, a value, quoted or not. Each quoting
+# style captures its own group, so a matched value needs no quote stripping.
 _attr_re = re.compile(
     r"""(?P<name>[^\s<>/=]+)  # name
-    (?:\s*=\s*(?P<value>"[^"]*"|'[^']*'|[^\s"'>]*))?""",  # optional value
+    (?:\s*=\s*(?:"(?P<double>[^"]*)"|'(?P<single>[^']*)'|(?P<bare>[^\s"'>]*)))?""",
     re.VERBOSE,
 )
 
@@ -40,9 +41,10 @@ def iter_tag_attributes(attrs: str) -> Iterable[tuple[str, str]]:
     # finditer() matches one attribute at a time, from where the previous one
     # ended, so a crafted tag cannot make it backtrack across attributes.
     for attr in _attr_re.finditer(attrs):
-        value = attr.group("value")
-        if value is None:
+        # A valueless attribute matches the name group and nothing after it.
+        if attr.lastindex == 1:
             continue
-        if value[:1] in ('"', "'"):
-            value = value[1:-1]
-        yield attr.group("name").lower(), value
+        name, double, single, bare = attr.groups()
+        # Exactly one value group matched; the last "" covers all three being
+        # empty, which an empty value in any quoting style produces.
+        yield name.lower(), double or single or bare or ""

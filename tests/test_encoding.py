@@ -188,6 +188,84 @@ class TestRequestEncoding:
             == "utf-8"
         )
 
+    @pytest.mark.parametrize(
+        ("body", "expected"),
+        [
+            # a "charset=" inside an unrelated attribute value is not a
+            # declaration, and neither is the tail of another attribute's name
+            (
+                b'<meta name="description" content="Set charset=big5 in your editor">',
+                None,
+            ),
+            (b'<meta data-charset="big5">', None),
+            (
+                b'<meta name="description" content="use charset=big5"><meta charset="utf-8">',
+                "utf-8",
+            ),
+            (
+                b'<meta property="og:description" content="How to set charset=windows-1251 on your site"><meta charset="utf-8">',
+                "utf-8",
+            ),
+            # a charset inside a content attribute needs the http-equiv
+            # pragma, however the pragma is spelled, but with a value
+            (b'<meta content="text/html; charset=gbk">', None),
+            (b'<meta http-equiv content="text/html; charset=gbk">', None),
+            (
+                b'<meta http_equiv="content-type" content="text/html; charset=gbk">',
+                "gb18030",
+            ),
+            # another pragma is not the content-type one, however its own
+            # content value spells "charset="
+            (b'<meta http-equiv="refresh" content="0; url=/x?charset=big5">', None),
+            (
+                b'<meta http-equiv="X-UA-Compatible" content="IE=edge; charset=big5">',
+                None,
+            ),
+            (
+                b'<meta http-equiv="Content-Security-Policy" content="default-src /x?charset=big5">',
+                None,
+            ),
+            # only the first content attribute of a tag is read, and an empty
+            # charset attribute does not hide it
+            (
+                b'<meta http-equiv="content-type" content="text/html; charset=gbk" content="text/html; charset=big5">',
+                "gb18030",
+            ),
+            (
+                b'<meta http-equiv="content-type" charset="" content="text/html; charset=gbk">',
+                "gb18030",
+            ),
+            # a charset attribute wins over a content one, wherever it is
+            (
+                b'<meta http-equiv="content-type" content="text/html; charset=gbk" charset="utf-8">',
+                "utf-8",
+            ),
+            # a quoted ">" does not end the tag, and a quoted tag written
+            # inside one neither ends nor stops the scan
+            (b'<meta content="a>b" charset="utf-8">', "utf-8"),
+            (b'<meta content="<body>" charset="utf-8">', "utf-8"),
+            # an empty charset attribute is not a declaration
+            (b'<meta charset="">', None),
+            (b'<meta charset=""><meta charset="utf-8">', "utf-8"),
+            # a quoted "<!--" does not start a comment
+            (b'<meta name="a" content="<!--"><meta charset="utf-8">', "utf-8"),
+            # the text around a comment is not spliced into a tag
+            (b'<met<!-- -->a charset="big5">', None),
+            (b'<meta charset="big5"<!-- -->>', "big5hkscs"),
+            # an unterminated comment hides everything after it
+            (b'<!-- <meta charset="big5">', None),
+            # an xml declaration without a usable encoding does not stop the
+            # scan
+            (b'<?xml version="1.0"?><meta charset="utf-8">', "utf-8"),
+            (b'<?xml version="1.0" encoding=""?><meta charset="utf-8">', "utf-8"),
+        ],
+    )
+    def test_html_body_declared_encoding_attributes(
+        self, body: bytes, expected: str | None
+    ) -> None:
+        assert html_body_declared_encoding(body) == expected
+        assert html_body_declared_encoding(body.decode("ascii")) == expected
+
     def test_html_body_declared_encoding_unicode(self):
         # html_body_declared_encoding should work when unicode body is passed
         assert html_body_declared_encoding("something else") is None
