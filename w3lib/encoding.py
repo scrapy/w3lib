@@ -7,7 +7,7 @@ from __future__ import annotations
 import codecs
 import encodings
 import re
-from functools import cached_property
+from functools import cached_property, lru_cache
 from typing import TYPE_CHECKING, Protocol, cast
 
 from w3lib._util import iter_tag_attributes
@@ -226,6 +226,7 @@ def _c18n_encoding(encoding: str) -> str:
     return encodings.aliases.aliases.get(normed, normed)
 
 
+@lru_cache(maxsize=256)
 def resolve_encoding(encoding_alias: str) -> str | None:
     """Return the encoding that `encoding_alias` maps to, or ``None``
     if the encoding cannot be interpreted
