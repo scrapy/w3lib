@@ -655,6 +655,16 @@ class TestGetMetaRefresh:
         )
         assert get_meta_refresh(body, baseurl) == (None, None)
 
+    def test_unterminated_ignored_tag(self):
+        # an unterminated <script> swallows the rest of the document, as in a
+        # browser
+        body = """<script><meta http-equiv="refresh" content="0;url=http://evil.example/">"""
+        assert get_meta_refresh(body, "http://good.example/") == (None, None)
+        assert get_meta_refresh(body, "http://good.example/", ignore_tags=()) == (
+            0.0,
+            "http://evil.example/",
+        )
+
     def test_get_meta_refresh_no_catastrophic_backtracking(self):
         prefix = "<meta " * 80000
         start = time.perf_counter()
