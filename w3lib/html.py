@@ -10,7 +10,7 @@ from html.entities import name2codepoint
 from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
-from w3lib._util import to_unicode
+from w3lib._util import iter_tag_attributes, to_unicode
 from w3lib.url import safe_url_string
 
 if TYPE_CHECKING:
@@ -43,32 +43,10 @@ _base_scan_re = re.compile(
 )
 
 
-def _upto(literal: str) -> str:
-    # Match up to and including the first occurrence of ``literal`` within a tag.
-    # This is a "tempered greedy token": unlike ``[^>]*literal``, it commits to
-    # the first match at each step, so chaining several of them cannot explore a
-    # product of positions and backtrack super-linearly on a crafted <meta> tag.
-    return rf"(?:(?!{literal})[^>])*{literal}"
-
-
-# The interval/url payload shared by both orderings: ``content="3; url=..."``.
+# The refresh payload: ``3; url=...``. The url= part is required.
 # The interval is ASCII digits only, as in the HTML refresh steps.
-_META_INT_URL = r'\s*=\s*(?P<quote>["\'])(?P<int>([0-9]*\.)?[0-9]+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)'
-_meta_refresh_re = re.compile(
-    r"<meta\s"
-    + _upto("http-equiv")
-    + _upto("refresh")
-    + _upto("content")
-    + _META_INT_URL,
-    re.DOTALL | re.IGNORECASE,
-)
-_meta_refresh_re2 = re.compile(
-    r"<meta\s"
-    + _upto("content")
-    + _META_INT_URL
-    + _upto(r"\shttp-equiv")
-    + r"\s*="
-    + _upto("refresh"),
+_meta_refresh_content_re = re.compile(
+    r"\s*(?P<int>([0-9]*\.)?[0-9]+)\s*;\s*url=\s*(?P<url>.*)",
     re.DOTALL | re.IGNORECASE,
 )
 
@@ -86,10 +64,32 @@ _tags_re = re.compile(
     """,
     re.IGNORECASE | re.VERBOSE,
 )
-# The tag body, without the closing angle bracket, which is not required: a tag
-# left unterminated by the next "<" or by the end of the text is still parsed,
-# as browsers do.
-_meta_tag_re = re.compile(r"<meta\b[^<>]*", re.IGNORECASE)
+_meta_re = re.compile("<meta", re.IGNORECASE)
+
+
+@functools.lru_cache(maxsize=256)
+def _build_meta_scan_pattern(ignore_tags: tuple[str, ...]) -> re.Pattern[str]:
+    # Scan for <meta> tags, consuming comments and the content of the ignored
+    # tags along the way. Ignorable regions come first in the alternation, so a
+    # <meta> inside one is consumed before it can match; unterminated regions
+    # swallow the rest of the document, as a browser does. Their content is
+    # consumed in runs of characters that cannot start the closing delimiter,
+    # so that the large inline scripts of real pages cost a tight loop per run
+    # rather than a match attempt per character. The end tag closes on the tag
+    # name followed by whitespace, "/" or ">", as browsers treat it.
+    #
+    # The <meta> body is matched without the closing angle bracket, which is
+    # not required: a tag left unterminated by the next "<" or by the end of
+    # the text is still parsed, as browsers do.
+    alternatives = [r"<!--[^-]*(?:-(?!->)[^-]*)*(?:-->|$)"]
+    if ignore_tags:
+        tags = "|".join(re.escape(tag) for tag in ignore_tags)
+        alternatives.append(
+            rf"<(?P<t>{tags})\b[^<>]*>[^<]*(?:<(?!/(?P=t)[\s/>])[^<]*)*"
+            r"(?:</(?P=t)[^<>]*>?|$)"
+        )
+    alternatives.append(r"<meta\s(?P<attrs>[^<>]*)")
+    return re.compile("|".join(alternatives), re.IGNORECASE)
 
 
 HTML5_WHITESPACE = " \t\n\r\x0c"
@@ -432,7 +432,7 @@ def get_meta_refresh(
     ignore_tags: Iterable[str] = ("script", "noscript"),
 ) -> tuple[None, None] | tuple[float, str]:
     """Return the http-equiv parameter of the HTML meta element from the given
-    HTML text and return a tuple ``(interval, url)`` where interval is an integer
+    HTML text and return a tuple ``(interval, url)`` where interval is a float
     containing the delay in seconds (or zero if not present) and url is a
     string with the absolute url to redirect.
 
@@ -440,24 +440,39 @@ def get_meta_refresh(
 
     """
     utext = to_unicode(text, encoding)
+    if not _meta_re.search(utext):
+        return None, None
 
-    if ignore_tags:
-        utext = remove_tags_with_content(utext, ignore_tags)
+    pattern = _build_meta_scan_pattern(
+        tuple(sorted({tag.lower() for tag in ignore_tags}))
+    )
+    for tag in pattern.finditer(utext):
+        attrs = tag.group("attrs")
 
-    utext = remove_comments(utext)
-
-    for tag in _meta_tag_re.finditer(utext):
-        raw_tag = tag.group(0)
-
-        if "refresh" not in raw_tag.lower():
+        if attrs is None or "refresh" not in attrs.lower():
             continue
 
-        if "&" in raw_tag:
-            raw_tag = replace_entities(raw_tag)
+        if "&" in attrs:
+            attrs = replace_entities(attrs)
 
-        if m := _meta_refresh_re.search(raw_tag) or _meta_refresh_re2.search(raw_tag):
-            interval = float(m.group("int"))
-            url = safe_url_string(m.group("url").strip(" \"'"), encoding)
+        has_refresh_pragma = False
+        interval: float | None = None
+        url: str | None = None
+        for name, value in iter_tag_attributes(attrs):
+            match name:
+                case "http-equiv":
+                    if "refresh" in value.lower():
+                        has_refresh_pragma = True
+                case "content":
+                    if interval is None and (
+                        m := _meta_refresh_content_re.match(value)
+                    ):
+                        interval = float(m.group("int"))
+                        url = m.group("url")
+
+        if has_refresh_pragma and interval is not None:
+            assert url is not None
+            url = safe_url_string(url.strip(" \"'"), encoding)
             return interval, urljoin(baseurl, url)
 
     return None, None

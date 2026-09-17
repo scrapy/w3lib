@@ -149,10 +149,10 @@ class TestReplaceTags:
 
     def test_replace_tags_no_catastrophic_backtracking(self):
         evil = "<a" * 50000
-        start = time.perf_counter()
+        start = time.process_time()
         assert replace_tags(evil) == evil  # incomplete tags (no ">") are untouched
         assert replace_tags(evil + "<b>x</b>") == evil + "x"
-        assert time.perf_counter() - start < 2
+        assert time.process_time() - start < 2
 
 
 class TestRemoveComments:
@@ -255,10 +255,10 @@ class TestRemoveTags:
         ],
     )
     def test_remove_tags_no_catastrophic_backtracking(self, evil: str) -> None:
-        start = time.perf_counter()
+        start = time.process_time()
         assert remove_tags(evil) == evil
         assert remove_tags(evil + "<b>x</b>") == evil + "x"
-        assert time.perf_counter() - start < 2
+        assert time.process_time() - start < 2
 
 
 class TestRemoveTagsWithContent:
@@ -311,7 +311,7 @@ class TestRemoveTagsWithContent:
 
     def test_no_catastrophic_backtracking(self):
         evil = "<script " * 50000
-        start = time.perf_counter()
+        start = time.process_time()
         assert remove_tags_with_content(evil, which_ones=("script",)) == evil
         assert (
             remove_tags_with_content(
@@ -319,7 +319,7 @@ class TestRemoveTagsWithContent:
             )
             == evil
         )
-        assert time.perf_counter() - start < 2
+        assert time.process_time() - start < 2
 
     def test_end_tag_with_whitespace_or_attrs(self):
         # Browsers end an element on the tag name followed by whitespace, "/"
@@ -429,9 +429,9 @@ although this is inside a cdata! &amp; &quot;</node1><node2>blah&blahblahblahbla
 
     def test_no_cdata_catastrophic_backtracking(self) -> None:
         evil = "<![CDATA[x" * 200000
-        start = time.perf_counter()
+        start = time.process_time()
         assert unquote_markup(evil) == evil
-        assert time.perf_counter() - start < 2
+        assert time.process_time() - start < 2
 
 
 class TestGetBaseUrl:
@@ -465,7 +465,7 @@ class TestGetBaseUrl:
 
     def test_get_base_url_no_catastrophic_backtracking(self):
         prefix = "<base " * 30000
-        start = time.perf_counter()
+        start = time.process_time()
         assert get_base_url(prefix, "http://example.com/") == "http://example.com/"
         assert (
             get_base_url(
@@ -474,7 +474,7 @@ class TestGetBaseUrl:
             )
             == "http://example.org/found/"
         )
-        assert time.perf_counter() - start < 2
+        assert time.process_time() - start < 2
 
     def test_base_url_in_comment(self):
         assert get_base_url("""<!-- <base href="http://example.com/"/> -->""") == ""
@@ -634,6 +634,12 @@ class TestGetMetaRefresh:
             </html>"""
         assert get_meta_refresh(body, baseurl) == (5, "http://example.org/newpage")
 
+    def test_no_meta(self):
+        assert get_meta_refresh("<html><body>no meta here</body></html>") == (
+            None,
+            None,
+        )
+
     def test_get_meta_refresh_unterminated_tag(self):
         baseurl = "http://example.org"
         body = """<meta http-equiv="refresh" content="5;url=newpage"</head>"""
@@ -655,19 +661,29 @@ class TestGetMetaRefresh:
         )
         assert get_meta_refresh(body, baseurl) == (None, None)
 
+    def test_unterminated_ignored_tag(self):
+        # an unterminated <script> swallows the rest of the document, as in a
+        # browser
+        body = """<script><meta http-equiv="refresh" content="0;url=http://evil.example/">"""
+        assert get_meta_refresh(body, "http://good.example/") == (None, None)
+        assert get_meta_refresh(body, "http://good.example/", ignore_tags=()) == (
+            0.0,
+            "http://evil.example/",
+        )
+
     def test_get_meta_refresh_no_catastrophic_backtracking(self):
         prefix = "<meta " * 80000
-        start = time.perf_counter()
+        start = time.process_time()
         assert get_meta_refresh(prefix) == (None, None)
         assert get_meta_refresh(
             prefix
             + '<meta http-equiv="refresh" content="3; url=http://example.org/next/">'
         ) == (3.0, "http://example.org/next/")
-        assert time.perf_counter() - start < 2
+        assert time.process_time() - start < 2
 
     def test_get_meta_refresh_no_catastrophic_backtracking_single_tag(self):
         evil = "<meta " + "http-equiv refresh " * 50000 + ">"
-        start = time.perf_counter()
+        start = time.process_time()
         assert get_meta_refresh(evil, ignore_tags=()) == (None, None)
         good = (
             "<meta "
@@ -678,7 +694,7 @@ class TestGetMetaRefresh:
             3.0,
             "http://example.org/next/",
         )
-        assert time.perf_counter() - start < 2
+        assert time.process_time() - start < 2
 
     def test_without_url(self):
         # refresh without url should return (None, None)
@@ -832,6 +848,52 @@ http://www.example.org/index.php" />
             0.0,
             "http://localhost:8000/dummy.html",
         )
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            '<meta http-equiv="refresh" class="content-meta" content="3; url=/next">',
+            '<meta http-equiv="refresh" id="content1" content="3; url=/next">',
+            '<meta http-equiv="refresh" name="content" content="3; url=/next">',
+            '<meta name="content" content="3; url=/next" http-equiv="refresh">',
+            '<meta data-refresh-content content="3; url=/next" http-equiv="refresh">',
+            "<meta http-equiv=refresh content=3;url=/next>",
+        ],
+    )
+    def test_attribute_containing_the_substring_content(self, body: str) -> None:
+        assert get_meta_refresh(body, "http://example.org") == (
+            3.0,
+            "http://example.org/next",
+        )
+
+    def test_first_content_attribute_with_a_payload_wins(self) -> None:
+        baseurl = "http://example.org"
+        body = '<meta http-equiv="refresh" content="junk" content="3; url=/next">'
+        assert get_meta_refresh(body, baseurl) == (3.0, "http://example.org/next")
+
+    def test_http_equiv_without_refresh(self) -> None:
+        # "refresh" elsewhere in the tag gets it scanned, but the pragma is
+        # only the http-equiv attribute with refresh in its value
+        baseurl = "http://example.org"
+        body = '<meta http-equiv="content-type" content="3; url=/refresh">'
+        assert get_meta_refresh(body, baseurl) == (None, None)
+        body = '<meta http-equiv="content-type" http-equiv="refresh" content="3; url=/next">'
+        assert get_meta_refresh(body, baseurl) == (3.0, "http://example.org/next")
+
+    def test_unquoted_whitespace(self) -> None:
+        body = "<meta http-equiv=refresh content=3; url=/next>"
+        assert get_meta_refresh(body, "http://example.org") == (None, None)
+
+    def test_no_catastrophic_backtracking(self) -> None:
+        # a long run of whitespace inside a refresh tag must be skipped in
+        # one step, not retried from every position
+        evil = '<meta http-equiv="refresh" ' + " " * 200000
+        start = time.process_time()
+        assert get_meta_refresh(evil + ">", "http://example.org") == (None, None)
+        assert get_meta_refresh(
+            evil + 'content="3; url=/next">', "http://example.org"
+        ) == (3.0, "http://example.org/next")
+        assert time.process_time() - start < 2
 
     def test_non_refresh_meta_is_skipped(self):
         baseurl = "http://example.org"
