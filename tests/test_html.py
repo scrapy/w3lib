@@ -70,6 +70,18 @@ class TestRemoveEntities:
         assert (
             replace_entities("&#82179209091;", remove_illegal=False) == "&#82179209091;"
         )
+        # Surrogate code points (U+D800-U+DFFF) are not valid Unicode scalar
+        # values; they used to be returned as un-encodable lone surrogates.
+        # They are now treated as illegal, like out-of-range references.
+        assert replace_entities("x&#xD800;y") == "xy"
+        assert replace_entities("x&#xDFFF;y") == "xy"
+        assert replace_entities("x&#55296;y") == "xy"  # U+D800 in decimal
+        assert replace_entities("x&#xD800;y", remove_illegal=False) == "x&#xD800;y"
+        # The result must always be encodable (regression check).
+        replace_entities("&#xD800;", remove_illegal=False).encode("utf-8")
+        # Code points just outside the surrogate range remain valid.
+        assert replace_entities("x&#xE000;y") == "x\ue000y"
+        assert replace_entities("x&#xD7FF;y") == "x\ud7ffy"
 
     def test_browser_hack(self):
         # check browser hack for numeric character references in the 80-9F range
