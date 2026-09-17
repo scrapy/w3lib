@@ -634,6 +634,12 @@ class TestGetMetaRefresh:
             </html>"""
         assert get_meta_refresh(body, baseurl) == (5, "http://example.org/newpage")
 
+    def test_no_meta(self):
+        assert get_meta_refresh("<html><body>no meta here</body></html>") == (
+            None,
+            None,
+        )
+
     def test_get_meta_refresh_unterminated_tag(self):
         baseurl = "http://example.org"
         body = """<meta http-equiv="refresh" content="5;url=newpage"</head>"""
