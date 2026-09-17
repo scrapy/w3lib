@@ -634,6 +634,12 @@ class TestGetMetaRefresh:
             </html>"""
         assert get_meta_refresh(body, baseurl) == (5, "http://example.org/newpage")
 
+    def test_no_meta(self):
+        assert get_meta_refresh("<html><body>no meta here</body></html>") == (
+            None,
+            None,
+        )
+
     def test_get_meta_refresh_unterminated_tag(self):
         baseurl = "http://example.org"
         body = """<meta http-equiv="refresh" content="5;url=newpage"</head>"""
@@ -654,6 +660,16 @@ class TestGetMetaRefresh:
             "</script >"
         )
         assert get_meta_refresh(body, baseurl) == (None, None)
+
+    def test_unterminated_ignored_tag(self):
+        # an unterminated <script> swallows the rest of the document, as in a
+        # browser
+        body = """<script><meta http-equiv="refresh" content="0;url=http://evil.example/">"""
+        assert get_meta_refresh(body, "http://good.example/") == (None, None)
+        assert get_meta_refresh(body, "http://good.example/", ignore_tags=()) == (
+            0.0,
+            "http://evil.example/",
+        )
 
     def test_get_meta_refresh_no_catastrophic_backtracking(self):
         prefix = "<meta " * 80000

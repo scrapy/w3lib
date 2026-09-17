@@ -64,10 +64,32 @@ _tags_re = re.compile(
     """,
     re.IGNORECASE | re.VERBOSE,
 )
-# The tag body, without the closing angle bracket, which is not required: a tag
-# left unterminated by the next "<" or by the end of the text is still parsed,
-# as browsers do.
-_meta_tag_re = re.compile(r"<meta\s(?P<attrs>[^<>]*)", re.IGNORECASE)
+_meta_re = re.compile("<meta", re.IGNORECASE)
+
+
+@functools.lru_cache(maxsize=256)
+def _build_meta_scan_pattern(ignore_tags: tuple[str, ...]) -> re.Pattern[str]:
+    # Scan for <meta> tags, consuming comments and the content of the ignored
+    # tags along the way. Ignorable regions come first in the alternation, so a
+    # <meta> inside one is consumed before it can match; unterminated regions
+    # swallow the rest of the document, as a browser does. Their content is
+    # consumed in runs of characters that cannot start the closing delimiter,
+    # so that the large inline scripts of real pages cost a tight loop per run
+    # rather than a match attempt per character. The end tag closes on the tag
+    # name followed by whitespace, "/" or ">", as browsers treat it.
+    #
+    # The <meta> body is matched without the closing angle bracket, which is
+    # not required: a tag left unterminated by the next "<" or by the end of
+    # the text is still parsed, as browsers do.
+    alternatives = [r"<!--[^-]*(?:-(?!->)[^-]*)*(?:-->|$)"]
+    if ignore_tags:
+        tags = "|".join(re.escape(tag) for tag in ignore_tags)
+        alternatives.append(
+            rf"<(?P<t>{tags})\b[^<>]*>[^<]*(?:<(?!/(?P=t)[\s/>])[^<]*)*"
+            r"(?:</(?P=t)[^<>]*>?|$)"
+        )
+    alternatives.append(r"<meta\s(?P<attrs>[^<>]*)")
+    return re.compile("|".join(alternatives), re.IGNORECASE)
 
 
 HTML5_WHITESPACE = " \t\n\r\x0c"
@@ -418,16 +440,16 @@ def get_meta_refresh(
 
     """
     utext = to_unicode(text, encoding)
+    if not _meta_re.search(utext):
+        return None, None
 
-    if ignore_tags:
-        utext = remove_tags_with_content(utext, ignore_tags)
-
-    utext = remove_comments(utext)
-
-    for tag in _meta_tag_re.finditer(utext):
+    pattern = _build_meta_scan_pattern(
+        tuple(sorted({tag.lower() for tag in ignore_tags}))
+    )
+    for tag in pattern.finditer(utext):
         attrs = tag.group("attrs")
 
-        if "refresh" not in attrs.lower():
+        if attrs is None or "refresh" not in attrs.lower():
             continue
 
         if "&" in attrs:
