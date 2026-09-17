@@ -405,17 +405,46 @@ def unquote_markup(
     return "".join(ret)
 
 
+def _scan_end(text: str, max_scan: int | None) -> int:
+    """Return the position in *text* where a scan limited to *max_scan*
+    characters may stop, extended past a tag that starts before that limit and
+    ends after it."""
+    if max_scan is None:
+        return len(text)
+    if max_scan < 0:
+        raise ValueError(f"max_scan must not be negative, got {max_scan!r}")
+    if max_scan >= len(text):
+        return len(text)
+    if text.rfind("<", 0, max_scan) > text.rfind(">", 0, max_scan):
+        end = text.find(">", max_scan)
+        return len(text) if end == -1 else end + 1
+    return max_scan
+
+
 def get_base_url(
-    text: str | bytes, baseurl: str | bytes = "", encoding: str = "utf-8"
+    text: str | bytes,
+    baseurl: str | bytes = "",
+    encoding: str = "utf-8",
+    *,
+    max_scan: int | None = None,
 ) -> str:
     """Return the base url if declared in the given HTML `text`,
     relative to the given base url.
 
+    .. versionadded:: VERSION
+       The *max_scan* parameter.
+
     If no base url is found, the given `baseurl` is returned.
 
+    *max_scan* is an upper bound on how much of *text* to look at, in
+    characters, defaulting to ``None``, i.e. no bound. It bounds work, not
+    results: markup beyond it may still be taken into account, e.g. a tag that
+    starts before the limit is read to its end. ``0`` looks at nothing, and a
+    negative value raises :exc:`ValueError`.
     """
 
     utext = to_unicode(text, encoding)
+    utext = utext[: _scan_end(utext, max_scan)]
     if _base_re.search(utext):
         for m in _base_scan_re.finditer(utext):
             if url := m.group("url"):
@@ -430,16 +459,23 @@ def get_meta_refresh(
     baseurl: str = "",
     encoding: str = "utf-8",
     ignore_tags: Iterable[str] = ("script", "noscript"),
+    *,
+    max_scan: int | None = None,
 ) -> tuple[None, None] | tuple[float, str]:
     """Return the http-equiv parameter of the HTML meta element from the given
     HTML text and return a tuple ``(interval, url)`` where interval is a float
     containing the delay in seconds (or zero if not present) and url is a
     string with the absolute url to redirect.
 
+    .. versionadded:: VERSION
+       The *max_scan* parameter.
+
     If no meta redirect is found, ``(None, None)`` is returned.
 
+    *max_scan* works as in :func:`get_base_url`.
     """
     utext = to_unicode(text, encoding)
+    utext = utext[: _scan_end(utext, max_scan)]
     if not _meta_re.search(utext):
         return None, None
 

@@ -949,3 +949,52 @@ class TestHasEntities:
     def test_entities_inside_markup(self):
         assert has_entities("<div>&amp;</div>")
         assert has_entities("<a href='?q=1&amp;x=2'>link</a>")
+
+
+BASE_TAG = '<base href="http://example.org/found">'
+META_TAG = '<meta http-equiv="refresh" content="5;url=http://example.org/found">'
+LIMIT = 100
+
+
+def base(text: str, **kwargs: object) -> object:
+    return get_base_url(text, "https://example.org", **kwargs)  # type: ignore[arg-type]
+
+
+def meta(text: str, **kwargs: object) -> object:
+    return get_meta_refresh(text, "https://example.org", **kwargs)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    ("func", "tag", "found", "missing"),
+    [
+        (base, BASE_TAG, "http://example.org/found", "https://example.org"),
+        (meta, META_TAG, (5, "http://example.org/found"), (None, None)),
+    ],
+    ids=["base", "meta"],
+)
+class TestMaxScan:
+    def test_straddling_tag(self, func, tag, found, missing):
+        # A tag that starts before the limit and ends after it is read whole.
+        assert func("a" * (LIMIT - 5) + tag, max_scan=LIMIT) == found
+
+    def test_before_limit(self, func, tag, found, missing):
+        assert func(tag + "a" * LIMIT, max_scan=LIMIT) == found
+
+    def test_straddling_unterminated_tag(self, func, tag, found, missing):
+        assert func("a" * (LIMIT - 5) + tag[:-1], max_scan=LIMIT) == found
+
+    def test_past_limit(self, func, tag, found, missing):
+        assert func("a" * LIMIT + tag, max_scan=LIMIT) == missing
+
+    def test_limit_beyond_text(self, func, tag, found, missing):
+        assert func(tag, max_scan=LIMIT) == found
+
+    def test_unlimited(self, func, tag, found, missing):
+        assert func("a" * LIMIT + tag) == found
+
+    def test_zero(self, func, tag, found, missing):
+        assert func(tag, max_scan=0) == missing
+
+    def test_negative(self, func, tag, found, missing):
+        with pytest.raises(ValueError, match="max_scan"):
+            func(tag, max_scan=-1)
