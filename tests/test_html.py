@@ -833,6 +833,52 @@ http://www.example.org/index.php" />
             "http://localhost:8000/dummy.html",
         )
 
+    @pytest.mark.parametrize(
+        "body",
+        [
+            '<meta http-equiv="refresh" class="content-meta" content="3; url=/next">',
+            '<meta http-equiv="refresh" id="content1" content="3; url=/next">',
+            '<meta http-equiv="refresh" name="content" content="3; url=/next">',
+            '<meta name="content" content="3; url=/next" http-equiv="refresh">',
+            '<meta data-refresh-content content="3; url=/next" http-equiv="refresh">',
+            "<meta http-equiv=refresh content=3;url=/next>",
+        ],
+    )
+    def test_attribute_containing_the_substring_content(self, body: str) -> None:
+        assert get_meta_refresh(body, "http://example.org") == (
+            3.0,
+            "http://example.org/next",
+        )
+
+    def test_first_content_attribute_with_a_payload_wins(self) -> None:
+        baseurl = "http://example.org"
+        body = '<meta http-equiv="refresh" content="junk" content="3; url=/next">'
+        assert get_meta_refresh(body, baseurl) == (3.0, "http://example.org/next")
+
+    def test_http_equiv_without_refresh(self) -> None:
+        # "refresh" elsewhere in the tag gets it scanned, but the pragma is
+        # only the http-equiv attribute with refresh in its value
+        baseurl = "http://example.org"
+        body = '<meta http-equiv="content-type" content="3; url=/refresh">'
+        assert get_meta_refresh(body, baseurl) == (None, None)
+        body = '<meta http-equiv="content-type" http-equiv="refresh" content="3; url=/next">'
+        assert get_meta_refresh(body, baseurl) == (3.0, "http://example.org/next")
+
+    def test_unquoted_whitespace(self) -> None:
+        body = "<meta http-equiv=refresh content=3; url=/next>"
+        assert get_meta_refresh(body, "http://example.org") == (None, None)
+
+    def test_no_catastrophic_backtracking(self) -> None:
+        # a long run of whitespace inside a refresh tag must be skipped in
+        # one step, not retried from every position
+        evil = '<meta http-equiv="refresh" ' + " " * 200000
+        start = time.perf_counter()
+        assert get_meta_refresh(evil + ">", "http://example.org") == (None, None)
+        assert get_meta_refresh(
+            evil + 'content="3; url=/next">', "http://example.org"
+        ) == (3.0, "http://example.org/next")
+        assert time.perf_counter() - start < 2
+
     def test_non_refresh_meta_is_skipped(self):
         baseurl = "http://example.org"
         body = """

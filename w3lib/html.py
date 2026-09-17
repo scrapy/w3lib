@@ -10,7 +10,7 @@ from html.entities import name2codepoint
 from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
-from w3lib._util import to_unicode
+from w3lib._util import iter_tag_attributes, to_unicode
 from w3lib.url import safe_url_string
 
 if TYPE_CHECKING:
@@ -43,32 +43,10 @@ _base_scan_re = re.compile(
 )
 
 
-def _upto(literal: str) -> str:
-    # Match up to and including the first occurrence of ``literal`` within a tag.
-    # This is a "tempered greedy token": unlike ``[^>]*literal``, it commits to
-    # the first match at each step, so chaining several of them cannot explore a
-    # product of positions and backtrack super-linearly on a crafted <meta> tag.
-    return rf"(?:(?!{literal})[^>])*{literal}"
-
-
-# The interval/url payload shared by both orderings: ``content="3; url=..."``.
+# The refresh payload: ``3; url=...``. The url= part is required.
 # The interval is ASCII digits only, as in the HTML refresh steps.
-_META_INT_URL = r'\s*=\s*(?P<quote>["\'])(?P<int>([0-9]*\.)?[0-9]+)\s*;\s*url=\s*(?P<url>.*?)(?P=quote)'
-_meta_refresh_re = re.compile(
-    r"<meta\s"
-    + _upto("http-equiv")
-    + _upto("refresh")
-    + _upto("content")
-    + _META_INT_URL,
-    re.DOTALL | re.IGNORECASE,
-)
-_meta_refresh_re2 = re.compile(
-    r"<meta\s"
-    + _upto("content")
-    + _META_INT_URL
-    + _upto(r"\shttp-equiv")
-    + r"\s*="
-    + _upto("refresh"),
+_meta_refresh_content_re = re.compile(
+    r"\s*(?P<int>([0-9]*\.)?[0-9]+)\s*;\s*url=\s*(?P<url>.*)",
     re.DOTALL | re.IGNORECASE,
 )
 
@@ -89,7 +67,7 @@ _tags_re = re.compile(
 # The tag body, without the closing angle bracket, which is not required: a tag
 # left unterminated by the next "<" or by the end of the text is still parsed,
 # as browsers do.
-_meta_tag_re = re.compile(r"<meta\b[^<>]*", re.IGNORECASE)
+_meta_tag_re = re.compile(r"<meta\s(?P<attrs>[^<>]*)", re.IGNORECASE)
 
 
 HTML5_WHITESPACE = " \t\n\r\x0c"
@@ -432,7 +410,7 @@ def get_meta_refresh(
     ignore_tags: Iterable[str] = ("script", "noscript"),
 ) -> tuple[None, None] | tuple[float, str]:
     """Return the http-equiv parameter of the HTML meta element from the given
-    HTML text and return a tuple ``(interval, url)`` where interval is an integer
+    HTML text and return a tuple ``(interval, url)`` where interval is a float
     containing the delay in seconds (or zero if not present) and url is a
     string with the absolute url to redirect.
 
@@ -447,17 +425,32 @@ def get_meta_refresh(
     utext = remove_comments(utext)
 
     for tag in _meta_tag_re.finditer(utext):
-        raw_tag = tag.group(0)
+        attrs = tag.group("attrs")
 
-        if "refresh" not in raw_tag.lower():
+        if "refresh" not in attrs.lower():
             continue
 
-        if "&" in raw_tag:
-            raw_tag = replace_entities(raw_tag)
+        if "&" in attrs:
+            attrs = replace_entities(attrs)
 
-        if m := _meta_refresh_re.search(raw_tag) or _meta_refresh_re2.search(raw_tag):
-            interval = float(m.group("int"))
-            url = safe_url_string(m.group("url").strip(" \"'"), encoding)
+        has_refresh_pragma = False
+        interval: float | None = None
+        url: str | None = None
+        for name, value in iter_tag_attributes(attrs):
+            match name:
+                case "http-equiv":
+                    if "refresh" in value.lower():
+                        has_refresh_pragma = True
+                case "content":
+                    if interval is None and (
+                        m := _meta_refresh_content_re.match(value)
+                    ):
+                        interval = float(m.group("int"))
+                        url = m.group("url")
+
+        if has_refresh_pragma and interval is not None:
+            assert url is not None
+            url = safe_url_string(url.strip(" \"'"), encoding)
             return interval, urljoin(baseurl, url)
 
     return None, None
