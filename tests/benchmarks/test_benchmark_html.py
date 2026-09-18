@@ -251,16 +251,29 @@ def test_benchmark_html(
             func(*args, **kwargs)
 
 
-@pytest.mark.parametrize("decode", [False, True], ids=["bytes", "str"])
-@pytest.mark.parametrize(
+# One case per page and function, under the same identifiers for the decoded
+# document, so that its measurements stay comparable across runs.
+_by_function = pytest.mark.parametrize(
     "func", [get_base_url, get_meta_refresh], ids=lambda func: func.__name__
 )
-@pytest.mark.parametrize("page", PAGES)
+_by_page = pytest.mark.parametrize("page", PAGES)
+
+
+@_by_function
+@_by_page
 def test_benchmark_html_page(
     benchmark: BenchmarkFixture,
     func: Callable[..., Any],
     page: str,
-    decode: bool,
 ) -> None:
-    body = PAGES[page].decode("utf-8") if decode else PAGES[page]
-    benchmark(func, body, "https://example.com/")
+    benchmark(func, PAGES[page].decode("utf-8"), "https://example.com/")
+
+
+@_by_function
+@_by_page
+def test_benchmark_html_page_bytes(
+    benchmark: BenchmarkFixture,
+    func: Callable[..., Any],
+    page: str,
+) -> None:
+    benchmark(func, PAGES[page], "https://example.com/")

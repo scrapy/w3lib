@@ -10,7 +10,7 @@ from html.entities import name2codepoint
 from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
-from w3lib._util import _ascii_compatible, iter_tag_attributes, to_unicode
+from w3lib._util import _scannable, iter_tag_attributes, to_unicode
 from w3lib.url import safe_url_string
 
 if TYPE_CHECKING:
@@ -433,10 +433,10 @@ def get_base_url(
     # Most documents declare no base url, so ruling one out in the bytes saves
     # decoding them. A hit falls through to the scan below, which decides: a
     # byte sequence that spells "<base" is not necessarily a tag, e.g. in a
-    # stateful encoding it can be part of a character.
+    # multi-byte encoding it can be part of a character.
     if (
         isinstance(text, bytes)
-        and _ascii_compatible(encoding)
+        and _scannable(encoding)
         and not _base_bytes_re.search(text)
     ):
         return safe_url_string(baseurl)
@@ -470,8 +470,8 @@ def get_meta_refresh(
     # Most documents declare no refresh, so ruling one out in the bytes saves
     # decoding them. A hit falls through to the scan of the decoded document,
     # which decides: a byte sequence that spells a tag is not necessarily one,
-    # e.g. in a stateful encoding it can be part of a character.
-    if isinstance(text, bytes) and _ascii_compatible(encoding):
+    # e.g. in a multi-byte encoding it can be part of a character.
+    if isinstance(text, bytes) and _scannable(encoding):
         matches = _build_meta_scan_bytes_pattern(ignored).finditer(text)
         if not any(
             (attrs := match.group("attrs")) and b"refresh" in attrs.lower()

@@ -658,6 +658,30 @@ class TestGetBaseUrl:
             == "https://example.org"
         )
 
+    def test_get_base_url_non_ascii_compatible(self) -> None:
+        # UTF-16 writes ASCII characters as something else than their ASCII
+        # bytes, so the document is decoded before it is scanned.
+        text = "<base href='/path'>"
+        assert get_base_url(
+            text.encode("utf-16"), "https://example.org", "utf-16"
+        ) == get_base_url(text, "https://example.org", "utf-16")
+
+    def test_get_base_url_unknown_encoding(self) -> None:
+        with pytest.raises(LookupError):
+            get_base_url(
+                b"<base href='/path'>", "https://example.org", "not-an-encoding"
+            )
+
+    def test_get_base_url_split_by_a_dropped_escape(self) -> None:
+        # ESC ( B redesignates ASCII where ASCII is already in use, so it
+        # divides the tag in the bytes but not in the document.
+        raw = b'<ba\x1b(Bse href="/path">'
+        assert raw.decode("iso2022_jp") == '<base href="/path">'
+        assert (
+            get_base_url(raw, "https://example.org", "iso2022_jp")
+            == "https://example.org/path"
+        )
+
     def test_get_base_url_non_ascii_whitespace(self) -> None:
         # U+3000 does not separate a tag name from its attributes.
         text = "<base\u3000href='/path'>"
@@ -998,6 +1022,27 @@ http://www.example.org/index.php" />
         assert get_meta_refresh(
             text.encode("iso2022_jp"), "http://example.org", "iso2022_jp"
         ) == (None, None)
+
+    def test_get_meta_refresh_non_ascii_compatible(self) -> None:
+        # UTF-16 writes ASCII characters as something else than their ASCII
+        # bytes, so the document is decoded before it is scanned.
+        body = "<meta http-equiv='refresh' content='3;url=/next'>"
+        assert get_meta_refresh(
+            body.encode("utf-16"), "http://example.org", "utf-16"
+        ) == get_meta_refresh(body, "http://example.org", "utf-16")
+
+    def test_get_meta_refresh_split_by_a_dropped_escape(self) -> None:
+        # ESC ( B redesignates ASCII where ASCII is already in use, so it
+        # divides the tag in the bytes but not in the document.
+        raw = b'<me\x1b(Bta http-equiv="refresh" content="3;url=/next">'
+        assert (
+            raw.decode("iso2022_jp")
+            == '<meta http-equiv="refresh" content="3;url=/next">'
+        )
+        assert get_meta_refresh(raw, "http://example.org", "iso2022_jp") == (
+            3.0,
+            "http://example.org/next",
+        )
 
     def test_get_meta_refresh_non_ascii_whitespace(self) -> None:
         # U+3000 does not separate a tag name from its attributes.
