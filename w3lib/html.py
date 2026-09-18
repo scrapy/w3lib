@@ -10,7 +10,7 @@ from html.entities import name2codepoint
 from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
-from w3lib._util import iter_tag_attributes, to_unicode
+from w3lib._util import _scannable, iter_tag_attributes, to_unicode
 from w3lib.url import safe_url_string
 
 if TYPE_CHECKING:
@@ -24,7 +24,13 @@ _ent_re = re.compile(
     re.IGNORECASE,
 )
 _tag_re = re.compile(r"<[a-zA-Z\/!][^<>]*>")
-_base_re = re.compile("<base", re.IGNORECASE)
+# Tag syntax is ASCII, and re.ASCII holds the scan patterns of this module to
+# it: "\s" matches the whitespace that separates markup and not, say, U+3000,
+# and case-insensitive matching pairs no "s" with "\u017f" nor "k" with
+# "\u212a". It is also what makes a pattern and its byte counterpart match the
+# same markup.
+_base_re = re.compile("<base", re.IGNORECASE | re.ASCII)
+_base_bytes_re = re.compile(rb"<base", re.IGNORECASE)
 # Scan for the first honored <base href>, consuming comments and
 # <script>/<noscript> content (where a browser never parses tags) along the
 # way. Ignorable regions come first in the alternation, so a <base> inside one
@@ -39,7 +45,7 @@ _base_scan_re = re.compile(
     | <(?P<t>script|noscript)\b[^<>]*>[^<]*(?:<(?!/(?P=t)>)[^<]*)*(?:</(?P=t)>|$)
     | <base\s[^<>]*href\s*=\s*["']\s*(?P<url>[^"'\s]+)\s*["']
     """,
-    re.IGNORECASE | re.DOTALL | re.VERBOSE,
+    re.IGNORECASE | re.DOTALL | re.VERBOSE | re.ASCII,
 )
 
 
@@ -64,11 +70,10 @@ _tags_re = re.compile(
     """,
     re.IGNORECASE | re.VERBOSE,
 )
-_meta_re = re.compile("<meta", re.IGNORECASE)
+_meta_re = re.compile("<meta", re.IGNORECASE | re.ASCII)
 
 
-@functools.lru_cache(maxsize=256)
-def _build_meta_scan_pattern(ignore_tags: tuple[str, ...]) -> re.Pattern[str]:
+def _meta_scan_source(ignore_tags: tuple[str, ...]) -> str:
     # Scan for <meta> tags, consuming comments and the content of the ignored
     # tags along the way. Ignorable regions come first in the alternation, so a
     # <meta> inside one is consumed before it can match; unterminated regions
@@ -89,7 +94,17 @@ def _build_meta_scan_pattern(ignore_tags: tuple[str, ...]) -> re.Pattern[str]:
             r"(?:</(?P=t)[^<>]*>?|$)"
         )
     alternatives.append(r"<meta\s(?P<attrs>[^<>]*)")
-    return re.compile("|".join(alternatives), re.IGNORECASE)
+    return "|".join(alternatives)
+
+
+@functools.lru_cache(maxsize=256)
+def _build_meta_scan_pattern(ignore_tags: tuple[str, ...]) -> re.Pattern[str]:
+    return re.compile(_meta_scan_source(ignore_tags), re.IGNORECASE | re.ASCII)
+
+
+@functools.lru_cache(maxsize=256)
+def _build_meta_scan_bytes_pattern(ignore_tags: tuple[str, ...]) -> re.Pattern[bytes]:
+    return re.compile(_meta_scan_source(ignore_tags).encode(), re.IGNORECASE)
 
 
 HTML5_WHITESPACE = " \t\n\r\x0c"
@@ -443,6 +458,17 @@ def get_base_url(
     negative value raises :exc:`ValueError`.
     """
 
+    # Most documents declare no base url, so ruling one out in the bytes saves
+    # decoding them. A hit falls through to the scan below, which decides: a
+    # byte sequence that spells "<base" is not necessarily a tag, e.g. in a
+    # multi-byte encoding it can be part of a character.
+    if (
+        isinstance(text, bytes)
+        and _scannable(encoding)
+        and not _base_bytes_re.search(text)
+    ):
+        return safe_url_string(baseurl)
+
     utext = to_unicode(text, encoding)
     utext = utext[: _scan_end(utext, max_scan)]
     if _base_re.search(utext):
@@ -474,15 +500,26 @@ def get_meta_refresh(
 
     *max_scan* works as in :func:`get_base_url`.
     """
+    ignored = tuple(sorted({tag.lower() for tag in ignore_tags}))
+
+    # Most documents declare no refresh, so ruling one out in the bytes saves
+    # decoding them. A hit falls through to the scan of the decoded document,
+    # which decides: a byte sequence that spells a tag is not necessarily one,
+    # e.g. in a multi-byte encoding it can be part of a character.
+    if isinstance(text, bytes) and _scannable(encoding):
+        matches = _build_meta_scan_bytes_pattern(ignored).finditer(text)
+        if not any(
+            (attrs := match.group("attrs")) and b"refresh" in attrs.lower()
+            for match in matches
+        ):
+            return None, None
+
     utext = to_unicode(text, encoding)
     utext = utext[: _scan_end(utext, max_scan)]
     if not _meta_re.search(utext):
         return None, None
 
-    pattern = _build_meta_scan_pattern(
-        tuple(sorted({tag.lower() for tag in ignore_tags}))
-    )
-    for tag in pattern.finditer(utext):
+    for tag in _build_meta_scan_pattern(ignored).finditer(utext):
         attrs = tag.group("attrs")
 
         if attrs is None or "refresh" not in attrs.lower():
