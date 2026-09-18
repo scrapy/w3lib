@@ -147,10 +147,6 @@ class TestReplaceTags:
             == "Click here"
         )
 
-    @pytest.mark.xfail(
-        reason="the tag scan stops at a raw < or > inside a quoted attribute value",
-        strict=True,
-    )
     @pytest.mark.parametrize("quote", ["<", ">"])
     def test_lt_gt_in_quoted_attribute_value(self, quote: str) -> None:
         assert replace_tags(f'x<img alt="a{quote}b" src=x>y') == "xy"
@@ -255,10 +251,6 @@ class TestRemoveTags:
             == ""
         )
 
-    @pytest.mark.xfail(
-        reason="the tag scan stops at a raw < or > inside a quoted attribute value",
-        strict=True,
-    )
     @pytest.mark.parametrize("quote", ["<", ">"])
     def test_lt_gt_in_quoted_attribute_value(self, quote: str) -> None:
         assert remove_tags(f'<p class="a{quote}b">txt</p>', which_ones=("p",)) == "txt"
@@ -325,10 +317,6 @@ class TestRemoveTagsWithContent:
             == "<span></span>"
         )
 
-    @pytest.mark.xfail(
-        reason="the tag scan stops at a raw < inside a quoted attribute value",
-        strict=True,
-    )
     def test_lt_in_quoted_attribute_value(self) -> None:
         assert (
             remove_tags_with_content(
@@ -338,9 +326,6 @@ class TestRemoveTagsWithContent:
         )
 
     def test_gt_in_quoted_attribute_value(self) -> None:
-        # The tag scan ends the opening tag at the quoted ">",
-        # but the content scan then swallows the 'b">c' it left behind, so
-        # this case comes out right anyway.
         assert (
             remove_tags_with_content(
                 'head<div data-x="a>b">c</div>tail', which_ones=("div",)
@@ -348,10 +333,6 @@ class TestRemoveTagsWithContent:
             == "headtail"
         )
 
-    @pytest.mark.xfail(
-        reason="the tag scan stops at a raw > inside a quoted attribute value",
-        strict=True,
-    )
     def test_gt_in_quoted_attribute_value_self_closing(self) -> None:
         assert (
             remove_tags_with_content('<div data-x="a>b"/>tail', which_ones=("div",))
