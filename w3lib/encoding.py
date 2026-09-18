@@ -10,7 +10,7 @@ import re
 from functools import cached_property, lru_cache
 from typing import TYPE_CHECKING, Protocol, cast
 
-from w3lib._util import iter_tag_attributes
+from w3lib._util import _ascii_compatible, iter_tag_attributes
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -427,9 +427,6 @@ class EncodingContext:
         return self.encoding
 
 
-_ASCII = bytes(range(128))
-
-
 class _Decision:
     def __init__(self, name: str, bom: bytes = b""):
         self.name = name
@@ -437,7 +434,7 @@ class _Decision:
 
     @property
     def ascii_compatible(self) -> bool:
-        return _ASCII.decode(self.name, "replace") == _ASCII.decode()
+        return _ascii_compatible(self.name)
 
     def decode(self, body: bytes) -> str:
         return to_unicode(body.removeprefix(self._bom), self.name)

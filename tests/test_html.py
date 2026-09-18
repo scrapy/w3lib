@@ -623,6 +623,81 @@ class TestGetBaseUrl:
             </html>"""
         assert get_base_url(text, baseurl) == "http://example.org/sterling%a3"
 
+    @pytest.mark.parametrize(
+        ("encoding", "char"),
+        [
+            ("utf-8", "\u793e"),
+            ("latin-1", "\u00e9"),
+            ("shift_jis", "\u793e"),
+            ("gb18030", "\u793e"),
+            ("iso2022_jp", "\u793e"),
+        ],
+    )
+    def test_get_base_url_bytes(self, encoding: str, char: str) -> None:
+        baseurl = "https://example.org"
+        with_base = f"<html><head>{char}<base href='/path'></head></html>"
+        without_base = f"<html><head>{char}</head></html>"
+        assert (
+            get_base_url(with_base.encode(encoding), baseurl, encoding)
+            == get_base_url(with_base, baseurl, encoding)
+            == "https://example.org/path"
+        )
+        assert (
+            get_base_url(without_base.encode(encoding), baseurl, encoding)
+            == get_base_url(without_base, baseurl, encoding)
+            == baseurl
+        )
+
+    def test_get_base_url_spelled_by_characters(self) -> None:
+        # These kanji encode to bytes that spell a <base> tag, which neither a
+        # browser nor the scan of the decoded document sees.
+        text = "<p>\u932b\u7648\u7dc7</p>"
+        assert text.encode("iso2022_jp") == b"<p>\x1b$B<base>\x1b(B</p>"
+        assert (
+            get_base_url(text.encode("iso2022_jp"), "https://example.org", "iso2022_jp")
+            == "https://example.org"
+        )
+
+    def test_get_base_url_non_ascii_compatible(self) -> None:
+        # UTF-16 writes ASCII characters as something else than their ASCII
+        # bytes, so the document is decoded before it is scanned.
+        text = "<base href='/path'>"
+        assert get_base_url(
+            text.encode("utf-16"), "https://example.org", "utf-16"
+        ) == get_base_url(text, "https://example.org", "utf-16")
+
+    def test_get_base_url_unknown_encoding(self) -> None:
+        with pytest.raises(LookupError):
+            get_base_url(
+                b"<base href='/path'>", "https://example.org", "not-an-encoding"
+            )
+
+    def test_get_base_url_split_by_a_dropped_escape(self) -> None:
+        # ESC ( B redesignates ASCII where ASCII is already in use, so it
+        # divides the tag in the bytes but not in the document.
+        raw = b'<ba\x1b(Bse href="/path">'
+        assert raw.decode("iso2022_jp") == '<base href="/path">'
+        assert (
+            get_base_url(raw, "https://example.org", "iso2022_jp")
+            == "https://example.org/path"
+        )
+
+    def test_get_base_url_non_ascii_whitespace(self) -> None:
+        # U+3000 does not separate a tag name from its attributes.
+        text = "<base\u3000href='/path'>"
+        assert get_base_url(text, "https://example.org") == "https://example.org"
+        assert (
+            get_base_url(text.encode(), "https://example.org") == "https://example.org"
+        )
+
+    def test_get_base_url_non_ascii_case_folding(self) -> None:
+        # U+017F uppercases to "S", but it is no "s" in a tag name.
+        text = "<ba\u017fe href='/path'>"
+        assert get_base_url(text, "https://example.org") == "https://example.org"
+        assert (
+            get_base_url(text.encode(), "https://example.org") == "https://example.org"
+        )
+
 
 class TestGetMetaRefresh:
     def test_get_meta_refresh(self):
@@ -908,6 +983,83 @@ http://www.example.org/index.php" />
         """
         assert get_meta_refresh(body, baseurl) == (
             2.0,
+            "http://example.org/next",
+        )
+
+    @pytest.mark.parametrize(
+        ("encoding", "char"),
+        [
+            ("utf-8", "\u793e"),
+            ("latin-1", "\u00e9"),
+            ("shift_jis", "\u793e"),
+            ("gb18030", "\u793e"),
+            ("iso2022_jp", "\u793e"),
+        ],
+    )
+    def test_get_meta_refresh_bytes(self, encoding: str, char: str) -> None:
+        baseurl = "http://example.org"
+        with_refresh = (
+            f"<html><head>{char}"
+            "<meta http-equiv='refresh' content='3;url=/next'></head></html>"
+        )
+        without_refresh = f"<html><head>{char}</head></html>"
+        assert (
+            get_meta_refresh(with_refresh.encode(encoding), baseurl, encoding)
+            == get_meta_refresh(with_refresh, baseurl, encoding)
+            == (3.0, "http://example.org/next")
+        )
+        assert (
+            get_meta_refresh(without_refresh.encode(encoding), baseurl, encoding)
+            == get_meta_refresh(without_refresh, baseurl, encoding)
+            == (None, None)
+        )
+
+    def test_get_meta_refresh_spelled_by_characters(self) -> None:
+        # These kanji encode to bytes that spell "refresh", which neither a
+        # browser nor the scan of the decoded document sees.
+        text = "<p>\u9c5a\u80d9\u7e89\u8515</p>"
+        assert text.encode("iso2022_jp") == b"<p>\x1b$Brefreshx\x1b(B</p>"
+        assert get_meta_refresh(
+            text.encode("iso2022_jp"), "http://example.org", "iso2022_jp"
+        ) == (None, None)
+
+    def test_get_meta_refresh_non_ascii_compatible(self) -> None:
+        # UTF-16 writes ASCII characters as something else than their ASCII
+        # bytes, so the document is decoded before it is scanned.
+        body = "<meta http-equiv='refresh' content='3;url=/next'>"
+        assert get_meta_refresh(
+            body.encode("utf-16"), "http://example.org", "utf-16"
+        ) == get_meta_refresh(body, "http://example.org", "utf-16")
+
+    def test_get_meta_refresh_split_by_a_dropped_escape(self) -> None:
+        # ESC ( B redesignates ASCII where ASCII is already in use, so it
+        # divides the tag in the bytes but not in the document.
+        raw = b'<me\x1b(Bta http-equiv="refresh" content="3;url=/next">'
+        assert (
+            raw.decode("iso2022_jp")
+            == '<meta http-equiv="refresh" content="3;url=/next">'
+        )
+        assert get_meta_refresh(raw, "http://example.org", "iso2022_jp") == (
+            3.0,
+            "http://example.org/next",
+        )
+
+    def test_get_meta_refresh_non_ascii_whitespace(self) -> None:
+        # U+3000 does not separate a tag name from its attributes.
+        body = "<meta\u3000http-equiv='refresh' content='3;url=/next'>"
+        assert get_meta_refresh(body, "http://example.org") == (None, None)
+        assert get_meta_refresh(body.encode(), "http://example.org") == (None, None)
+
+    def test_get_meta_refresh_non_ascii_case_folding(self) -> None:
+        # U+017F uppercases to "S", but it is no "s" in a tag name, so this is
+        # no <script> element and the browser parses the <meta> inside it.
+        body = (
+            "<\u017fcript>"
+            "<meta http-equiv='refresh' content='3;url=/next'>"
+            "</\u017fcript>"
+        )
+        assert get_meta_refresh(body, "http://example.org") == (
+            3.0,
             "http://example.org/next",
         )
 

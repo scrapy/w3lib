@@ -33,7 +33,7 @@ pytestmark = BENCHMARK_MARKS
 # head, so the no-base page is the representative workload and the others are
 # the edge cases worth watching.
 PAGES = {
-    path.stem: path.read_text(encoding="utf-8")
+    path.stem: path.read_bytes()
     for path in sorted((Path(__file__).parent / "pages").glob("*.html"))
 }
 
@@ -251,11 +251,27 @@ def test_benchmark_html(
             func(*args, **kwargs)
 
 
-@pytest.mark.parametrize(
+# One case per page and function, under the same identifiers for the decoded
+# document, so that its measurements stay comparable across runs.
+_by_function = pytest.mark.parametrize(
     "func", [get_base_url, get_meta_refresh], ids=lambda func: func.__name__
 )
-@pytest.mark.parametrize("page", PAGES)
+_by_page = pytest.mark.parametrize("page", PAGES)
+
+
+@_by_function
+@_by_page
 def test_benchmark_html_page(
+    benchmark: BenchmarkFixture,
+    func: Callable[..., Any],
+    page: str,
+) -> None:
+    benchmark(func, PAGES[page].decode("utf-8"), "https://example.com/")
+
+
+@_by_function
+@_by_page
+def test_benchmark_html_page_bytes(
     benchmark: BenchmarkFixture,
     func: Callable[..., Any],
     page: str,

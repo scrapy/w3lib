@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -21,6 +22,47 @@ def to_unicode(
     if encoding is None:
         encoding = "utf-8"
     return text.decode(encoding, errors)
+
+
+_ASCII = bytes(range(128))
+_ASCII_TEXT = _ASCII.decode()
+
+
+@lru_cache(maxsize=64)
+def _ascii_compatible(encoding: str | None) -> bool:
+    """Return whether ASCII bytes decode to the same ASCII characters under
+    *encoding*.
+
+    Unknown encodings are reported as not compatible.
+    """
+    try:
+        return _ASCII.decode(encoding or "utf-8", "replace") == _ASCII_TEXT
+    except LookupError:
+        return False
+
+
+# Bytes that an encoding can drop when decoding, dividing a character
+# sequence without leaving a trace in the text: ESC ( B redesignates ASCII
+# while ASCII is already in use, and SO and SI shift between character sets.
+_DROPPED = (b"\x1b(B", b"\x0e", b"\x0f")
+
+
+@lru_cache(maxsize=64)
+def _scannable(encoding: str | None) -> bool:
+    r"""Return whether every character sequence of a document written in
+    *encoding* is a byte sequence of its undecoded bytes, so that markup that
+    the bytes do not contain is markup that the document does not contain.
+
+    It takes ASCII compatibility, which makes ASCII characters their own
+    bytes, and an encoding that cannot write those bytes apart, e.g.
+    ``b"<ba\x1b(Bse"`` decodes to ``"<base"`` under ISO-2022-JP.
+    """
+    if not _ascii_compatible(encoding):
+        return False
+    return all(
+        (b"a" + dropped + b"b").decode(encoding or "utf-8", "replace") != "ab"
+        for dropped in _DROPPED
+    )
 
 
 # One attribute: a name and, optionally, a value, quoted or not. Each quoting
