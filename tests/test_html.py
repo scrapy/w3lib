@@ -147,6 +147,14 @@ class TestReplaceTags:
             == "Click here"
         )
 
+    @pytest.mark.xfail(
+        reason="the tag scan stops at a raw < or > inside a quoted attribute value",
+        strict=True,
+    )
+    @pytest.mark.parametrize("quote", ["<", ">"])
+    def test_lt_gt_in_quoted_attribute_value(self, quote: str) -> None:
+        assert replace_tags(f'x<img alt="a{quote}b" src=x>y') == "xy"
+
     def test_replace_tags_no_catastrophic_backtracking(self):
         evil = "<a" * 50000
         start = time.process_time()
@@ -247,6 +255,14 @@ class TestRemoveTags:
             == ""
         )
 
+    @pytest.mark.xfail(
+        reason="the tag scan stops at a raw < or > inside a quoted attribute value",
+        strict=True,
+    )
+    @pytest.mark.parametrize("quote", ["<", ">"])
+    def test_lt_gt_in_quoted_attribute_value(self, quote: str) -> None:
+        assert remove_tags(f'<p class="a{quote}b">txt</p>', which_ones=("p",)) == "txt"
+
     @pytest.mark.parametrize(
         "evil",
         [
@@ -309,7 +325,42 @@ class TestRemoveTagsWithContent:
             == "<span></span>"
         )
 
-    def test_no_catastrophic_backtracking(self):
+    @pytest.mark.xfail(
+        reason="the tag scan stops at a raw < inside a quoted attribute value",
+        strict=True,
+    )
+    def test_lt_in_quoted_attribute_value(self) -> None:
+        assert (
+            remove_tags_with_content(
+                'head<div data-x="a<b">c</div>tail', which_ones=("div",)
+            )
+            == "headtail"
+        )
+
+    def test_gt_in_quoted_attribute_value(self) -> None:
+        # The tag scan ends the opening tag at the quoted ">",
+        # but the content scan then swallows the 'b">c' it left behind, so
+        # this case comes out right anyway.
+        assert (
+            remove_tags_with_content(
+                'head<div data-x="a>b">c</div>tail', which_ones=("div",)
+            )
+            == "headtail"
+        )
+
+    @pytest.mark.xfail(
+        reason="the tag scan stops at a raw > inside a quoted attribute value",
+        strict=True,
+    )
+    def test_gt_in_quoted_attribute_value_self_closing(self) -> None:
+        assert (
+            remove_tags_with_content('<div data-x="a>b"/>tail', which_ones=("div",))
+            == "tail"
+        )
+
+    def test_no_catastrophic_backtracking(self) -> None:
+        # "<script " has no ">", so it never completes an opening tag and the
+        # close-tag scan is never entered
         evil = "<script " * 50000
         start = time.process_time()
         assert remove_tags_with_content(evil, which_ones=("script",)) == evil
@@ -320,6 +371,15 @@ class TestRemoveTagsWithContent:
             == evil
         )
         assert time.process_time() - start < 2
+
+    @pytest.mark.xfail(reason="the close-tag scan restarts at every opening tag")
+    def test_no_catastrophic_backtracking_unclosed_tags(self) -> None:
+        # Many *complete* opening tags with no closing tag: the close-tag scan
+        # runs to end-of-input from every one of them.
+        evil = "<script>" * 10000  # increase when fixing
+        start = time.process_time()
+        assert remove_tags_with_content(evil, which_ones=("script",)) == evil
+        assert time.process_time() - start < 1
 
     def test_end_tag_with_whitespace_or_attrs(self):
         # Browsers end an element on the tag name followed by whitespace, "/"
@@ -461,6 +521,17 @@ class TestGetBaseUrl:
                 "<html><head></head><body></body></html>", "https://example.org"
             )
             == "https://example.org"
+        )
+
+    @pytest.mark.xfail(
+        reason="the tag scan stops at a raw < or > inside a quoted attribute value",
+        strict=True,
+    )
+    @pytest.mark.parametrize("quote", ["<", ">"])
+    def test_lt_gt_in_quoted_attribute_value(self, quote: str) -> None:
+        assert (
+            get_base_url(f'<base data-x="a{quote}b" href="http://example.org/">')
+            == "http://example.org/"
         )
 
     def test_get_base_url_no_catastrophic_backtracking(self):
@@ -669,6 +740,18 @@ class TestGetMetaRefresh:
         assert get_meta_refresh(body, "http://good.example/", ignore_tags=()) == (
             0.0,
             "http://evil.example/",
+        )
+
+    @pytest.mark.xfail(
+        reason="the tag scan stops at a raw < or > inside a quoted attribute value",
+        strict=True,
+    )
+    @pytest.mark.parametrize("quote", ["<", ">"])
+    def test_lt_gt_in_quoted_attribute_value(self, quote: str) -> None:
+        body = f'<meta data-x="a{quote}b" http-equiv="refresh" content="3;url=/next">'
+        assert get_meta_refresh(body, "http://example.org") == (
+            3.0,
+            "http://example.org/next",
         )
 
     def test_get_meta_refresh_no_catastrophic_backtracking(self):
