@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -21,6 +22,23 @@ def to_unicode(
     if encoding is None:
         encoding = "utf-8"
     return text.decode(encoding, errors)
+
+
+_ASCII = bytes(range(128))
+_ASCII_TEXT = _ASCII.decode()
+
+
+@lru_cache(maxsize=64)
+def _ascii_compatible(encoding: str | None) -> bool:
+    """Return whether ASCII bytes decode to the same ASCII characters under
+    *encoding*, i.e. whether markup can be looked for in undecoded bytes.
+
+    Unknown encodings are reported as not compatible.
+    """
+    try:
+        return _ASCII.decode(encoding or "utf-8", "replace") == _ASCII_TEXT
+    except LookupError:
+        return False
 
 
 # One attribute: a name and, optionally, a value, quoted or not. Each quoting
