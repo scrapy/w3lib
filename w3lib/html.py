@@ -7,7 +7,7 @@ from __future__ import annotations
 import functools
 import re
 from html.entities import name2codepoint
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urljoin
 
 from w3lib._util import _scannable, iter_tag_attributes, to_unicode
@@ -24,11 +24,25 @@ _ent_re = re.compile(
     re.IGNORECASE,
 )
 _tag_re = re.compile(r"<[a-zA-Z\/!][^<>]*>")
+# The text of a tag after its name, up to the angle bracket that ends the tag.
+# A quoted attribute value is consumed whole, so that an angle bracket in it
+# does not end the tag. The runs of unquoted characters and the quoted values
+# alternate, which gives a tag body a single parse and hence nothing to
+# backtrack into.
+_TAG_BODY = r"""[^<>"']*(?:(?:"[^"]*"|'[^']*')[^<>"']*)*"""
+
 # Tag syntax is ASCII, and re.ASCII holds the scan patterns of this module to
 # it: "\s" matches the whitespace that separates markup and not, say, U+3000,
 # and case-insensitive matching pairs no "s" with "\u017f" nor "k" with
 # "\u212a". It is also what makes a pattern and its byte counterpart match the
 # same markup.
+# Any tag, up to where it ends or the text does. A quoted value left open by
+# the end of the text is taken to the next angle bracket, which is where the
+# tag it belongs to can no longer reach.
+_tag_extent_source = rf"""<[a-zA-Z!/]{_TAG_BODY}(?:["'][^"'<>]*)?>?"""
+_tag_extent_re = re.compile(_tag_extent_source, re.ASCII)
+_tag_extent_bytes_re = re.compile(_tag_extent_source.encode())
+
 _base_re = re.compile("<base", re.IGNORECASE | re.ASCII)
 _base_bytes_re = re.compile(rb"<base", re.IGNORECASE)
 # Scan for the first honored <base href>, consuming comments and
@@ -40,10 +54,10 @@ _base_bytes_re = re.compile(rb"<base", re.IGNORECASE)
 # scripts of real pages cost a tight loop per run rather than a match attempt
 # per character.
 _base_scan_re = re.compile(
-    r"""
+    rf"""
       <!--[^-]*(?:-(?!->)[^-]*)*(?:-->|$)
-    | <(?P<t>script|noscript)\b[^<>]*>[^<]*(?:<(?!/(?P=t)>)[^<]*)*(?:</(?P=t)>|$)
-    | <base\s[^<>]*href\s*=\s*["']\s*(?P<url>[^"'\s]+)\s*["']
+    | <(?P<t>script|noscript)\b{_TAG_BODY}>[^<]*(?:<(?!/(?P=t)>)[^<]*)*(?:</(?P=t)>|$)
+    | <base\s{_TAG_BODY}href\s*=\s*["']\s*(?P<url>[^"'\s]+)\s*["']
     """,
     re.IGNORECASE | re.DOTALL | re.VERBOSE | re.ASCII,
 )
@@ -90,10 +104,10 @@ def _meta_scan_source(ignore_tags: tuple[str, ...]) -> str:
     if ignore_tags:
         tags = "|".join(re.escape(tag) for tag in ignore_tags)
         alternatives.append(
-            rf"<(?P<t>{tags})\b[^<>]*>[^<]*(?:<(?!/(?P=t)[\s/>])[^<]*)*"
-            r"(?:</(?P=t)[^<>]*>?|$)"
+            rf"<(?P<t>{tags})\b{_TAG_BODY}>[^<]*(?:<(?!/(?P=t)[\s/>])[^<]*)*"
+            rf"(?:</(?P=t){_TAG_BODY}>?|$)"
         )
-    alternatives.append(r"<meta\s(?P<attrs>[^<>]*)")
+    alternatives.append(rf"<meta\s(?P<attrs>{_TAG_BODY})")
     return "|".join(alternatives)
 
 
@@ -420,15 +434,57 @@ def unquote_markup(
     return "".join(ret)
 
 
+def _cut(text: str | bytes, max_scan: int | None) -> tuple[str | bytes, bool]:
+    """Return *text* cut to its first *max_scan* characters or bytes, extended
+    to the end of a tag the cut splits, and whether anything was left out."""
+    if max_scan is None:
+        return text, False
+    if max_scan < 0:
+        raise ValueError(f"max_scan must not be negative, got {max_scan!r}")
+    if max_scan >= len(text):
+        return text, False
+    is_str = isinstance(text, str)
+    extent: re.Pattern[Any] = _tag_extent_re if is_str else _tag_extent_bytes_re
+    lt: Any = "<" if is_str else b"<"
+    # Only a tag the cut splits reaches the end of the cut text, and matching
+    # it again on the whole text reads it to its end. Half a tag parses as a
+    # whole one, down to a truncated url, hence reading it whole or not at all.
+    start = max_scan
+    while (start := text.rfind(lt, 0, start)) != -1:
+        split = extent.match(text, start, max_scan)
+        if split is None:
+            continue
+        if split.end() == max_scan:
+            whole = extent.match(text, start)
+            assert whole is not None
+            return text[: whole.end()], whole.end() < len(text)
+        break
+    return text[:max_scan], True
+
+
 def get_base_url(
-    text: str | bytes, baseurl: str | bytes = "", encoding: str = "utf-8"
+    text: str | bytes,
+    baseurl: str | bytes = "",
+    encoding: str = "utf-8",
+    *,
+    max_scan: int | None = None,
 ) -> str:
     """Return the base url if declared in the given HTML `text`,
     relative to the given base url.
 
+    .. versionadded:: VERSION
+       The *max_scan* parameter.
+
     If no base url is found, the given `baseurl` is returned.
 
+    *max_scan* is an upper bound on how much of *text* to look at, in
+    characters, or in bytes if *text* is a byte string, defaulting to ``None``,
+    i.e. no bound. It bounds work, not results: a tag that starts before the
+    limit is read to its end. ``0`` looks at nothing, and a negative value
+    raises :exc:`ValueError`.
     """
+
+    text, cut = _cut(text, max_scan)
 
     # Most documents declare no base url, so ruling one out in the bytes saves
     # decoding them. A hit falls through to the scan below, which decides: a
@@ -441,7 +497,8 @@ def get_base_url(
     ):
         return safe_url_string(baseurl)
 
-    utext = to_unicode(text, encoding)
+    # A cut through bytes can split a character, which is then replaced.
+    utext = to_unicode(text, encoding, errors="replace" if cut else "strict")
     if _base_re.search(utext):
         for m in _base_scan_re.finditer(utext):
             if url := m.group("url"):
@@ -451,21 +508,53 @@ def get_base_url(
     return safe_url_string(baseurl)
 
 
+def _refresh(attrs: str, baseurl: str, encoding: str) -> tuple[float, str] | None:
+    """Return the interval and absolute url of the refresh that *attrs*, the
+    text of a <meta> tag after its name, declares, if it declares one."""
+    if "&" in attrs:
+        attrs = replace_entities(attrs)
+
+    has_refresh_pragma = False
+    interval: float | None = None
+    url: str | None = None
+    for name, value in iter_tag_attributes(attrs):
+        match name:
+            case "http-equiv":
+                if "refresh" in value.lower():
+                    has_refresh_pragma = True
+            case "content":
+                if interval is None and (m := _meta_refresh_content_re.match(value)):
+                    interval = float(m.group("int"))
+                    url = m.group("url")
+
+    if not has_refresh_pragma or interval is None:
+        return None
+    assert url is not None
+    return interval, urljoin(baseurl, safe_url_string(url.strip(" \"'"), encoding))
+
+
 def get_meta_refresh(
     text: str | bytes,
     baseurl: str = "",
     encoding: str = "utf-8",
     ignore_tags: Iterable[str] = ("script", "noscript"),
+    *,
+    max_scan: int | None = None,
 ) -> tuple[None, None] | tuple[float, str]:
     """Return the http-equiv parameter of the HTML meta element from the given
     HTML text and return a tuple ``(interval, url)`` where interval is a float
     containing the delay in seconds (or zero if not present) and url is a
     string with the absolute url to redirect.
 
+    .. versionadded:: VERSION
+       The *max_scan* parameter.
+
     If no meta redirect is found, ``(None, None)`` is returned.
 
+    *max_scan* works as in :func:`get_base_url`.
     """
     ignored = tuple(sorted({tag.lower() for tag in ignore_tags}))
+    text, cut = _cut(text, max_scan)
 
     # Most documents declare no refresh, so ruling one out in the bytes saves
     # decoding them. A hit falls through to the scan of the decoded document,
@@ -479,38 +568,17 @@ def get_meta_refresh(
         ):
             return None, None
 
-    utext = to_unicode(text, encoding)
+    # A cut through bytes can split a character, which is then replaced.
+    utext = to_unicode(text, encoding, errors="replace" if cut else "strict")
     if not _meta_re.search(utext):
         return None, None
 
     for tag in _build_meta_scan_pattern(ignored).finditer(utext):
         attrs = tag.group("attrs")
-
         if attrs is None or "refresh" not in attrs.lower():
             continue
-
-        if "&" in attrs:
-            attrs = replace_entities(attrs)
-
-        has_refresh_pragma = False
-        interval: float | None = None
-        url: str | None = None
-        for name, value in iter_tag_attributes(attrs):
-            match name:
-                case "http-equiv":
-                    if "refresh" in value.lower():
-                        has_refresh_pragma = True
-                case "content":
-                    if interval is None and (
-                        m := _meta_refresh_content_re.match(value)
-                    ):
-                        interval = float(m.group("int"))
-                        url = m.group("url")
-
-        if has_refresh_pragma and interval is not None:
-            assert url is not None
-            url = safe_url_string(url.strip(" \"'"), encoding)
-            return interval, urljoin(baseurl, url)
+        if refresh := _refresh(attrs, baseurl, encoding):
+            return refresh
 
     return None, None
 
