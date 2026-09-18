@@ -8,10 +8,6 @@ from typing import Any
 import pytest
 
 from w3lib.encoding import (
-    DefaultEncodingBackend,
-    EncodingBackend,
-    EncodingContext,
-    EncodingDecision,
     html_body_declared_encoding,
     html_to_unicode,
     http_content_type_encoding,
@@ -529,80 +525,3 @@ class TestHtmlConversion:
     def test_empty_body(self):
         # if no other method available, the default encoding of utf-8 is used
         self._assert_encoding_detected(None, "utf-8", b"")
-
-
-class _RecordingBackend(DefaultEncodingBackend):
-    def __init__(self) -> None:
-        super().__init__()
-        self.calls: list[tuple[bytes, str, str | None]] = []
-
-    def resolve(
-        self, body: bytes, content_type: str = "", encoding: str | None = None
-    ) -> EncodingDecision:
-        self.calls.append((body, content_type, encoding))
-        return super().resolve(body, content_type, encoding)
-
-
-class TestEncodingContext:
-    def test_lazy(self):
-        backend = _RecordingBackend()
-        context = EncodingContext(
-            b"caf\xe9", "text/html; charset=latin1", backend=backend
-        )
-        assert not backend.calls
-        assert context.encoding == "cp1252"
-        assert context.text == "café"
-        assert backend.calls == [(b"caf\xe9", "text/html; charset=latin1", None)]
-
-    def test_explicit_encoding(self):
-        backend: EncodingBackend = DefaultEncodingBackend()
-        context = EncodingContext(
-            b"caf\xe9", "text/html; charset=utf-8", backend=backend, encoding="latin1"
-        )
-        assert context.explicit_encoding == "latin1"
-        assert context.encoding == "cp1252"
-        assert context.text == "café"
-
-    def test_bom_beats_explicit_encoding(self):
-        context = EncodingContext(
-            b"\xff\xfe4l", backend=DefaultEncodingBackend(), encoding="utf-8"
-        )
-        assert context.encoding == "utf-16-le"
-        assert context.text == "\u6c34"
-
-    @pytest.mark.parametrize(
-        ("encoding", "expected"),
-        [
-            ("cp1252", "cp1252"),
-            ("utf-16-le", "utf-8"),
-        ],
-    )
-    def test_request_encoding(self, encoding, expected):
-        context = EncodingContext(
-            b"", backend=DefaultEncodingBackend(), encoding=encoding
-        )
-        assert context.request_encoding == expected
-
-    def test_request_encoding_unknown_codec(self):
-        class Decision:
-            name = "x-user-defined"
-            ascii_compatible = True
-
-            def decode(self, body: bytes) -> str:
-                return body.decode("ascii")
-
-        class Backend:
-            policy_id = "test"
-
-            def resolve(
-                self, body: bytes, content_type: str = "", encoding: str | None = None
-            ) -> EncodingDecision:
-                return Decision()
-
-        context = EncodingContext(b"", backend=Backend())
-        assert context.request_encoding == "utf-8"
-
-
-class TestDefaultEncodingBackend:
-    def test_default_encoding(self):
-        assert DefaultEncodingBackend("ascii").resolve(b"").name == "ascii"
