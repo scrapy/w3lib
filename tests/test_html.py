@@ -76,6 +76,12 @@ class TestRemoveEntities:
         assert replace_entities("x&#153;y", encoding="cp1252") == "x\u2122y"
         assert replace_entities("x&#x99;y", encoding="cp1252") == "x\u2122y"
 
+    def test_keep_entities_iterator(self):
+        assert (
+            replace_entities("&pound; &amp; &lt; &amp;", keep=iter(["lt", "amp"]))
+            == "\u00a3 &amp; &lt; &amp;"
+        )
+
     def test_non_ascii_digits(self):
         # character references are ASCII digits only, so these are plain text
         assert (
