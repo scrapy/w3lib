@@ -143,6 +143,8 @@ def replace_entities(
 
     """
 
+    keep = frozenset(keep)
+
     def convert_entity(m: re.Match[str]) -> str:
         groups = m.groupdict()
         number = None
