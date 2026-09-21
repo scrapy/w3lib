@@ -40,8 +40,13 @@ _TAG_BODY = r"""[^<>=]*(?:(?:=\s*"[^"]*"|=\s*'[^']*'|=(?!\s*["']))[^<>=]*)*"""
 _TAG_NAME = r"""[a-zA-Z][a-zA-Z0-9]*(?![^ <>/])"""
 # Anything else, a markup declaration or a tag named otherwise, keeps the plain
 # reading: an apostrophe in a comment is text, and pairing it with a later
-# quote would swallow the markup in between.
-_tag_re = re.compile(rf"""</?{_TAG_NAME}{_TAG_BODY}>|<[a-zA-Z/!][^<>]*>""")
+# quote would swallow the markup in between. A tag with no "=" before its
+# first ">" has no quoted value that could hold one, so both readings agree on
+# it, and the plain one comes first because it is the cheaper of the two and
+# the case of most tags.
+_tag_re = re.compile(
+    rf"""<[a-zA-Z/!][^<>=]*>|</?{_TAG_NAME}{_TAG_BODY}>|<[a-zA-Z/!][^<>]*>"""
+)
 # Tag syntax is ASCII, and re.ASCII holds the scan patterns of this module to
 # it: "\s" matches the whitespace that separates markup and not, say, U+3000,
 # and case-insensitive matching pairs no "s" with "\u017f" nor "k" with
