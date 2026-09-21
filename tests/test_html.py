@@ -125,6 +125,19 @@ class TestRemoveEntities:
         )
 
 
+# A quote opens an attribute value only right after "=". Anywhere else in a
+# tag it is part of an attribute name or of an unquoted value, so it pairs with
+# no later quote and the tag still ends at the first ">", as html.parser and
+# libxml2 read these. Each case is the text of such a tag up to its ">", and
+# the text that follows the element, which holds the quote that would pair.
+_QUOTE_OUTSIDE_VALUE_POSITION = [
+    pytest.param('<b "a', 'b">', id="attribute-name"),
+    pytest.param("<b x=y'a", "b'>", id="unquoted-value"),
+    pytest.param('<b x="y""a', 'b">', id="after-quoted-value"),
+    pytest.param('<b/"a', 'b">', id="after-slash"),
+]
+
+
 class TestReplaceTags:
     def test_returns_unicode(self):
         # make sure it always return unicode
@@ -150,6 +163,10 @@ class TestReplaceTags:
     @pytest.mark.parametrize("quote", ["<", ">"])
     def test_lt_gt_in_quoted_attribute_value(self, quote: str) -> None:
         assert replace_tags(f'x<img alt="a{quote}b" src=x>y') == "xy"
+
+    @pytest.mark.parametrize(("tag", "text"), _QUOTE_OUTSIDE_VALUE_POSITION)
+    def test_quote_outside_value_position(self, tag: str, text: str) -> None:
+        assert replace_tags(f"{tag}><i>{text}") == text
 
     def test_replace_tags_no_catastrophic_backtracking(self):
         evil = "<a" * 50000
@@ -255,6 +272,12 @@ class TestRemoveTags:
     def test_lt_gt_in_quoted_attribute_value(self, quote: str) -> None:
         assert remove_tags(f'<p class="a{quote}b">txt</p>', which_ones=("p",)) == "txt"
 
+    @pytest.mark.parametrize(("tag", "text"), _QUOTE_OUTSIDE_VALUE_POSITION)
+    def test_quote_outside_value_position(self, tag: str, text: str) -> None:
+        # The kept tag ends at its ">", so the <i> that follows is removed
+        # instead of being swallowed into it.
+        assert remove_tags(f"{tag}><i>{text}", keep=("b",)) == f"{tag}>{text}"
+
     @pytest.mark.parametrize(
         "evil",
         [
@@ -337,6 +360,18 @@ class TestRemoveTagsWithContent:
         assert (
             remove_tags_with_content('<div data-x="a>b"/>tail', which_ones=("div",))
             == "tail"
+        )
+
+    @pytest.mark.parametrize(("tag", "text"), _QUOTE_OUTSIDE_VALUE_POSITION)
+    def test_quote_outside_value_position(self, tag: str, text: str) -> None:
+        # The element ends at the first </script>, and the second one, which a
+        # tag read past its ">" would pair with the first, is left in place.
+        tag = tag.replace("<b", "<script", 1)
+        assert (
+            remove_tags_with_content(
+                f"{tag}><b>x</script>{text}<i>y</script>", which_ones=("script",)
+            )
+            == f"{text}<i>y</script>"
         )
 
     def test_no_catastrophic_backtracking(self) -> None:

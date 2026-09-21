@@ -25,10 +25,13 @@ _ent_re = re.compile(
 )
 # The text of a tag after its name, up to the angle bracket that ends the tag.
 # A quoted attribute value is consumed whole, so that an angle bracket in it
-# does not end the tag. The runs of unquoted characters and the quoted values
-# alternate, which gives a tag body a single parse and hence nothing to
-# backtrack into.
-_TAG_BODY = r"""[^<>"']*(?:(?:"[^"]*"|'[^']*')[^<>"']*)*"""
+# does not end the tag. A quote opens a value only right after the "=" of an
+# attribute; anywhere else in a tag, HTML parsers take it as part of a name or
+# of an unquoted value, and the tag still ends at the first ">". The runs of
+# other characters stop at every "=", and what follows one is a double-quoted
+# value, a single-quoted value or neither, which gives a tag body a single
+# parse and hence nothing to backtrack into.
+_TAG_BODY = r"""[^<>=]*(?:(?:=\s*"[^"]*"|=\s*'[^']*'|=(?!\s*["']))[^<>=]*)*"""
 # Only a tag named the way an HTML element is gets its body read that way.
 # Pairing quotes across a "<" that opens no tag, e.g. the one in "i<n" inside a
 # script, would take the tag to the far side of the next quote, and past every
