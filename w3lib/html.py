@@ -23,7 +23,30 @@ _ent_re = re.compile(
     r"&((?P<named>[a-z0-9]+)|#(?P<dec>[0-9]+)|#x(?P<hex>[a-f0-9]+))(?P<semicolon>;?)",
     re.IGNORECASE,
 )
-_tag_re = re.compile(r"<[a-zA-Z\/!][^<>]*>")
+# The text of a tag after its name, up to the angle bracket that ends the tag.
+# A quoted attribute value is consumed whole, so that an angle bracket in it
+# does not end the tag. A quote opens a value only right after the "=" of an
+# attribute; anywhere else in a tag, HTML parsers take it as part of a name or
+# of an unquoted value, and the tag still ends at the first ">". The runs of
+# other characters stop at every "=", and what follows one is a double-quoted
+# value, a single-quoted value or neither, which gives a tag body a single
+# parse and hence nothing to backtrack into.
+_TAG_BODY = r"""[^<>=]*(?:(?:=\s*"[^"]*"|=\s*'[^']*'|=(?!\s*["']))[^<>=]*)*"""
+# Only a tag named the way an HTML element is gets its body read that way.
+# Pairing quotes across a "<" that opens no tag, e.g. the one in "i<n" inside a
+# script, would take the tag to the far side of the next quote, and past every
+# tag in between. A name is pinned to its full length, as below, so that the
+# "<" of "n<arguments.length" is left to the plain reading.
+_TAG_NAME = r"""[a-zA-Z][a-zA-Z0-9]*(?![^ <>/])"""
+# Anything else, a markup declaration or a tag named otherwise, keeps the plain
+# reading: an apostrophe in a comment is text, and pairing it with a later
+# quote would swallow the markup in between. A tag with no "=" before its
+# first ">" has no quoted value that could hold one, so both readings agree on
+# it, and the plain one comes first because it is the cheaper of the two and
+# the case of most tags.
+_tag_re = re.compile(
+    rf"""<[a-zA-Z/!][^<>=]*>|</?{_TAG_NAME}{_TAG_BODY}>|<[a-zA-Z/!][^<>]*>"""
+)
 # Tag syntax is ASCII, and re.ASCII holds the scan patterns of this module to
 # it: "\s" matches the whitespace that separates markup and not, say, U+3000,
 # and case-insensitive matching pairs no "s" with "\u017f" nor "k" with
@@ -40,10 +63,10 @@ _base_bytes_re = re.compile(rb"<base", re.IGNORECASE)
 # scripts of real pages cost a tight loop per run rather than a match attempt
 # per character.
 _base_scan_re = re.compile(
-    r"""
+    rf"""
       <!--[^-]*(?:-(?!->)[^-]*)*(?:-->|$)
-    | <(?P<t>script|noscript)\b[^<>]*>[^<]*(?:<(?!/(?P=t)>)[^<]*)*(?:</(?P=t)>|$)
-    | <base\s[^<>]*href\s*=\s*["']\s*(?P<url>[^"'\s]+)\s*["']
+    | <(?P<t>script|noscript)\b{_TAG_BODY}>[^<]*(?:<(?!/(?P=t)>)[^<]*)*(?:</(?P=t)>|$)
+    | <base\s{_TAG_BODY}href\s*=\s*["']\s*(?P<url>[^"'\s]+)\s*["']
     """,
     re.IGNORECASE | re.DOTALL | re.VERBOSE | re.ASCII,
 )
@@ -59,9 +82,14 @@ _meta_refresh_content_re = re.compile(
 _CDATA_START = "<![CDATA["
 _CDATA_END = "]]>"
 _tags_re = re.compile(
-    r"""
+    rf"""
+      </?(?P<named>{_TAG_NAME})
+                    # a tag named the way an HTML element is, whose quoted
+      {_TAG_BODY}>  # attribute values are read whole
+    |
     </?             # opening angle bracket, optional slash for a closing tag
-    ([^ <>/]+)      # tag name (captured): a run of non-space, non-bracket chars,
+    (?P<name>[^ <>/]+)
+                    # tag name (captured): a run of non-space, non-bracket chars,
     (?![^ <>/])     # pinned to its maximal length by this lookahead so it can't
                     # overlap the run below and backtrack quadratically on an
                     # unterminated tag (a "<" with a long run and no ">")
@@ -90,10 +118,10 @@ def _meta_scan_source(ignore_tags: tuple[str, ...]) -> str:
     if ignore_tags:
         tags = "|".join(re.escape(tag) for tag in ignore_tags)
         alternatives.append(
-            rf"<(?P<t>{tags})\b[^<>]*>[^<]*(?:<(?!/(?P=t)[\s/>])[^<]*)*"
-            r"(?:</(?P=t)[^<>]*>?|$)"
+            rf"<(?P<t>{tags})\b{_TAG_BODY}>[^<]*(?:<(?!/(?P=t)[\s/>])[^<]*)*"
+            rf"(?:</(?P=t){_TAG_BODY}>?|$)"
         )
-    alternatives.append(r"<meta\s(?P<attrs>[^<>]*)")
+    alternatives.append(rf"<meta\s(?P<attrs>{_TAG_BODY})")
     return "|".join(alternatives)
 
 
@@ -233,7 +261,7 @@ def remove_comments(text: str | bytes, encoding: str | None = None) -> str:
 def _remove_tag(
     m: re.Match[str], which_ones: set[str] | tuple[()], keep: set[str] | tuple[()]
 ) -> str:
-    tag = m.group(1).lower()
+    tag = (m.group("named") or m.group("name")).lower()
 
     should_remove = tag in which_ones if which_ones else tag not in keep
 
@@ -312,9 +340,10 @@ def _build_remove_tags_pattern(tags_tuple: tuple[str, ...]) -> re.Pattern[str]:
     # trailing run stays [^<>]* so it can't cross into the next tag and match
     # super-linearly.
     pattern = rf"""
-        <(?P<tag>{tags})\b[^<>]*>.*?</(?P=tag)(?=[\s/>])[^<>]*>
+        <(?P<tag>{tags})\b(?:{_TAG_BODY}>|[^<>]*>)
+        .*?</(?P=tag)(?=[\s/>])[^<>]*>
         |
-        <(?P<tag2>{tags})\b[^<>]*/>
+        <(?P<tag2>{tags})\b(?:{_TAG_BODY}/>|[^<>]*/>)
     """
     return re.compile(pattern, re.IGNORECASE | re.DOTALL | re.VERBOSE)
 
