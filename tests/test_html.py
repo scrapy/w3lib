@@ -539,10 +539,6 @@ class TestGetBaseUrl:
             == "https://example.org"
         )
 
-    @pytest.mark.xfail(
-        reason="the tag scan stops at a raw < or > inside a quoted attribute value",
-        strict=True,
-    )
     @pytest.mark.parametrize("quote", ["<", ">"])
     def test_lt_gt_in_quoted_attribute_value(self, quote: str) -> None:
         assert (
@@ -833,10 +829,6 @@ class TestGetMetaRefresh:
             "http://evil.example/",
         )
 
-    @pytest.mark.xfail(
-        reason="the tag scan stops at a raw < or > inside a quoted attribute value",
-        strict=True,
-    )
     @pytest.mark.parametrize("quote", ["<", ">"])
     def test_lt_gt_in_quoted_attribute_value(self, quote: str) -> None:
         body = f'<meta data-x="a{quote}b" http-equiv="refresh" content="3;url=/next">'

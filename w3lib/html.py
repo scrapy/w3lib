@@ -63,10 +63,10 @@ _base_bytes_re = re.compile(rb"<base", re.IGNORECASE)
 # scripts of real pages cost a tight loop per run rather than a match attempt
 # per character.
 _base_scan_re = re.compile(
-    r"""
+    rf"""
       <!--[^-]*(?:-(?!->)[^-]*)*(?:-->|$)
-    | <(?P<t>script|noscript)\b[^<>]*>[^<]*(?:<(?!/(?P=t)>)[^<]*)*(?:</(?P=t)>|$)
-    | <base\s[^<>]*href\s*=\s*["']\s*(?P<url>[^"'\s]+)\s*["']
+    | <(?P<t>script|noscript)\b{_TAG_BODY}>[^<]*(?:<(?!/(?P=t)>)[^<]*)*(?:</(?P=t)>|$)
+    | <base\s{_TAG_BODY}href\s*=\s*["']\s*(?P<url>[^"'\s]+)\s*["']
     """,
     re.IGNORECASE | re.DOTALL | re.VERBOSE | re.ASCII,
 )
@@ -118,10 +118,10 @@ def _meta_scan_source(ignore_tags: tuple[str, ...]) -> str:
     if ignore_tags:
         tags = "|".join(re.escape(tag) for tag in ignore_tags)
         alternatives.append(
-            rf"<(?P<t>{tags})\b[^<>]*>[^<]*(?:<(?!/(?P=t)[\s/>])[^<]*)*"
-            r"(?:</(?P=t)[^<>]*>?|$)"
+            rf"<(?P<t>{tags})\b{_TAG_BODY}>[^<]*(?:<(?!/(?P=t)[\s/>])[^<]*)*"
+            rf"(?:</(?P=t){_TAG_BODY}>?|$)"
         )
-    alternatives.append(r"<meta\s(?P<attrs>[^<>]*)")
+    alternatives.append(rf"<meta\s(?P<attrs>{_TAG_BODY})")
     return "|".join(alternatives)
 
 
