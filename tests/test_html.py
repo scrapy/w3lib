@@ -1,6 +1,7 @@
 import time
 
 import pytest
+from hypothesis import given, strategies as st
 
 from w3lib.html import (
     get_base_url,
@@ -76,6 +77,12 @@ class TestRemoveEntities:
         assert replace_entities("x&#153;y", encoding="cp1252") == "x\u2122y"
         assert replace_entities("x&#x99;y", encoding="cp1252") == "x\u2122y"
 
+    def test_keep_entities_iterator(self):
+        assert (
+            replace_entities("&pound; &amp; &lt; &amp;", keep=iter(["lt", "amp"]))
+            == "\u00a3 &amp; &lt; &amp;"
+        )
+
     def test_non_ascii_digits(self):
         # character references are ASCII digits only, so these are plain text
         assert (
@@ -125,6 +132,19 @@ class TestRemoveEntities:
         )
 
 
+# A quote opens an attribute value only right after "=". Anywhere else in a
+# tag it is part of an attribute name or of an unquoted value, so it pairs with
+# no later quote and the tag still ends at the first ">", as html.parser and
+# libxml2 read these. Each case is the text of such a tag up to its ">", and
+# the text that follows the element, which holds the quote that would pair.
+_QUOTE_OUTSIDE_VALUE_POSITION = [
+    pytest.param('<b "a', 'b">', id="attribute-name"),
+    pytest.param("<b x=y'a", "b'>", id="unquoted-value"),
+    pytest.param('<b x="y""a', 'b">', id="after-quoted-value"),
+    pytest.param('<b/"a', 'b">', id="after-slash"),
+]
+
+
 class TestReplaceTags:
     def test_returns_unicode(self):
         # make sure it always return unicode
@@ -146,6 +166,14 @@ class TestReplaceTags:
             replace_tags(b'Click <a class="one"\r\n href="url">here</a>')
             == "Click here"
         )
+
+    @pytest.mark.parametrize("quote", ["<", ">"])
+    def test_lt_gt_in_quoted_attribute_value(self, quote: str) -> None:
+        assert replace_tags(f'x<img alt="a{quote}b" src=x>y') == "xy"
+
+    @pytest.mark.parametrize(("tag", "text"), _QUOTE_OUTSIDE_VALUE_POSITION)
+    def test_quote_outside_value_position(self, tag: str, text: str) -> None:
+        assert replace_tags(f"{tag}><i>{text}") == text
 
     def test_replace_tags_no_catastrophic_backtracking(self):
         evil = "<a" * 50000
@@ -247,6 +275,16 @@ class TestRemoveTags:
             == ""
         )
 
+    @pytest.mark.parametrize("quote", ["<", ">"])
+    def test_lt_gt_in_quoted_attribute_value(self, quote: str) -> None:
+        assert remove_tags(f'<p class="a{quote}b">txt</p>', which_ones=("p",)) == "txt"
+
+    @pytest.mark.parametrize(("tag", "text"), _QUOTE_OUTSIDE_VALUE_POSITION)
+    def test_quote_outside_value_position(self, tag: str, text: str) -> None:
+        # The kept tag ends at its ">", so the <i> that follows is removed
+        # instead of being swallowed into it.
+        assert remove_tags(f"{tag}><i>{text}", keep=("b",)) == f"{tag}>{text}"
+
     @pytest.mark.parametrize(
         "evil",
         [
@@ -309,7 +347,43 @@ class TestRemoveTagsWithContent:
             == "<span></span>"
         )
 
-    def test_no_catastrophic_backtracking(self):
+    def test_lt_in_quoted_attribute_value(self) -> None:
+        assert (
+            remove_tags_with_content(
+                'head<div data-x="a<b">c</div>tail', which_ones=("div",)
+            )
+            == "headtail"
+        )
+
+    def test_gt_in_quoted_attribute_value(self) -> None:
+        assert (
+            remove_tags_with_content(
+                'head<div data-x="a>b">c</div>tail', which_ones=("div",)
+            )
+            == "headtail"
+        )
+
+    def test_gt_in_quoted_attribute_value_self_closing(self) -> None:
+        assert (
+            remove_tags_with_content('<div data-x="a>b"/>tail', which_ones=("div",))
+            == "tail"
+        )
+
+    @pytest.mark.parametrize(("tag", "text"), _QUOTE_OUTSIDE_VALUE_POSITION)
+    def test_quote_outside_value_position(self, tag: str, text: str) -> None:
+        # The element ends at the first </script>, and the second one, which a
+        # tag read past its ">" would pair with the first, is left in place.
+        tag = tag.replace("<b", "<script", 1)
+        assert (
+            remove_tags_with_content(
+                f"{tag}><b>x</script>{text}<i>y</script>", which_ones=("script",)
+            )
+            == f"{text}<i>y</script>"
+        )
+
+    def test_no_catastrophic_backtracking(self) -> None:
+        # "<script " has no ">", so it never completes an opening tag and the
+        # close-tag scan is never entered
         evil = "<script " * 50000
         start = time.process_time()
         assert remove_tags_with_content(evil, which_ones=("script",)) == evil
@@ -320,6 +394,15 @@ class TestRemoveTagsWithContent:
             == evil
         )
         assert time.process_time() - start < 2
+
+    @pytest.mark.xfail(reason="the close-tag scan restarts at every opening tag")
+    def test_no_catastrophic_backtracking_unclosed_tags(self) -> None:
+        # Many *complete* opening tags with no closing tag: the close-tag scan
+        # runs to end-of-input from every one of them.
+        evil = "<script>" * 10000  # increase when fixing
+        start = time.process_time()
+        assert remove_tags_with_content(evil, which_ones=("script",)) == evil
+        assert time.process_time() - start < 1
 
     def test_end_tag_with_whitespace_or_attrs(self):
         # Browsers end an element on the tag name followed by whitespace, "/"
@@ -461,6 +544,13 @@ class TestGetBaseUrl:
                 "<html><head></head><body></body></html>", "https://example.org"
             )
             == "https://example.org"
+        )
+
+    @pytest.mark.parametrize("quote", ["<", ">"])
+    def test_lt_gt_in_quoted_attribute_value(self, quote: str) -> None:
+        assert (
+            get_base_url(f'<base data-x="a{quote}b" href="http://example.org/">')
+            == "http://example.org/"
         )
 
     def test_get_base_url_no_catastrophic_backtracking(self):
@@ -623,6 +713,81 @@ class TestGetBaseUrl:
             </html>"""
         assert get_base_url(text, baseurl) == "http://example.org/sterling%a3"
 
+    @pytest.mark.parametrize(
+        ("encoding", "char"),
+        [
+            ("utf-8", "\u793e"),
+            ("latin-1", "\u00e9"),
+            ("shift_jis", "\u793e"),
+            ("gb18030", "\u793e"),
+            ("iso2022_jp", "\u793e"),
+        ],
+    )
+    def test_get_base_url_bytes(self, encoding: str, char: str) -> None:
+        baseurl = "https://example.org"
+        with_base = f"<html><head>{char}<base href='/path'></head></html>"
+        without_base = f"<html><head>{char}</head></html>"
+        assert (
+            get_base_url(with_base.encode(encoding), baseurl, encoding)
+            == get_base_url(with_base, baseurl, encoding)
+            == "https://example.org/path"
+        )
+        assert (
+            get_base_url(without_base.encode(encoding), baseurl, encoding)
+            == get_base_url(without_base, baseurl, encoding)
+            == baseurl
+        )
+
+    def test_get_base_url_spelled_by_characters(self) -> None:
+        # These kanji encode to bytes that spell a <base> tag, which neither a
+        # browser nor the scan of the decoded document sees.
+        text = "<p>\u932b\u7648\u7dc7</p>"
+        assert text.encode("iso2022_jp") == b"<p>\x1b$B<base>\x1b(B</p>"
+        assert (
+            get_base_url(text.encode("iso2022_jp"), "https://example.org", "iso2022_jp")
+            == "https://example.org"
+        )
+
+    def test_get_base_url_non_ascii_compatible(self) -> None:
+        # UTF-16 writes ASCII characters as something else than their ASCII
+        # bytes, so the document is decoded before it is scanned.
+        text = "<base href='/path'>"
+        assert get_base_url(
+            text.encode("utf-16"), "https://example.org", "utf-16"
+        ) == get_base_url(text, "https://example.org", "utf-16")
+
+    def test_get_base_url_unknown_encoding(self) -> None:
+        with pytest.raises(LookupError):
+            get_base_url(
+                b"<base href='/path'>", "https://example.org", "not-an-encoding"
+            )
+
+    def test_get_base_url_split_by_a_dropped_escape(self) -> None:
+        # ESC ( B redesignates ASCII where ASCII is already in use, so it
+        # divides the tag in the bytes but not in the document.
+        raw = b'<ba\x1b(Bse href="/path">'
+        assert raw.decode("iso2022_jp") == '<base href="/path">'
+        assert (
+            get_base_url(raw, "https://example.org", "iso2022_jp")
+            == "https://example.org/path"
+        )
+
+    def test_get_base_url_non_ascii_whitespace(self) -> None:
+        # U+3000 does not separate a tag name from its attributes.
+        text = "<base\u3000href='/path'>"
+        assert get_base_url(text, "https://example.org") == "https://example.org"
+        assert (
+            get_base_url(text.encode(), "https://example.org") == "https://example.org"
+        )
+
+    def test_get_base_url_non_ascii_case_folding(self) -> None:
+        # U+017F uppercases to "S", but it is no "s" in a tag name.
+        text = "<ba\u017fe href='/path'>"
+        assert get_base_url(text, "https://example.org") == "https://example.org"
+        assert (
+            get_base_url(text.encode(), "https://example.org") == "https://example.org"
+        )
+
 
 class TestGetMetaRefresh:
     def test_get_meta_refresh(self):
@@ -669,6 +834,14 @@ class TestGetMetaRefresh:
         assert get_meta_refresh(body, "http://good.example/", ignore_tags=()) == (
             0.0,
             "http://evil.example/",
+        )
+
+    @pytest.mark.parametrize("quote", ["<", ">"])
+    def test_lt_gt_in_quoted_attribute_value(self, quote: str) -> None:
+        body = f'<meta data-x="a{quote}b" http-equiv="refresh" content="3;url=/next">'
+        assert get_meta_refresh(body, "http://example.org") == (
+            3.0,
+            "http://example.org/next",
         )
 
     def test_get_meta_refresh_no_catastrophic_backtracking(self):
@@ -911,6 +1084,83 @@ http://www.example.org/index.php" />
             "http://example.org/next",
         )
 
+    @pytest.mark.parametrize(
+        ("encoding", "char"),
+        [
+            ("utf-8", "\u793e"),
+            ("latin-1", "\u00e9"),
+            ("shift_jis", "\u793e"),
+            ("gb18030", "\u793e"),
+            ("iso2022_jp", "\u793e"),
+        ],
+    )
+    def test_get_meta_refresh_bytes(self, encoding: str, char: str) -> None:
+        baseurl = "http://example.org"
+        with_refresh = (
+            f"<html><head>{char}"
+            "<meta http-equiv='refresh' content='3;url=/next'></head></html>"
+        )
+        without_refresh = f"<html><head>{char}</head></html>"
+        assert (
+            get_meta_refresh(with_refresh.encode(encoding), baseurl, encoding)
+            == get_meta_refresh(with_refresh, baseurl, encoding)
+            == (3.0, "http://example.org/next")
+        )
+        assert (
+            get_meta_refresh(without_refresh.encode(encoding), baseurl, encoding)
+            == get_meta_refresh(without_refresh, baseurl, encoding)
+            == (None, None)
+        )
+
+    def test_get_meta_refresh_spelled_by_characters(self) -> None:
+        # These kanji encode to bytes that spell "refresh", which neither a
+        # browser nor the scan of the decoded document sees.
+        text = "<p>\u9c5a\u80d9\u7e89\u8515</p>"
+        assert text.encode("iso2022_jp") == b"<p>\x1b$Brefreshx\x1b(B</p>"
+        assert get_meta_refresh(
+            text.encode("iso2022_jp"), "http://example.org", "iso2022_jp"
+        ) == (None, None)
+
+    def test_get_meta_refresh_non_ascii_compatible(self) -> None:
+        # UTF-16 writes ASCII characters as something else than their ASCII
+        # bytes, so the document is decoded before it is scanned.
+        body = "<meta http-equiv='refresh' content='3;url=/next'>"
+        assert get_meta_refresh(
+            body.encode("utf-16"), "http://example.org", "utf-16"
+        ) == get_meta_refresh(body, "http://example.org", "utf-16")
+
+    def test_get_meta_refresh_split_by_a_dropped_escape(self) -> None:
+        # ESC ( B redesignates ASCII where ASCII is already in use, so it
+        # divides the tag in the bytes but not in the document.
+        raw = b'<me\x1b(Bta http-equiv="refresh" content="3;url=/next">'
+        assert (
+            raw.decode("iso2022_jp")
+            == '<meta http-equiv="refresh" content="3;url=/next">'
+        )
+        assert get_meta_refresh(raw, "http://example.org", "iso2022_jp") == (
+            3.0,
+            "http://example.org/next",
+        )
+
+    def test_get_meta_refresh_non_ascii_whitespace(self) -> None:
+        # U+3000 does not separate a tag name from its attributes.
+        body = "<meta\u3000http-equiv='refresh' content='3;url=/next'>"
+        assert get_meta_refresh(body, "http://example.org") == (None, None)
+        assert get_meta_refresh(body.encode(), "http://example.org") == (None, None)
+
+    def test_get_meta_refresh_non_ascii_case_folding(self) -> None:
+        # U+017F uppercases to "S", but it is no "s" in a tag name, so this is
+        # no <script> element and the browser parses the <meta> inside it.
+        body = (
+            "<\u017fcript>"
+            "<meta http-equiv='refresh' content='3;url=/next'>"
+            "</\u017fcript>"
+        )
+        assert get_meta_refresh(body, "http://example.org") == (
+            3.0,
+            "http://example.org/next",
+        )
+
 
 class TestHasEntities:
     def test_no_entities(self):
@@ -949,3 +1199,122 @@ class TestHasEntities:
     def test_entities_inside_markup(self):
         assert has_entities("<div>&amp;</div>")
         assert has_entities("<a href='?q=1&amp;x=2'>link</a>")
+
+
+BASE_TAG = '<base href="http://example.org/found">'
+META_TAG = '<meta http-equiv="refresh" content="5;url=http://example.org/found">'
+LIMIT = 100
+
+# Markup built out of these puts angle brackets everywhere a cut can misread
+# them: in comments, in quoted attribute values, in text, and in the content of
+# an ignored tag.
+FRAGMENTS = [
+    BASE_TAG,
+    META_TAG,
+    "<meta http-equiv=refresh content=5;url=http://example.org/found>",
+    '<meta title="a>b" http-equiv=refresh content=5;url=http://example.org/found>',
+    '<base title="a>b" href="http://example.org/found">',
+    '<meta title="a<b" http-equiv=refresh content=5;url=http://example.org/found>',
+    '<base title="a<b" href="http://example.org/found">',
+    "<base href=",
+    '"',
+    "<!--",
+    "-->",
+    "<script>",
+    "</script>",
+    '<p title="a>b">',
+    '<p title="a<b">',
+    "a < b",
+    "a > b",
+    "<",
+    ">",
+    "x",
+]
+
+
+def base(text: str | bytes, **kwargs: object) -> object:
+    return get_base_url(text, "https://example.org", **kwargs)  # type: ignore[arg-type]
+
+
+def meta(text: str | bytes, **kwargs: object) -> object:
+    return get_meta_refresh(text, "https://example.org", **kwargs)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    ("func", "tag", "found", "missing"),
+    [
+        (base, BASE_TAG, "http://example.org/found", "https://example.org"),
+        (meta, META_TAG, (5, "http://example.org/found"), (None, None)),
+    ],
+    ids=["base", "meta"],
+)
+class TestMaxScan:
+    def test_straddling_tag(self, func, tag, found, missing):
+        # A tag that starts before the limit and ends after it is read whole,
+        # wherever in it the limit falls, inside a quoted value included.
+        for offset in range(1, len(tag)):
+            text = "a" * (LIMIT - offset) + tag
+            assert func(text, max_scan=LIMIT) == found
+            assert func(text.encode(), max_scan=LIMIT) == found
+
+    def test_before_limit(self, func, tag, found, missing):
+        assert func(tag + "a" * LIMIT, max_scan=LIMIT) == found
+
+    def test_unterminated_tag_within_limit(self, func, tag, found, missing):
+        assert func(tag[:-1], max_scan=LIMIT) == found
+
+    def test_stray_lt_before_limit(self, func, tag, found, missing):
+        # A "<" that starts no tag must not extend the scan past the limit.
+        assert func("1 < 2 " + "a" * LIMIT + tag, max_scan=LIMIT) == missing
+
+    def test_bytes_limit_counts_bytes(self, func, tag, found, missing):
+        # The limit reaches the tag in characters, but not in bytes.
+        text = "\u00e9" * 20 + tag
+        assert func(text, max_scan=30) == found
+        assert func(text.encode(), max_scan=30) == missing
+
+    def test_bytes_split_character(self, func, tag, found, missing):
+        # The cut splits the last character, which decoding replaces.
+        assert func(("\u00e9" * 5).encode() + tag.encode(), max_scan=9) == missing
+
+    @given(
+        markup=st.lists(st.sampled_from(FRAGMENTS), max_size=12).map("".join),
+        max_scan=st.integers(min_value=0, max_value=400),
+    )
+    def test_cut_never_invents(self, func, tag, found, missing, markup, max_scan):
+        # A cut can misread an angle bracket in a comment or an attribute value
+        # only into looking at less, never into a result of its own.
+        assert func(markup, max_scan=max_scan) in (func(markup), missing)
+        assert func(markup.encode(), max_scan=max_scan) in (func(markup), missing)
+
+    def test_reading_on_stops_at_the_next_tag(self, func, tag, found, missing):
+        # Reading a split tag to its end stops where the next tag begins.
+        assert func("<p data-x=" + "a" * LIMIT + tag, max_scan=LIMIT) == missing
+
+    def test_past_limit(self, func, tag, found, missing):
+        assert func("a" * LIMIT + tag, max_scan=LIMIT) == missing
+
+    def test_limit_beyond_text(self, func, tag, found, missing):
+        assert func(tag, max_scan=LIMIT) == found
+
+    def test_unlimited(self, func, tag, found, missing):
+        assert func("a" * LIMIT + tag) == found
+
+    def test_zero(self, func, tag, found, missing):
+        assert func(tag, max_scan=0) == missing
+
+    def test_negative(self, func, tag, found, missing):
+        with pytest.raises(ValueError, match="max_scan"):
+            func(tag, max_scan=-1)
+
+
+@pytest.mark.parametrize("cut", range(10, 76, 5))
+def test_max_scan_straddling_unquoted_value(cut: int) -> None:
+    # Reading half a tag would yield a redirect to a truncated url, and the
+    # quoted ">" hides where the tag ends from anything that reads one
+    # differently from the scan.
+    tag = '<meta title="a>b" http-equiv=refresh content=5;url=http://example.org/found>'
+    assert get_meta_refresh(tag, "https://example.org", max_scan=cut) in (
+        (None, None),
+        (5.0, "http://example.org/found"),
+    )

@@ -203,3 +203,18 @@ def test_benchmark_encoding(
     def factory():
         for args, kwargs in BENCHMARK_CASES[func]:
             func(*args, **kwargs)
+
+
+@pytest.mark.parametrize("func", BENCHMARK_CASES)
+def test_benchmark_encoding_cold(
+    benchmark: BenchmarkFixture,
+    func: Callable[..., Any],
+) -> None:
+    """Same cases as test_benchmark_encoding but with the resolve_encoding LRU
+    cache cleared before every round."""
+
+    def factory():
+        for args, kwargs in BENCHMARK_CASES[func]:
+            func(*args, **kwargs)
+
+    benchmark.pedantic(factory, setup=resolve_encoding.cache_clear, rounds=100)
