@@ -62,9 +62,10 @@ Security and correctness fixes:
 
 - :func:`~w3lib.url.canonicalize_url` now resolves dot segments (``.`` and
   ``..``) in the path and normalizes IPv6 addresses in the host, so that
-  equivalent URLs canonicalize the same (#308), and keeps a percent-encoded
-  semicolon (``%3B``) in the path encoded, since decoding it turned it into a
-  path parameter delimiter (#323).
+  equivalent URLs canonicalize the same (#308), and keeps percent-encoded
+  characters whose decoding would change their meaning, such as a semicolon
+  (``%3B``, a path parameter delimiter, #323) or a percent sign (``%25``,
+  which would otherwise decode to a bare ``%``, #306), in the path encoded.
 
 - :func:`~w3lib.url.canonicalize_url` no longer IDNA-encodes the userinfo of a
   URL together with its host, which changed both, e.g.
