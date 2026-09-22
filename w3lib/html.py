@@ -324,15 +324,14 @@ def remove_tags(
     >>>
 
     """
-    if which_ones and keep:
+    tags = {tag.lower() for tag in which_ones} if which_ones else ()
+    kept = {tag.lower() for tag in keep} if keep else ()
+
+    if tags and kept:
         raise ValueError("Cannot use both which_ones and keep")
 
     return _tags_re.sub(
-        functools.partial(
-            _remove_tag,
-            which_ones={tag.lower() for tag in which_ones} if which_ones else (),
-            keep={tag.lower() for tag in keep} if keep else (),
-        ),
+        functools.partial(_remove_tag, which_ones=tags, keep=kept),
         to_unicode(text, encoding),
     )
 
@@ -418,6 +417,8 @@ def unquote_markup(
     3. removes the found CDATAs
 
     """
+
+    keep = frozenset(keep)
 
     utext = to_unicode(text, encoding)
     ret = []

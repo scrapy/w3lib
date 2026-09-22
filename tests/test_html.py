@@ -223,6 +223,14 @@ class TestRemoveTags:
         assert isinstance(remove_tags("<p>one tag</p>", which_ones=("p",)), str)
         assert isinstance(remove_tags("<a>link</a>", which_ones=("b",)), str)
 
+    def test_iterator_arguments(self):
+        doc = "<p>x</p><b>y</b>"
+        assert remove_tags(doc, which_ones=iter(["p"])) == "x<b>y</b>"
+        assert remove_tags(doc, keep=iter(["p"])) == "<p>x</p>y"
+        assert remove_tags(doc, which_ones=iter([]), keep=iter([])) == "xy"
+        with pytest.raises(ValueError, match="Cannot use both"):
+            remove_tags(doc, which_ones=iter(["p"]), keep=iter(["b"]))
+
     def test_remove_tags_without_tags(self):
         # text without tags
         assert remove_tags("no tags") == "no tags"
@@ -496,6 +504,12 @@ although this is inside a cdata! &amp; &quot;</node1><node2>blah&blahblahblahbla
         assert (
             unquote_markup(self.sample_txt3)
             == 'something\xa3&more<node3>things, stuff, and suchwhat"ever</node3><node4'
+        )
+
+    def test_keep_entities_iterator(self):
+        assert (
+            unquote_markup("a&amp;b<![CDATA[x]]>c&amp;d", keep=iter(["amp"]))
+            == "a&amp;bxc&amp;d"
         )
 
     def test_cdata_at_start(self):
