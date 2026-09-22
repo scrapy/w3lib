@@ -326,6 +326,9 @@ SAFE_URL_URL_CASES = (
     # userinfo with invalid host embedding
     ("scheme://user@prefix.[v6a.ip]", ValueError),
     ("scheme://user@[v6a.ip].suffix", ValueError),
+    # brackets confined to the userinfo, leaving a plain host
+    ("scheme://us[er]@example.com", ValueError),
+    ("scheme://us[er]@[::1]", "scheme://us%5Ber%5D@[::1]"),
     # unmatched / broken bracket structures
     ("scheme://[v6a.ip", ValueError),
     ("scheme://v6a.ip]", ValueError),

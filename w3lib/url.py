@@ -94,13 +94,12 @@ def _safe_url_split(
     )
     tmp_buf = bytearray()  # utf-8 bytes
 
-    if parts.username is not None or parts.password is not None:
-        if parts.username is not None:
-            _quote_into(
-                _unquote(parts.username),
-                tmp_buf,
-                _USERINFO_SAFEST_CHARS,
-            )
+    if parts.username is not None:
+        _quote_into(
+            _unquote(parts.username),
+            tmp_buf,
+            _USERINFO_SAFEST_CHARS,
+        )
 
         if parts.password is not None:
             tmp_buf.append(58)  # ord(":")
