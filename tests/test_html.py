@@ -1,6 +1,7 @@
 import time
 
 import pytest
+from hypothesis import given, strategies as st
 
 from w3lib.html import (
     get_base_url,
@@ -1198,3 +1199,122 @@ class TestHasEntities:
     def test_entities_inside_markup(self):
         assert has_entities("<div>&amp;</div>")
         assert has_entities("<a href='?q=1&amp;x=2'>link</a>")
+
+
+BASE_TAG = '<base href="http://example.org/found">'
+META_TAG = '<meta http-equiv="refresh" content="5;url=http://example.org/found">'
+LIMIT = 100
+
+# Markup built out of these puts angle brackets everywhere a cut can misread
+# them: in comments, in quoted attribute values, in text, and in the content of
+# an ignored tag.
+FRAGMENTS = [
+    BASE_TAG,
+    META_TAG,
+    "<meta http-equiv=refresh content=5;url=http://example.org/found>",
+    '<meta title="a>b" http-equiv=refresh content=5;url=http://example.org/found>',
+    '<base title="a>b" href="http://example.org/found">',
+    '<meta title="a<b" http-equiv=refresh content=5;url=http://example.org/found>',
+    '<base title="a<b" href="http://example.org/found">',
+    "<base href=",
+    '"',
+    "<!--",
+    "-->",
+    "<script>",
+    "</script>",
+    '<p title="a>b">',
+    '<p title="a<b">',
+    "a < b",
+    "a > b",
+    "<",
+    ">",
+    "x",
+]
+
+
+def base(text: str | bytes, **kwargs: object) -> object:
+    return get_base_url(text, "https://example.org", **kwargs)  # type: ignore[arg-type]
+
+
+def meta(text: str | bytes, **kwargs: object) -> object:
+    return get_meta_refresh(text, "https://example.org", **kwargs)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    ("func", "tag", "found", "missing"),
+    [
+        (base, BASE_TAG, "http://example.org/found", "https://example.org"),
+        (meta, META_TAG, (5, "http://example.org/found"), (None, None)),
+    ],
+    ids=["base", "meta"],
+)
+class TestMaxScan:
+    def test_straddling_tag(self, func, tag, found, missing):
+        # A tag that starts before the limit and ends after it is read whole,
+        # wherever in it the limit falls, inside a quoted value included.
+        for offset in range(1, len(tag)):
+            text = "a" * (LIMIT - offset) + tag
+            assert func(text, max_scan=LIMIT) == found
+            assert func(text.encode(), max_scan=LIMIT) == found
+
+    def test_before_limit(self, func, tag, found, missing):
+        assert func(tag + "a" * LIMIT, max_scan=LIMIT) == found
+
+    def test_unterminated_tag_within_limit(self, func, tag, found, missing):
+        assert func(tag[:-1], max_scan=LIMIT) == found
+
+    def test_stray_lt_before_limit(self, func, tag, found, missing):
+        # A "<" that starts no tag must not extend the scan past the limit.
+        assert func("1 < 2 " + "a" * LIMIT + tag, max_scan=LIMIT) == missing
+
+    def test_bytes_limit_counts_bytes(self, func, tag, found, missing):
+        # The limit reaches the tag in characters, but not in bytes.
+        text = "\u00e9" * 20 + tag
+        assert func(text, max_scan=30) == found
+        assert func(text.encode(), max_scan=30) == missing
+
+    def test_bytes_split_character(self, func, tag, found, missing):
+        # The cut splits the last character, which decoding replaces.
+        assert func(("\u00e9" * 5).encode() + tag.encode(), max_scan=9) == missing
+
+    @given(
+        markup=st.lists(st.sampled_from(FRAGMENTS), max_size=12).map("".join),
+        max_scan=st.integers(min_value=0, max_value=400),
+    )
+    def test_cut_never_invents(self, func, tag, found, missing, markup, max_scan):
+        # A cut can misread an angle bracket in a comment or an attribute value
+        # only into looking at less, never into a result of its own.
+        assert func(markup, max_scan=max_scan) in (func(markup), missing)
+        assert func(markup.encode(), max_scan=max_scan) in (func(markup), missing)
+
+    def test_reading_on_stops_at_the_next_tag(self, func, tag, found, missing):
+        # Reading a split tag to its end stops where the next tag begins.
+        assert func("<p data-x=" + "a" * LIMIT + tag, max_scan=LIMIT) == missing
+
+    def test_past_limit(self, func, tag, found, missing):
+        assert func("a" * LIMIT + tag, max_scan=LIMIT) == missing
+
+    def test_limit_beyond_text(self, func, tag, found, missing):
+        assert func(tag, max_scan=LIMIT) == found
+
+    def test_unlimited(self, func, tag, found, missing):
+        assert func("a" * LIMIT + tag) == found
+
+    def test_zero(self, func, tag, found, missing):
+        assert func(tag, max_scan=0) == missing
+
+    def test_negative(self, func, tag, found, missing):
+        with pytest.raises(ValueError, match="max_scan"):
+            func(tag, max_scan=-1)
+
+
+@pytest.mark.parametrize("cut", range(10, 76, 5))
+def test_max_scan_straddling_unquoted_value(cut: int) -> None:
+    # Reading half a tag would yield a redirect to a truncated url, and the
+    # quoted ">" hides where the tag ends from anything that reads one
+    # differently from the scan.
+    tag = '<meta title="a>b" http-equiv=refresh content=5;url=http://example.org/found>'
+    assert get_meta_refresh(tag, "https://example.org", max_scan=cut) in (
+        (None, None),
+        (5.0, "http://example.org/found"),
+    )
