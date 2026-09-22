@@ -18,11 +18,9 @@ New features:
   *query_separator* for :func:`~w3lib.url.canonicalize_url`) keyword argument,
   to support query strings that use a separator other than ``&`` (#167).
 
-- Added :class:`~w3lib.encoding.EncodingContext`, which resolves the encoding
-  of a document and decodes it lazily through an
-  :class:`~w3lib.encoding.EncodingBackend`, such as
-  :class:`~w3lib.encoding.DefaultEncodingBackend`, which is the one built on
-  the functions of :mod:`w3lib.encoding` (#333).
+- :func:`~w3lib.html.get_base_url` and :func:`~w3lib.html.get_meta_refresh`
+  now accept a *max_scan* keyword argument, an upper bound on how much of the
+  document they look at (#336).
 
 - Improved the performance of most :mod:`w3lib.url` functions,
   :func:`~w3lib.url.safe_url_string` in particular (#257), and of some
@@ -30,7 +28,7 @@ New features:
 
 - :func:`~w3lib.html.get_base_url` and :func:`~w3lib.html.get_meta_refresh`
   are now several times faster on typical pages, which have no ``<base>`` tag
-  and no ``<meta>`` refresh tag (#331, #332, #334).
+  and no ``<meta>`` refresh tag (#331, #332, #334, #338).
 
 Deprecations and removals:
 
@@ -134,9 +132,11 @@ Security and correctness fixes:
 
 - :func:`~w3lib.encoding.html_body_declared_encoding` now skips HTML
   comments, like :func:`~w3lib.html.get_base_url` and
-  :func:`~w3lib.html.get_meta_refresh` already did (#305), and falls back to
-  a more lenient scan that finds a ``charset`` attribute regardless of the
-  order or spelling of the other attributes in the tag (#299).
+  :func:`~w3lib.html.get_meta_refresh` already did (#305), and finds a
+  charset declaration regardless of the order of the attributes in the tag,
+  of how the ``http-equiv`` pragma is spelled, e.g.
+  ``httpequiv="ContentType"``, and of what surrounds ``charset=`` within a
+  ``content`` attribute value (#299, #337).
 
 - :func:`~w3lib.encoding.html_to_unicode` now decodes a lead ``0x80`` byte as
   the euro sign when the encoding is GB18030, matching the WHATWG Encoding
@@ -144,11 +144,20 @@ Security and correctness fixes:
   declared in the body or auto-detected as big-endian, as it already did for
   one declared in the ``Content-Type`` header (#317).
 
+- :func:`~w3lib.html.replace_tags`, :func:`~w3lib.html.remove_tags` and
+  :func:`~w3lib.html.remove_tags_with_content` no longer end a tag at an
+  angle bracket inside a quoted attribute value, such as the ``>`` of
+  ``<img alt="a>b" src=x>`` (#343).
+
+- :func:`~w3lib.html.replace_entities` no longer consumes *keep* when it is
+  an iterator, such as a generator, which left the entities it had already
+  yielded unkept (#342).
+
 - :func:`~w3lib.html.get_meta_refresh` no longer prints the HTML content it
   was given to stdout when a :exc:`UnicodeDecodeError` is raised (#256).
 
 - Tests, benchmarking and CI improvements (#247, #259, #262, #281, #296,
-  #304, #313, #314, #329, #335).
+  #304, #313, #314, #329, #335, #340, #344).
 
 2.4.1 (2026-03-20)
 ------------------
