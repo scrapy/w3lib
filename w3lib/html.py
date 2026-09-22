@@ -55,7 +55,7 @@ _tag_re = re.compile(
 # Any tag, up to where it ends or the text does. A quoted value left open by
 # the end of the text is taken to the next angle bracket, which is where the
 # tag it belongs to can no longer reach.
-_tag_extent_source = rf"""<[a-zA-Z!/]{_TAG_BODY}(?:["'][^"'<>]*)?>?"""
+_tag_extent_source = rf"""<[a-zA-Z!/]{_TAG_BODY}(?:=\s*["'][^"'<>]*)?>?"""
 _tag_extent_re = re.compile(_tag_extent_source, re.ASCII)
 _tag_extent_bytes_re = re.compile(_tag_extent_source.encode())
 
@@ -468,18 +468,18 @@ def _cut(text: str | bytes, max_scan: int | None) -> tuple[str | bytes, bool]:
     is_str = isinstance(text, str)
     extent: re.Pattern[Any] = _tag_extent_re if is_str else _tag_extent_bytes_re
     lt: Any = "<" if is_str else b"<"
-    # Only a tag the cut splits reaches the end of the cut text, and matching
-    # it again on the whole text reads it to its end. Half a tag parses as a
-    # whole one, down to a truncated url, hence reading it whole or not at all.
+    # Only a tag that reaches past the cut is split by it, and reading it to
+    # its end is what keeps it whole. Half a tag parses as a whole one, down to
+    # a truncated url, hence reading it whole or not at all. The search runs
+    # backwards from the cut because the tag that straddles it, if any, is the
+    # one that starts closest to it.
     start = max_scan
     while (start := text.rfind(lt, 0, start)) != -1:
-        split = extent.match(text, start, max_scan)
-        if split is None:
+        tag = extent.match(text, start)
+        if tag is None:
             continue
-        if split.end() == max_scan:
-            whole = extent.match(text, start)
-            assert whole is not None
-            return text[: whole.end()], whole.end() < len(text)
+        if tag.end() > max_scan:
+            return text[: tag.end()], tag.end() < len(text)
         break
     return text[:max_scan], True
 

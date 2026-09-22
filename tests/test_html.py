@@ -1244,9 +1244,12 @@ def meta(text: str | bytes, **kwargs: object) -> object:
 )
 class TestMaxScan:
     def test_straddling_tag(self, func, tag, found, missing):
-        # A tag that starts before the limit and ends after it is read whole.
-        assert func("a" * (LIMIT - 5) + tag, max_scan=LIMIT) == found
-        assert func(("a" * (LIMIT - 5) + tag).encode(), max_scan=LIMIT) == found
+        # A tag that starts before the limit and ends after it is read whole,
+        # wherever in it the limit falls, inside a quoted value included.
+        for offset in range(1, len(tag)):
+            text = "a" * (LIMIT - offset) + tag
+            assert func(text, max_scan=LIMIT) == found
+            assert func(text.encode(), max_scan=LIMIT) == found
 
     def test_before_limit(self, func, tag, found, missing):
         assert func(tag + "a" * LIMIT, max_scan=LIMIT) == found
