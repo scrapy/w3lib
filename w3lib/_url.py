@@ -197,10 +197,7 @@ def _quote_into(
     output += b"".join([transform_table[byte] for byte in data])
 
 
-def _unquote(
-    data: bytes | bytearray | str,
-    safe: bytes = b"",
-) -> bytes:
+def _unquote(data: bytes | bytearray | str) -> bytes:
     if not data:
         return b""
 
@@ -213,7 +210,6 @@ def _unquote(
         return bytes(data)
 
     hex_decode_table = _hex_decode_table()
-    safe_table = _safe_table(safe)
 
     data_length = len(data)
     # stop at len - 2 because "%HH" decoding reads 2 extra bytes after '%'
@@ -242,15 +238,10 @@ def _unquote(
                 # Step 3: combine two 4-bit nibbles into one byte
                 # (high_nibble << 4) + low_nibble
                 # Example: 0x4 and 0xF -> 0x4F
-                decoded_byte = (high_nibble << 4) | low_nibble
-
-                # Step 4: check if decoded byte is NOT in safe set
-                # (only unsafe bytes are decoded; safe ones are left encoded
-                if not safe_table[decoded_byte]:
-                    output[output_index] = decoded_byte
-                    input_index += 3  # skip past "%HH" in input
-                    output_index += 1  # advance output position by one decoded byte
-                    continue
+                output[output_index] = (high_nibble << 4) | low_nibble
+                input_index += 3  # skip past "%HH" in input
+                output_index += 1  # advance output position by one decoded byte
+                continue
 
         output[output_index] = current_byte
         input_index += 1
@@ -287,7 +278,6 @@ def _unquote_plus(
         return bytes(data)
 
     hex_decode_table = _hex_decode_table()
-    safe_table = _safe_table(b"")
 
     data_length = len(data)
     decode_limit = data_length - 2
@@ -312,13 +302,10 @@ def _unquote_plus(
             low_nibble = hex_decode_table[data[input_index + 2]]
 
             if (high_nibble | low_nibble) != 255:
-                decoded_byte = (high_nibble << 4) | low_nibble
-
-                if not safe_table[decoded_byte]:
-                    output[output_index] = decoded_byte
-                    input_index += 3
-                    output_index += 1
-                    continue
+                output[output_index] = (high_nibble << 4) | low_nibble
+                input_index += 3
+                output_index += 1
+                continue
 
         output[output_index] = current_byte
         input_index += 1
