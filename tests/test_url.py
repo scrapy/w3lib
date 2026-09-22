@@ -1423,6 +1423,24 @@ class TestUrl:
         assert file_uri_to_path("///foo/bar") == f"{os.sep}foo{os.sep}bar"
         assert file_uri_to_path("////foo/bar") == f"{os.sep * 2}foo{os.sep}bar"
 
+    @pytest.mark.parametrize(
+        ("uri", "path"),
+        [
+            ("file:///C:/a", r"C:\a"),
+            # a leading slash run is shortened twice: once for the URI
+            # authority, once for the drive-less path
+            ("file:///////a/b", r"\\a\b"),
+        ],
+    )
+    def test_file_uri_to_path_windows(self, monkeypatch, uri, path):
+        monkeypatch.setattr("w3lib._url._IS_WINDOWS", True)
+        assert file_uri_to_path(uri) == path
+
+    def test_file_uri_to_path_windows_bad_drive(self, monkeypatch):
+        monkeypatch.setattr("w3lib._url._IS_WINDOWS", True)
+        with pytest.raises(OSError, match="Bad URL"):
+            file_uri_to_path("file:///C:/a:b")
+
     def test_any_to_uri(self):
         if os.name == "nt":
             assert any_to_uri(r"C:\windows\clock.avi") == "file:///C:/windows/clock.avi"
