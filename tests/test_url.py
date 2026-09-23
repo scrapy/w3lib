@@ -42,6 +42,7 @@ from w3lib._url import (
 )
 from w3lib.url import (
     _normalize_ipv6_host,
+    _remove_dot_segments,
     add_http_if_no_scheme,
     add_or_replace_parameter,
     add_or_replace_parameters,
@@ -1870,8 +1871,6 @@ class TestCanonicalizeUrl:
         )
 
     def test_remove_dot_segments_rfc_examples(self):
-        from w3lib.url import _remove_dot_segments
-
         # RFC 3986, section 5.2.4 worked examples
         assert _remove_dot_segments("/a/b/c/./../../g") == "/a/g"
         assert _remove_dot_segments("mid/content=5/../6") == "mid/6"
