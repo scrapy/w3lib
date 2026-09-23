@@ -1846,6 +1846,29 @@ class TestCanonicalizeUrl:
             == "http://www.example.com/a"
         )
 
+    def test_resolve_dot_segments_preserves_empty_segments(self):
+        # An empty path segment is significant (RFC 3986): "/a//b" identifies a
+        # different resource than "/a/b", so resolving dot segments must not
+        # collapse consecutive slashes.
+        assert (
+            canonicalize_url("http://www.example.com/a//b")
+            == "http://www.example.com/a//b"
+        )
+        assert (
+            canonicalize_url("http://www.example.com/a///b")
+            == "http://www.example.com/a///b"
+        )
+        # trailing empty segments are preserved too
+        assert (
+            canonicalize_url("http://www.example.com/a/b//")
+            == "http://www.example.com/a/b//"
+        )
+        # a ".." still removes a preceding empty segment
+        assert (
+            canonicalize_url("http://www.example.com/a//../b")
+            == "http://www.example.com/a/b"
+        )
+
     def test_normalize_ipv6_host(self):
         assert canonicalize_url("http://[::0:1]/") == "http://[::1]/"
         assert (

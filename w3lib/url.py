@@ -646,6 +646,42 @@ __all__ = [
 ]
 
 
+def _remove_dot_segments(path: str) -> str:
+    """Resolve ``.`` and ``..`` segments in *path* per RFC 3986, section 5.2.4.
+
+    Unlike ``posixpath.normpath``, this removes only dot segments and never
+    collapses empty segments, so ``/a//b`` (which identifies a different
+    resource than ``/a/b``) and a trailing slash are preserved.
+    """
+    output: list[str] = []
+    while path:
+        if path.startswith("../"):
+            path = path[3:]
+        elif path.startswith("./"):
+            path = path[2:]
+        elif path.startswith("/./"):
+            path = "/" + path[3:]
+        elif path == "/.":
+            path = "/"
+        elif path.startswith("/../"):
+            path = "/" + path[4:]
+            if output:
+                output.pop()
+        elif path == "/..":
+            path = "/"
+            if output:
+                output.pop()
+        elif path in (".", ".."):
+            path = ""
+        else:
+            slash = path.find("/", 1) if path.startswith("/") else path.find("/")
+            if slash == -1:
+                slash = len(path)
+            output.append(path[:slash])
+            path = path[slash:]
+    return "".join(output)
+
+
 def canonicalize_url(
     url: str | bytes | ParseResult,
     keep_blank_values: bool = True,
@@ -751,10 +787,7 @@ def canonicalize_url(
     path = _quote(_unquotepath(path), _PATH_SAFE_CHARS).decode() if path else "/"
 
     # 3. resolve dot segments (RFC 3986, section 5.2.4)
-    resolved_path = _parent_dirs.sub("", posixpath.normpath(path))
-    if not resolved_path.endswith("/") and path.endswith(("/", "/.", "/..")):
-        resolved_path += "/"
-    path = resolved_path
+    path = _remove_dot_segments(path)
 
     fragment = "" if not keep_fragments else fragment
 
