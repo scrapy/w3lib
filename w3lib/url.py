@@ -647,12 +647,7 @@ __all__ = [
 
 
 def _remove_dot_segments(path: str) -> str:
-    """Resolve ``.`` and ``..`` segments in *path* per RFC 3986, section 5.2.4.
-
-    Unlike ``posixpath.normpath``, this removes only dot segments and never
-    collapses empty segments, so ``/a//b`` (which identifies a different
-    resource than ``/a/b``) and a trailing slash are preserved.
-    """
+    """Resolve ``.`` and ``..`` segments in *path* per RFC 3986, section 5.2.4."""
     output: list[str] = []
     while path:
         if path.startswith("../"):

@@ -1869,6 +1869,25 @@ class TestCanonicalizeUrl:
             == "http://www.example.com/a/b"
         )
 
+    def test_remove_dot_segments_rfc_examples(self):
+        from w3lib.url import _remove_dot_segments
+
+        # RFC 3986, section 5.2.4 worked examples
+        assert _remove_dot_segments("/a/b/c/./../../g") == "/a/g"
+        assert _remove_dot_segments("mid/content=5/../6") == "mid/6"
+        # leading relative dot segments are consumed
+        assert _remove_dot_segments("./a") == "a"
+        assert _remove_dot_segments("../a") == "a"
+        assert _remove_dot_segments("../../a") == "a"
+        # a bare "." or ".." resolves to the empty string
+        assert _remove_dot_segments(".") == ""
+        assert _remove_dot_segments("..") == ""
+        # a trailing "/." or "/.." leaves a directory reference
+        assert _remove_dot_segments("/a/.") == "/a/"
+        assert _remove_dot_segments("/a/..") == "/"
+        # empty segments are preserved
+        assert _remove_dot_segments("/a//b") == "/a//b"
+
     def test_normalize_ipv6_host(self):
         assert canonicalize_url("http://[::0:1]/") == "http://[::1]/"
         assert (
