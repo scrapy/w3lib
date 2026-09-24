@@ -1884,6 +1884,8 @@ class TestCanonicalizeUrl:
         # a trailing "/." or "/.." leaves a directory reference
         assert _remove_dot_segments("/a/.") == "/a/"
         assert _remove_dot_segments("/a/..") == "/"
+        # a "/.." with nothing above the root cannot pop past it
+        assert _remove_dot_segments("/..") == "/"
         # empty segments are preserved
         assert _remove_dot_segments("/a//b") == "/a//b"
 
