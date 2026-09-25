@@ -66,10 +66,9 @@ codecs.register_error("percentencode", _quote_byte)
 # -   RFC 3986
 # -   The URL living standard
 #
-# NOTE: % is currently excluded from these lists of characters, due to
-# limitations of the current safe_url_string implementation, but it should also
-# be escaped as %25 when it is not already being used as part of an escape
-# character.
+# % is currently excluded from these lists of characters, due to limitations
+# of the current safe_url_string implementation, but it should also be escaped
+# as %25 when it is not already being used as part of an escape character.
 _USERINFO_SAFEST_CHARS = RFC3986_USERINFO_SAFE_CHARS.translate(None, delete=b":;=")
 _PATH_SAFEST_CHARS = _SAFE_CHARS.translate(None, delete=b"#[]|")
 _QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS
@@ -292,7 +291,8 @@ def url_query_parameter(
     separator: str = "&",
 ) -> str | None:
     """Return the value of a url parameter, given the url and parameter name
-    NOTE: If url contains multiple parameters, the first leftmost one is returned
+
+    If url contains multiple parameters, the first leftmost one is returned.
 
     General case:
 

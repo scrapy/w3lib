@@ -573,7 +573,7 @@ def _check_bracketed_netloc(netloc: str) -> None:
     Raises:
         ValueError: If bracket placement or host syntax is invalid.
 
-    NOTE: this is basically a backport of https://github.com/python/cpython/issues/105704
+    This is basically a backport of https://github.com/python/cpython/issues/105704
     """
     hostname_and_port = netloc.rpartition("@")[2]
 
@@ -792,11 +792,10 @@ def _url2pathname(url: str) -> str:
 def _idna(input_string: str) -> tuple[bytes, str]:
     """Cached IDNA encoding using Python's built-in 'idna' codec.
 
-    NOTE: IDNA processing in CPython is implemented in pure Python (not C),
-    which makes it relatively slow and allocation-heavy. The only
-    lower-level optimisation involved is Unicode normalization
-    (NFKC), which may use optimized internal paths, but IDNA itself
-    remains Python-level logic.
+    IDNA processing in CPython is implemented in pure Python (not C), which
+    makes it relatively slow and allocation-heavy. The only lower-level
+    optimisation involved is Unicode normalization (NFKC), which may use
+    optimized internal paths, but IDNA itself remains Python-level logic.
     """
     if input_string.isascii():
         return input_string.encode(), input_string
