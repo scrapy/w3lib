@@ -1871,16 +1871,9 @@ class TestCanonicalizeUrl:
         )
 
     def test_remove_dot_segments_rfc_examples(self):
-        # RFC 3986, section 5.2.4 worked examples
+        # RFC 3986, section 5.2.4 on absolute paths (canonicalize_url resolves
+        # dot segments only for a path that starts with "/").
         assert _remove_dot_segments("/a/b/c/./../../g") == "/a/g"
-        assert _remove_dot_segments("mid/content=5/../6") == "mid/6"
-        # leading relative dot segments are consumed
-        assert _remove_dot_segments("./a") == "a"
-        assert _remove_dot_segments("../a") == "a"
-        assert _remove_dot_segments("../../a") == "a"
-        # a bare "." or ".." resolves to the empty string
-        assert _remove_dot_segments(".") == ""
-        assert _remove_dot_segments("..") == ""
         # a trailing "/." or "/.." leaves a directory reference
         assert _remove_dot_segments("/a/.") == "/a/"
         assert _remove_dot_segments("/a/..") == "/"
@@ -1888,6 +1881,13 @@ class TestCanonicalizeUrl:
         assert _remove_dot_segments("/..") == "/"
         # empty segments are preserved
         assert _remove_dot_segments("/a//b") == "/a//b"
+
+    def test_opaque_path_dot_segments_are_left_untouched(self):
+        # A path that does not start with "/" is opaque (URL Standard); its
+        # dot segments are not resolved, matching browsers.
+        assert canonicalize_url("mailto:a/../b") == "mailto:a/../b"
+        # a hierarchical path (starts with "/") is still resolved
+        assert canonicalize_url("foo:/a/../b") == "foo:/b"
 
     def test_normalize_ipv6_host(self):
         assert canonicalize_url("http://[::0:1]/") == "http://[::1]/"
