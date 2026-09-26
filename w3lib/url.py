@@ -647,12 +647,7 @@ __all__ = [
 
 
 def _remove_dot_segments(path: str) -> str:
-    """Resolve ``.`` and ``..`` segments in an absolute *path* per RFC 3986, section 5.2.4.
-
-    The caller only applies this to a path that starts with ``/`` (an opaque
-    path is left untouched), so the relative-input branches of the RFC
-    algorithm are not needed here.
-    """
+    """Resolve dot segments in *path* (RFC 3986, section 5.2.4)."""
     output: list[str] = []
     while path:
         if path.startswith("/./"):
