@@ -601,8 +601,15 @@ class TestGetBaseUrl:
         # value; a <base> without href does not count.
         assert get_base_url('<base href="">', baseurl) == baseurl
         assert get_base_url('<base href=" \t\n">', baseurl) == baseurl
+        assert get_base_url("<base href>", baseurl) == baseurl
         assert (
             get_base_url('<base href=""><base href="http://evil.example/">', baseurl)
+            == baseurl
+        )
+        # A valueless href counts as an empty one, so it too freezes the base
+        # URL and a later <base> is not read.
+        assert (
+            get_base_url('<base href><base href="http://evil.example/">', baseurl)
             == baseurl
         )
         assert (

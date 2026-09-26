@@ -10,7 +10,7 @@ from html.entities import name2codepoint
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urljoin
 
-from w3lib._util import _scannable, iter_tag_attributes, to_unicode
+from w3lib._util import _attr_re, _scannable, iter_tag_attributes, to_unicode
 from w3lib.url import safe_url_string
 
 if TYPE_CHECKING:
@@ -70,9 +70,7 @@ _base_bytes_re = re.compile(rb"<base", re.IGNORECASE)
 # tight loop per run rather than a match attempt per character.
 #
 # The text of a <base> tag after its name is captured whole and its attributes
-# are then read one by one, as for <meta>: looking for "href=" anywhere in it
-# would take an attribute whose name merely ends that way (data-href) for the
-# href, and the last such attribute rather than the first href.
+# are then read one by one, as for <meta>.
 _base_scan_re = re.compile(
     rf"""
       <!--[^-]*(?:-(?!->)[^-]*)*(?:-->|$)
@@ -532,19 +530,23 @@ def get_base_url(
         for m in _base_scan_re.finditer(utext):
             if (attrs := m.group("attrs")) is None:
                 continue
-            for name, value in iter_tag_attributes(attrs):
-                if name != "href":
+            # iter_tag_attributes drops valueless attributes, but a valueless
+            # href counts as one, so read the attributes here to see it.
+            for attr in _attr_re.finditer(attrs):
+                if attr["name"].lower() != "href":
                     continue
                 # The first <base> with an href attribute sets the base URL,
-                # and one that is empty leaves the fallback in place, so a
-                # later <base> is not read either way.
+                # and the first href of that tag is the one read; an empty or
+                # valueless one leaves the fallback in place, so a later <base>
+                # is not read either way.
                 # https://html.spec.whatwg.org/commit-snapshots/3e7b72c44ce144cee7db859cd0647af6646b6793/#set-the-frozen-base-url
-                url = value.strip(HTML5_WHITESPACE)
-                if not url:
-                    return safe_url_string(baseurl)
-                return urljoin(
-                    safe_url_string(baseurl), safe_url_string(url, encoding=encoding)
-                )
+                value = attr["double"] or attr["single"] or attr["bare"] or ""
+                if url := value.strip(HTML5_WHITESPACE):
+                    return urljoin(
+                        safe_url_string(baseurl),
+                        safe_url_string(url, encoding=encoding),
+                    )
+                return safe_url_string(baseurl)
     return safe_url_string(baseurl)
 
 
