@@ -567,6 +567,52 @@ class TestGetBaseUrl:
             == "http://example.org/"
         )
 
+    def test_get_base_url_href_attribute(self):
+        baseurl = "https://example.org"
+        # Only an attribute named href sets the base URL: an attribute whose
+        # name merely ends in "href" is not one, and the first href is the one
+        # a browser reads.
+        assert (
+            get_base_url('<base data-href="http://evil.example/">', baseurl) == baseurl
+        )
+        assert (
+            get_base_url(
+                '<base href="http://example.org/found/" data-href="http://evil.example/">',
+                baseurl,
+            )
+            == "http://example.org/found/"
+        )
+        assert (
+            get_base_url(
+                '<base href="http://example.org/found/" href="http://evil.example/">',
+                baseurl,
+            )
+            == "http://example.org/found/"
+        )
+        assert (
+            get_base_url("<base href=http://example.org/found/>", baseurl)
+            == "http://example.org/found/"
+        )
+
+    def test_get_base_url_empty_href(self):
+        baseurl = "https://example.org"
+        # The first <base> with an href attribute sets the base URL, and an
+        # empty one leaves the fallback in place, even if a later <base> has a
+        # value; a <base> without href does not count.
+        assert get_base_url('<base href="">', baseurl) == baseurl
+        assert get_base_url('<base href=" \t\n">', baseurl) == baseurl
+        assert (
+            get_base_url('<base href=""><base href="http://evil.example/">', baseurl)
+            == baseurl
+        )
+        assert (
+            get_base_url(
+                '<base target="_blank"><base href="http://example.org/found/">',
+                baseurl,
+            )
+            == "http://example.org/found/"
+        )
+
     def test_get_base_url_no_catastrophic_backtracking(self):
         prefix = "<base " * 30000
         start = time.process_time()
