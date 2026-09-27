@@ -647,28 +647,30 @@ __all__ = [
 
 
 def _remove_dot_segments(path: str) -> str:
-    """Resolve dot segments in *path* (RFC 3986, section 5.2.4)."""
+    """Resolve dot segments in *path*, which starts with "/" (RFC 3986,
+    section 5.2.4)."""
+    # Every segment follows a "/", so a path without "/." has no dot segment.
+    if "/." not in path:
+        return path
+    segments = path[1:].split("/")
     output: list[str] = []
-    while path:
-        if path.startswith("/./"):
-            path = "/" + path[3:]
-        elif path == "/.":
-            path = "/"
-        elif path.startswith("/../"):
-            path = "/" + path[4:]
+    for segment in segments[:-1]:
+        if segment == "..":
             if output:
                 output.pop()
-        elif path == "/..":
-            path = "/"
-            if output:
-                output.pop()
-        else:
-            slash = path.find("/", 1)
-            if slash == -1:
-                slash = len(path)
-            output.append(path[:slash])
-            path = path[slash:]
-    return "".join(output)
+        elif segment != ".":
+            output.append(segment)
+    # A trailing dot segment leaves the path ending in "/".
+    last = segments[-1]
+    if last == "..":
+        if output:
+            output.pop()
+        output.append("")
+    elif last == ".":
+        output.append("")
+    else:
+        output.append(last)
+    return "/" + "/".join(output)
 
 
 def canonicalize_url(
