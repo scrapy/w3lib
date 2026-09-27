@@ -53,7 +53,7 @@ _SCHEME_CHARS = frozenset(scheme_chars)
 _USES_PARAMS = frozenset(uses_params)
 _ASCII_TAB_OR_NEWLINE_TRANSLATION_TABLE = str.maketrans("", "", _ASCII_TAB_OR_NEWLINE)
 _C0_CONTROL_OR_SPACE_RE = re.compile(rf"[{_C0_CONTROL_OR_SPACE}]")
-_SCHEME_RE = re.compile(rf"^([a-zA-Z][{scheme_chars}]*):")
+_SCHEME_RE = re.compile(rf"^([a-zA-Z][{re.escape(scheme_chars)}]*):")
 
 _IPV_FUTURE_RE = re.compile(r"\Av[a-fA-F0-9]+\..+\Z")
 # "\" terminates the authority of a special-scheme URL just like "/" under the
@@ -199,10 +199,7 @@ def _quote_into(
     output += b"".join([transform_table[byte] for byte in data])
 
 
-def _unquote(
-    data: bytes | bytearray | str,
-    safe: bytes = b"",
-) -> bytes:
+def _unquote(data: bytes | bytearray | str) -> bytes:
     if not data:
         return b""
 
@@ -215,7 +212,6 @@ def _unquote(
         return bytes(data)
 
     hex_decode_table = _hex_decode_table()
-    safe_table = _safe_table(safe)
 
     data_length = len(data)
     # stop at len - 2 because "%HH" decoding reads 2 extra bytes after '%'
@@ -244,15 +240,10 @@ def _unquote(
                 # Step 3: combine two 4-bit nibbles into one byte
                 # (high_nibble << 4) + low_nibble
                 # Example: 0x4 and 0xF -> 0x4F
-                decoded_byte = (high_nibble << 4) | low_nibble
-
-                # Step 4: check if decoded byte is NOT in safe set
-                # (only unsafe bytes are decoded; safe ones are left encoded
-                if not safe_table[decoded_byte]:
-                    output[output_index] = decoded_byte
-                    input_index += 3  # skip past "%HH" in input
-                    output_index += 1  # advance output position by one decoded byte
-                    continue
+                output[output_index] = (high_nibble << 4) | low_nibble
+                input_index += 3  # skip past "%HH" in input
+                output_index += 1  # advance output position by one decoded byte
+                continue
 
         output[output_index] = current_byte
         input_index += 1
@@ -289,7 +280,6 @@ def _unquote_plus(
         return bytes(data)
 
     hex_decode_table = _hex_decode_table()
-    safe_table = _safe_table(b"")
 
     data_length = len(data)
     decode_limit = data_length - 2
@@ -314,13 +304,10 @@ def _unquote_plus(
             low_nibble = hex_decode_table[data[input_index + 2]]
 
             if (high_nibble | low_nibble) != 255:
-                decoded_byte = (high_nibble << 4) | low_nibble
-
-                if not safe_table[decoded_byte]:
-                    output[output_index] = decoded_byte
-                    input_index += 3
-                    output_index += 1
-                    continue
+                output[output_index] = (high_nibble << 4) | low_nibble
+                input_index += 3
+                output_index += 1
+                continue
 
         output[output_index] = current_byte
         input_index += 1
@@ -522,12 +509,13 @@ class _SplitResult:  # pylint: disable=too-many-instance-attributes
             self.hostname = f"{hostname.lower()}{delim}{zone}"
 
         if self.port is not None:
-            try:
-                self.port = int(self.port)
-            except ValueError:
+            if isinstance(self.port, str) and not (
+                self.port.isascii() and self.port.isdigit()
+            ):
                 raise ValueError(
                     f"Port could not be cast to integer value as {self.port}"
-                ) from None
+                )
+            self.port = int(self.port)
 
             if self.port not in range(65535 + 1):
                 raise ValueError("Port out of range 0-65535")
@@ -587,7 +575,7 @@ def _check_bracketed_netloc(netloc: str) -> None:
     Raises:
         ValueError: If bracket placement or host syntax is invalid.
 
-    NOTE: this is basically a backport of https://github.com/python/cpython/issues/105704
+    This is basically a backport of https://github.com/python/cpython/issues/105704
     """
     hostname_and_port = netloc.rpartition("@")[2]
 
@@ -644,6 +632,7 @@ def _urlsplit_pure(  # pylint: disable=too-many-locals,too-many-statements
 
     - Doesn't use _coerce_args or _coerce_result
     - Does manual single-pass scanning instead of repeated .find/.split calls
+      (where it's beneficial)
     - Reduces string allocations by slicing once using computed indices
     - Avoids extra computations as much as possible
     """
@@ -688,26 +677,12 @@ def _urlsplit_pure(  # pylint: disable=too-many-locals,too-many-statements
     # authority it must start at 0, otherwise a "?" or "#" at index 0 or 1
     # (e.g. relative URLs like "a?b" or "a#f") is never recorded.
     scan_start = 2 if url[:2] == "//" else 0
-    slash_pos = question_pos = hash_pos = open_br_pos = closing_br_pos = -1
-    for idx, char in enumerate(url[scan_start:], scan_start):
-        if char == "/" and slash_pos == -1:
-            slash_pos = idx
-        elif char == "?" and question_pos == -1:
-            question_pos = idx
-        elif char == "#" and hash_pos == -1:
-            hash_pos = idx
-        elif char == "[" and open_br_pos == -1:
-            open_br_pos = idx
-        elif char == "]" and closing_br_pos == -1:
-            closing_br_pos = idx
-        if -1 not in (
-            slash_pos,
-            question_pos,
-            hash_pos,
-            open_br_pos,
-            closing_br_pos,
-        ):
-            break
+    # Multiple str.find() are faster than a single manual loop.
+    slash_pos = url.find("/", scan_start)
+    question_pos = url.find("?", scan_start)
+    hash_pos = url.find("#", scan_start)
+    open_br_pos = url.find("[", scan_start)
+    closing_br_pos = url.find("]", scan_start)
 
     if url[:2] == "//":
         delim = len(url)
@@ -851,29 +826,27 @@ def _url2pathname(url: str) -> str:
     # These branches are handled by `_urlparse`
     if url[:3] == "///":  # pragma: no cover
         url = url[2:]
-    elif url[12:] == "//localhost/":  # pragma: no cover
+    elif url[:12] == "//localhost/":  # pragma: no cover
         url = url[11:]
 
     if not _IS_WINDOWS:
         if "%" not in url:
             return url
 
-        return _unquote(url, _PATH_SAFE_CHARS).decode(_FS_ENCODING, _FS_ERRORS)
+        return _unquote(url).decode(_FS_ENCODING, _FS_ERRORS)
 
     if url[:3] == "///":
         url = url[1:]
     url = url.replace(":", "|")
     if "|" not in url:
-        return _unquote(url.replace("/", "\\").encode(), _PATH_SAFE_CHARS).decode(
+        return _unquote(url.replace("/", "\\").encode()).decode(
             _FS_ENCODING, _FS_ERRORS
         )
     comp = url.split("|")
     if len(comp) != 2 or comp[0][-1] not in string.ascii_letters:
         raise OSError(f"Bad URL: {url}")
     drive = comp[0][-1].upper()
-    tail = _unquote(comp[1].replace("/", "\\"), _PATH_SAFE_CHARS).decode(
-        _FS_ENCODING, _FS_ERRORS
-    )
+    tail = _unquote(comp[1].replace("/", "\\")).decode(_FS_ENCODING, _FS_ERRORS)
     return f"{drive}:{tail}"
 
 
@@ -881,11 +854,10 @@ def _url2pathname(url: str) -> str:
 def _idna(input_string: str) -> tuple[bytes, str]:
     """Cached IDNA encoding using Python's built-in 'idna' codec.
 
-    NOTE: IDNA processing in CPython is implemented in pure Python (not C),
-    which makes it relatively slow and allocation-heavy. The only
-    lower-level optimisation involved is Unicode normalization
-    (NFKC), which may use optimized internal paths, but IDNA itself
-    remains Python-level logic.
+    IDNA processing in CPython is implemented in pure Python (not C), which
+    makes it relatively slow and allocation-heavy. The only lower-level
+    optimisation involved is Unicode normalization (NFKC), which may use
+    optimized internal paths, but IDNA itself remains Python-level logic.
     """
     if input_string.isascii():
         return input_string.encode(), input_string

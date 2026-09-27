@@ -184,6 +184,84 @@ class TestRequestEncoding:
             == "utf-8"
         )
 
+    @pytest.mark.parametrize(
+        ("body", "expected"),
+        [
+            # a "charset=" inside an unrelated attribute value is not a
+            # declaration, and neither is the tail of another attribute's name
+            (
+                b'<meta name="description" content="Set charset=big5 in your editor">',
+                None,
+            ),
+            (b'<meta data-charset="big5">', None),
+            (
+                b'<meta name="description" content="use charset=big5"><meta charset="utf-8">',
+                "utf-8",
+            ),
+            (
+                b'<meta property="og:description" content="How to set charset=windows-1251 on your site"><meta charset="utf-8">',
+                "utf-8",
+            ),
+            # a charset inside a content attribute needs the http-equiv
+            # pragma, however the pragma is spelled, but with a value
+            (b'<meta content="text/html; charset=gbk">', None),
+            (b'<meta http-equiv content="text/html; charset=gbk">', None),
+            (
+                b'<meta http_equiv="content-type" content="text/html; charset=gbk">',
+                "gb18030",
+            ),
+            # another pragma is not the content-type one, however its own
+            # content value spells "charset="
+            (b'<meta http-equiv="refresh" content="0; url=/x?charset=big5">', None),
+            (
+                b'<meta http-equiv="X-UA-Compatible" content="IE=edge; charset=big5">',
+                None,
+            ),
+            (
+                b'<meta http-equiv="Content-Security-Policy" content="default-src /x?charset=big5">',
+                None,
+            ),
+            # only the first content attribute of a tag is read, and an empty
+            # charset attribute does not hide it
+            (
+                b'<meta http-equiv="content-type" content="text/html; charset=gbk" content="text/html; charset=big5">',
+                "gb18030",
+            ),
+            (
+                b'<meta http-equiv="content-type" charset="" content="text/html; charset=gbk">',
+                "gb18030",
+            ),
+            # a charset attribute wins over a content one, wherever it is
+            (
+                b'<meta http-equiv="content-type" content="text/html; charset=gbk" charset="utf-8">',
+                "utf-8",
+            ),
+            # a quoted ">" does not end the tag, and a quoted tag written
+            # inside one neither ends nor stops the scan
+            (b'<meta content="a>b" charset="utf-8">', "utf-8"),
+            (b'<meta content="<body>" charset="utf-8">', "utf-8"),
+            # an empty charset attribute is not a declaration
+            (b'<meta charset="">', None),
+            (b'<meta charset=""><meta charset="utf-8">', "utf-8"),
+            # a quoted "<!--" does not start a comment
+            (b'<meta name="a" content="<!--"><meta charset="utf-8">', "utf-8"),
+            # the text around a comment is not spliced into a tag
+            (b'<met<!-- -->a charset="big5">', None),
+            (b'<meta charset="big5"<!-- -->>', "big5hkscs"),
+            # an unterminated comment hides everything after it
+            (b'<!-- <meta charset="big5">', None),
+            # an xml declaration without a usable encoding does not stop the
+            # scan
+            (b'<?xml version="1.0"?><meta charset="utf-8">', "utf-8"),
+            (b'<?xml version="1.0" encoding=""?><meta charset="utf-8">', "utf-8"),
+        ],
+    )
+    def test_html_body_declared_encoding_attributes(
+        self, body: bytes, expected: str | None
+    ) -> None:
+        assert html_body_declared_encoding(body) == expected
+        assert html_body_declared_encoding(body.decode("ascii")) == expected
+
     def test_html_body_declared_encoding_unicode(self):
         # html_body_declared_encoding should work when unicode body is passed
         assert html_body_declared_encoding("something else") is None
@@ -216,6 +294,19 @@ class TestCodecsEncoding:
         assert resolve_encoding(" Latin-1") == "cp1252"
         assert resolve_encoding("gb_2312-80") == "gb18030"
         assert resolve_encoding("unknown encoding") is None
+        # utf-7 is not in the Encoding Standard and enables charset-smuggling,
+        # so it must not resolve, however it is spelled.
+        for alias in ("utf-7", "utf7", "U7", "unicode-1-1-utf-7", "UTF_7"):
+            assert resolve_encoding(alias) is None, alias
+
+    def test_resolve_encoding_utf7_not_smuggled(self):
+        # a utf-7 charset from the header or a meta tag is ignored, so the
+        # "+ADw-script+AD4-" payload stays inert instead of decoding to markup
+        assert http_content_type_encoding("text/html; charset=utf-7") is None
+        assert html_body_declared_encoding(b'<meta charset="utf-7">') is None
+        enc, body = html_to_unicode("text/html; charset=utf-7", b"+ADw-script+AD4-")
+        assert enc != "utf-7"
+        assert "<script>" not in body
 
 
 class TestUnicodeDecoding:
@@ -242,7 +333,9 @@ class TestUnicodeDecoding:
 
 
 def ct(charset: str | None) -> str | None:
-    return "Content-Type: text/html; charset=" + charset if charset else None
+    if charset is None:
+        return None
+    return "Content-Type: text/html; charset=" + charset
 
 
 def norm_encoding(enc: str) -> str:
@@ -258,8 +351,8 @@ class TestHtmlConversion:
         assert isinstance(body_unicode, str)
         assert body_unicode == unicode_string
 
+    @staticmethod
     def _assert_encoding(
-        self,
         content_type: str | None,
         body: bytes,
         expected_encoding: str,
@@ -282,8 +375,6 @@ class TestHtmlConversion:
         expected
         """
         self._assert_encoding("utf-8", b"\xc2\xa3", "utf-8", "\xa3")
-        # something like this in the scrapy tests - but that's invalid?
-        # self._assert_encoding('', "\xa3", 'utf-8', "\xa3")
         # iso-8859-1 is overridden to cp1252
         self._assert_encoding("iso-8859-1", b"\xa3", "cp1252", "\xa3")
         self._assert_encoding("", b"\xc2\xa3", "utf-8", "\xa3")
@@ -324,8 +415,8 @@ class TestHtmlConversion:
     def test_replace_wrong_encoding(self):
         """Test invalid chars are replaced properly"""
         _, body_unicode = html_to_unicode(ct("utf-8"), b"PREFIX\xe3\xabSUFFIX")
-        # XXX: Policy for replacing invalid chars may suffer minor variations
-        # but it should always contain the unicode replacement char ('\ufffd')
+        # Policy for replacing invalid chars may suffer minor variations but
+        # it should always contain the unicode replacement char ('\ufffd')
         assert "\ufffd" in body_unicode, repr(body_unicode)
         assert "PREFIX" in body_unicode, repr(body_unicode)
         assert "SUFFIX" in body_unicode, repr(body_unicode)
@@ -382,6 +473,13 @@ class TestHtmlConversion:
         # if there is no BOM,  big endian should be chosen
         self._assert_encoding("utf-16", "hi".encode("utf-16-be"), "utf-16-be", "hi")
         self._assert_encoding("utf-32", "hi".encode("utf-32-be"), "utf-32-be", "hi")
+
+        # the same label from the body or from auto-detection decodes the same
+        # way as from the header
+        encoding, _ = html_to_unicode(None, b'<meta charset="utf-16">')
+        assert encoding == "utf-16-be"
+        encoding, _ = html_to_unicode(None, b"", auto_detect_fun=lambda x: "utf-16")
+        assert encoding == "utf-16-be"
 
     def test_python_crash(self):
         random.seed(42)

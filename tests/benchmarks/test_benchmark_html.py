@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pytest
 
+from tests.benchmarks import BENCHMARK_MARKS, CasesMapType
 from w3lib.html import (
     get_base_url,
     get_meta_refresh,
@@ -22,8 +24,18 @@ if TYPE_CHECKING:
 
     from pytest_codspeed import BenchmarkFixture  # type: ignore[import-not-found]
 
-    from tests.benchmarks import CasesMapType
 
+pytestmark = BENCHMARK_MARKS
+
+# Real pages, one per way a document can shape the cost of a <base> lookup. In
+# a sample of 246 pages from 96 popular sites (September 2026), 235 had no
+# <base> at all, 3 had a <base> without href, and 1 had a <base href> in the
+# head, so the no-base page is the representative workload and the others are
+# the edge cases worth watching.
+PAGES = {
+    path.stem: path.read_bytes()
+    for path in sorted((Path(__file__).parent / "pages").glob("*.html"))
+}
 
 BENCHMARK_CASES: CasesMapType = {
     replace_entities: [
@@ -161,36 +173,6 @@ BENCHMARK_CASES: CasesMapType = {
             {},
         ),
     ],
-    get_base_url: [
-        (
-            (
-                """<html><head><title>Dummy</title><base href='http://example.org/something' /></head><body>blahablsdfsal&amp;</body></html>""",
-                "https://example.org",
-            ),
-            {},
-        ),
-        (("""<!-- <base href="http://example.com/"/> -->""",), {}),
-        (
-            (
-                """<!-- <!--  <base href="http://example.com/"/> -- -->  <base href="http://example_2.com/"/> """,
-            ),
-            {},
-        ),
-        (
-            (
-                """<html><head><title>Dummy</title><base href='/absolutepath' /></head></html>""",
-                "https://example.org",
-            ),
-            {},
-        ),
-        (
-            (
-                b"""<html><head><base href='//noscheme.com/path' /></head></html>""",
-                "https://example.org",
-            ),
-            {},
-        ),
-    ],
     get_meta_refresh: [
         (
             (
@@ -267,3 +249,31 @@ def test_benchmark_html(
     def factory():
         for args, kwargs in BENCHMARK_CASES[func]:
             func(*args, **kwargs)
+
+
+# One case per page and function, under the same identifiers for the decoded
+# document, so that its measurements stay comparable across runs.
+_by_function = pytest.mark.parametrize(
+    "func", [get_base_url, get_meta_refresh], ids=lambda func: func.__name__
+)
+_by_page = pytest.mark.parametrize("page", PAGES)
+
+
+@_by_function
+@_by_page
+def test_benchmark_html_page(
+    benchmark: BenchmarkFixture,
+    func: Callable[..., Any],
+    page: str,
+) -> None:
+    benchmark(func, PAGES[page].decode("utf-8"), "https://example.com/")
+
+
+@_by_function
+@_by_page
+def test_benchmark_html_page_bytes(
+    benchmark: BenchmarkFixture,
+    func: Callable[..., Any],
+    page: str,
+) -> None:
+    benchmark(func, PAGES[page], "https://example.com/")

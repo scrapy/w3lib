@@ -10,6 +10,7 @@ import codecs
 import os
 import posixpath
 import re
+from ipaddress import IPv6Address, ip_address
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple, cast, overload
 from urllib.parse import ParseResult
@@ -40,7 +41,7 @@ from ._url import (
     _urlunparse,
     _urlunsplit,
 )
-from .util import to_unicode
+from ._util import to_unicode
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -65,10 +66,9 @@ codecs.register_error("percentencode", _quote_byte)
 # -   RFC 3986
 # -   The URL living standard
 #
-# NOTE: % is currently excluded from these lists of characters, due to
-# limitations of the current safe_url_string implementation, but it should also
-# be escaped as %25 when it is not already being used as part of an escape
-# character.
+# % is currently excluded from these lists of characters, due to limitations
+# of the current safe_url_string implementation, but it should also be escaped
+# as %25 when it is not already being used as part of an escape character.
 _USERINFO_SAFEST_CHARS = RFC3986_USERINFO_SAFE_CHARS.translate(None, delete=b":;=")
 _PATH_SAFEST_CHARS = _SAFE_CHARS.translate(None, delete=b"#[]|")
 _QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS
@@ -91,7 +91,7 @@ def _safe_url_split(
     parts = _urlsplit(
         _strip(to_unicode(url, encoding=encoding, errors="percentencode"))
     )
-    tmp_buf = bytearray()
+    tmp_buf = bytearray()  # utf-8 bytes
 
     if parts.username is not None or parts.password is not None:
         if parts.username is not None:
@@ -123,12 +123,12 @@ def _safe_url_split(
                 tmp_buf += _idna_bytes(parts.hostname)
             except UnicodeError:
                 # IDNA encoding can fail for too long labels (>63 characters) or
-                # missing labels (e.g. http://.example.com)
-                tmp_buf += parts.hostname.encode(encoding)
+                # missing labels (e.g. http://.example.com).
+                tmp_buf += parts.hostname.encode()
 
     if parts.port is not None:
         tmp_buf.append(58)  # ord(":")
-        tmp_buf += str(parts.port).encode(encoding)
+        tmp_buf += str(parts.port).encode("ascii")
 
     netloc = tmp_buf.decode()
     tmp_buf.clear()
@@ -220,6 +220,15 @@ def safe_url_string(
 
 _parent_dirs = re.compile(r"/?(\.\./)+")
 
+# Percent-encoded forms of the single-dot and double-dot path segments of the
+# URL living standard, which clients resolve like "." and "..".
+_encoded_dot_segments = {
+    "%2e": ".",
+    ".%2e": "..",
+    "%2e.": "..",
+    "%2e%2e": "..",
+}
+
 
 def safe_download_url(
     url: str | bytes, encoding: str = "utf8", path_encoding: str = "utf8"
@@ -234,9 +243,15 @@ def safe_download_url(
     safe_url = safe_url_string(url, encoding, path_encoding)
     scheme, netloc, path, query, _ = _urlsplit(safe_url)
     if path:
-        path = _parent_dirs.sub("", posixpath.normpath(path))
-        if safe_url[-1] == "/" and path[-1] != "/":
-            path = f"{path}/"
+        if "%" in path:
+            path = "/".join(
+                _encoded_dot_segments.get(segment.lower(), segment)
+                for segment in path.split("/")
+            )
+        normalized_path = _parent_dirs.sub("", posixpath.normpath(path))
+        if path.endswith("/") and not normalized_path.endswith("/"):
+            normalized_path = f"{normalized_path}/"
+        path = normalized_path
     else:
         path = "/"
     return _urlunsplit(scheme, netloc, path, query, "")
@@ -277,7 +292,8 @@ def url_query_parameter(
     separator: str = "&",
 ) -> str | None:
     """Return the value of a url parameter, given the url and parameter name
-    NOTE: If url contains multiple parameters, the first leftmost one is returned
+
+    If url contains multiple parameters, the first leftmost one is returned.
 
     General case:
 
@@ -306,19 +322,19 @@ def url_query_parameter(
     """
 
     queryparams = _parse_qs(
-        _urlsplit(str(url)).query,
+        _urlsplit(to_unicode(url)).query,
         keep_blank_values=bool(keep_blank_values),
         separator=separator.encode(),
     )
     parameter_bytes = parameter.encode()
     if parameter_bytes in queryparams:
-        return queryparams[parameter_bytes][0].decode()
+        return queryparams[parameter_bytes][0].decode(errors="replace")
     return default
 
 
 def url_query_cleaner(
     url: str | bytes,
-    parameterlist: str | bytes | Sequence[str | bytes] = (),
+    parameterlist: str | Sequence[str] = (),
     sep: str = "&",
     kvsep: str = "=",
     remove: bool = False,
@@ -366,7 +382,7 @@ def url_query_cleaner(
     base, _, query = url.partition("?")
 
     if not query or (not parameterlist and not remove):
-        return base if not keep_fragments else f"{base}#{fragment}"
+        return base if not (keep_fragments and fragment) else f"{base}#{fragment}"
 
     param_lookup = frozenset(parameterlist)
 
@@ -488,14 +504,21 @@ def path_to_file_uri(path: str | os.PathLike[str]) -> str:
     """Convert local filesystem path to legal File URIs as described in:
     http://en.wikipedia.org/wiki/File_URI_scheme
     """
-    return f"file:///{pathname2url(str(Path(path).absolute())).lstrip('/')}"
+    absolute_path = Path(path).absolute()
+    if os.name == "nt" and absolute_path.drive.startswith("\\\\"):
+        return absolute_path.as_uri()
+    return f"file:///{pathname2url(str(absolute_path)).lstrip('/')}"
 
 
 def file_uri_to_path(uri: str) -> str:
     """Convert File URI to local filesystem path according to:
     http://en.wikipedia.org/wiki/File_URI_scheme
     """
-    return _url2pathname(_urlparse(uri)[2])
+    parsed = _urlparse(uri)
+    path = parsed.path
+    if os.name == "nt" and parsed.netloc and parsed.netloc.lower() != "localhost":
+        path = f"//{parsed.netloc}{path}"
+    return _url2pathname(path)
 
 
 def any_to_uri(uri_or_path: str) -> str:
@@ -505,6 +528,14 @@ def any_to_uri(uri_or_path: str) -> str:
     if os.path.splitdrive(uri_or_path)[0]:
         return path_to_file_uri(uri_or_path)
     return uri_or_path if _urlparse(uri_or_path)[0] else path_to_file_uri(uri_or_path)
+
+
+def add_http_if_no_scheme(url: str) -> str:
+    """Add ``http`` as the default scheme if it is missing from *url*."""
+    if not re.match(r"^\w+://", url, flags=re.IGNORECASE):
+        scheme = "http:" if _urlparse(url).netloc else "http://"
+        url = scheme + url
+    return url
 
 
 # ASCII characters.
@@ -585,7 +616,7 @@ def parse_data_uri(uri: str | bytes) -> ParseDataURIResult:
 
     while m := _mediatype_parameter_pattern.match(uri):
         attribute, value, value_quoted = m.groups()
-        if value_quoted:
+        if value_quoted is not None:
             value = re.sub(rb"\\(.)", rb"\1", value_quoted)
         media_type_params[attribute.decode()] = value.decode()
         uri = uri[m.end() :]
@@ -600,6 +631,7 @@ def parse_data_uri(uri: str | bytes) -> ParseDataURIResult:
 
 
 __all__ = [
+    "add_http_if_no_scheme",
     "add_or_replace_parameter",
     "add_or_replace_parameters",
     "any_to_uri",
@@ -615,6 +647,33 @@ __all__ = [
 ]
 
 
+def _remove_dot_segments(path: str) -> str:
+    """Resolve dot segments in *path*, which starts with "/" (RFC 3986,
+    section 5.2.4)."""
+    # Every segment follows a "/", so a path without "/." has no dot segment.
+    if "/." not in path:
+        return path
+    segments = path[1:].split("/")
+    output: list[str] = []
+    for segment in segments[:-1]:
+        if segment == "..":
+            if output:
+                output.pop()
+        elif segment != ".":
+            output.append(segment)
+    # A trailing dot segment leaves the path ending in "/".
+    last = segments[-1]
+    if last == "..":
+        if output:
+            output.pop()
+        output.append("")
+    elif last == ".":
+        output.append("")
+    else:
+        output.append(last)
+    return "/" + "/".join(output)
+
+
 def canonicalize_url(
     url: str | bytes | ParseResult,
     keep_blank_values: bool = True,
@@ -625,12 +684,18 @@ def canonicalize_url(
 ) -> str:
     r"""Canonicalize the given url by applying the following procedures:
 
+    .. versionchanged:: VERSION
+        Dot segments (``.`` and ``..``) in the path are now resolved, and
+        IPv6 addresses in the host are now normalized.
+
     - make the URL safe
     - sort query arguments, first by key, then by value
     - normalize all spaces (in query arguments) '+' (plus symbol)
     - normalize percent encodings case (%2f -> %2F)
     - remove query arguments with blank values (unless `keep_blank_values` is True)
     - remove fragments (unless `keep_fragments` is True)
+    - resolve dot segments (``.`` and ``..``) in the path
+    - normalize IPv6 addresses in the host
 
     The url passed can be bytes or unicode, while the url returned is
     always a native str (bytes in Python 2, unicode in Python 3).
@@ -648,6 +713,10 @@ def canonicalize_url(
     >>> # a query separator other than the default '&'
     >>> w3lib.url.canonicalize_url('http://www.example.com/do?c=3;a=50', query_separator=';')
     'http://www.example.com/do?a=50;c=3'
+    >>>
+    >>> # resolving dot segments and normalizing an IPv6 address
+    >>> w3lib.url.canonicalize_url('http://[::0:1]/a/../b')
+    'http://[::1]/b'
     >>>
 
     For more examples, see the tests in `tests/test_url.py`.
@@ -709,6 +778,13 @@ def canonicalize_url(
     #    and percent-encode path again (this normalizes to upper-case %XX)
     path = _quote(_unquotepath(path), _PATH_SAFE_CHARS).decode() if path else "/"
 
+    # 3. resolve dot segments (RFC 3986, section 5.2.4), but only for a
+    #    hierarchical path. A path that does not start with "/" is an opaque
+    #    path (URL Standard), whose dot segments browsers leave untouched
+    #    (e.g. "mailto:a/../b" stays as is, while "foo:/a/../b" resolves).
+    if path.startswith("/"):
+        path = _remove_dot_segments(path)
+
     fragment = "" if not keep_fragments else fragment
 
     # Apply lowercase to the domain, but not to the userinfo.
@@ -720,8 +796,27 @@ def canonicalize_url(
     )
     netloc = (netloc[: uinf_sep_idx + 1] + host) if uinf_sep_idx != -1 else host
 
+    netloc = _normalize_ipv6_host(netloc)
+
     # every part should be safe already
     return _urlunparse(scheme, netloc, path, params, query, fragment)
+
+
+def _normalize_ipv6_host(netloc: str) -> str:
+    """Normalize an IPv6 address in the host part of *netloc*, if any (RFC 5952)."""
+    if "[" not in netloc:
+        return netloc
+    bracket_start = netloc.index("[")
+    bracket_end = netloc.find("]", bracket_start)
+    if bracket_end == -1:
+        return netloc
+    try:
+        address = ip_address(netloc[bracket_start + 1 : bracket_end])
+    except ValueError:
+        return netloc
+    if not isinstance(address, IPv6Address):
+        return netloc
+    return f"{netloc[:bracket_start]}[{address}]{netloc[bracket_end + 1 :]}"
 
 
 def _unquotepath(path: str) -> bytes:
@@ -731,8 +826,11 @@ def _unquotepath(path: str) -> bytes:
     # percent-escaped characters, they get lost.
     # e.g., '%a3' becomes 'REPLACEMENT CHARACTER' (U+FFFD)
     return _unquote(
-        path.replace("%2f", "%252F")
+        path.replace("%25", "%2525")
+        .replace("%2f", "%252F")
         .replace("%2F", "%252F")
+        .replace("%3b", "%253B")
+        .replace("%3B", "%253B")
         .replace("%3f", "%253F")
         .replace("%3F", "%253F")
     )
