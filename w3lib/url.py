@@ -646,6 +646,31 @@ __all__ = [
 ]
 
 
+def _remove_dot_segments(path: str) -> str:
+    """Resolve dot segments in *path* (RFC 3986, section 5.2.4)."""
+    output: list[str] = []
+    while path:
+        if path.startswith("/./"):
+            path = "/" + path[3:]
+        elif path == "/.":
+            path = "/"
+        elif path.startswith("/../"):
+            path = "/" + path[4:]
+            if output:
+                output.pop()
+        elif path == "/..":
+            path = "/"
+            if output:
+                output.pop()
+        else:
+            slash = path.find("/", 1)
+            if slash == -1:
+                slash = len(path)
+            output.append(path[:slash])
+            path = path[slash:]
+    return "".join(output)
+
+
 def canonicalize_url(
     url: str | bytes | ParseResult,
     keep_blank_values: bool = True,
@@ -750,11 +775,12 @@ def canonicalize_url(
     #    and percent-encode path again (this normalizes to upper-case %XX)
     path = _quote(_unquotepath(path), _PATH_SAFE_CHARS).decode() if path else "/"
 
-    # 3. resolve dot segments (RFC 3986, section 5.2.4)
-    resolved_path = _parent_dirs.sub("", posixpath.normpath(path))
-    if not resolved_path.endswith("/") and path.endswith(("/", "/.", "/..")):
-        resolved_path += "/"
-    path = resolved_path
+    # 3. resolve dot segments (RFC 3986, section 5.2.4), but only for a
+    #    hierarchical path. A path that does not start with "/" is an opaque
+    #    path (URL Standard), whose dot segments browsers leave untouched
+    #    (e.g. "mailto:a/../b" stays as is, while "foo:/a/../b" resolves).
+    if path.startswith("/"):
+        path = _remove_dot_segments(path)
 
     fragment = "" if not keep_fragments else fragment
 
