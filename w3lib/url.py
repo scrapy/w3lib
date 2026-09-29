@@ -66,10 +66,9 @@ codecs.register_error("percentencode", _quote_byte)
 # -   RFC 3986
 # -   The URL living standard
 #
-# NOTE: % is currently excluded from these lists of characters, due to
-# limitations of the current safe_url_string implementation, but it should also
-# be escaped as %25 when it is not already being used as part of an escape
-# character.
+# % is currently excluded from these lists of characters, due to limitations
+# of the current safe_url_string implementation, but it should also be escaped
+# as %25 when it is not already being used as part of an escape character.
 _USERINFO_SAFEST_CHARS = RFC3986_USERINFO_SAFE_CHARS.translate(None, delete=b":;=")
 _PATH_SAFEST_CHARS = _SAFE_CHARS.translate(None, delete=b"#[]|")
 _QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS
@@ -292,7 +291,8 @@ def url_query_parameter(
     separator: str = "&",
 ) -> str | None:
     """Return the value of a url parameter, given the url and parameter name
-    NOTE: If url contains multiple parameters, the first leftmost one is returned
+
+    If url contains multiple parameters, the first leftmost one is returned.
 
     General case:
 
@@ -646,6 +646,33 @@ __all__ = [
 ]
 
 
+def _remove_dot_segments(path: str) -> str:
+    """Resolve dot segments in *path*, which starts with "/" (RFC 3986,
+    section 5.2.4)."""
+    # Every segment follows a "/", so a path without "/." has no dot segment.
+    if "/." not in path:
+        return path
+    segments = path[1:].split("/")
+    output: list[str] = []
+    for segment in segments[:-1]:
+        if segment == "..":
+            if output:
+                output.pop()
+        elif segment != ".":
+            output.append(segment)
+    # A trailing dot segment leaves the path ending in "/".
+    last = segments[-1]
+    if last == "..":
+        if output:
+            output.pop()
+        output.append("")
+    elif last == ".":
+        output.append("")
+    else:
+        output.append(last)
+    return "/" + "/".join(output)
+
+
 def canonicalize_url(
     url: str | bytes | ParseResult,
     keep_blank_values: bool = True,
@@ -750,11 +777,12 @@ def canonicalize_url(
     #    and percent-encode path again (this normalizes to upper-case %XX)
     path = _quote(_unquotepath(path), _PATH_SAFE_CHARS).decode() if path else "/"
 
-    # 3. resolve dot segments (RFC 3986, section 5.2.4)
-    resolved_path = _parent_dirs.sub("", posixpath.normpath(path))
-    if not resolved_path.endswith("/") and path.endswith(("/", "/.", "/..")):
-        resolved_path += "/"
-    path = resolved_path
+    # 3. resolve dot segments (RFC 3986, section 5.2.4), but only for a
+    #    hierarchical path. A path that does not start with "/" is an opaque
+    #    path (URL Standard), whose dot segments browsers leave untouched
+    #    (e.g. "mailto:a/../b" stays as is, while "foo:/a/../b" resolves).
+    if path.startswith("/"):
+        path = _remove_dot_segments(path)
 
     fragment = "" if not keep_fragments else fragment
 

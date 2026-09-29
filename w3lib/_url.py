@@ -573,7 +573,7 @@ def _check_bracketed_netloc(netloc: str) -> None:
     Raises:
         ValueError: If bracket placement or host syntax is invalid.
 
-    NOTE: this is basically a backport of https://github.com/python/cpython/issues/105704
+    This is basically a backport of https://github.com/python/cpython/issues/105704
     """
     hostname_and_port = netloc.rpartition("@")[2]
 
@@ -626,6 +626,7 @@ def _urlsplit(  # pylint: disable=too-many-locals,too-many-statements
     """Reimplementation of urllib.parse.urlsplit which:
     - Doesn't use _coerce_args or _coerce_result
     - Does manual single-pass scanning instead of repeated .find/.split calls
+      (where it's beneficial)
     - Have reduced string allocations by slicing once using computed indices
     - Avoids extra computations as much as possible
     """
@@ -670,26 +671,12 @@ def _urlsplit(  # pylint: disable=too-many-locals,too-many-statements
     # authority it must start at 0, otherwise a "?" or "#" at index 0 or 1
     # (e.g. relative URLs like "a?b" or "a#f") is never recorded.
     scan_start = 2 if url[:2] == "//" else 0
-    slash_pos = question_pos = hash_pos = open_br_pos = closing_br_pos = -1
-    for idx, char in enumerate(url[scan_start:], scan_start):
-        if char == "/" and slash_pos == -1:
-            slash_pos = idx
-        elif char == "?" and question_pos == -1:
-            question_pos = idx
-        elif char == "#" and hash_pos == -1:
-            hash_pos = idx
-        elif char == "[" and open_br_pos == -1:
-            open_br_pos = idx
-        elif char == "]" and closing_br_pos == -1:
-            closing_br_pos = idx
-        if -1 not in (
-            slash_pos,
-            question_pos,
-            hash_pos,
-            open_br_pos,
-            closing_br_pos,
-        ):
-            break
+    # Multiple str.find() are faster than a single manual loop.
+    slash_pos = url.find("/", scan_start)
+    question_pos = url.find("?", scan_start)
+    hash_pos = url.find("#", scan_start)
+    open_br_pos = url.find("[", scan_start)
+    closing_br_pos = url.find("]", scan_start)
 
     if url[:2] == "//":
         delim = len(url)
@@ -792,11 +779,10 @@ def _url2pathname(url: str) -> str:
 def _idna(input_string: str) -> tuple[bytes, str]:
     """Cached IDNA encoding using Python's built-in 'idna' codec.
 
-    NOTE: IDNA processing in CPython is implemented in pure Python (not C),
-    which makes it relatively slow and allocation-heavy. The only
-    lower-level optimisation involved is Unicode normalization
-    (NFKC), which may use optimized internal paths, but IDNA itself
-    remains Python-level logic.
+    IDNA processing in CPython is implemented in pure Python (not C), which
+    makes it relatively slow and allocation-heavy. The only lower-level
+    optimisation involved is Unicode normalization (NFKC), which may use
+    optimized internal paths, but IDNA itself remains Python-level logic.
     """
     if input_string.isascii():
         return input_string.encode(), input_string

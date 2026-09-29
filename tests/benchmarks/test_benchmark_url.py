@@ -252,6 +252,21 @@ BENCHMARK_CASES: CasesMapType = {
     ],
 }
 
+# A URL of about 2 KB, like those with many tracking parameters, where work
+# that grows with the length of the URL dominates.
+LONG_URL = (
+    "https://www.example.com/"
+    + "".join(f"category-{i}/" for i in range(50))
+    + "product.html?"
+    + "&".join(f"utm_param{i}=value{i}" for i in range(60))
+)
+
+LONG_URL_CASES: CasesMapType = {
+    safe_url_string: [((LONG_URL,), {})],
+    canonicalize_url: [((LONG_URL,), {})],
+    url_query_parameter: [((LONG_URL, "utm_param59"), {})],
+}
+
 
 @pytest.mark.parametrize("func", BENCHMARK_CASES)
 def test_benchmark_url(
@@ -274,6 +289,21 @@ def test_benchmark_url_cold(
 
     def factory():
         for args, kwargs in BENCHMARK_CASES[func]:
+            func(*args, **kwargs)
+
+    benchmark.pedantic(factory, setup=_urlsplit.cache_clear, rounds=100)
+
+
+@pytest.mark.parametrize("func", LONG_URL_CASES)
+def test_benchmark_url_long_cold(
+    benchmark: BenchmarkFixture,
+    func: Callable[..., Any],
+) -> None:
+    """A long URL with the _urlsplit LRU cache cleared before every round, as
+    for the distinct URLs of a crawl."""
+
+    def factory():
+        for args, kwargs in LONG_URL_CASES[func]:
             func(*args, **kwargs)
 
     benchmark.pedantic(factory, setup=_urlsplit.cache_clear, rounds=100)

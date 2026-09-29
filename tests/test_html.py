@@ -175,6 +175,12 @@ class TestReplaceTags:
     def test_quote_outside_value_position(self, tag: str, text: str) -> None:
         assert replace_tags(f"{tag}><i>{text}") == text
 
+    def test_non_ascii_whitespace_after_equals(self) -> None:
+        # Only ASCII whitespace separates "=" from a quoted value, so U+00A0
+        # leaves the value unquoted and the tag ends at the first ">", as in a
+        # browser; treating the quote as opening a value would swallow the ">".
+        assert replace_tags('a<img alt= "x>KEEP">b') == 'aKEEP">b'
+
     def test_replace_tags_no_catastrophic_backtracking(self):
         evil = "<a" * 50000
         start = time.process_time()
@@ -222,6 +228,14 @@ class TestRemoveTags:
         assert isinstance(remove_tags("<p>one tag</p>"), str)
         assert isinstance(remove_tags("<p>one tag</p>", which_ones=("p",)), str)
         assert isinstance(remove_tags("<a>link</a>", which_ones=("b",)), str)
+
+    def test_iterator_arguments(self):
+        doc = "<p>x</p><b>y</b>"
+        assert remove_tags(doc, which_ones=iter(["p"])) == "x<b>y</b>"
+        assert remove_tags(doc, keep=iter(["p"])) == "<p>x</p>y"
+        assert remove_tags(doc, which_ones=iter([]), keep=iter([])) == "xy"
+        with pytest.raises(ValueError, match="Cannot use both"):
+            remove_tags(doc, which_ones=iter(["p"]), keep=iter(["b"]))
 
     def test_remove_tags_without_tags(self):
         # text without tags
@@ -278,6 +292,11 @@ class TestRemoveTags:
     @pytest.mark.parametrize("quote", ["<", ">"])
     def test_lt_gt_in_quoted_attribute_value(self, quote: str) -> None:
         assert remove_tags(f'<p class="a{quote}b">txt</p>', which_ones=("p",)) == "txt"
+
+    def test_non_ascii_whitespace_after_equals(self) -> None:
+        # U+00A0 does not separate "=" from a quoted value, so the tag ends at
+        # the first ">", as in a browser, rather than swallowing it.
+        assert remove_tags('a<img alt= "x>KEEP">b') == 'aKEEP">b'
 
     @pytest.mark.parametrize(("tag", "text"), _QUOTE_OUTSIDE_VALUE_POSITION)
     def test_quote_outside_value_position(self, tag: str, text: str) -> None:
@@ -424,6 +443,28 @@ class TestRemoveTagsWithContent:
             == ""
         )
 
+    def test_end_tag_non_ascii_whitespace(self):
+        # Only ASCII whitespace ends an element after its tag name, so U+00A0
+        # after "</script" does not close it, as in a browser; closing there
+        # would end the element early and leak the rest of its content.
+        assert (
+            remove_tags_with_content(
+                "<script>keep</script >alert(1)</script>tail",
+                which_ones=("script",),
+            )
+            == "tail"
+        )
+
+    def test_start_tag_name_boundary(self):
+        # The tag name in the start tag must be followed by ASCII whitespace,
+        # "/" or ">", so "<scriptä>" is a different element and is not removed,
+        # as a browser keeps its content. A word boundary would end the name at
+        # "t" and treat it as <script>.
+        assert (
+            remove_tags_with_content("<scriptä>x</script>y", which_ones=("script",))
+            == "<scriptä>x</script>y"
+        )
+
 
 class TestReplaceEscapeChars:
     def test_returns_unicode(self):
@@ -498,6 +539,12 @@ although this is inside a cdata! &amp; &quot;</node1><node2>blah&blahblahblahbla
             == 'something\xa3&more<node3>things, stuff, and suchwhat"ever</node3><node4'
         )
 
+    def test_keep_entities_iterator(self):
+        assert (
+            unquote_markup("a&amp;b<![CDATA[x]]>c&amp;d", keep=iter(["amp"]))
+            == "a&amp;bxc&amp;d"
+        )
+
     def test_cdata_at_start(self):
         assert unquote_markup("<![CDATA[foo]]>bar") == "foobar"
 
@@ -551,6 +598,59 @@ class TestGetBaseUrl:
         assert (
             get_base_url(f'<base data-x="a{quote}b" href="http://example.org/">')
             == "http://example.org/"
+        )
+
+    def test_get_base_url_href_attribute(self):
+        baseurl = "https://example.org"
+        # Only an attribute named href sets the base URL: an attribute whose
+        # name merely ends in "href" is not one, and the first href is the one
+        # a browser reads.
+        assert (
+            get_base_url('<base data-href="http://evil.example/">', baseurl) == baseurl
+        )
+        assert (
+            get_base_url(
+                '<base href="http://example.org/found/" data-href="http://evil.example/">',
+                baseurl,
+            )
+            == "http://example.org/found/"
+        )
+        assert (
+            get_base_url(
+                '<base href="http://example.org/found/" href="http://evil.example/">',
+                baseurl,
+            )
+            == "http://example.org/found/"
+        )
+        assert (
+            get_base_url("<base href=http://example.org/found/>", baseurl)
+            == "http://example.org/found/"
+        )
+
+    def test_get_base_url_empty_href(self):
+        baseurl = "https://example.org"
+        # The first <base> with an href attribute sets the base URL, and an
+        # empty one leaves the fallback in place, even if a later <base> has a
+        # value; a <base> without href does not count.
+        assert get_base_url('<base href="">', baseurl) == baseurl
+        assert get_base_url('<base href=" \t\n">', baseurl) == baseurl
+        assert get_base_url("<base href>", baseurl) == baseurl
+        assert (
+            get_base_url('<base href=""><base href="http://evil.example/">', baseurl)
+            == baseurl
+        )
+        # A valueless href counts as an empty one, so it too freezes the base
+        # URL and a later <base> is not read.
+        assert (
+            get_base_url('<base href><base href="http://evil.example/">', baseurl)
+            == baseurl
+        )
+        assert (
+            get_base_url(
+                '<base target="_blank"><base href="http://example.org/found/">',
+                baseurl,
+            )
+            == "http://example.org/found/"
         )
 
     def test_get_base_url_no_catastrophic_backtracking(self):
@@ -1147,6 +1247,18 @@ http://www.example.org/index.php" />
         body = "<meta\u3000http-equiv='refresh' content='3;url=/next'>"
         assert get_meta_refresh(body, "http://example.org") == (None, None)
         assert get_meta_refresh(body.encode(), "http://example.org") == (None, None)
+
+    def test_get_meta_refresh_content_non_ascii_whitespace(self) -> None:
+        # The refresh content is parsed with ASCII whitespace only, so U+00A0
+        # around the interval or the ";" leaves it unparsed and no redirect is
+        # reported, as a browser reloads the same document instead.
+        for content in (" 0;url=/next", "0 ;url=/next", "0; url=/next"):
+            body = f"<meta http-equiv='refresh' content='{content}'>"
+            assert get_meta_refresh(body, "http://example.org") == (None, None)
+        # An ASCII-whitespace variant is still parsed.
+        assert get_meta_refresh(
+            "<meta http-equiv='refresh' content='0; url=/next'>", "http://example.org"
+        ) == (0.0, "http://example.org/next")
 
     def test_get_meta_refresh_non_ascii_case_folding(self) -> None:
         # U+017F uppercases to "S", but it is no "s" in a tag name, so this is

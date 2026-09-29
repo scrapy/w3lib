@@ -10,7 +10,7 @@ from html.entities import name2codepoint
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urljoin
 
-from w3lib._util import _scannable, iter_tag_attributes, to_unicode
+from w3lib._util import _attr_re, _scannable, iter_tag_attributes, to_unicode
 from w3lib.url import safe_url_string
 
 if TYPE_CHECKING:
@@ -45,7 +45,8 @@ _TAG_NAME = r"""[a-zA-Z][a-zA-Z0-9]*(?![^ <>/])"""
 # it, and the plain one comes first because it is the cheaper of the two and
 # the case of most tags.
 _tag_re = re.compile(
-    rf"""<[a-zA-Z/!][^<>=]*>|</?{_TAG_NAME}{_TAG_BODY}>|<[a-zA-Z/!][^<>]*>"""
+    rf"""<[a-zA-Z/!][^<>=]*>|</?{_TAG_NAME}{_TAG_BODY}>|<[a-zA-Z/!][^<>]*>""",
+    re.ASCII,
 )
 # Tag syntax is ASCII, and re.ASCII holds the scan patterns of this module to
 # it: "\s" matches the whitespace that separates markup and not, say, U+3000,
@@ -61,19 +62,21 @@ _tag_extent_bytes_re = re.compile(_tag_extent_source.encode())
 
 _base_re = re.compile("<base", re.IGNORECASE | re.ASCII)
 _base_bytes_re = re.compile(rb"<base", re.IGNORECASE)
-# Scan for the first honored <base href>, consuming comments and
-# <script>/<noscript> content (where a browser never parses tags) along the
-# way. Ignorable regions come first in the alternation, so a <base> inside one
-# is consumed before it can match; unterminated regions swallow the rest of
-# the document, as a browser does. Their content is consumed in runs of
-# characters that cannot start the closing delimiter, so that the large inline
-# scripts of real pages cost a tight loop per run rather than a match attempt
-# per character.
+# Scan for <base> tags, consuming comments and <script>/<noscript> content
+# (where a browser never parses tags) along the way. Ignorable regions come
+# first in the alternation, so a <base> inside one is consumed before it can
+# match; unterminated regions swallow the rest of the document, as a browser
+# does. Their content is consumed in runs of characters that cannot start the
+# closing delimiter, so that the large inline scripts of real pages cost a
+# tight loop per run rather than a match attempt per character.
+#
+# The text of a <base> tag after its name is captured whole and its attributes
+# are then read one by one, as for <meta>.
 _base_scan_re = re.compile(
     rf"""
       <!--[^-]*(?:-(?!->)[^-]*)*(?:-->|$)
     | <(?P<t>script|noscript)\b{_TAG_BODY}>[^<]*(?:<(?!/(?P=t)>)[^<]*)*(?:</(?P=t)>|$)
-    | <base\s{_TAG_BODY}href\s*=\s*["']\s*(?P<url>[^"'\s]+)\s*["']
+    | <base\s(?P<attrs>{_TAG_BODY})
     """,
     re.IGNORECASE | re.DOTALL | re.VERBOSE | re.ASCII,
 )
@@ -83,7 +86,7 @@ _base_scan_re = re.compile(
 # The interval is ASCII digits only, as in the HTML refresh steps.
 _meta_refresh_content_re = re.compile(
     r"\s*(?P<int>([0-9]*\.)?[0-9]+)\s*;\s*url=\s*(?P<url>.*)",
-    re.DOTALL | re.IGNORECASE,
+    re.DOTALL | re.IGNORECASE | re.ASCII,
 )
 
 _CDATA_START = "<![CDATA["
@@ -103,7 +106,7 @@ _tags_re = re.compile(
     [^<>]*          # the rest of the tag: attributes, whitespace, etc.
     >               # closing angle bracket
     """,
-    re.IGNORECASE | re.VERBOSE,
+    re.IGNORECASE | re.VERBOSE | re.ASCII,
 )
 _meta_re = re.compile("<meta", re.IGNORECASE | re.ASCII)
 
@@ -324,15 +327,14 @@ def remove_tags(
     >>>
 
     """
-    if which_ones and keep:
+    tags = {tag.lower() for tag in which_ones} if which_ones else ()
+    kept = {tag.lower() for tag in keep} if keep else ()
+
+    if tags and kept:
         raise ValueError("Cannot use both which_ones and keep")
 
     return _tags_re.sub(
-        functools.partial(
-            _remove_tag,
-            which_ones={tag.lower() for tag in which_ones} if which_ones else (),
-            keep={tag.lower() for tag in keep} if keep else (),
-        ),
+        functools.partial(_remove_tag, which_ones=tags, keep=kept),
         to_unicode(text, encoding),
     )
 
@@ -347,12 +349,12 @@ def _build_remove_tags_pattern(tags_tuple: tuple[str, ...]) -> re.Pattern[str]:
     # trailing run stays [^<>]* so it can't cross into the next tag and match
     # super-linearly.
     pattern = rf"""
-        <(?P<tag>{tags})\b(?:{_TAG_BODY}>|[^<>]*>)
+        <(?P<tag>{tags})(?=[\s/>])(?:{_TAG_BODY}>|[^<>]*>)
         .*?</(?P=tag)(?=[\s/>])[^<>]*>
         |
-        <(?P<tag2>{tags})\b(?:{_TAG_BODY}/>|[^<>]*/>)
+        <(?P<tag2>{tags})(?=[\s/>])(?:{_TAG_BODY}/>|[^<>]*/>)
     """
-    return re.compile(pattern, re.IGNORECASE | re.DOTALL | re.VERBOSE)
+    return re.compile(pattern, re.IGNORECASE | re.DOTALL | re.VERBOSE | re.ASCII)
 
 
 def remove_tags_with_content(
@@ -418,6 +420,8 @@ def unquote_markup(
     3. removes the found CDATAs
 
     """
+
+    keep = frozenset(keep)
 
     utext = to_unicode(text, encoding)
     ret = []
@@ -525,10 +529,25 @@ def get_base_url(
     utext = to_unicode(text, encoding, errors="replace" if cut else "strict")
     if _base_re.search(utext):
         for m in _base_scan_re.finditer(utext):
-            if url := m.group("url"):
-                return urljoin(
-                    safe_url_string(baseurl), safe_url_string(url, encoding=encoding)
-                )
+            if (attrs := m.group("attrs")) is None:
+                continue
+            # iter_tag_attributes drops valueless attributes, but a valueless
+            # href counts as one, so read the attributes here to see it.
+            for attr in _attr_re.finditer(attrs):
+                if attr["name"].lower() != "href":
+                    continue
+                # The first <base> with an href attribute sets the base URL,
+                # and the first href of that tag is the one read; an empty or
+                # valueless one leaves the fallback in place, so a later <base>
+                # is not read either way.
+                # https://html.spec.whatwg.org/commit-snapshots/3e7b72c44ce144cee7db859cd0647af6646b6793/#set-the-frozen-base-url
+                value = attr["double"] or attr["single"] or attr["bare"] or ""
+                if url := value.strip(HTML5_WHITESPACE):
+                    return urljoin(
+                        safe_url_string(baseurl),
+                        safe_url_string(url, encoding=encoding),
+                    )
+                return safe_url_string(baseurl)
     return safe_url_string(baseurl)
 
 

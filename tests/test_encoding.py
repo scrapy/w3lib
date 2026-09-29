@@ -415,8 +415,8 @@ class TestHtmlConversion:
     def test_replace_wrong_encoding(self):
         """Test invalid chars are replaced properly"""
         _, body_unicode = html_to_unicode(ct("utf-8"), b"PREFIX\xe3\xabSUFFIX")
-        # XXX: Policy for replacing invalid chars may suffer minor variations
-        # but it should always contain the unicode replacement char ('\ufffd')
+        # Policy for replacing invalid chars may suffer minor variations but
+        # it should always contain the unicode replacement char ('\ufffd')
         assert "\ufffd" in body_unicode, repr(body_unicode)
         assert "PREFIX" in body_unicode, repr(body_unicode)
         assert "SUFFIX" in body_unicode, repr(body_unicode)

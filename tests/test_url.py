@@ -42,6 +42,7 @@ from w3lib._url import (
 )
 from w3lib.url import (
     _normalize_ipv6_host,
+    _remove_dot_segments,
     add_http_if_no_scheme,
     add_or_replace_parameter,
     add_or_replace_parameters,
@@ -1845,6 +1846,48 @@ class TestCanonicalizeUrl:
             canonicalize_url("http://www.example.com/%2E%2E/a")
             == "http://www.example.com/a"
         )
+
+    def test_resolve_dot_segments_preserves_empty_segments(self):
+        # An empty path segment is significant (RFC 3986): "/a//b" identifies a
+        # different resource than "/a/b", so resolving dot segments must not
+        # collapse consecutive slashes.
+        assert (
+            canonicalize_url("http://www.example.com/a//b")
+            == "http://www.example.com/a//b"
+        )
+        assert (
+            canonicalize_url("http://www.example.com/a///b")
+            == "http://www.example.com/a///b"
+        )
+        # trailing empty segments are preserved too
+        assert (
+            canonicalize_url("http://www.example.com/a/b//")
+            == "http://www.example.com/a/b//"
+        )
+        # a ".." still removes a preceding empty segment
+        assert (
+            canonicalize_url("http://www.example.com/a//../b")
+            == "http://www.example.com/a/b"
+        )
+
+    def test_remove_dot_segments_rfc_examples(self):
+        # RFC 3986, section 5.2.4 on absolute paths (canonicalize_url resolves
+        # dot segments only for a path that starts with "/").
+        assert _remove_dot_segments("/a/b/c/./../../g") == "/a/g"
+        # a trailing "/." or "/.." leaves a directory reference
+        assert _remove_dot_segments("/a/.") == "/a/"
+        assert _remove_dot_segments("/a/..") == "/"
+        # a "/.." with nothing above the root cannot pop past it
+        assert _remove_dot_segments("/..") == "/"
+        # empty segments are preserved
+        assert _remove_dot_segments("/a//b") == "/a//b"
+
+    def test_opaque_path_dot_segments_are_left_untouched(self):
+        # A path that does not start with "/" is opaque (URL Standard); its
+        # dot segments are not resolved, matching browsers.
+        assert canonicalize_url("mailto:a/../b") == "mailto:a/../b"
+        # a hierarchical path (starts with "/") is still resolved
+        assert canonicalize_url("foo:/a/../b") == "foo:/b"
 
     def test_normalize_ipv6_host(self):
         assert canonicalize_url("http://[::0:1]/") == "http://[::1]/"
