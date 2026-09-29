@@ -83,8 +83,12 @@ _base_scan_re = re.compile(
 
 # The refresh payload: ``3; url=...``. The url= part is required.
 # The interval is ASCII digits only, as in the HTML refresh steps.
+# After the interval the HTML shared declarative refresh steps accept the
+# separator ";", "," or ASCII whitespace before the url, so "3,url=..." and
+# "3 url=..." redirect just like "3;url=...". The two alternatives keep the
+# whitespace runs non-overlapping so the scan stays linear on adversarial input.
 _meta_refresh_content_re = re.compile(
-    r"\s*(?P<int>([0-9]*\.)?[0-9]+)\s*;\s*url=\s*(?P<url>.*)",
+    r"\s*(?P<int>([0-9]*\.)?[0-9]+)(?:\s*[;,]\s*|\s+)url=\s*(?P<url>.*)",
     re.DOTALL | re.IGNORECASE | re.ASCII,
 )
 
