@@ -45,7 +45,8 @@ _TAG_NAME = r"""[a-zA-Z][a-zA-Z0-9]*(?![^ <>/])"""
 # it, and the plain one comes first because it is the cheaper of the two and
 # the case of most tags.
 _tag_re = re.compile(
-    rf"""<[a-zA-Z/!][^<>=]*>|</?{_TAG_NAME}{_TAG_BODY}>|<[a-zA-Z/!][^<>]*>"""
+    rf"""<[a-zA-Z/!][^<>=]*>|</?{_TAG_NAME}{_TAG_BODY}>|<[a-zA-Z/!][^<>]*>""",
+    re.ASCII,
 )
 # Tag syntax is ASCII, and re.ASCII holds the scan patterns of this module to
 # it: "\s" matches the whitespace that separates markup and not, say, U+3000,
@@ -85,7 +86,7 @@ _base_scan_re = re.compile(
 # The interval is ASCII digits only, as in the HTML refresh steps.
 _meta_refresh_content_re = re.compile(
     r"\s*(?P<int>([0-9]*\.)?[0-9]+)\s*;\s*url=\s*(?P<url>.*)",
-    re.DOTALL | re.IGNORECASE,
+    re.DOTALL | re.IGNORECASE | re.ASCII,
 )
 
 _CDATA_START = "<![CDATA["
@@ -105,7 +106,7 @@ _tags_re = re.compile(
     [^<>]*          # the rest of the tag: attributes, whitespace, etc.
     >               # closing angle bracket
     """,
-    re.IGNORECASE | re.VERBOSE,
+    re.IGNORECASE | re.VERBOSE | re.ASCII,
 )
 _meta_re = re.compile("<meta", re.IGNORECASE | re.ASCII)
 
@@ -353,7 +354,7 @@ def _build_remove_tags_pattern(tags_tuple: tuple[str, ...]) -> re.Pattern[str]:
         |
         <(?P<tag2>{tags})\b(?:{_TAG_BODY}/>|[^<>]*/>)
     """
-    return re.compile(pattern, re.IGNORECASE | re.DOTALL | re.VERBOSE)
+    return re.compile(pattern, re.IGNORECASE | re.DOTALL | re.VERBOSE | re.ASCII)
 
 
 def remove_tags_with_content(

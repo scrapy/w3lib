@@ -175,6 +175,12 @@ class TestReplaceTags:
     def test_quote_outside_value_position(self, tag: str, text: str) -> None:
         assert replace_tags(f"{tag}><i>{text}") == text
 
+    def test_non_ascii_whitespace_after_equals(self) -> None:
+        # Only ASCII whitespace separates "=" from a quoted value, so U+00A0
+        # leaves the value unquoted and the tag ends at the first ">", as in a
+        # browser; treating the quote as opening a value would swallow the ">".
+        assert replace_tags('a<img alt= "x>KEEP">b') == 'aKEEP">b'
+
     def test_replace_tags_no_catastrophic_backtracking(self):
         evil = "<a" * 50000
         start = time.process_time()
@@ -286,6 +292,11 @@ class TestRemoveTags:
     @pytest.mark.parametrize("quote", ["<", ">"])
     def test_lt_gt_in_quoted_attribute_value(self, quote: str) -> None:
         assert remove_tags(f'<p class="a{quote}b">txt</p>', which_ones=("p",)) == "txt"
+
+    def test_non_ascii_whitespace_after_equals(self) -> None:
+        # U+00A0 does not separate "=" from a quoted value, so the tag ends at
+        # the first ">", as in a browser, rather than swallowing it.
+        assert remove_tags('a<img alt= "x>KEEP">b') == 'aKEEP">b'
 
     @pytest.mark.parametrize(("tag", "text"), _QUOTE_OUTSIDE_VALUE_POSITION)
     def test_quote_outside_value_position(self, tag: str, text: str) -> None:
@@ -430,6 +441,18 @@ class TestRemoveTagsWithContent:
                 "<script>a</scriptx>b</script>", which_ones=("script",)
             )
             == ""
+        )
+
+    def test_end_tag_non_ascii_whitespace(self):
+        # Only ASCII whitespace ends an element after its tag name, so U+00A0
+        # after "</script" does not close it, as in a browser; closing there
+        # would end the element early and leak the rest of its content.
+        assert (
+            remove_tags_with_content(
+                "<script>keep</script >alert(1)</script>tail",
+                which_ones=("script",),
+            )
+            == "tail"
         )
 
 
@@ -1214,6 +1237,18 @@ http://www.example.org/index.php" />
         body = "<meta\u3000http-equiv='refresh' content='3;url=/next'>"
         assert get_meta_refresh(body, "http://example.org") == (None, None)
         assert get_meta_refresh(body.encode(), "http://example.org") == (None, None)
+
+    def test_get_meta_refresh_content_non_ascii_whitespace(self) -> None:
+        # The refresh content is parsed with ASCII whitespace only, so U+00A0
+        # around the interval or the ";" leaves it unparsed and no redirect is
+        # reported, as a browser reloads the same document instead.
+        for content in (" 0;url=/next", "0 ;url=/next", "0; url=/next"):
+            body = f"<meta http-equiv='refresh' content='{content}'>"
+            assert get_meta_refresh(body, "http://example.org") == (None, None)
+        # An ASCII-whitespace variant is still parsed.
+        assert get_meta_refresh(
+            "<meta http-equiv='refresh' content='0; url=/next'>", "http://example.org"
+        ) == (0.0, "http://example.org/next")
 
     def test_get_meta_refresh_non_ascii_case_folding(self) -> None:
         # U+017F uppercases to "S", but it is no "s" in a tag name, so this is
