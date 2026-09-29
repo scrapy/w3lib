@@ -103,6 +103,11 @@ Security and correctness fixes:
   ``<base h<!--c-->ref="…">``, which a browser does not read as a tag at all
   (#303).
 
+- :func:`~w3lib.html.get_base_url` now reads only the first ``href`` attribute
+  of the ``<base>`` tag, as browsers do, instead of the last attribute whose
+  name ends in ``href``, such as ``data-href``, and now also reads an unquoted
+  ``href`` value (#349).
+
 - :func:`~w3lib.html.get_meta_refresh` and
   :func:`~w3lib.html.remove_tags_with_content` no longer treat a ``<script>``
   or ``<noscript>`` element as closed only by a bare ``</script>``, now also
@@ -150,15 +155,21 @@ Security and correctness fixes:
   angle bracket inside a quoted attribute value, such as the ``>`` of
   ``<img alt="a>b" src=x>`` (#343).
 
-- :func:`~w3lib.html.replace_entities` no longer consumes *keep* when it is
-  an iterator, such as a generator, which left the entities it had already
-  yielded unkept (#342).
+- :func:`~w3lib.html.replace_entities` and :func:`~w3lib.html.unquote_markup`
+  no longer consume *keep* when it is an iterator, such as a generator, which
+  left some entities unkept (#342, #345), and :func:`~w3lib.html.remove_tags`
+  no longer raises :exc:`ValueError` when *which_ones* or *keep* is an empty
+  iterator and the other one is not (#345).
+
+- :func:`~w3lib.html.get_meta_refresh` no longer reports a redirect for a
+  refresh ``content`` value that browsers do not follow because it uses
+  non-ASCII whitespace, such as U+00A0 (#353).
 
 - :func:`~w3lib.html.get_meta_refresh` no longer prints the HTML content it
   was given to stdout when a :exc:`UnicodeDecodeError` is raised (#256).
 
 - Tests, benchmarking and CI improvements (#247, #259, #262, #281, #296,
-  #304, #313, #314, #329, #335, #340, #344).
+  #304, #313, #314, #329, #335, #340, #344, #350).
 
 2.4.1 (2026-03-20)
 ------------------
