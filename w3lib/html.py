@@ -349,10 +349,10 @@ def _build_remove_tags_pattern(tags_tuple: tuple[str, ...]) -> re.Pattern[str]:
     # trailing run stays [^<>]* so it can't cross into the next tag and match
     # super-linearly.
     pattern = rf"""
-        <(?P<tag>{tags})\b(?:{_TAG_BODY}>|[^<>]*>)
+        <(?P<tag>{tags})(?=[\s/>])(?:{_TAG_BODY}>|[^<>]*>)
         .*?</(?P=tag)(?=[\s/>])[^<>]*>
         |
-        <(?P<tag2>{tags})\b(?:{_TAG_BODY}/>|[^<>]*/>)
+        <(?P<tag2>{tags})(?=[\s/>])(?:{_TAG_BODY}/>|[^<>]*/>)
     """
     return re.compile(pattern, re.IGNORECASE | re.DOTALL | re.VERBOSE | re.ASCII)
 

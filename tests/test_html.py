@@ -455,6 +455,16 @@ class TestRemoveTagsWithContent:
             == "tail"
         )
 
+    def test_start_tag_name_boundary(self):
+        # The tag name in the start tag must be followed by ASCII whitespace,
+        # "/" or ">", so "<scriptä>" is a different element and is not removed,
+        # as a browser keeps its content. A word boundary would end the name at
+        # "t" and treat it as <script>.
+        assert (
+            remove_tags_with_content("<scriptä>x</script>y", which_ones=("script",))
+            == "<scriptä>x</script>y"
+        )
+
 
 class TestReplaceEscapeChars:
     def test_returns_unicode(self):
