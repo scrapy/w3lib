@@ -590,7 +590,7 @@ class TestGetBaseUrl:
             get_base_url(
                 "<html><head></head><body></body></html>", "https://example.org"
             )
-            == "https://example.org"
+            == "https://example.org/"
         )
 
     @pytest.mark.parametrize("quote", ["<", ">"])
@@ -601,7 +601,7 @@ class TestGetBaseUrl:
         )
 
     def test_get_base_url_href_attribute(self):
-        baseurl = "https://example.org"
+        baseurl = "https://example.org/"
         # Only an attribute named href sets the base URL: an attribute whose
         # name merely ends in "href" is not one, and the first href is the one
         # a browser reads.
@@ -628,7 +628,7 @@ class TestGetBaseUrl:
         )
 
     def test_get_base_url_empty_href(self):
-        baseurl = "https://example.org"
+        baseurl = "https://example.org/"
         # The first <base> with an href attribute sets the base URL, and an
         # empty one leaves the fallback in place, even if a later <base> has a
         # value; a <base> without href does not count.
@@ -693,14 +693,14 @@ class TestGetBaseUrl:
                 """<script>var t = "<base href='http://evil.example/'>";</script>""",
                 baseurl,
             )
-            == "https://example.org"
+            == "https://example.org/"
         )
         assert (
             get_base_url(
                 """<noscript><base href="http://evil.example/"></noscript>""",
                 baseurl,
             )
-            == "https://example.org"
+            == "https://example.org/"
         )
         # a real <base> after the ignored one is still picked up
         assert (
@@ -718,14 +718,14 @@ class TestGetBaseUrl:
                 """<script><base href="http://evil.example/">""",
                 baseurl,
             )
-            == "https://example.org"
+            == "https://example.org/"
         )
         assert (
             get_base_url(
                 """<noscript foo="bar"><base href="http://evil.example/">""",
                 baseurl,
             )
-            == "https://example.org"
+            == "https://example.org/"
         )
 
     def test_base_url_split_by_comment(self):
@@ -736,7 +736,7 @@ class TestGetBaseUrl:
                 """<base h<!--c-->ref="http://example.com/">""",
                 "https://example.org",
             )
-            == "https://example.org"
+            == "https://example.org/"
         )
 
     def test_relative_url_with_absolute_path(self):
@@ -775,7 +775,7 @@ class TestGetBaseUrl:
             <head><title>Dummy</title><basefoo href='http://example.org/something' /></head>\
             <body>blahablsdfsal&amp;</body>\
             </html>"""
-        assert get_base_url(text, baseurl) == "https://example.org"
+        assert get_base_url(text, baseurl) == "https://example.org/"
 
     def test_get_base_url_utf8(self):
         baseurl = "https://example.org"
@@ -824,7 +824,7 @@ class TestGetBaseUrl:
         ],
     )
     def test_get_base_url_bytes(self, encoding: str, char: str) -> None:
-        baseurl = "https://example.org"
+        baseurl = "https://example.org/"
         with_base = f"<html><head>{char}<base href='/path'></head></html>"
         without_base = f"<html><head>{char}</head></html>"
         assert (
@@ -845,7 +845,7 @@ class TestGetBaseUrl:
         assert text.encode("iso2022_jp") == b"<p>\x1b$B<base>\x1b(B</p>"
         assert (
             get_base_url(text.encode("iso2022_jp"), "https://example.org", "iso2022_jp")
-            == "https://example.org"
+            == "https://example.org/"
         )
 
     def test_get_base_url_non_ascii_compatible(self) -> None:
@@ -875,17 +875,17 @@ class TestGetBaseUrl:
     def test_get_base_url_non_ascii_whitespace(self) -> None:
         # U+3000 does not separate a tag name from its attributes.
         text = "<base\u3000href='/path'>"
-        assert get_base_url(text, "https://example.org") == "https://example.org"
+        assert get_base_url(text, "https://example.org") == "https://example.org/"
         assert (
-            get_base_url(text.encode(), "https://example.org") == "https://example.org"
+            get_base_url(text.encode(), "https://example.org") == "https://example.org/"
         )
 
     def test_get_base_url_non_ascii_case_folding(self) -> None:
         # U+017F uppercases to "S", but it is no "s" in a tag name.
         text = "<ba\u017fe href='/path'>"
-        assert get_base_url(text, "https://example.org") == "https://example.org"
+        assert get_base_url(text, "https://example.org") == "https://example.org/"
         assert (
-            get_base_url(text.encode(), "https://example.org") == "https://example.org"
+            get_base_url(text.encode(), "https://example.org") == "https://example.org/"
         )
 
 
@@ -1355,7 +1355,7 @@ def meta(text: str | bytes, **kwargs: object) -> object:
 @pytest.mark.parametrize(
     ("func", "tag", "found", "missing"),
     [
-        (base, BASE_TAG, "http://example.org/found", "https://example.org"),
+        (base, BASE_TAG, "http://example.org/found", "https://example.org/"),
         (meta, META_TAG, (5, "http://example.org/found"), (None, None)),
     ],
     ids=["base", "meta"],
