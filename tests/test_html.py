@@ -1033,7 +1033,7 @@ class TestGetMetaRefresh:
     def test_separator_comma_or_whitespace(self):
         # The HTML shared declarative refresh steps accept ";", "," or ASCII
         # whitespace as the separator after the interval, so a browser follows
-        # all of these; get_meta_refresh only recognized ";".
+        # all of these.
         baseurl = "http://example.org"
         for content in (
             "0,url=http://example.org/newpage",
