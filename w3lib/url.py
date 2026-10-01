@@ -250,8 +250,6 @@ def safe_download_url(
         if path.endswith("/") and not normalized_path.endswith("/"):
             normalized_path = f"{normalized_path}/"
         path = normalized_path
-    else:
-        path = "/"
     return _urlunsplit(scheme, netloc, path, query, "")
 
 
