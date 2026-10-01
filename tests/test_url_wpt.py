@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from w3lib.url import safe_url_string
+from w3lib.url import _urljoin, safe_url_string
 
 _KNOWN_FAILURES: set[tuple[str | None, str]] = {
     (None, "https://test:@test"),
@@ -287,6 +287,99 @@ _KNOWN_FAILURES: set[tuple[str | None, str]] = {
     (None, "stun://test/a/../b"),
     (None, "stun://:443"),
     (None, "non-special://host\\a"),
+    ("http://example.org/foo/bar", "http://f:00000000000000000000080/c"),
+    ("http://example.org/foo/bar", "http://&a:foo(b]c@d:2/"),
+    ("http://example.org/foo/bar", "http://[::127.0.0.1]"),
+    ("http://example.org/foo/bar", "http://[0:0:0:0:0:0:13.1.68.3]"),
+    ("http://example.org/foo/bar", "http://[2001::1]:80"),
+    ("http://example.org/foo/bar", "ftp:/example.com/"),
+    ("http://example.org/foo/bar", "https:/example.com/"),
+    ("http://example.org/foo/bar", "ws:/example.com/"),
+    ("http://example.org/foo/bar", "wss:/example.com/"),
+    ("http://example.org/foo/bar", "ftp:example.com/"),
+    ("http://example.org/foo/bar", "https:example.com/"),
+    ("http://example.org/foo/bar", "ws:example.com/"),
+    ("http://example.org/foo/bar", "wss:example.com/"),
+    ("file:///tmp/mock/path", "file:c:\\foo\\bar.html"),
+    ("file:///tmp/mock/path", "  File:c|////foo\\bar.html"),
+    ("file:///tmp/mock/path", "C|/foo/bar"),
+    ("file:///tmp/mock/path", "/C|\\foo\\bar"),
+    ("file:///tmp/mock/path", "//C|/foo/bar"),
+    ("file:///tmp/mock/path", "file://localhost"),
+    ("file:///tmp/mock/path", "file://localhost/"),
+    ("file:///tmp/mock/path", "file://localhost/test"),
+    ("http://www.example.com/test", "file:..."),
+    ("http://www.example.com/test", "file:.."),
+    ("http://www.example.com/test", "file:a"),
+    ("http://www.example.com/test", "file:."),
+    ("http://other.com/", "http://example example.com"),
+    ("http://other.com/", "http://Goo%20 goo%7C|.com"),
+    ("http://other.com/", "http://GOO\xa0\u3000goo.com"),
+    ("http://other.com/", "http://\ufdd0zyx.com"),
+    ("http://other.com/", "http://%ef%b7%90zyx.com"),
+    ("http://other.com/", "http://％４１.com"),
+    ("http://other.com/", "http://%ef%bc%85%ef%bc%94%ef%bc%91.com"),
+    ("http://other.com/", "http://％００.com"),
+    ("http://other.com/", "http://%ef%bc%85%ef%bc%90%ef%bc%90.com"),
+    ("http://other.com/", "http://%zz%66%a.com"),
+    ("http://other.com/", "http://%25"),
+    ("http://other.com/", "http://hello%00"),
+    ("http://other.com/", "http://%30%78%63%30%2e%30%32%35%30.01"),
+    ("http://other.com/", "http://%30%78%63%30%2e%30%32%35%30.01%2e"),
+    ("http://other.com/", "http://192.168.0.257"),
+    ("http://other.com/", "http://%3g%78%63%30%2e%30%32%35%30%2E.01"),
+    ("http://other.com/", "http://192.168.0.1 hello"),
+    ("http://other.com/", "http://０Ｘｃ０．０２５０．０１"),
+    ("http://other.com/", "http://[::%31]"),
+    ("sc://ñ", "x"),
+    ("https://example.org/foo/bar", "http:"),
+    ("http://other.com/", "http://1.2.3.4./"),
+    ("http://other.com/", "http://192.168.257"),
+    ("http://other.com/", "http://192.168.257."),
+    ("http://other.com/", "http://256"),
+    ("http://other.com/", "http://999999999"),
+    ("http://other.com/", "http://999999999."),
+    ("http://other.com/", "http://10000000000"),
+    ("http://other.com/", "http://4294967295"),
+    ("http://other.com/", "http://4294967296"),
+    ("http://other.com/", "http://18446744073709551616"),
+    ("http://other.com/", "http://18446744075840258049"),
+    ("http://other.com/", "http://0xffffffff"),
+    ("http://other.com/", "http://0xffffffff1"),
+    ("http://other.com/", "http://256.256.256.256"),
+    ("file:///C:/", ".."),
+    ("file:///C:/a/b", "/"),
+    ("file://h/C:/a/b", "/"),
+    ("file:///C:/a/b", "//d:"),
+    ("file:///C:/a/b", "//d:/.."),
+    ("file://lion/", "\\/localhost//pig"),
+    ("file://lion/", "//localhost//pig"),
+    ("file://host/dir/file", "C|"),
+    ("file://host/D:/dir1/dir2/file", "C|"),
+    ("file://host/dir/file", "C|#"),
+    ("file://host/dir/file", "C|?"),
+    ("file://host/dir/file", "C|/"),
+    ("file://host/dir/file", "C|\n/"),
+    ("file://host/dir/file", "C|\\"),
+    ("file:///c:/baz/qux", "/c|/foo/bar"),
+    ("file://x/C:/", ".."),
+    ("file://host/", "C|/"),
+    ("file://host/", "//C:/"),
+    ("file://host/", "file://C:/"),
+    ("http://example.net/", "http://[1:0::]"),
+    ("sc://ñ", "#x"),
+    ("sc://ñ", "?x"),
+    ("non-spec:/p", "/.//path"),
+    ("non-spec:/p", "/..//path"),
+    ("non-spec:/p", "..//path"),
+    ("non-spec:/p", "a/..//path"),
+    ("non-spec:/..//p", ""),
+    ("non-spec:/..//p", "path"),
+    ("http://example.org", "https://user:pass[\x7f@foo/bar"),
+    ("http://other.com/", "http://1.2.3.4.5"),
+    ("http://other.com/", "http://1.2.3.4.5."),
+    ("http://other.com/", "http://256.256.256.256.256"),
+    ("http://other.com/", "http://256.256.256.256.256."),
 }
 
 
@@ -301,9 +394,7 @@ def _params() -> list[Any]:
             continue
         key = (case["base"], case["input"])
         marks = []
-        if case["base"] is not None:
-            marks.append(pytest.mark.skip(reason="w3lib has no URL join function yet"))
-        elif key in _KNOWN_FAILURES:
+        if key in _KNOWN_FAILURES:
             marks.append(pytest.mark.xfail(strict=True))
         elif key in _DIVERGENCES:
             marks.append(pytest.mark.xfail(strict=True, reason=_DIVERGENCES[key]))
@@ -313,8 +404,13 @@ def _params() -> list[Any]:
 
 @pytest.mark.parametrize("case", _params())
 def test_urltestdata(case: dict[str, Any]) -> None:
+    def parse() -> str:
+        if case["base"] is None:
+            return safe_url_string(case["input"])
+        return safe_url_string(_urljoin(case["base"], case["input"]))
+
     if case.get("failure"):
         with pytest.raises(ValueError):  # noqa: PT011
-            safe_url_string(case["input"])
+            parse()
     else:
-        assert safe_url_string(case["input"]) == safe_url_string(case["href"])
+        assert parse() == safe_url_string(case["href"])

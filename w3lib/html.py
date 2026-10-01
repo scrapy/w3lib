@@ -8,10 +8,9 @@ import functools
 import re
 from html.entities import name2codepoint
 from typing import TYPE_CHECKING, Any
-from urllib.parse import urljoin
 
 from w3lib._util import _attr_re, _scannable, iter_tag_attributes, to_unicode
-from w3lib.url import safe_url_string
+from w3lib.url import _urljoin, safe_url_string
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -543,9 +542,8 @@ def get_base_url(
                 # https://html.spec.whatwg.org/commit-snapshots/3e7b72c44ce144cee7db859cd0647af6646b6793/#set-the-frozen-base-url
                 value = attr["double"] or attr["single"] or attr["bare"] or ""
                 if url := value.strip(HTML5_WHITESPACE):
-                    return urljoin(
-                        safe_url_string(baseurl),
-                        safe_url_string(url, encoding=encoding),
+                    return safe_url_string(
+                        _urljoin(safe_url_string(baseurl), url), encoding=encoding
                     )
                 return safe_url_string(baseurl)
     return safe_url_string(baseurl)
@@ -573,7 +571,7 @@ def _refresh(attrs: str, baseurl: str, encoding: str) -> tuple[float, str] | Non
     if not has_refresh_pragma or interval is None:
         return None
     assert url is not None
-    return interval, urljoin(baseurl, safe_url_string(url.strip(" \"'"), encoding))
+    return interval, safe_url_string(_urljoin(baseurl, url.strip(" \"'")), encoding)
 
 
 def get_meta_refresh(

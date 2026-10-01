@@ -627,6 +627,13 @@ class TestGetBaseUrl:
             == "http://example.org/found/"
         )
 
+    def test_get_base_url_relative_href(self):
+        baseurl = "https://example.org/a/b"
+        assert get_base_url(r'<base href="\c\d">', baseurl) == "https://example.org/c/d"
+        assert get_base_url('<base href="///example.com">', baseurl) == (
+            "https://example.com/"
+        )
+
     def test_get_base_url_empty_href(self):
         baseurl = "https://example.org/"
         # The first <base> with an href attribute sets the base URL, and an
@@ -898,6 +905,13 @@ class TestGetMetaRefresh:
             <body>blahablsdfsal&amp;</body>
             </html>"""
         assert get_meta_refresh(body, baseurl) == (5, "http://example.org/newpage")
+
+    def test_get_meta_refresh_relative_url(self):
+        body = r"""<meta http-equiv="refresh" content="5;url=\\example.com\a">"""
+        assert get_meta_refresh(body, "https://example.org/b") == (
+            5,
+            "https://example.com/a",
+        )
 
     def test_no_meta(self):
         assert get_meta_refresh("<html><body>no meta here</body></html>") == (

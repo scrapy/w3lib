@@ -13,12 +13,13 @@ import re
 from ipaddress import IPv6Address, ip_address
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple, cast, overload
-from urllib.parse import ParseResult
+from urllib.parse import ParseResult, urljoin
 from urllib.request import pathname2url
 
 from ._url import (
     _PATH_SAFE_CHARS,
     _SAFE_CHARS,
+    _SCHEME_RE,
     _SPECIAL_SCHEMES,
     # reexports
     RFC3986_GEN_DELIMS as RFC3986_GEN_DELIMS,
@@ -645,31 +646,103 @@ __all__ = [
 ]
 
 
+_DOT_SEGMENTS = {
+    ".": ".",
+    "%2e": ".",
+    "..": "..",
+    ".%2e": "..",
+    "%2e.": "..",
+    "%2e%2e": "..",
+}
+
+
 def _remove_dot_segments(path: str) -> str:
     """Resolve dot segments in *path*, which starts with "/" (RFC 3986,
-    section 5.2.4)."""
-    # Every segment follows a "/", so a path without "/." has no dot segment.
-    if "/." not in path:
+    section 5.2.4), including their percent-encoded spellings."""
+    # Every segment follows a "/", so a path without "/." or "/%2" has no dot
+    # segment.
+    if "/." not in path and "/%2" not in path:
         return path
     segments = path[1:].split("/")
     output: list[str] = []
     for segment in segments[:-1]:
-        if segment == "..":
+        dots = _DOT_SEGMENTS.get(segment.lower())
+        if dots == "..":
             if output:
                 output.pop()
-        elif segment != ".":
+        elif dots is None:
             output.append(segment)
     # A trailing dot segment leaves the path ending in "/".
     last = segments[-1]
-    if last == "..":
+    dots = _DOT_SEGMENTS.get(last.lower())
+    if dots == "..":
         if output:
             output.pop()
         output.append("")
-    elif last == ".":
+    elif dots == ".":
         output.append("")
     else:
         output.append(last)
     return "/" + "/".join(output)
+
+
+def _urljoin(base: str, url: str) -> str:
+    """Resolve *url* against *base* following the `URL living standard`_.
+
+    .. _URL living standard: https://url.spec.whatwg.org/#concept-basic-url-parser
+
+    If *base* has no scheme, :func:`urllib.parse.urljoin` resolves *url*
+    instead. Raises :exc:`ValueError` if *url* cannot be resolved against
+    *base*, i.e. if *base* has an opaque path (e.g. ``mailto:a``) and *url* is
+    neither absolute nor a fragment.
+    """
+    base, url = _strip(base), _strip(url)
+    base_parts = _urlsplit(base)
+    scheme = base_parts.scheme
+    if not scheme:
+        return urljoin(base, url)
+    special = scheme in _SPECIAL_SCHEMES
+    if m := _SCHEME_RE.match(url):
+        # Only a special scheme matching that of the base keeps the URL
+        # relative, e.g. "http:foo".
+        if not special or m.group(1).lower() != scheme:
+            return url
+        url = url[m.end() :]
+
+    url, hash_mark, fragment = url.partition("#")
+    path, question_mark, query = url.partition("?")
+    base_has_authority = special or base[len(scheme) + 1 : len(scheme) + 3] == "//"
+    if (
+        not base_has_authority
+        and base_parts.path[:1] != "/"
+        and (path or question_mark or not hash_mark)
+    ):
+        raise ValueError(f"Only a fragment can be resolved against {base!r}")
+
+    if not path:
+        base = base.partition("#")[0]
+        if question_mark:
+            base = base.partition("?")[0]
+        return f"{base}{question_mark}{query}{hash_mark}{fragment}"
+
+    tail = f"{question_mark}{query}{hash_mark}{fragment}"
+    if special:
+        path = path.replace("\\", "/")
+    if path[:2] == "//":
+        # Special schemes other than file ignore any extra slash before the
+        # host, e.g. "///example.com" is "//example.com".
+        if special and scheme != "file":
+            path = f"//{path.lstrip('/')}"
+        if (authority_end := path.find("/", 2)) != -1:
+            path = path[:authority_end] + _remove_dot_segments(path[authority_end:])
+        return f"{scheme}:{path}{tail}"
+    if path[0] != "/":
+        base_path = base_parts.path
+        path = f"{base_path[: base_path.rfind('/') + 1] or '/'}{path}"
+    path = _remove_dot_segments(path)
+    if base_has_authority:
+        return f"{scheme}://{base_parts.netloc}{path}{tail}"
+    return f"{scheme}:{path}{tail}"
 
 
 def canonicalize_url(
