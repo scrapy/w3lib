@@ -214,6 +214,24 @@ class TestRemoveComments:
 
         assert remove_comments(b"test <!--") == "test "
 
+    @pytest.mark.parametrize(
+        ("text", "expected"),
+        [
+            ("a<!-->b", "ab"),
+            ("a<!--->b", "ab"),
+            ("a<!---->b", "ab"),
+            ("a<!-- x --!>b", "ab"),
+            ("a<!----!>b", "ab"),
+            ("a<!-- x --->b", "ab"),
+            ("a<!-- x -- y --!x -->b", "ab"),
+            # the dashes of "<!--" do not combine with a later "!>"
+            ("a<!--!>b-->c", "ac"),
+            ("a<!---!>b-->c", "ac"),
+        ],
+    )
+    def test_comment_closers(self, text, expected):
+        assert remove_comments(text) == expected
+
 
 class TestRemoveTags:
     def test_returns_unicode(self):
@@ -684,6 +702,12 @@ class TestGetBaseUrl:
             == "http://example_3.com/"
         )
 
+    @pytest.mark.parametrize("comment", ["<!-->", "<!--->", "<!-- x --!>"])
+    def test_base_url_after_comment(self, comment):
+        html = f'{comment}<base href="http://example.com/">'
+        assert get_base_url(html) == "http://example.com/"
+        assert get_base_url(html.encode()) == "http://example.com/"
+
     def test_base_url_in_script(self):
         baseurl = "https://example.org"
         # A browser does not parse tags inside <script>/<noscript>, so a <base>
@@ -1054,6 +1078,16 @@ class TestGetMetaRefresh:
         body = """<!-- commented --><meta http-equiv="refresh" content="3; url=http://example.com/">-->"""
         assert get_meta_refresh(body, baseurl) == (3, "http://example.com/")
 
+    @pytest.mark.parametrize("comment", ["<!-->", "<!--->", "<!-- x --!>"])
+    def test_meta_refresh_after_comment(self, comment):
+        body = (
+            f'{comment}<meta http-equiv="refresh" content="3; url=http://example.com/">'
+        )
+        assert get_meta_refresh(body, "http://example.com") == (
+            3,
+            "http://example.com/",
+        )
+
     def test_float_refresh_intervals(self):
         # float refresh intervals
         baseurl = "http://example.com"
@@ -1332,6 +1366,8 @@ FRAGMENTS = [
     '"',
     "<!--",
     "-->",
+    "--!>",
+    "<!-->",
     "<script>",
     "</script>",
     '<p title="a>b">',
