@@ -379,7 +379,7 @@ SAFE_URL_URL_CASES = (
     ("https://example.com/%3F", "https://example.com/%3F"),
     ("https://example.com/%23", "https://example.com/%23"),
     # Query
-    ("https://example.com?", "https://example.com?"),
+    ("https://example.com?", "https://example.com/?"),
     ("https://example.com/?", "https://example.com/?"),
     ("https://example.com?a", "https://example.com/?a"),
     ("https://example.com?a=", "https://example.com/?a="),
@@ -409,9 +409,9 @@ SAFE_URL_URL_CASES = (
     ("https://example.com?ñ", "https://example.com/?%C3%B1"),
     ("https://example.com?ñ%C3%B1", "https://example.com/?%C3%B1%C3%B1"),
     # Fragment
-    ("https://example.com#", "https://example.com#"),
+    ("https://example.com#", "https://example.com/#"),
     ("https://example.com/#", "https://example.com/#"),
-    ("https://example.com?#", "https://example.com?#"),
+    ("https://example.com?#", "https://example.com/?#"),
     ("https://example.com/?#", "https://example.com/?#"),
     ("https://example.com#a", "https://example.com/#a"),
     (
@@ -516,7 +516,6 @@ KNOWN_SAFE_URL_STRING_URL_ISSUES = {
     "http://192.168.0.256",  # Invalid IP address
     "http://192.168.0.0.0",  # Invalid IP address / domain name
     # Non-standard IP future literal is stripped of brackets; not idempotent
-    "http://[v6a.ip]",
     # Some path characters that RFC 2396 and RFC 3986 require escaping (%)
     # are not escaped.
     f"https://example.com/{PATH_TO_ENCODE}",
