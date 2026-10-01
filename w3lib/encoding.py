@@ -10,7 +10,7 @@ import re
 from functools import lru_cache
 from typing import TYPE_CHECKING, cast
 
-from w3lib._util import iter_tag_attributes
+from w3lib._util import _COMMENT, iter_tag_attributes
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -87,8 +87,8 @@ def http_content_type_encoding(content_type: str | None) -> str | None:
 # Each alternative consumes every character at most once, so the scan stays
 # linear.
 _BODY_SCAN_RE = re.compile(
-    r"""
-      <!--.*?(?:-->|$)  # comment
+    rf"""
+      {_COMMENT}  # comment
     | <\s*meta(?=[\s/])(?P<meta>(?:[^<>=]|=\s*(?:"[^"]*"|'[^']*')?)*)  # meta tag
     | <\?xml\s(?P<xml>[^<>]*)  # XML declaration
     | <\s*(?P<body>body)  # start of the body tag

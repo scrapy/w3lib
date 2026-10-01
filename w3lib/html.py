@@ -9,7 +9,7 @@ import re
 from html.entities import name2codepoint
 from typing import TYPE_CHECKING, Any
 
-from w3lib._util import _attr_re, _scannable, iter_tag_attributes, to_unicode
+from w3lib._util import _COMMENT, _attr_re, _scannable, iter_tag_attributes, to_unicode
 from w3lib.url import _urljoin, safe_url_string
 
 if TYPE_CHECKING:
@@ -73,7 +73,7 @@ _base_bytes_re = re.compile(rb"<base", re.IGNORECASE)
 # are then read one by one, as for <meta>.
 _base_scan_re = re.compile(
     rf"""
-      <!--[^-]*(?:-(?!->)[^-]*)*(?:-->|$)
+      {_COMMENT}
     | <(?P<t>script|noscript)\b{_TAG_BODY}>[^<]*(?:<(?!/(?P=t)>)[^<]*)*(?:</(?P=t)>|$)
     | <base\s(?P<attrs>{_TAG_BODY})
     """,
@@ -123,7 +123,7 @@ def _meta_scan_source(ignore_tags: tuple[str, ...]) -> str:
     # The <meta> body is matched without the closing angle bracket, which is
     # not required: a tag left unterminated by the next "<" or by the end of
     # the text is still parsed, as browsers do.
-    alternatives = [r"<!--[^-]*(?:-(?!->)[^-]*)*(?:-->|$)"]
+    alternatives = [_COMMENT]
     if ignore_tags:
         tags = "|".join(re.escape(tag) for tag in ignore_tags)
         alternatives.append(
@@ -250,7 +250,7 @@ def replace_tags(
     return _tag_re.sub(token, to_unicode(text, encoding))
 
 
-_REMOVECOMMENTS_RE = re.compile("<!--.*?(?:-->|$)", re.DOTALL)
+_REMOVECOMMENTS_RE = re.compile(_COMMENT)
 
 
 def remove_comments(text: str | bytes, encoding: str | None = None) -> str:

@@ -248,6 +248,16 @@ class TestRequestEncoding:
             # the text around a comment is not spliced into a tag
             (b'<met<!-- -->a charset="big5">', None),
             (b'<meta charset="big5"<!-- -->>', "big5hkscs"),
+            # a comment ends at the first "-->" or "--!>", whose dashes can be
+            # those of its "<!--"
+            (b'<!--><meta charset="big5">', "big5hkscs"),
+            (b'<!---><meta charset="big5">', "big5hkscs"),
+            (b'<!----><meta charset="big5">', "big5hkscs"),
+            (b'<!-- x --><meta charset="big5">', "big5hkscs"),
+            (b'<!-- x --!><meta charset="big5">', "big5hkscs"),
+            (b'<!----!><meta charset="big5">', "big5hkscs"),
+            (b'<!--!><meta charset="big5">', None),
+            (b'<!-- <meta charset="utf-8"> --><meta charset="big5">', "big5hkscs"),
             # an unterminated comment hides everything after it
             (b'<!-- <meta charset="big5">', None),
             # an xml declaration without a usable encoding does not stop the
