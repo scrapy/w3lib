@@ -10,6 +10,7 @@ import codecs
 import os
 import posixpath
 import re
+import warnings
 from ipaddress import IPv6Address, ip_address
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple, cast, overload
@@ -176,17 +177,17 @@ def safe_url_string(
     path_encoding: str = "utf8",
     quote_path: bool = True,
 ) -> str:
-    """Return a URL equivalent to *url* that a wide range of web browsers and
-    web servers consider valid.
+    """Return *url* with its syntax fixed, ready to be sent in a request.
 
-    *url* is parsed according to the rules of the `URL living standard`_,
-    and during serialization additional characters are percent-encoded to make
-    the URL valid by additional URL standards.
+    Use it on URLs found in HTML or given by users before requesting them. To
+    compare or deduplicate URLs, use :func:`canonicalize_url` instead.
+
+    *url* is parsed the way web browsers parse it, following the `URL living
+    standard`_, and during serialization additional characters are
+    percent-encoded, so that the result is valid by *all* of the following URL
+    standards known to be enforced by modern-day web browsers and web servers:
 
     .. _URL living standard: https://url.spec.whatwg.org/
-
-    The returned URL should be valid by *all* of the following URL standards
-    known to be enforced by modern-day web browsers and web servers:
 
     -   `URL living standard`_
 
@@ -200,18 +201,18 @@ def safe_url_string(
     .. _RFC 2732: https://www.ietf.org/rfc/rfc2732.txt
     .. _RFC 3986: https://www.ietf.org/rfc/rfc3986.txt
 
-    If a bytes URL is given, it is first converted to `str` using the given
-    encoding (which defaults to 'utf-8'). If quote_path is True (default),
-    path_encoding ('utf-8' by default) is used to encode URL path component
-    which is then quoted. Otherwise, if quote_path is False, path component
-    is not encoded or quoted. Given encoding is used for query string
-    or form data.
+    Only the syntax is fixed: any scheme (e.g. ``file`` or ``javascript``), any
+    host (e.g. ``localhost``, a private IP address or a domain name that
+    resolves to one) and relative URLs are allowed. If *url* comes from an
+    untrusted source, it is up to you to check those.
 
-    When passing an encoding, you should use the encoding of the
-    original page (the page from which the URL was extracted from).
+    If *url* is :class:`bytes`, it is decoded with *encoding*. *encoding* is
+    also used to percent-encode the query and the fragment, so it should be the
+    encoding of the page where *url* was found. *path_encoding* is used to
+    percent-encode the path, unless *quote_path* is ``False``, in which case
+    the path is left as is.
 
-    Calling this function on an already "safe" URL will return the URL
-    unmodified.
+    Calling this function on an already safe URL returns the URL unmodified.
     """
     return _urlunsplit(*_safe_url_split(url, encoding, path_encoding, quote_path))
 
@@ -231,13 +232,11 @@ _encoded_dot_segments = {
 def safe_download_url(
     url: str | bytes, encoding: str = "utf8", path_encoding: str = "utf8"
 ) -> str:
-    """Make a url for download. This will call safe_url_string
-    and then strip the fragment, if one exists. The path will
-    be normalised.
-
-    If the path is outside the document root, it will be changed
-    to be within the document root.
-    """
+    warnings.warn(
+        "w3lib.url.safe_download_url() is deprecated.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     safe_url = safe_url_string(url, encoding, path_encoding)
     scheme, netloc, path, query, _ = _urlsplit(safe_url)
     if path:
@@ -638,7 +637,6 @@ __all__ = [
     "is_url",
     "parse_data_uri",
     "path_to_file_uri",
-    "safe_download_url",
     "safe_url_string",
     "url_query_cleaner",
     "url_query_parameter",
@@ -680,13 +678,20 @@ def canonicalize_url(
     *,
     query_separator: str = "&",
 ) -> str:
-    r"""Canonicalize the given url by applying the following procedures:
+    r"""Return a normalized form of *url*, to compare or deduplicate URLs.
 
     .. versionchanged:: VERSION
         Dot segments (``.`` and ``..``) in the path are now resolved, and
         IPv6 addresses in the host are now normalized.
 
-    - make the URL safe
+    URLs that differ only in ways that servers usually ignore get the same
+    canonical form. The canonical form may point to a different resource than
+    *url*, so to send a request, use :func:`safe_url_string` on *url* instead.
+
+    The following changes are applied:
+
+    - make the URL safe, as :func:`safe_url_string` does
+    - lowercase the host
     - sort query arguments, first by key, then by value
     - normalize all spaces (in query arguments) '+' (plus symbol)
     - normalize percent encodings case (%2f -> %2F)
@@ -694,9 +699,6 @@ def canonicalize_url(
     - remove fragments (unless `keep_fragments` is True)
     - resolve dot segments (``.`` and ``..``) in the path
     - normalize IPv6 addresses in the host
-
-    The url passed can be bytes or unicode, while the url returned is
-    always a native str (bytes in Python 2, unicode in Python 3).
 
     >>> import w3lib.url
     >>>
