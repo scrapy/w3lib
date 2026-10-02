@@ -622,7 +622,7 @@ def parse_data_uri(uri: str | bytes) -> ParseDataURIResult:
     if is_base64:
         if is_base64 != b";base64":
             raise ValueError("invalid data URI")
-        data = base64.b64decode(data)
+        data = base64.b64decode(data, validate=True)
 
     return ParseDataURIResult(media_type, media_type_params, data)
 
