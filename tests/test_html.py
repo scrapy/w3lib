@@ -107,6 +107,19 @@ class TestRemoveEntities:
         assert replace_entities("&#xD7FF;&#xE000;") == "\ud7ff\ue000"
         assert replace_entities("&#xD800;").encode("utf-8") == b"\xef\xbf\xbd"
 
+    def test_named_reference_table(self):
+        # the named character reference table is case-sensitive, so a spelling
+        # absent from it is not a reference: "&Lt;" is U+226B and "&lT;" is
+        # text, neither of them "<"
+        assert replace_entities("&Lt;&Gt;") == "\u226a\u226b"
+        assert replace_entities("&lT;img&gT;", remove_illegal=False) == "&lT;img&gT;"
+        for entity in ("&Quot;", "&Amp;", "&Nbsp;", "&copY;"):
+            assert replace_entities(entity, remove_illegal=False) == entity
+        # it also holds every named reference of the standard rather than only
+        # the HTML 4 ones, so these resolve instead of being dropped
+        assert replace_entities("&apos;&excl;&grave;&lpar;&rpar;&sol;") == "'!`()/"
+        assert replace_entities("&NotEqualTilde;") == "\u2242\u0338"
+
     def test_missing_semicolon(self):
         for entity, result in (
             ("&lt&lt!", "<<!"),
@@ -1044,6 +1057,14 @@ class TestGetMetaRefresh:
         baseurl = "http://example.org"
         body = """<meta http-equiv="refresh" content="0;url=/a&#xD800;b">"""
         assert get_meta_refresh(body, baseurl) == (0, "http://example.org/a%EF%BF%BDb")
+
+    def test_html5_named_reference_in_url(self):
+        # "&sol;" is a named reference of the standard but not of HTML 4, so it
+        # was dropped from the URL rather than decoded, reporting a same-host
+        # redirect where a browser leaves the origin
+        baseurl = "https://example.com/dir/page"
+        body = """<meta http-equiv="refresh" content="0;url=&sol;&sol;other.example&sol;">"""
+        assert get_meta_refresh(body, baseurl) == (0, "https://other.example/")
 
     def test_relative_redirects(self):
         # relative redirects
