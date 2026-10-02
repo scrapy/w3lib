@@ -124,6 +124,7 @@ BENCHMARK_CASES: CasesMapType = {
         (("http://%2525user:%2525pass@host",), {}),
         (("http://%2526user:%2526pass@host",), {}),
         (("http://%25%26user:%25%26pass@host",), {}),
+        (("sc://user@新华网.中国:21/a",), {}),
     ],
     safe_download_url: [
         (("http://www.example.org",), {}),
