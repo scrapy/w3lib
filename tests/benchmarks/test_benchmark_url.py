@@ -7,6 +7,7 @@ import pytest
 from tests.benchmarks import BENCHMARK_MARKS, CasesMapType
 from w3lib._url import _urlsplit
 from w3lib.url import (
+    _urljoin,
     add_or_replace_parameter,
     add_or_replace_parameters,
     any_to_uri,
@@ -34,6 +35,14 @@ BENCHMARK_CASES: CasesMapType = {
         (("https://example.com/path?x=1",), {}),
         (("ftp://user:pass@example.com:21/file.txt",), {}),
         ((b"http://example.com",), {}),
+    ],
+    _urljoin: [
+        (("https://example.com/a/b?c", "d/e"), {}),
+        (("https://example.com/a/b?c", "../d?e#f"), {}),
+        (("https://example.com/a/b?c", "/d"), {}),
+        (("https://example.com/a/b?c", "//example.org/d"), {}),
+        (("https://example.com/a/b?c", "?d"), {}),
+        (("https://example.com/a/b?c", "https://example.org/d"), {}),
     ],
     canonicalize_url: [
         (("http://www.example.com",), {}),

@@ -954,6 +954,8 @@ class TestUrl:
             safe_download_url(b"http://www.example.org/dir/")
             == "http://www.example.org/dir/"
         )
+        assert safe_download_url("foo://example.org") == "foo://example.org"
+        assert safe_download_url("foo:?a=b") == "foo:?a=b"
 
         # trailing slash handling
         assert (
