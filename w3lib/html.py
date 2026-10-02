@@ -196,8 +196,7 @@ def replace_entities(
                 return m.group(0)
             # The named character reference table is looked up as written: it
             # is case-sensitive, and only its legacy entries resolve without
-            # the semicolon. html.entities.name2codepoint is the HTML 4 table,
-            # which is both smaller and matched case-insensitively here.
+            # the semicolon.
             # https://html.spec.whatwg.org/commit-snapshots/3e7b72c44ce144cee7db859cd0647af6646b6793/#named-character-reference-state
             replacement = html5.get(entity_name + groups["semicolon"])
             if replacement is not None:
