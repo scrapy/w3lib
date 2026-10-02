@@ -933,10 +933,10 @@ class TestUrl:
         )
 
     def test_safe_download_url_deprecated(self):
-        with pytest.warns(DeprecationWarning, match="safe_download_url"):
+        with pytest.warns(FutureWarning, match="safe_download_url"):
             safe_download_url("http://www.example.org")
 
-    @pytest.mark.filterwarnings("ignore::DeprecationWarning")
+    @pytest.mark.filterwarnings("ignore::FutureWarning")
     def test_safe_download_url(self):
         assert safe_download_url("http://www.example.org") == "http://www.example.org/"
         assert (
@@ -993,7 +993,7 @@ class TestUrl:
             == "http://www.example.org/%A3?%C2%A3"
         )
 
-    @pytest.mark.filterwarnings("ignore::DeprecationWarning")
+    @pytest.mark.filterwarnings("ignore::FutureWarning")
     def test_safe_download_url_encoded_dot_segments(self):
         # "%2e", ".%2e", "%2e." and "%2e%2e" are the percent-encoded forms of
         # the single-dot and double-dot path segments of the URL living
@@ -1463,7 +1463,7 @@ class TestUrl:
 
 
 class TestSafeDownloadUrlProperties:
-    @pytest.mark.filterwarnings("ignore::DeprecationWarning")
+    @pytest.mark.filterwarnings("ignore::FutureWarning")
     @given(hyp_urls())
     def test_no_exception(self, url: str) -> None:
         safe_download_url(url)

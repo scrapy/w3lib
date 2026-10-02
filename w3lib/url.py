@@ -235,7 +235,7 @@ def safe_download_url(
 ) -> str:
     warnings.warn(
         "w3lib.url.safe_download_url() is deprecated.",
-        DeprecationWarning,
+        FutureWarning,
         stacklevel=2,
     )
     safe_url = safe_url_string(url, encoding, path_encoding)
