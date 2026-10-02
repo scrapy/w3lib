@@ -2237,17 +2237,15 @@ class TestDataURI:
         assert result.data == b"Hello, world."
 
     def test_base64_spaces(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="base64"):
             parse_data_uri(
                 "data:text/plain;base64,SGVsb%20G8sIH%0A%20%20dvcm%20%20%20xk%20Lg%3D%0A%3D"
             )
-        with pytest.raises(ValueError):
-            parse_data_uri(
-                "data:text/plain;base64,SGVsb G8sIH\n  dvcm   xk Lg%3D\n%3D"
-            )
+        with pytest.raises(ValueError, match="base64"):
+            parse_data_uri("data:text/plain;base64,SGVsb G8sIH\n  dvcm   xk Lg%3D\n%3D")
 
     def test_base64_invalid_characters(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="base64"):
             parse_data_uri("data:;base64,S!G@V#s$b G8=")
 
     def test_base64_valid(self):
@@ -2255,7 +2253,7 @@ class TestDataURI:
         assert result.data == b"Hello"
 
     def test_base64_missing_padding(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="padding"):
             parse_data_uri("data:;base64,SGVsbG8")
 
     def test_wrong_base64_param(self):
