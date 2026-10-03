@@ -58,6 +58,9 @@ _IPV_FUTURE_RE = re.compile(r"\Av[a-fA-F0-9]+\..+\Z")
 # URL living standard, so it belongs with the other authority delimiters here.
 _NETLOC_DELIMS_RE = re.compile(r"[/?#@:\\]")
 _NETLOC_STRIP_CHARS = str.maketrans("", "", "@:#?")
+# https://url.spec.whatwg.org/#forbidden-host-code-point
+_FORBIDDEN_HOST_CODE_POINT_RE = re.compile(r"[\x00\t\n\r #/:<>?@[\\\]^|]")
+_OPAQUE_HOST_SAFE_CHARS = RFC3986_SUB_DELIMS + b"%"
 
 
 def _strip(input_string: str) -> str:
@@ -795,6 +798,14 @@ def _idna(input_string: str) -> tuple[bytes, str]:
 
 def _idna_bytes(input_string: str) -> bytes:
     return _idna(input_string)[0]
+
+
+@functools.lru_cache
+def _opaque_host(host: str) -> bytes:
+    """Return *host*, the host of a non-special URL, percent-encoded."""
+    if _FORBIDDEN_HOST_CODE_POINT_RE.search(host):
+        raise ValueError(f"{host!r} contains a forbidden host code point")
+    return _quote(host.encode(), _OPAQUE_HOST_SAFE_CHARS)
 
 
 @functools.lru_cache
