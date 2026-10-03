@@ -61,6 +61,8 @@ _NETLOC_STRIP_CHARS = str.maketrans("", "", "@:#?")
 # https://url.spec.whatwg.org/#forbidden-host-code-point
 _FORBIDDEN_HOST_CODE_POINT_RE = re.compile(r"[\x00\t\n\r #/:<>?@[\\\]^|]")
 _OPAQUE_HOST_SAFE_CHARS = RFC3986_SUB_DELIMS + b"%"
+# https://url.spec.whatwg.org/#forbidden-domain-code-point
+_FORBIDDEN_DOMAIN_CODE_POINT_RE = re.compile(r"[\x00-\x1f\x7f #/:<>?@[\\\]^|%]")
 
 
 def _strip(input_string: str) -> str:
@@ -806,6 +808,15 @@ def _opaque_host(host: str) -> bytes:
     if _FORBIDDEN_HOST_CODE_POINT_RE.search(host):
         raise ValueError(f"{host!r} contains a forbidden host code point")
     return _quote(host.encode(), _OPAQUE_HOST_SAFE_CHARS)
+
+
+@functools.lru_cache
+def _check_domain(host: str) -> None:
+    """Raise ValueError if *host*, the host of a special URL, contains a
+    forbidden domain code point, either directly or once percent-decoded."""
+    decoded = _unquote(host).decode("utf-8", "replace")
+    if _FORBIDDEN_DOMAIN_CODE_POINT_RE.search(decoded):
+        raise ValueError(f"{host!r} contains a forbidden domain code point")
 
 
 @functools.lru_cache
