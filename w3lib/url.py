@@ -27,6 +27,7 @@ from ._url import (
     RFC3986_SUB_DELIMS as RFC3986_SUB_DELIMS,
     RFC3986_UNRESERVED as RFC3986_UNRESERVED,
     RFC3986_USERINFO_SAFE_CHARS as RFC3986_USERINFO_SAFE_CHARS,
+    _check_domain,
     _idna_bytes,
     _opaque_host,
     _parse_qs,
@@ -128,6 +129,8 @@ def _safe_url_split(
                 raise ValueError(f"{url!r} has userinfo or a port but no host")
             tmp_buf += _opaque_host(host)
         else:
+            if parts.scheme in _SPECIAL_SCHEMES:
+                _check_domain(parts.hostname)
             try:
                 tmp_buf += _idna_bytes(parts.hostname)
             except UnicodeError:
