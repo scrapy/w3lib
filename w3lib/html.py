@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import functools
 import re
-from html.entities import name2codepoint
+from html.entities import html5
 from typing import TYPE_CHECKING, Any
 
 from w3lib._util import _COMMENT, _attr_re, _scannable, iter_tag_attributes, to_unicode
@@ -194,9 +194,13 @@ def replace_entities(
             entity_name = groups["named"]
             if entity_name.lower() in keep:
                 return m.group(0)
-            number = name2codepoint.get(entity_name) or name2codepoint.get(
-                entity_name.lower()
-            )
+            # The named character reference table is looked up as written: it
+            # is case-sensitive, and only its legacy entries resolve without
+            # the semicolon.
+            # https://html.spec.whatwg.org/commit-snapshots/3e7b72c44ce144cee7db859cd0647af6646b6793/#named-character-reference-state
+            replacement = html5.get(entity_name + groups["semicolon"])
+            if replacement is not None:
+                return replacement
         if number is not None:
             # A null or surrogate reference is a parse error that the tokenizer
             # resolves to U+FFFD; chr() would instead emit a NUL or a lone
