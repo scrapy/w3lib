@@ -97,11 +97,11 @@ _tags_re = re.compile(
       {_TAG_BODY}>  # attribute values are read whole
     |
     </?             # opening angle bracket, optional slash for a closing tag
-    (?P<name>[^ <>/]+)
+    (?P<name>[^ <>/]++)
                     # tag name (captured): a run of non-space, non-bracket chars,
-    (?![^ <>/])     # pinned to its maximal length by this lookahead so it can't
-                    # overlap the run below and backtrack quadratically on an
-                    # unterminated tag (a "<" with a long run and no ">")
+                    # possessive so that it can't give characters back to the
+                    # run below and backtrack quadratically on an unterminated
+                    # tag (a "<" with a long run and no ">")
     [^<>]*          # the rest of the tag: attributes, whitespace, etc.
     >               # closing angle bracket
     """,
