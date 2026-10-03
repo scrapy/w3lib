@@ -617,7 +617,7 @@ def _check_bracketed_host(hostname: str) -> None:
 
     # Bracketed IPv4 literals are forbidden.
     if isinstance(ip, ipaddress.IPv4Address):
-        raise ValueError("An IPv4 address cannot be in brackets")
+        raise ValueError("An IPv4 address cannot be in brackets")  # noqa: TRY004
 
 
 @functools.lru_cache

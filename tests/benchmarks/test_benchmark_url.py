@@ -243,11 +243,13 @@ BENCHMARK_CASES: CasesMapType = {
         (("data:text/plain;base64,SGVsb G8sIH\n  dvcm   xk Lg%3D\n%3D",), {}),
         (
             (
-                "data:text/plain;"
-                "foo=%22foo;bar%5C%22%22;"
-                "charset=utf-8;"
-                "bar=%22foo;%5C%22foo%20;/%20,%22,"
-                "%CE%8E%CE%A3%CE%8E",
+                (
+                    "data:text/plain;"
+                    "foo=%22foo;bar%5C%22%22;"
+                    "charset=utf-8;"
+                    "bar=%22foo;%5C%22foo%20;/%20,%22,"
+                    "%CE%8E%CE%A3%CE%8E"
+                ),
             ),
             {},
         ),
