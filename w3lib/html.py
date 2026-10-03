@@ -556,13 +556,14 @@ def get_base_url(
 def _refresh(attrs: str, baseurl: str, encoding: str) -> tuple[float, str] | None:
     """Return the interval and absolute url of the refresh that *attrs*, the
     text of a <meta> tag after its name, declares, if it declares one."""
-    if "&" in attrs:
-        attrs = replace_entities(attrs)
-
     has_refresh_pragma = False
     interval: float | None = None
     url: str | None = None
-    for name, value in iter_tag_attributes(attrs):
+    for name, raw_value in iter_tag_attributes(attrs):
+        # a reference is decoded into the value of its own attribute, so a
+        # decoded quote or "=" is data, and a name is not decoded at all
+        # https://html.spec.whatwg.org/commit-snapshots/3e7b72c44ce144cee7db859cd0647af6646b6793/#flush-code-points-consumed-as-a-character-reference
+        value = replace_entities(raw_value) if "&" in raw_value else raw_value
         match name:
             case "http-equiv":
                 if "refresh" in value.lower():

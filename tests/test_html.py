@@ -1045,6 +1045,24 @@ class TestGetMetaRefresh:
         body = """<meta http-equiv="refresh" content="3; url=&#39;http://www.example.com/other&#39;">"""
         assert get_meta_refresh(body, baseurl) == (3, "http://www.example.com/other")
 
+    def test_entities_do_not_spell_out_attributes(self) -> None:
+        # a reference is decoded into the value of its own attribute, so
+        # neither of these tags carries an http-equiv attribute
+        baseurl = "http://example.org"
+        body = (
+            '<meta data-x="&#34; http-equiv=&#34;refresh&#34;" '
+            'content="0;url=http://evil.example/">'
+        )
+        assert get_meta_refresh(body, baseurl) == (None, None)
+        body = '<meta http&#45;equiv="refresh" content="0;url=http://evil.example/">'
+        assert get_meta_refresh(body, baseurl) == (None, None)
+        # the real content attribute is read, not one a reference spells out
+        body = (
+            '<meta data-x="&#34; content=&#34;0;url=http://evil.example/&#34;" '
+            'http-equiv="refresh" content="5;url=/next">'
+        )
+        assert get_meta_refresh(body, baseurl) == (5.0, "http://example.org/next")
+
     def test_non_ascii_digit_interval(self):
         # the interval is ASCII digits only, so this is not a refresh
         baseurl = "http://example.org"
