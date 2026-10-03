@@ -27,7 +27,7 @@ This is a Python library of web-related functions, such as:
 Requirements
 ============
 
-Python 3.10+
+Python 3.11+
 
 Install
 =======
