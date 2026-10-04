@@ -214,6 +214,24 @@ class TestRemoveComments:
 
         assert remove_comments(b"test <!--") == "test "
 
+    @pytest.mark.parametrize(
+        ("text", "expected"),
+        [
+            ("a<!-->b", "ab"),
+            ("a<!--->b", "ab"),
+            ("a<!---->b", "ab"),
+            ("a<!-- x --!>b", "ab"),
+            ("a<!----!>b", "ab"),
+            ("a<!-- x --->b", "ab"),
+            ("a<!-- x -- y --!x -->b", "ab"),
+            # the dashes of "<!--" do not combine with a later "!>"
+            ("a<!--!>b-->c", "ac"),
+            ("a<!---!>b-->c", "ac"),
+        ],
+    )
+    def test_comment_closers(self, text, expected):
+        assert remove_comments(text) == expected
+
 
 class TestRemoveTags:
     def test_returns_unicode(self):
@@ -628,6 +646,13 @@ class TestGetBaseUrl:
             == "http://example.org/found/"
         )
 
+    def test_get_base_url_relative_href(self):
+        baseurl = "https://example.org/a/b"
+        assert get_base_url(r'<base href="\c\d">', baseurl) == "https://example.org/c/d"
+        assert get_base_url('<base href="///example.com">', baseurl) == (
+            "https://example.com/"
+        )
+
     def test_get_base_url_empty_href(self):
         baseurl = "https://example.org/"
         # The first <base> with an href attribute sets the base URL, and an
@@ -684,6 +709,12 @@ class TestGetBaseUrl:
             )
             == "http://example_3.com/"
         )
+
+    @pytest.mark.parametrize("comment", ["<!-->", "<!--->", "<!-- x --!>"])
+    def test_base_url_after_comment(self, comment):
+        html = f'{comment}<base href="http://example.com/">'
+        assert get_base_url(html) == "http://example.com/"
+        assert get_base_url(html.encode()) == "http://example.com/"
 
     def test_base_url_in_script(self):
         baseurl = "https://example.org"
@@ -900,6 +931,13 @@ class TestGetMetaRefresh:
             </html>"""
         assert get_meta_refresh(body, baseurl) == (5, "http://example.org/newpage")
 
+    def test_get_meta_refresh_relative_url(self):
+        body = r"""<meta http-equiv="refresh" content="5;url=\\example.com\a">"""
+        assert get_meta_refresh(body, "https://example.org/b") == (
+            5,
+            "https://example.com/a",
+        )
+
     def test_no_meta(self):
         assert get_meta_refresh("<html><body>no meta here</body></html>") == (
             None,
@@ -1054,6 +1092,16 @@ class TestGetMetaRefresh:
         baseurl = "http://example.com"
         body = """<!-- commented --><meta http-equiv="refresh" content="3; url=http://example.com/">-->"""
         assert get_meta_refresh(body, baseurl) == (3, "http://example.com/")
+
+    @pytest.mark.parametrize("comment", ["<!-->", "<!--->", "<!-- x --!>"])
+    def test_meta_refresh_after_comment(self, comment):
+        body = (
+            f'{comment}<meta http-equiv="refresh" content="3; url=http://example.com/">'
+        )
+        assert get_meta_refresh(body, "http://example.com") == (
+            3,
+            "http://example.com/",
+        )
 
     def test_float_refresh_intervals(self):
         # float refresh intervals
@@ -1333,6 +1381,8 @@ FRAGMENTS = [
     '"',
     "<!--",
     "-->",
+    "--!>",
+    "<!-->",
     "<script>",
     "</script>",
     '<p title="a>b">',

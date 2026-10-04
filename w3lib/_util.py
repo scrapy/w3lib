@@ -24,6 +24,14 @@ def to_unicode(
     return text.decode(encoding, errors)
 
 
+# An HTML comment, up to where it ends or the text does. As in the HTML
+# tokenizer, it ends at the first "-->" or "--!>" after its "<!--", or right
+# away at "<!-->" or "<!--->". Dashes are consumed one at a time only where no
+# closer starts, so there is a single way to match and nothing to backtrack
+# into.
+_COMMENT = r"<!--(?:-?>|[^-]*(?:-(?!-!?>)[^-]*)*(?:--!?>|$))"
+
+
 _ASCII = bytes(range(128))
 _ASCII_TEXT = _ASCII.decode()
 
