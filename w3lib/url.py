@@ -78,7 +78,7 @@ _SPECIAL_QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS.translate(None, delete=b"'")
 _FRAGMENT_SAFEST_CHARS = _PATH_SAFEST_CHARS
 
 
-def _safe_url_split(
+def _safe_url_split(  # pylint: disable=too-many-statements
     url: str | bytes,
     encoding: str = "utf8",
     path_encoding: str = "utf8",
@@ -90,9 +90,8 @@ def _safe_url_split(
     #     encoded with the supplied encoding (or UTF8 by default)
     #   - if the supplied (or default) encoding chokes,
     #     percent-encode offending bytes
-    parts = _urlsplit(
-        _strip(to_unicode(url, encoding=encoding, errors="percentencode"))
-    )
+    url = _strip(to_unicode(url, encoding=encoding, errors="percentencode"))
+    parts = _urlsplit(url)
     tmp_buf = bytearray()  # utf-8 bytes
 
     if parts.username is not None:
@@ -148,6 +147,18 @@ def _safe_url_split(
         tmp_buf.clear()
     else:
         path = parts.path
+
+    if path[:1] == "/":
+        path = _remove_dot_segments(path)
+        # A path starting with "//" in a non-special URL without an authority
+        # gets a "/." prefix, so that it does not reparse as an authority.
+        if (
+            path[:2] == "//"
+            and not netloc
+            and parts.scheme not in _SPECIAL_SCHEMES
+            and url[len(parts.scheme) + 1 if parts.scheme else 0 :][:2] != "//"
+        ):
+            path = f"/.{path}"
 
     _quote_into(
         parts.query.encode(encoding),
@@ -749,6 +760,8 @@ def _urljoin(base: str, url: str) -> str:
     path = _remove_dot_segments(path)
     if base_has_authority:
         return f"{scheme}://{base_parts.netloc}{path}{tail}"
+    if path[:2] == "//":
+        path = f"/.{path}"
     return f"{scheme}:{path}{tail}"
 
 
@@ -855,13 +868,6 @@ def canonicalize_url(
     # 2. decode percent-encoded sequences in path as UTF-8 (or keep raw bytes)
     #    and percent-encode path again (this normalizes to upper-case %XX)
     path = _quote(_unquotepath(path), _PATH_SAFE_CHARS).decode() if path else "/"
-
-    # 3. resolve dot segments (RFC 3986, section 5.2.4), but only for a
-    #    hierarchical path. A path that does not start with "/" is an opaque
-    #    path (URL Standard), whose dot segments browsers leave untouched
-    #    (e.g. "mailto:a/../b" stays as is, while "foo:/a/../b" resolves).
-    if path.startswith("/"):
-        path = _remove_dot_segments(path)
 
     fragment = "" if not keep_fragments else fragment
 
