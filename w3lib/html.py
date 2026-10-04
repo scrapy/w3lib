@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import functools
 import re
-from html.entities import name2codepoint
+from html.entities import html5
 from typing import TYPE_CHECKING, Any
 
 from w3lib._util import _COMMENT, _attr_re, _scannable, iter_tag_attributes, to_unicode
@@ -97,11 +97,11 @@ _tags_re = re.compile(
       {_TAG_BODY}>  # attribute values are read whole
     |
     </?             # opening angle bracket, optional slash for a closing tag
-    (?P<name>[^ <>/]+)
+    (?P<name>[^ <>/]++)
                     # tag name (captured): a run of non-space, non-bracket chars,
-    (?![^ <>/])     # pinned to its maximal length by this lookahead so it can't
-                    # overlap the run below and backtrack quadratically on an
-                    # unterminated tag (a "<" with a long run and no ">")
+                    # possessive so that it can't give characters back to the
+                    # run below and backtrack quadratically on an unterminated
+                    # tag (a "<" with a long run and no ">")
     [^<>]*          # the rest of the tag: attributes, whitespace, etc.
     >               # closing angle bracket
     """,
@@ -194,9 +194,13 @@ def replace_entities(
             entity_name = groups["named"]
             if entity_name.lower() in keep:
                 return m.group(0)
-            number = name2codepoint.get(entity_name) or name2codepoint.get(
-                entity_name.lower()
-            )
+            # The named character reference table is looked up as written: it
+            # is case-sensitive, and only its legacy entries resolve without
+            # the semicolon.
+            # https://html.spec.whatwg.org/commit-snapshots/3e7b72c44ce144cee7db859cd0647af6646b6793/#named-character-reference-state
+            replacement = html5.get(entity_name + groups["semicolon"])
+            if replacement is not None:
+                return replacement
         if number is not None:
             # A null or surrogate reference is a parse error that the tokenizer
             # resolves to U+FFFD; chr() would instead emit a NUL or a lone
@@ -552,13 +556,14 @@ def get_base_url(
 def _refresh(attrs: str, baseurl: str, encoding: str) -> tuple[float, str] | None:
     """Return the interval and absolute url of the refresh that *attrs*, the
     text of a <meta> tag after its name, declares, if it declares one."""
-    if "&" in attrs:
-        attrs = replace_entities(attrs)
-
     has_refresh_pragma = False
     interval: float | None = None
     url: str | None = None
-    for name, value in iter_tag_attributes(attrs):
+    for name, raw_value in iter_tag_attributes(attrs):
+        # a reference is decoded into the value of its own attribute, so a
+        # decoded quote or "=" is data, and a name is not decoded at all
+        # https://html.spec.whatwg.org/commit-snapshots/3e7b72c44ce144cee7db859cd0647af6646b6793/#flush-code-points-consumed-as-a-character-reference
+        value = replace_entities(raw_value) if "&" in raw_value else raw_value
         match name:
             case "http-equiv":
                 if "refresh" in value.lower():

@@ -30,6 +30,7 @@ from ._url import (
     RFC3986_UNRESERVED as RFC3986_UNRESERVED,
     RFC3986_USERINFO_SAFE_CHARS as RFC3986_USERINFO_SAFE_CHARS,
     _idna_bytes,
+    _opaque_host,
     _parse_qs,
     _parse_qsl,
     _quote,
@@ -154,6 +155,14 @@ def _safe_url_split(
             tmp_buf.append(91)  # ord("[")
             tmp_buf += parts.hostname.encode("ascii")
             tmp_buf.append(93)  # ord("]")
+        elif parts.scheme not in _SPECIAL_SCHEMES:
+            # The host of a non-special URL is opaque: case-sensitive and
+            # percent-encoded instead of IDNA-encoded. parts.hostname is
+            # lowercased, so take the host from the netloc.
+            host = parts.netloc.rpartition("@")[2].partition(":")[0]
+            if not host and parts.netloc:
+                raise ValueError(f"{url!r} has userinfo or a port but no host")
+            tmp_buf += _opaque_host(host)
         else:
             try:
                 tmp_buf += _idna_bytes(parts.hostname)

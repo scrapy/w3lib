@@ -28,8 +28,10 @@ BENCHMARK_CASES: CasesMapType = {
         ((b"",), {}),
         (
             (
-                b"Content-type: text/html\n\rAccept: gzip\n\r"
-                b"Cache-Control: no-cache\n\rCache-Control: no-store\n\n",
+                (
+                    b"Content-type: text/html\n\rAccept: gzip\n\r"
+                    b"Cache-Control: no-cache\n\rCache-Control: no-store\n\n"
+                ),
             ),
             {},
         ),
