@@ -185,10 +185,14 @@ def replace_entities(
     def convert_entity(m: re.Match[str]) -> str:
         groups = m.groupdict()
         number = None
-        if groups.get("dec"):
-            number = int(groups["dec"], 10)
-        elif groups.get("hex"):
-            number = int(groups["hex"], 16)
+        digits = groups.get("dec") or groups.get("hex")
+        if digits:
+            significant_digits = digits.lstrip("0")
+            # Unicode code points fit in seven decimal or six hex digits.
+            # Avoid converting arbitrarily long references to integers, while
+            # still accepting valid references with any number of leading zeros.
+            if len(significant_digits) <= (7 if groups.get("dec") else 6):
+                number = int(significant_digits or "0", 10 if groups.get("dec") else 16)
         else:
             # guaranteed to be named
             entity_name = groups["named"]

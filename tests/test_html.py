@@ -18,6 +18,22 @@ from w3lib.html import (
 
 
 class TestRemoveEntities:
+    @pytest.mark.parametrize(("prefix", "digit"), [("&#", "9"), ("&#x", "F")])
+    @pytest.mark.parametrize("semicolon", ["", ";"])
+    @pytest.mark.parametrize("remove_illegal", [False, True])
+    def test_oversized_numeric_reference(
+        self, prefix, digit, semicolon, remove_illegal
+    ):
+        entity = prefix + digit * 5000 + semicolon
+        expected = "" if remove_illegal and semicolon else entity
+        assert replace_entities(entity, remove_illegal=remove_illegal) == expected
+
+    @pytest.mark.parametrize(
+        "entity", ["&#" + "0" * 5000 + "60;", "&#x" + "0" * 5000 + "3C;"]
+    )
+    def test_numeric_reference_with_many_leading_zeros(self, entity):
+        assert replace_entities(entity) == "<"
+
     def test_returns_unicode(self):
         # make sure it always return unicode
         assert isinstance(replace_entities(b"no entities"), str)
