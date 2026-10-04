@@ -590,6 +590,29 @@ class ParseDataURIResult(NamedTuple):
     data: bytes
 
 
+def _decode_data_uri_base64(data: bytes) -> bytes:
+    """Decode a data URI base64 payload.
+
+    Whitespace is ignored, matching the historical behavior. Any other
+    character outside the base64 alphabet is rejected. Missing padding is
+    added; padding that is not a valid tail is rejected.
+    """
+    data = re.sub(rb"\s+", b"", data)
+    if re.fullmatch(rb"[A-Za-z0-9+/]*={0,2}", data) is None:
+        raise ValueError("invalid base64 data")
+    if b"=" in data.rstrip(b"="):
+        raise ValueError("invalid base64 data")
+    if data.endswith(b"="):
+        if len(data) % 4 != 0:
+            raise ValueError("invalid base64 data")
+    else:
+        data += b"=" * (-len(data) % 4)
+    try:
+        return base64.b64decode(data, validate=True)
+    except Exception as exc:
+        raise ValueError("invalid base64 data") from exc
+
+
 def parse_data_uri(uri: str | bytes) -> ParseDataURIResult:
     """Parse a data: URI into :class:`ParseDataURIResult`."""
     if not isinstance(uri, bytes):
@@ -631,7 +654,7 @@ def parse_data_uri(uri: str | bytes) -> ParseDataURIResult:
     if is_base64:
         if is_base64 != b";base64":
             raise ValueError("invalid data URI")
-        data = base64.b64decode(data)
+        data = _decode_data_uri_base64(data)
 
     return ParseDataURIResult(media_type, media_type_params, data)
 

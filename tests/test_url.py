@@ -2248,6 +2248,18 @@ class TestDataURI:
         assert result.media_type == "text/plain"
         assert result.data == b"Hello, world."
 
+    def test_base64_rejects_non_alphabet(self):
+        with pytest.raises(ValueError, match="invalid base64 data"):
+            parse_data_uri("data:;base64,S!G@V#s$bG8=")
+        with pytest.raises(ValueError, match="invalid base64 data"):
+            parse_data_uri("data:;base64,!!!!")
+        with pytest.raises(ValueError, match="invalid base64 data"):
+            parse_data_uri("data:;base64,SGVsbG8==")
+
+    def test_base64_missing_padding(self):
+        result = parse_data_uri("data:;base64,SGVsbG8")
+        assert result.data == b"Hello"
+
     def test_wrong_base64_param(self):
         with pytest.raises(ValueError, match="invalid data URI"):
             parse_data_uri("data:text/plain;baes64,SGVsbG8sIHdvcmxkLg%3D%3D")
