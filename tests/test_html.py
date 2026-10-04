@@ -159,6 +159,12 @@ _QUOTE_OUTSIDE_VALUE_POSITION = [
 
 
 class TestReplaceTags:
+    @pytest.mark.parametrize("token", ["\\", r"\1", r"\g<0>", r"C:\new", r"\t"])
+    def test_literal_replacement_token(self, token):
+        assert replace_tags("<b>text</b>", token) == token + "text" + token
+        assert replace_tags(b"<b>text</b>", token) == token + "text" + token
+        assert replace_tags("no tags", token) == "no tags"
+
     def test_returns_unicode(self):
         # make sure it always return unicode
         assert isinstance(replace_tags(b"no entities"), str)

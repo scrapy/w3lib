@@ -234,6 +234,7 @@ def replace_tags(
 ) -> str:
     r"""Replace all markup tags found in the given `text` by the given token.
     By default `token` is an empty string so it just removes all tags.
+    The token is inserted literally, without interpreting backslash escapes.
 
     `text` can be a unicode string or a regular string encoded as `encoding`
     (or ``'utf-8'`` if `encoding` is not given.)
@@ -251,7 +252,7 @@ def replace_tags(
 
     """
 
-    return _tag_re.sub(token, to_unicode(text, encoding))
+    return _tag_re.sub(lambda _: token, to_unicode(text, encoding))
 
 
 _REMOVECOMMENTS_RE = re.compile(_COMMENT)
