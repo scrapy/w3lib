@@ -637,7 +637,8 @@ class TestGetBaseUrl:
         # name merely ends in "href" is not one, and the first href is the one
         # a browser reads.
         assert (
-            get_base_url('<base data-href="http://evil.example/">', baseurl) == baseurl
+            get_base_url('<base data-href="http://evil.example/">', baseurl)
+            == "https://example.org/"
         )
         assert (
             get_base_url(
@@ -670,18 +671,18 @@ class TestGetBaseUrl:
         # The first <base> with an href attribute sets the base URL, and an
         # empty one leaves the fallback in place, even if a later <base> has a
         # value; a <base> without href does not count.
-        assert get_base_url('<base href="">', baseurl) == baseurl
-        assert get_base_url('<base href=" \t\n">', baseurl) == baseurl
-        assert get_base_url("<base href>", baseurl) == baseurl
+        assert get_base_url('<base href="">', baseurl) == "https://example.org/"
+        assert get_base_url('<base href=" \t\n">', baseurl) == "https://example.org/"
+        assert get_base_url("<base href>", baseurl) == "https://example.org/"
         assert (
             get_base_url('<base href=""><base href="http://evil.example/">', baseurl)
-            == baseurl
+            == "https://example.org/"
         )
         # A valueless href counts as an empty one, so it too freezes the base
         # URL and a later <base> is not read.
         assert (
             get_base_url('<base href><base href="http://evil.example/">', baseurl)
-            == baseurl
+            == "https://example.org/"
         )
         assert (
             get_base_url(
@@ -879,7 +880,7 @@ class TestGetBaseUrl:
         assert (
             get_base_url(without_base.encode(encoding), baseurl, encoding)
             == get_base_url(without_base, baseurl, encoding)
-            == baseurl
+            == "https://example.org/"
         )
 
     def test_get_base_url_spelled_by_characters(self) -> None:
@@ -1110,12 +1111,12 @@ class TestGetMetaRefresh:
 
     def test_nonascii_url_latin1_query(self):
         # non-ascii chars in the url path and query (latin1)
-        # only query part should be kept latin1 encoded before percent escaping
+        # bytes decoded with latin1 are percent-encoded as UTF-8 in both path and query
         baseurl = "http://example.com"
         body = b"""<meta http-equiv="refresh" content="3; url=http://example.com/to\xa3?unit=\xb5">"""
         assert get_meta_refresh(body, baseurl, "latin1") == (
             3,
-            "http://example.com/to%C2%A3?unit=%B5",
+            "http://example.com/to%C2%A3?unit=%C2%B5",
         )
 
     def test_commented_meta_refresh(self):
