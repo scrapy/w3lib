@@ -773,7 +773,7 @@ def canonicalize_url(
 ) -> str:
     r"""Return a normalized form of *url*, to compare or deduplicate URLs.
 
-    .. versionchanged:: VERSION
+    .. versionchanged:: 2.5.0
         Dot segments (``.`` and ``..``) in the path are now resolved, and
         IPv6 addresses in the host are now normalized.
 
