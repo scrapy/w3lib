@@ -503,7 +503,7 @@ def get_base_url(
     """Return the base url if declared in the given HTML `text`,
     relative to the given base url.
 
-    .. versionadded:: VERSION
+    .. versionadded:: 2.5.0
        The *max_scan* parameter.
 
     If no base url is found, the given `baseurl` is returned.
@@ -592,7 +592,7 @@ def get_meta_refresh(
     containing the delay in seconds (or zero if not present) and url is a
     string with the absolute url to redirect.
 
-    .. versionadded:: VERSION
+    .. versionadded:: 2.5.0
        The *max_scan* parameter.
 
     If no meta redirect is found, ``(None, None)`` is returned.
