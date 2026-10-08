@@ -566,11 +566,16 @@ def get_base_url(
                 # is not read either way.
                 # https://html.spec.whatwg.org/commit-snapshots/3e7b72c44ce144cee7db859cd0647af6646b6793/#set-the-frozen-base-url
                 value = attr["double"] or attr["single"] or attr["bare"] or ""
+                base = safe_url_string(baseurl)
                 if url := value.strip(HTML5_WHITESPACE):
-                    return safe_url_string(
-                        _urljoin(safe_url_string(baseurl), url), encoding=encoding
-                    )
-                return safe_url_string(baseurl)
+                    # A URL that cannot be parsed also leaves the fallback in
+                    # place, e.g. a relative URL against an opaque path such as
+                    # "data:…", or a host with a forbidden code point.
+                    try:
+                        return safe_url_string(_urljoin(base, url), encoding=encoding)
+                    except ValueError:
+                        pass
+                return base
     return safe_url_string(baseurl)
 
 
@@ -597,7 +602,12 @@ def _refresh(attrs: str, baseurl: str, encoding: str) -> tuple[float, str] | Non
     if not has_refresh_pragma or interval is None:
         return None
     assert url is not None
-    return interval, safe_url_string(_urljoin(baseurl, url.strip(" \"'")), encoding)
+    # A URL that cannot be parsed declares no refresh, so a later <meta> can.
+    # https://html.spec.whatwg.org/commit-snapshots/3e7b72c44ce144cee7db859cd0647af6646b6793/#shared-declarative-refresh-steps
+    try:
+        return interval, safe_url_string(_urljoin(baseurl, url.strip(" \"'")), encoding)
+    except ValueError:
+        return None
 
 
 def get_meta_refresh(
