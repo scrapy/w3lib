@@ -444,6 +444,8 @@ SAFE_URL_URL_CASES = (
     ("http://example.com/search?tags[]=a", "http://example.com/search?tags%5B%5D=a"),
     ("https://example.com/a#f[1]", "https://example.com/a#f%5B1%5D"),
     ("http://[::1]:8080/p?q=[1]", "http://[::1]:8080/p?q=%5B1%5D"),
+    # A non-special URL with an empty host keeps a path starting with "//".
+    ("sc:///..//x", "sc:////x"),
 )
 
 
