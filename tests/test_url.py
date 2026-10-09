@@ -2257,6 +2257,31 @@ class TestDataURI:
         assert result.media_type == "text/plain"
         assert result.data == b"Hello, world."
 
+    @pytest.mark.parametrize(
+        "uri",
+        [
+            "data:;base64,SGVsbG8=",
+            "data:;base64,SGVs bG8=",
+            "data:;base64,SGVsbG8",
+        ],
+    )
+    def test_base64_forgiving(self, uri):
+        assert parse_data_uri(uri).data == b"Hello"
+
+    @pytest.mark.parametrize(
+        "uri",
+        [
+            "data:;base64,S!G@V$b G8=",
+            "data:;base64,!!!! ",
+            "data:;base64,SGVsbG8==",
+            "data:;base64,SGV=bG8",
+            "data:;base64,SGVsb",
+        ],
+    )
+    def test_invalid_base64(self, uri):
+        with pytest.raises(ValueError, match="invalid data URI"):
+            parse_data_uri(uri)
+
     def test_wrong_base64_param(self):
         with pytest.raises(ValueError, match="invalid data URI"):
             parse_data_uri("data:text/plain;baes64,SGVsbG8sIHdvcmxkLg%3D%3D")
@@ -2264,6 +2289,8 @@ class TestDataURI:
     def test_missing_comma(self):
         with pytest.raises(ValueError, match="invalid data URI"):
             parse_data_uri("data:A%20brief%20note")
+        with pytest.raises(ValueError, match="invalid data URI"):
+            parse_data_uri("data:text/plain")
 
     def test_missing_scheme(self):
         with pytest.raises(ValueError, match="invalid URI"):
