@@ -1030,6 +1030,24 @@ class TestGetMetaRefresh:
             url=http://example.org/newpage" /></head>"""
         assert get_meta_refresh(body, baseurl) == (5, "http://example.org/newpage")
 
+    def test_separator_comma_or_whitespace(self):
+        # The HTML shared declarative refresh steps accept ";", "," or ASCII
+        # whitespace as the separator after the interval, so a browser follows
+        # all of these.
+        baseurl = "http://example.org"
+        for content in (
+            "0,url=http://example.org/newpage",
+            "0 url=http://example.org/newpage",
+            "0, url=http://example.org/newpage",
+            "5 ; url=http://example.org/newpage",
+        ):
+            body = f'<meta http-equiv="refresh" content="{content}">'
+            _, url = get_meta_refresh(body, baseurl)
+            assert url == "http://example.org/newpage", content
+        # Without any separator a browser does not refresh, so neither do we.
+        body = '<meta http-equiv="refresh" content="0url=http://example.org/x">'
+        assert get_meta_refresh(body, baseurl) == (None, None)
+
     def test_multiline(self):
         # meta refresh in multiple lines
         baseurl = "http://example.org"

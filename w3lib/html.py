@@ -82,9 +82,12 @@ _base_scan_re = re.compile(
 
 
 # The refresh payload: ``3; url=...``. The url= part is required.
-# The interval is ASCII digits only, as in the HTML refresh steps.
+# The interval is ASCII digits only, and the separator after it is ";", ","
+# or ASCII whitespace, as in the HTML refresh steps. The two separator
+# alternatives keep their whitespace runs from overlapping, so that matching
+# stays linear.
 _meta_refresh_content_re = re.compile(
-    r"\s*(?P<int>([0-9]*\.)?[0-9]+)\s*;\s*url=\s*(?P<url>.*)",
+    r"\s*(?P<int>([0-9]*\.)?[0-9]+)(?:\s*[;,]\s*|\s+)url=\s*(?P<url>.*)",
     re.DOTALL | re.IGNORECASE | re.ASCII,
 )
 
