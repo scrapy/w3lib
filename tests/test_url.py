@@ -825,8 +825,8 @@ class TestUrl:
             == "http://.éxamplé.com/"
         )
         assert (
-            safe_url_string("http://.éxamplé.com:80/?q=a", encoding="utf-16")
-            == "http://.éxamplé.com:80/?%FF%FEq%00=%00a%00"
+            safe_url_string("http://.éxamplé.com:80/?q=a", encoding="utf-16-le")
+            == "http://.éxamplé.com:80/?q%00=%00a%00"
         )
 
     def test_safe_url_port_number(self):
