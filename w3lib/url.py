@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, NamedTuple, cast, overload
 from urllib.parse import ParseResult, urljoin
 from urllib.request import pathname2url
 
+from ._infra import _ASCII_WHITESPACE
 from ._url import (
     _PATH_SAFE_CHARS,
     _SAFE_CHARS,
@@ -588,6 +589,28 @@ _mediatype_parameter_pattern = re.compile(
 )
 del _char, _token, _quoted_string
 
+_base64_pattern = re.compile(rb"[A-Za-z0-9+/]*")
+_ASCII_WHITESPACE_BYTES = _ASCII_WHITESPACE.encode()
+
+
+def _forgiving_base64_decode(data: bytes) -> bytes:
+    """Decode *data* following the forgiving-base64 decode algorithm of the
+    Infra Living Standard, which browsers use for data URIs.
+
+    https://infra.spec.whatwg.org/commit-snapshots/c67ae1fb1d161b23d0f8c9bf9917ea1993f7b19a/#forgiving-base64-decode
+
+    Raise :exc:`ValueError` if *data* is not valid base64.
+    """
+    data = data.translate(None, _ASCII_WHITESPACE_BYTES)
+    if len(data) % 4 == 0:
+        if data.endswith(b"=="):
+            data = data[:-2]
+        elif data.endswith(b"="):
+            data = data[:-1]
+    if len(data) % 4 == 1 or not _base64_pattern.fullmatch(data):
+        raise ValueError("invalid base64")
+    return base64.b64decode(data + b"=" * (-len(data) % 4), validate=True)
+
 
 class ParseDataURIResult(NamedTuple):
     """Named tuple returned by :func:`parse_data_uri`."""
@@ -601,7 +624,13 @@ class ParseDataURIResult(NamedTuple):
 
 
 def parse_data_uri(uri: str | bytes) -> ParseDataURIResult:
-    """Parse a data: URI into :class:`ParseDataURIResult`."""
+    """Parse a data: URI into :class:`ParseDataURIResult`.
+
+    Base64 data is decoded the way browsers do it, i.e. ignoring ASCII
+    whitespace and allowing missing ``=`` padding.
+
+    Raise :exc:`ValueError` for invalid data URIs.
+    """
     if not isinstance(uri, bytes):
         uri = safe_url_string(uri).encode("ascii")
 
@@ -637,11 +666,16 @@ def parse_data_uri(uri: str | bytes) -> ParseDataURIResult:
         media_type_params[attribute.decode()] = value.decode()
         uri = uri[m.end() :]
 
-    is_base64, _, data = uri.partition(b",")
+    is_base64, comma, data = uri.partition(b",")
+    if not comma:
+        raise ValueError("invalid data URI")
     if is_base64:
         if is_base64 != b";base64":
             raise ValueError("invalid data URI")
-        data = base64.b64decode(data)
+        try:
+            data = _forgiving_base64_decode(data)
+        except ValueError:
+            raise ValueError("invalid data URI") from None
 
     return ParseDataURIResult(media_type, media_type_params, data)
 
