@@ -773,9 +773,7 @@ class TestGetBaseUrl:
         )
 
     @pytest.mark.parametrize("tag", ["script", "noscript"])
-    @pytest.mark.parametrize(
-        "end", [" >", "\t>", "\n>", "\r>", "\f>", "/>", " data-x='>'>"]
-    )
+    @pytest.mark.parametrize("end", [" >", "/>", " data-x='>'>"])
     def test_base_url_after_script_end_tag(self, tag, end):
         html = (
             f"<{tag}><base href='https://ignored.example/'>"

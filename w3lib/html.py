@@ -67,7 +67,8 @@ _base_bytes_re = re.compile(rb"<base", re.IGNORECASE)
 # match; unterminated regions swallow the rest of the document, as a browser
 # does. Their content is consumed in runs of characters that cannot start the
 # closing delimiter, so that the large inline scripts of real pages cost a
-# tight loop per run rather than a match attempt per character.
+# tight loop per run rather than a match attempt per character. The end tag
+# closes on the tag name followed by whitespace, "/" or ">", as browsers treat it.
 #
 # The text of a <base> tag after its name is captured whole and its attributes
 # are then read one by one, as for <meta>.
