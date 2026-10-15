@@ -950,6 +950,16 @@ class TestGetMetaRefresh:
             "https://example.com/a",
         )
 
+    def test_get_meta_refresh_other_scheme_without_slashes(self):
+        # A browser follows these to https://example.com/a; the base URL is
+        # not used because the scheme differs from that of the base URL.
+        for url in ("https:example.com/a", "https:/example.com/a"):
+            body = f'<meta http-equiv="refresh" content="5;url={url}">'
+            assert get_meta_refresh(body, "http://example.org/b") == (
+                5,
+                "https://example.com/a",
+            )
+
     def test_no_meta(self):
         assert get_meta_refresh("<html><body>no meta here</body></html>") == (
             None,
