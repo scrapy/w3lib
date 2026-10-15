@@ -772,37 +772,6 @@ class TestGetBaseUrl:
             == "https://example.org/"
         )
 
-    @pytest.mark.parametrize("tag", ["script", "noscript"])
-    @pytest.mark.parametrize("end", [" >", "/>", " data-x='>'>"])
-    def test_base_url_after_script_end_tag(self, tag, end):
-        html = (
-            f"<{tag}><base href='https://ignored.example/'>"
-            f"</{tag}{end}<base href='https://example.com/found/'>"
-        )
-        assert (
-            get_base_url(html, "https://fallback.example/")
-            == "https://example.com/found/"
-        )
-        assert (
-            get_base_url(html.encode(), "https://fallback.example/")
-            == "https://example.com/found/"
-        )
-
-    @pytest.mark.parametrize("tag", ["script", "noscript"])
-    def test_base_url_ignores_similarly_named_script_end_tag(self, tag):
-        html = (
-            f"<{tag}></{tag}x><base href='https://ignored.example/'>"
-            f"</{tag}><base href='https://example.com/found/'>"
-        )
-        assert (
-            get_base_url(html, "https://fallback.example/")
-            == "https://example.com/found/"
-        )
-        assert (
-            get_base_url(html.encode(), "https://fallback.example/")
-            == "https://example.com/found/"
-        )
-
     def test_base_url_split_by_comment(self):
         # A comment inside the <base> tag is not stripped: browsers do not
         # parse comments within a tag, so the tag is broken and ignored.
@@ -1487,6 +1456,54 @@ def base(text: str | bytes, **kwargs: object) -> object:
 
 def meta(text: str | bytes, **kwargs: object) -> object:
     return get_meta_refresh(text, "https://example.org", **kwargs)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    ("func", "tag", "found", "missing"),
+    [
+        (base, BASE_TAG, "http://example.org/found", "https://example.org/"),
+        (meta, META_TAG, (5, "http://example.org/found"), (None, None)),
+    ],
+    ids=["base", "meta"],
+)
+@pytest.mark.parametrize("ignored", ["script", "noscript"])
+class TestIgnoredTagEnd:
+    @pytest.mark.parametrize("end", ["x>", "\vx>"])
+    def test_false_end_tag(self, func, tag, found, missing, ignored, end):
+        text = f"<{ignored}></{ignored}{end}{tag}"
+        assert func(text) == missing
+        assert func(text.encode()) == missing
+        text += f"</{ignored}>{tag}"
+        assert func(text) == found
+        assert func(text.encode()) == found
+
+    @pytest.mark.parametrize(
+        "end", [" <", "/<", " data-x=<", ' data-x="<', " data-x='<"]
+    )
+    def test_markup_inside_end_tag(self, func, tag, found, missing, ignored, end):
+        text = f"<{ignored}></{ignored}{end}{tag[1:]}"
+        assert func(text) == missing
+        assert func(text.encode()) == missing
+
+    @pytest.mark.parametrize(
+        "end", [" >", "/>", " data-x='>'>", ' data-x=a=b=">', ' =">', ' data-x=\v">']
+    )
+    def test_after_end_tag(self, func, tag, found, missing, ignored, end):
+        text = f"<{ignored}>{tag}</{ignored}{end}{tag}"
+        assert func(text) == found
+        assert func(text.encode()) == found
+
+    @pytest.mark.parametrize(
+        "end",
+        [" a=unquoted" * 20000, " a='" + "<" * 20000],
+        ids=["unquoted", "unterminated-quoted"],
+    )
+    def test_long_end_tag(self, func, tag, found, missing, ignored, end):
+        text = f"<{ignored}></{ignored}{end}{tag}"
+        start = time.process_time()
+        assert func(text) == missing
+        assert func(text.encode()) == missing
+        assert time.process_time() - start < 2
 
 
 @pytest.mark.parametrize(

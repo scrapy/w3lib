@@ -59,6 +59,27 @@ _tag_extent_source = rf"""<[a-zA-Z!/]{_TAG_BODY}(?:=\s*["'][^"'<>]*)?>?"""
 _tag_extent_re = re.compile(_tag_extent_source, re.ASCII)
 _tag_extent_bytes_re = re.compile(_tag_extent_source.encode())
 
+
+def _ignored_tags_source(ignore_tags: tuple[str, ...]) -> str:
+    tags = "|".join(re.escape(tag) for tag in ignore_tags)
+    # Only HTML whitespace, "/" or ">" after the name can close the element.
+    # Unlike _TAG_BODY, the end-tag body consumes "<" as attribute text. Quoted
+    # values also consume ">", and an unfinished value runs to the end of input.
+    space = r"[\t\n\f\r ]"
+    attribute = (
+        rf"[^\t\n\f\r />][^\t\n\f\r />=]*+{space}*+"
+        rf"(?:={space}*+(?:\"[^\"]*(?:\"|$)|'[^']*(?:'|$)|[^\t\n\f\r >]*+))?+"
+    )
+    # Possessive repeats keep attribute names and unquoted values from being
+    # split or read again as the scanner advances through a long end tag.
+    end_body = rf"(?:{space}|/|{attribute})*+(?:>|$)"
+    return (
+        rf"<(?P<t>{tags})\b{_TAG_BODY}>[^<]*"
+        r"(?:<(?!/(?P=t)[\t\n\f\r />])[^<]*)*"
+        rf"(?:</(?P=t){end_body}|$)"
+    )
+
+
 _base_re = re.compile("<base", re.IGNORECASE | re.ASCII)
 _base_bytes_re = re.compile(rb"<base", re.IGNORECASE)
 # Scan for <base> tags, consuming comments and <script>/<noscript> content
@@ -68,15 +89,14 @@ _base_bytes_re = re.compile(rb"<base", re.IGNORECASE)
 # does. Their content is consumed in runs of characters that cannot start the
 # closing delimiter, so that the large inline scripts of real pages cost a
 # tight loop per run rather than a match attempt per character. The end tag
-# closes on the tag name followed by whitespace, "/" or ">", as browsers treat it.
+# closes on the tag name followed by HTML whitespace, "/" or ">".
 #
 # The text of a <base> tag after its name is captured whole and its attributes
 # are then read one by one, as for <meta>.
 _base_scan_re = re.compile(
     rf"""
       {_COMMENT}
-    | <(?P<t>script|noscript)\b{_TAG_BODY}>[^<]*(?:<(?!/(?P=t)[\s/>])[^<]*)*
-      (?:</(?P=t){_TAG_BODY}>?|$)
+    | {_ignored_tags_source(("script", "noscript"))}
     | <base\s(?P<attrs>{_TAG_BODY})
     """,
     re.IGNORECASE | re.DOTALL | re.VERBOSE | re.ASCII,
@@ -123,18 +143,14 @@ def _meta_scan_source(ignore_tags: tuple[str, ...]) -> str:
     # consumed in runs of characters that cannot start the closing delimiter,
     # so that the large inline scripts of real pages cost a tight loop per run
     # rather than a match attempt per character. The end tag closes on the tag
-    # name followed by whitespace, "/" or ">", as browsers treat it.
+    # name followed by HTML whitespace, "/" or ">".
     #
     # The <meta> body is matched without the closing angle bracket, which is
     # not required: a tag left unterminated by the next "<" or by the end of
     # the text is still parsed, as browsers do.
     alternatives = [_COMMENT]
     if ignore_tags:
-        tags = "|".join(re.escape(tag) for tag in ignore_tags)
-        alternatives.append(
-            rf"<(?P<t>{tags})\b{_TAG_BODY}>[^<]*(?:<(?!/(?P=t)[\s/>])[^<]*)*"
-            rf"(?:</(?P=t){_TAG_BODY}>?|$)"
-        )
+        alternatives.append(_ignored_tags_source(ignore_tags))
     alternatives.append(rf"<meta\s(?P<attrs>{_TAG_BODY})")
     return "|".join(alternatives)
 
