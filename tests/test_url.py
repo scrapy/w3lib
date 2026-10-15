@@ -1666,6 +1666,11 @@ class TestCanonicalizeUrl:
             == "http://www.example.com/r%C3%A9sum%C3%A9?country=%D0%A0%D0%BE%D1%81%D1%81%D0%B8%D1%8F"
         )
 
+        assert (
+            canonicalize_url("/?currency=€", encoding="latin1")
+            == "/?currency=%E2%82%AC"
+        )
+
     @pytest.mark.parametrize(
         "url",
         [
