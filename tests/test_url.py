@@ -446,6 +446,8 @@ SAFE_URL_URL_CASES = (
     ("http://example.com/search?tags[]=a", "http://example.com/search?tags%5B%5D=a"),
     ("https://example.com/a#f[1]", "https://example.com/a#f%5B1%5D"),
     ("http://[::1]:8080/p?q=[1]", "http://[::1]:8080/p?q=%5B1%5D"),
+    # A non-special URL with an empty host keeps a path starting with "//".
+    ("sc:///..//x", "sc:////x"),
 )
 
 
@@ -818,8 +820,8 @@ class TestUrl:
             == "http://.xn--xampl-9raf.com/"
         )
         assert (
-            safe_url_string("http://.éxamplé.com:80/?q=a", encoding="utf-16")
-            == "http://.xn--xampl-9raf.com/?%FF%FEq%00=%00a%00"
+            safe_url_string("http://.éxamplé.com:80/?q=a", encoding="utf-16-le")
+            == "http://.xn--xampl-9raf.com/?q%00=%00a%00"
         )
 
     def test_safe_url_port_number(self):
@@ -926,6 +928,11 @@ class TestUrl:
             == "http://%25&user:%25&pass@host/"
         )
 
+    def test_safe_download_url_deprecated(self):
+        with pytest.warns(FutureWarning, match="safe_download_url"):
+            safe_download_url("http://www.example.org")
+
+    @pytest.mark.filterwarnings("ignore::FutureWarning")
     def test_safe_download_url(self):
         assert safe_download_url("http://www.example.org") == "http://www.example.org/"
         assert (
@@ -982,6 +989,7 @@ class TestUrl:
             == "http://www.example.org/%C2%A3?%C2%A3"
         )
 
+    @pytest.mark.filterwarnings("ignore::FutureWarning")
     def test_safe_download_url_encoded_dot_segments(self):
         # "%2e", ".%2e", "%2e." and "%2e%2e" are the percent-encoded forms of
         # the single-dot and double-dot path segments of the URL living
@@ -1451,6 +1459,7 @@ class TestUrl:
 
 
 class TestSafeDownloadUrlProperties:
+    @pytest.mark.filterwarnings("ignore::FutureWarning")
     @given(hyp_urls())
     def test_no_exception(self, url: str) -> None:
         safe_download_url(url)
@@ -2248,6 +2257,31 @@ class TestDataURI:
         assert result.media_type == "text/plain"
         assert result.data == b"Hello, world."
 
+    @pytest.mark.parametrize(
+        "uri",
+        [
+            "data:;base64,SGVsbG8=",
+            "data:;base64,SGVs bG8=",
+            "data:;base64,SGVsbG8",
+        ],
+    )
+    def test_base64_forgiving(self, uri):
+        assert parse_data_uri(uri).data == b"Hello"
+
+    @pytest.mark.parametrize(
+        "uri",
+        [
+            "data:;base64,S!G@V$b G8=",
+            "data:;base64,!!!! ",
+            "data:;base64,SGVsbG8==",
+            "data:;base64,SGV=bG8",
+            "data:;base64,SGVsb",
+        ],
+    )
+    def test_invalid_base64(self, uri):
+        with pytest.raises(ValueError, match="invalid data URI"):
+            parse_data_uri(uri)
+
     def test_wrong_base64_param(self):
         with pytest.raises(ValueError, match="invalid data URI"):
             parse_data_uri("data:text/plain;baes64,SGVsbG8sIHdvcmxkLg%3D%3D")
@@ -2255,6 +2289,8 @@ class TestDataURI:
     def test_missing_comma(self):
         with pytest.raises(ValueError, match="invalid data URI"):
             parse_data_uri("data:A%20brief%20note")
+        with pytest.raises(ValueError, match="invalid data URI"):
+            parse_data_uri("data:text/plain")
 
     def test_missing_scheme(self):
         with pytest.raises(ValueError, match="invalid URI"):

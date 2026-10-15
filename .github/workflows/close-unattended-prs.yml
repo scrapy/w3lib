@@ -16,6 +16,11 @@ jobs:
     unattended-pr-guard:
         runs-on: ubuntu-latest
         steps:
-            - uses: scrapy/unattended-pr-guard@575f5d14e8f91dabd7da30a2ee22e3fdaad41474  # 0.1.0
+            - uses: scrapy/unattended-pr-guard@2ea7eff575dd0912d03cf3e3ae7acf65052c6445  # 0.2.0
               with:
                   trusted-orgs: scrapy,scrapy-plugins,scrapinghub,zytedata
+                  trusted-users: >-
+                      adnan-awan,akhterwahab,alexldide,ankitjavalkar,DiogoCastro,
+                      diogosuguimoto,emarondan,gutsytechster,haideriqbal1,
+                      hammadqureshi-web,hassaan-naushahi,hygorcluz,imhamzaa,kishan3,
+                      Nykakin,serhii73

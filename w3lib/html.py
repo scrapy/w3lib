@@ -82,9 +82,12 @@ _base_scan_re = re.compile(
 
 
 # The refresh payload: ``3; url=...``. The url= part is required.
-# The interval is ASCII digits only, as in the HTML refresh steps.
+# The interval is ASCII digits only, and the separator after it is ";", ","
+# or ASCII whitespace, as in the HTML refresh steps. The two separator
+# alternatives keep their whitespace runs from overlapping, so that matching
+# stays linear.
 _meta_refresh_content_re = re.compile(
-    r"\s*(?P<int>([0-9]*\.)?[0-9]+)\s*;\s*url=\s*(?P<url>.*)",
+    r"\s*(?P<int>([0-9]*\.)?[0-9]+)(?:\s*[;,]\s*|\s+)url=\s*(?P<url>.*)",
     re.DOTALL | re.IGNORECASE | re.ASCII,
 )
 
@@ -503,7 +506,7 @@ def get_base_url(
     """Return the base url if declared in the given HTML `text`,
     relative to the given base url.
 
-    .. versionadded:: VERSION
+    .. versionadded:: 2.5.0
        The *max_scan* parameter.
 
     If no base url is found, the given `baseurl` is returned.
@@ -592,7 +595,7 @@ def get_meta_refresh(
     containing the delay in seconds (or zero if not present) and url is a
     string with the absolute url to redirect.
 
-    .. versionadded:: VERSION
+    .. versionadded:: 2.5.0
        The *max_scan* parameter.
 
     If no meta redirect is found, ``(None, None)`` is returned.

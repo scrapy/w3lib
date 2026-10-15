@@ -17,7 +17,6 @@ from w3lib.url import (
     parse_data_uri,
     parse_url,
     path_to_file_uri,
-    safe_download_url,
     safe_url_string,
     url_query_cleaner,
     url_query_parameter,
@@ -125,25 +124,6 @@ BENCHMARK_CASES: CasesMapType = {
         (("http://%2526user:%2526pass@host",), {}),
         (("http://%25%26user:%25%26pass@host",), {}),
         (("sc://user@新华网.中国:21/a",), {}),
-    ],
-    safe_download_url: [
-        (("http://www.example.org",), {}),
-        (("http://www.example.org/../",), {}),
-        (("http://www.example.org/../../images/../image",), {}),
-        (("http://www.example.org/dir/",), {}),
-        ((b"http://www.example.org/dir/",), {}),
-        (
-            (b"http://www.example.org?\xa3",),
-            {"encoding": "latin-1", "path_encoding": "latin-1"},
-        ),
-        (
-            (b"http://www.example.org?\xc2\xa3",),
-            {"encoding": "utf-8", "path_encoding": "utf-8"},
-        ),
-        (
-            (b"http://www.example.org/\xc2\xa3?\xc2\xa3",),
-            {"encoding": "utf-8", "path_encoding": "latin-1"},
-        ),
     ],
     is_url: [
         (("http://www.example.org",), {}),
