@@ -772,6 +772,39 @@ class TestGetBaseUrl:
             == "https://example.org/"
         )
 
+    @pytest.mark.parametrize("tag", ["script", "noscript"])
+    @pytest.mark.parametrize(
+        "end", [" >", "\t>", "\n>", "\r>", "\f>", "/>", " data-x='>'>"]
+    )
+    def test_base_url_after_script_end_tag(self, tag, end):
+        html = (
+            f"<{tag}><base href='https://ignored.example/'>"
+            f"</{tag}{end}<base href='https://example.com/found/'>"
+        )
+        assert (
+            get_base_url(html, "https://fallback.example/")
+            == "https://example.com/found/"
+        )
+        assert (
+            get_base_url(html.encode(), "https://fallback.example/")
+            == "https://example.com/found/"
+        )
+
+    @pytest.mark.parametrize("tag", ["script", "noscript"])
+    def test_base_url_ignores_similarly_named_script_end_tag(self, tag):
+        html = (
+            f"<{tag}></{tag}x><base href='https://ignored.example/'>"
+            f"</{tag}><base href='https://example.com/found/'>"
+        )
+        assert (
+            get_base_url(html, "https://fallback.example/")
+            == "https://example.com/found/"
+        )
+        assert (
+            get_base_url(html.encode(), "https://fallback.example/")
+            == "https://example.com/found/"
+        )
+
     def test_base_url_split_by_comment(self):
         # A comment inside the <base> tag is not stripped: browsers do not
         # parse comments within a tag, so the tag is broken and ignored.

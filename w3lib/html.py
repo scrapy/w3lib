@@ -74,7 +74,8 @@ _base_bytes_re = re.compile(rb"<base", re.IGNORECASE)
 _base_scan_re = re.compile(
     rf"""
       {_COMMENT}
-    | <(?P<t>script|noscript)\b{_TAG_BODY}>[^<]*(?:<(?!/(?P=t)>)[^<]*)*(?:</(?P=t)>|$)
+    | <(?P<t>script|noscript)\b{_TAG_BODY}>[^<]*(?:<(?!/(?P=t)[\s/>])[^<]*)*
+      (?:</(?P=t){_TAG_BODY}>?|$)
     | <base\s(?P<attrs>{_TAG_BODY})
     """,
     re.IGNORECASE | re.DOTALL | re.VERBOSE | re.ASCII,
