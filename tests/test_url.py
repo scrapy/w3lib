@@ -331,6 +331,8 @@ SAFE_URL_URL_CASES = (
     # brackets confined to the userinfo, leaving a plain host
     ("scheme://us[er]@example.com", "scheme://us%5Ber%5D@example.com"),
     ("scheme://us[er]@[::1]", "scheme://us%5Ber%5D@[::1]"),
+    ("//us[er]@example.com", "//us%5Ber%5D@example.com"),
+    ("//u[s@ex]ample.com", ValueError),
     # unmatched / broken bracket structures
     ("scheme://[v6a.ip", ValueError),
     ("scheme://v6a.ip]", ValueError),
