@@ -82,7 +82,7 @@ _FRAGMENT_SAFEST_CHARS = _PATH_SAFEST_CHARS
 
 def _skip_special_authority_slashes(url: str) -> str:
     """Return *url* with exactly two slashes before the host if its scheme is
-    special."""
+    special and not file."""
     # Special schemes other than file skip any number of slashes and
     # backslashes before the host, so "https:example.com", "https:/example.com"
     # and "https:///example.com" all have the host example.com.
@@ -99,7 +99,7 @@ def _skip_special_authority_slashes(url: str) -> str:
     rest = url[colon + 1 :]
     authority = rest.lstrip("/\\")
     # A URL without a host is left as is.
-    if authority[:1] in {"", "?", "#"} or len(rest) - len(authority) == 2:
+    if authority[:1] in {"", "?", "#"}:
         return url
     return f"{scheme}://{authority}"
 
