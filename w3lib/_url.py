@@ -582,19 +582,22 @@ def _check_bracketed_netloc(netloc: str) -> None:
 
     before_bracket, has_open_bracket, bracketed = hostname_and_port.partition("[")
 
-    if has_open_bracket:
-        # No data is allowed before '['.
-        if before_bracket:
+    if not has_open_bracket:
+        # Brackets confined to the userinfo leave a regular host.
+        if "]" in hostname_and_port:
             raise ValueError("Invalid IPv6 URL")
+        return
 
-        hostname, _, port = bracketed.partition("]")
+    # No data is allowed before '['.
+    if before_bracket:
+        raise ValueError("Invalid IPv6 URL")
 
-        # Only ':<port>' may follow ']'.
-        if port and not port.startswith(":"):
-            raise ValueError("Invalid IPv6 URL")
-        # port validation done after, in `_SplitResult.__post_init__`
-    else:
-        hostname, _, _ = hostname_and_port.partition(":")
+    hostname, _, port = bracketed.partition("]")
+
+    # Only ':<port>' may follow ']'.
+    if port and not port.startswith(":"):
+        raise ValueError("Invalid IPv6 URL")
+    # port validation done after, in `_SplitResult.__post_init__`
 
     _check_bracketed_host(hostname)
 
