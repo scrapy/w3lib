@@ -80,6 +80,30 @@ _SPECIAL_QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS.translate(None, delete=b"'")
 _FRAGMENT_SAFEST_CHARS = _PATH_SAFEST_CHARS
 
 
+def _skip_special_authority_slashes(url: str) -> str:
+    """Return *url* with exactly two slashes before the host if its scheme is
+    special and not file."""
+    # Special schemes other than file skip any number of slashes and
+    # backslashes before the host, so "https:example.com", "https:/example.com"
+    # and "https:///example.com" all have the host example.com.
+    # https://url.spec.whatwg.org/#special-authority-ignore-slashes-state
+    colon = url.find(":")
+    if colon < 1 or (
+        url[colon + 1 : colon + 3] == "//"
+        and url[colon + 3 : colon + 4] not in {"/", "\\"}
+    ):
+        return url
+    m = _SCHEME_RE.match(url)
+    if not m or (scheme := m.group(1).lower()) not in _SPECIAL_SCHEMES - {"file"}:
+        return url
+    rest = url[colon + 1 :]
+    authority = rest.lstrip("/\\")
+    # A URL without a host is left as is.
+    if authority[:1] in {"", "?", "#"}:
+        return url
+    return f"{scheme}://{authority}"
+
+
 def _safe_url_split(  # pylint: disable=too-many-statements
     url: str | bytes,
     encoding: str = "utf8",
@@ -93,6 +117,7 @@ def _safe_url_split(  # pylint: disable=too-many-statements
     #   - if the supplied (or default) encoding chokes,
     #     percent-encode offending bytes
     url = _strip(to_unicode(url, encoding=encoding, errors="percentencode"))
+    url = _skip_special_authority_slashes(url)
     parts = _urlsplit(url)
     tmp_buf = bytearray()  # utf-8 bytes
 

@@ -448,6 +448,14 @@ SAFE_URL_URL_CASES = (
     ("http://[::1]:8080/p?q=[1]", "http://[::1]:8080/p?q=%5B1%5D"),
     # A non-special URL with an empty host keeps a path starting with "//".
     ("sc:///..//x", "sc:////x"),
+    # Special schemes other than file skip any number of "/" and "\" before
+    # the host.
+    ("https:example.com/a", "https://example.com/a"),
+    ("https:/example.com/a", "https://example.com/a"),
+    ("https:///example.com/a", "https://example.com/a"),
+    ("https:/\\/\\example.com/a", "https://example.com/a"),
+    ("HTTPS:example.com?a#b", "https://example.com/?a#b"),
+    ("http:user:pass@example.com:81/", "http://user:pass@example.com:81/"),
 )
 
 
