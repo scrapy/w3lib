@@ -811,6 +811,67 @@ def _opaque_host(host: str) -> bytes:
     return _quote(host.encode(), _OPAQUE_HOST_SAFE_CHARS)
 
 
+# https://url.spec.whatwg.org/#ipv4-number-parser
+# A number is hexadecimal after "0x", octal after any other leading "0", and
+# decimal otherwise. The radix is matched by hand because int() also takes
+# signs, underscores, whitespace and non-ASCII digits.
+_IPV4_NUMBER_RE = re.compile(r"(0[xX])([0-9a-fA-F]*)|(0[0-7]*)|([1-9][0-9]*)")
+_IPV4_HEX_LAST_PART_RE = re.compile(r"0[xX][0-9a-fA-F]*")
+_IPV4_LAST_CHARS = frozenset("0123456789abcdefxABCDEFX.")
+
+
+def _ipv4_number(part: str) -> int | None:
+    match = _IPV4_NUMBER_RE.fullmatch(part)
+    if match is None:
+        return None
+    _, hex_digits, octal, decimal = match.groups()
+    if hex_digits is not None:
+        return int(hex_digits or "0", 16)
+    if octal is not None:
+        return int(octal, 8)
+    return int(decimal)
+
+
+@functools.lru_cache
+def _ipv4_host(host: str) -> str:
+    """Return *host*, the ASCII host of a special URL, serialized as an IPv4
+    address if it ends in a number, e.g. "0x7f.1" as "127.0.0.1".
+
+    Browsers and getaddrinfo() read such a host as an address, so leaving it
+    as written would report a host other than the one connected to. Raises
+    ValueError if it ends in a number but is not a valid IPv4 address.
+    """
+    # Most hosts end in a letter that no number ends in.
+    if host[-1:] not in _IPV4_LAST_CHARS:
+        return host
+    # https://url.spec.whatwg.org/#ends-in-a-number-checker
+    parts = host.split(".")
+    if parts[-1] == "" and len(parts) > 1:
+        parts.pop()
+    last = parts[-1]
+    if not (
+        (last.isascii() and last.isdigit()) or _IPV4_HEX_LAST_PART_RE.fullmatch(last)
+    ):
+        return host
+    # https://url.spec.whatwg.org/#concept-ipv4-parser
+    if len(parts) > 4:
+        raise ValueError(f"{host!r} is not a valid IPv4 address")
+    numbers = []
+    for part in parts:
+        number = _ipv4_number(part)
+        if number is None:
+            raise ValueError(f"{host!r} is not a valid IPv4 address")
+        numbers.append(number)
+    if any(number > 255 for number in numbers[:-1]) or numbers[-1] >= 256 ** (
+        5 - len(numbers)
+    ):
+        raise ValueError(f"{host!r} is not a valid IPv4 address")
+    address = numbers[-1]
+    for i, number in enumerate(numbers[:-1]):
+        address += number * 256 ** (3 - i)
+    return str(ipaddress.IPv4Address(address))
+
+
 @functools.lru_cache
 def _nfkc_netloc(netloc: str) -> tuple[str, str]:
     cleaned = netloc.translate(_NETLOC_STRIP_CHARS)

@@ -275,6 +275,20 @@ SAFE_URL_URL_CASES = (
     ("http://192.168.0.0", "http://192.168.0.0/"),
     ("http://192.168.0.256", ValueError),
     ("http://192.168.0.0.0", ValueError),
+    # A host that ends in a number is an IPv4 address, whose parts may be
+    # hexadecimal, octal or fewer than four, as browsers and getaddrinfo()
+    # read it.
+    ("http://0x7f.1/", "http://127.0.0.1/"),
+    ("http://0177.0.0.1/", "http://127.0.0.1/"),
+    ("http://127.1/", "http://127.0.0.1/"),
+    ("http://2130706433/", "http://127.0.0.1/"),
+    ("https://0xc0.0250.01:8080/", "https://192.168.0.1:8080/"),
+    ("http://1.2.3.4./", "http://1.2.3.4/"),
+    ("http://\uff10\uff38\uff17\uff46.1/", "http://127.0.0.1/"),
+    ("http://0x100000000/", ValueError),
+    ("http://1.2.3.08/", ValueError),
+    ("http://foo.0x4/", ValueError),
+    ("http://www.0xyz.example/", "http://www.0xyz.example/"),
     ("http://[2a01:5cc0:1:2::4]", "http://[2a01:5cc0:1:2::4]/"),
     ("http://[2a01:5cc0:1:2:3:4]", ValueError),
     ("https://[2402:4e00:40:40::2:3b6]", "https://[2402:4e00:40:40::2:3b6]/"),
@@ -521,8 +535,6 @@ KNOWN_SAFE_URL_STRING_URL_ISSUES = {
     "https://@\\example.com",  # Invalid URL
     "https://\x80.example",  # Invalid domain name (non-visible character)
     "https://%80.example",  # Invalid domain name (non-visible character)
-    "http://192.168.0.256",  # Invalid IP address
-    "http://192.168.0.0.0",  # Invalid IP address / domain name
     "https://example.com:",  # Removes the :
     # Some path characters that RFC 2396 and RFC 3986 require escaping (%)
     # are not escaped.
@@ -1910,6 +1922,18 @@ class TestCanonicalizeUrl:
         assert (
             canonicalize_url("http://user:pass@[::1]/a") == "http://user:pass@[::1]/a"
         )
+
+    def test_normalize_ipv4_host(self):
+        # every spelling of 127.0.0.1 that a browser connects to it with
+        for url in (
+            "http://127.0.0.1/a",
+            "http://0x7f.1/a",
+            "http://0177.0.0.1/a",
+            "http://127.1/a",
+            "http://2130706433/a",
+            "http://0X7F000001/a",
+        ):
+            assert canonicalize_url(url) == "http://127.0.0.1/a"
 
     def test_canonicalize_idns(self):
         assert (

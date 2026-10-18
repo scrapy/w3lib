@@ -30,6 +30,7 @@ from ._url import (
     RFC3986_UNRESERVED as RFC3986_UNRESERVED,
     RFC3986_USERINFO_SAFE_CHARS as RFC3986_USERINFO_SAFE_CHARS,
     _idna_bytes,
+    _ipv4_host,
     _opaque_host,
     _parse_qs,
     _parse_qsl,
@@ -130,11 +131,12 @@ def _safe_url_split(  # pylint: disable=too-many-statements
             tmp_buf += _opaque_host(host)
         else:
             try:
-                tmp_buf += _idna_bytes(parts.hostname)
+                host = _idna_bytes(parts.hostname).decode()
             except UnicodeError:
                 # IDNA encoding can fail for too long labels (>63 characters) or
                 # missing labels (e.g. http://.example.com).
-                tmp_buf += parts.hostname.encode()
+                host = parts.hostname
+            tmp_buf += _ipv4_host(host).encode()
 
     if parts.port is not None:
         tmp_buf.append(58)  # ord(":")
