@@ -197,6 +197,8 @@ def replace_entities(
     'Price: \xa3100'
     >>> print(w3lib.html.replace_entities(b'Price: &pound;100'))
     Price: £100
+    >>> w3lib.html.replace_entities('&NotEqualTilde;&amp;', keep=('NotEqualTilde',))
+    '&NotEqualTilde;&'
     >>>
 
     """
@@ -213,7 +215,7 @@ def replace_entities(
         else:
             # guaranteed to be named
             entity_name = groups["named"]
-            if entity_name.lower() in keep:
+            if entity_name in keep or entity_name.lower() in keep:
                 return m.group(0)
             # The named character reference table is looked up as written: it
             # is case-sensitive, and only its legacy entries resolve without

@@ -83,6 +83,18 @@ class TestRemoveEntities:
             == "\u00a3 &amp; &lt; &amp;"
         )
 
+    @pytest.mark.parametrize("entity", ["AMP", "Lt", "NotEqualTilde"])
+    @pytest.mark.parametrize("keep_type", [list, iter])
+    def test_keep_case_sensitive_entity_names(self, entity, keep_type):
+        text = f"&{entity}; &amp; &{entity};"
+        assert replace_entities(text, keep=keep_type([entity])) == (
+            f"&{entity}; & &{entity};"
+        )
+
+    def test_keep_lowercase_name_compatibility(self):
+        assert replace_entities("&Lt; &lt;", keep=["lt"]) == "&Lt; &lt;"
+        assert replace_entities("&Lt; &lt;", keep=["Lt"]) == "&Lt; <"
+
     def test_non_ascii_digits(self):
         # character references are ASCII digits only, so these are plain text
         assert (
