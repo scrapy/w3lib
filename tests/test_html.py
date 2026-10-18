@@ -1476,6 +1476,54 @@ def meta(text: str | bytes, **kwargs: object) -> object:
     ],
     ids=["base", "meta"],
 )
+@pytest.mark.parametrize("ignored", ["script", "noscript"])
+class TestIgnoredTagEnd:
+    @pytest.mark.parametrize("end", ["x>", "\vx>"])
+    def test_false_end_tag(self, func, tag, found, missing, ignored, end):
+        text = f"<{ignored}></{ignored}{end}{tag}"
+        assert func(text) == missing
+        assert func(text.encode()) == missing
+        text += f"</{ignored}>{tag}"
+        assert func(text) == found
+        assert func(text.encode()) == found
+
+    @pytest.mark.parametrize(
+        "end", [" <", "/<", " data-x=<", ' data-x="<', " data-x='<"]
+    )
+    def test_markup_inside_end_tag(self, func, tag, found, missing, ignored, end):
+        text = f"<{ignored}></{ignored}{end}{tag[1:]}"
+        assert func(text) == missing
+        assert func(text.encode()) == missing
+
+    @pytest.mark.parametrize(
+        "end", [" >", "/>", " data-x='>'>", ' data-x=a=b=">', ' =">', ' data-x=\v">']
+    )
+    def test_after_end_tag(self, func, tag, found, missing, ignored, end):
+        text = f"<{ignored}>{tag}</{ignored}{end}{tag}"
+        assert func(text) == found
+        assert func(text.encode()) == found
+
+    @pytest.mark.parametrize(
+        "end",
+        [" a=unquoted" * 20000, " a='" + "<" * 20000],
+        ids=["unquoted", "unterminated-quoted"],
+    )
+    def test_long_end_tag(self, func, tag, found, missing, ignored, end):
+        text = f"<{ignored}></{ignored}{end}{tag}"
+        start = time.process_time()
+        assert func(text) == missing
+        assert func(text.encode()) == missing
+        assert time.process_time() - start < 2
+
+
+@pytest.mark.parametrize(
+    ("func", "tag", "found", "missing"),
+    [
+        (base, BASE_TAG, "http://example.org/found", "https://example.org/"),
+        (meta, META_TAG, (5, "http://example.org/found"), (None, None)),
+    ],
+    ids=["base", "meta"],
+)
 class TestMaxScan:
     def test_straddling_tag(self, func, tag, found, missing):
         # A tag that starts before the limit and ends after it is read whole,
