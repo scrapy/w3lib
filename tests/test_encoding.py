@@ -318,6 +318,53 @@ class TestCodecsEncoding:
         assert enc != "utf-7"
         assert "<script>" not in body
 
+    @pytest.mark.parametrize(
+        "alias",
+        [
+            # bytes-to-bytes codecs
+            "base64",
+            "base_64",
+            "bz2",
+            "hex",
+            "quopri",
+            "quoted-printable",
+            "rot13",
+            "ROT_13",
+            "uu",
+            "zip",
+            "zlib",
+            # text codecs that cannot decode a page
+            "idna",
+            "punycode",
+            "undefined",
+            "unicode-escape",
+            "unicode_escape",
+            "raw_unicode_escape",
+        ],
+    )
+    def test_resolve_encoding_unsuitable_codec(self, alias: str) -> None:
+        """Python codecs that aren't web encodings must not resolve."""
+        assert resolve_encoding(alias) is None
+        assert http_content_type_encoding(f"text/html; charset={alias}") is None
+        assert html_body_declared_encoding(f"<meta charset={alias}>".encode()) is None
+        for content_type, body in (
+            (f"text/html; charset={alias}", b"abc"),
+            (None, f"<meta charset={alias}>abc".encode()),
+            (None, f'<?xml version="1.0" encoding="{alias}"?><a/>'.encode()),
+        ):
+            enc, text = html_to_unicode(content_type, body)
+            assert enc == "utf8"
+            assert text.endswith(("abc", "<a/>"))
+
+    def test_resolve_encoding_escape_codec_not_smuggled(self) -> None:
+        # the escape codecs would turn the inert "\x3c" text into markup
+        for alias in ("unicode-escape", "raw-unicode-escape"):
+            enc, body = html_to_unicode(
+                f"text/html; charset={alias}", rb"\x3cscript\x3e\u003cscript\u003e"
+            )
+            assert enc == "utf8"
+            assert "<script>" not in body
+
 
 class TestUnicodeDecoding:
     def test_utf8(self):
