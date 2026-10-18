@@ -730,7 +730,7 @@ def _urlsplit(  # pylint: disable=too-many-locals,too-many-statements
         username, _, password = userinfo.partition(":")
         password = password if _ else None
 
-    if open_br_pos != -1:
+    if "[" in hostinfo:
         hostname, _, port = hostinfo.partition("[")[2].partition("]")
         port = port.partition(":")[2]
     else:
