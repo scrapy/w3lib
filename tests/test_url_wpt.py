@@ -161,8 +161,6 @@ _KNOWN_FAILURES: set[tuple[str | None, str]] = {
     (None, "file://loC𝐀𝐋𝐇𝐨𝐬𝐭/usr/bin"),
     (None, "file://\xad/p"),
     (None, "file://%C2%AD/p"),
-    (None, "wss:// !\"$%&'()*+,-.;<=>@[]^_`{|}~@host/"),
-    (None, "wss://joe: !\"$%&'()*+,-.:;<=>@[]^_`{|}~@host/"),
     (None, "#"),
     (None, "?"),
     (None, "https://\x00y"),

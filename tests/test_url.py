@@ -343,6 +343,11 @@ SAFE_URL_URL_CASES = (
     # brackets confined to the userinfo, leaving a plain host
     ("scheme://us[er]@example.com", "scheme://us%5Ber%5D@example.com"),
     ("scheme://us[er]@[::1]", "scheme://us%5Ber%5D@[::1]"),
+    ("https://us[er]@example.com", "https://us%5Ber%5D@example.com/"),
+    ("https://us[er]@example.com:8080/", "https://us%5Ber%5D@example.com:8080/"),
+    ("https://us[er]:pa[ss]@example.com", "https://us%5Ber%5D:pa%5Bss%5D@example.com/"),
+    ("https://[::1]@example.com", "https://%5B:%3A1%5D@example.com/"),
+    ("https://us[er]@[::1]:8080", "https://us%5Ber%5D@[::1]:8080/"),
     ("//us[er]@example.com", "//us%5Ber%5D@example.com"),
     ("//u[s@ex]ample.com", ValueError),
     # unmatched / broken bracket structures
