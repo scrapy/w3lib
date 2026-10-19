@@ -1579,6 +1579,36 @@ class TestIgnoredTagEnd:
     ],
     ids=["base", "meta"],
 )
+@pytest.mark.parametrize("ignored", ["script", "noscript"])
+class TestIgnoredTagStart:
+    @pytest.mark.parametrize(
+        "start", [">", " >", "\t>", "\n>", "\f>", "\r>", "/>", ' data-x="a">']
+    )
+    def test_start_tag(self, func, tag, found, missing, ignored, start):
+        text = f"<{ignored}{start}{tag}"
+        assert func(text) == missing
+        assert func(text.encode()) == missing
+
+    @pytest.mark.parametrize("rest", ["-x", ".x", "x", "ä", "\v"])
+    def test_longer_name(self, func, tag, found, missing, ignored, rest):
+        # Only HTML whitespace, "/" or ">" ends the tag name, so this is a
+        # different element, such as a custom one, and its content is parsed.
+        text = f"<{ignored}{rest}></{ignored}{rest}>{tag}"
+        assert func(text) == found
+        assert func(text.encode()) == found
+        text = f"<{ignored}{rest}>{tag}</{ignored}{rest}>"
+        assert func(text) == found
+        assert func(text.encode()) == found
+
+
+@pytest.mark.parametrize(
+    ("func", "tag", "found", "missing"),
+    [
+        (base, BASE_TAG, "http://example.org/found", "https://example.org/"),
+        (meta, META_TAG, (5, "http://example.org/found"), (None, None)),
+    ],
+    ids=["base", "meta"],
+)
 class TestMaxScan:
     def test_straddling_tag(self, func, tag, found, missing):
         # A tag that starts before the limit and ends after it is read whole,
