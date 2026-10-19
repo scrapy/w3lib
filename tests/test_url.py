@@ -281,6 +281,7 @@ SAFE_URL_URL_CASES = (
     # hexadecimal, octal or fewer than four, as browsers and getaddrinfo()
     # read it.
     ("http://0x7f.1/", "http://127.0.0.1/"),
+    ("http://user@0x7f.1/", "http://user@127.0.0.1/"),
     ("http://0177.0.0.1/", "http://127.0.0.1/"),
     ("http://127.1/", "http://127.0.0.1/"),
     ("http://2130706433/", "http://127.0.0.1/"),
