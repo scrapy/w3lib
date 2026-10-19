@@ -665,6 +665,38 @@ class TestGetBaseUrl:
             "https://example.com/"
         )
 
+    @pytest.mark.parametrize(
+        ("href", "baseurl"),
+        [
+            # only a fragment can be resolved against an opaque path
+            ("/a", "data:text/html,x"),
+            ("a", "mailto:user@example.org"),
+            # forbidden host code points in a non-special URL
+            ("foo://a b/", "https://example.org/"),
+            ("foo://a|b/", "https://example.org/"),
+            # a host-less non-special URL with userinfo or a port
+            ("foo://user@/a", "https://example.org/"),
+            ("foo://:80/a", "https://example.org/"),
+            ("https://example.com:80x/", "https://example.org/"),
+        ],
+    )
+    def test_get_base_url_unparsable_href(self, href: str, baseurl: str) -> None:
+        # A <base> whose URL cannot be parsed leaves the fallback in place, as
+        # an empty one does, and a later <base> is not read either.
+        assert get_base_url(f'<base href="{href}">', baseurl) == baseurl
+        assert (
+            get_base_url(
+                f'<base href="{href}"><base href="https://evil.example/">', baseurl
+            )
+            == baseurl
+        )
+
+    def test_get_base_url_fragment_against_opaque_path(self) -> None:
+        assert (
+            get_base_url('<base href="#a">', "mailto:user@example.org")
+            == "mailto:user@example.org#a"
+        )
+
     def test_get_base_url_empty_href(self):
         baseurl = "https://example.org/"
         # The first <base> with an href attribute sets the base URL, and an
@@ -959,6 +991,29 @@ class TestGetMetaRefresh:
             5,
             "https://example.com/a",
         )
+
+    @pytest.mark.parametrize(
+        ("url", "baseurl"),
+        [
+            # only a fragment can be resolved against an opaque path
+            ("/a", "data:text/html,x"),
+            ("a", "about:blank"),
+            # forbidden host code points in a non-special URL
+            ("foo://a b/", "https://example.org/"),
+            ("foo://a|b/", "https://example.org/"),
+            # a host-less non-special URL with userinfo or a port
+            ("foo://user@/a", "https://example.org/"),
+            ("foo://:80/a", "https://example.org/"),
+            ("https://example.com:80x/", "https://example.org/"),
+        ],
+    )
+    def test_get_meta_refresh_unparsable_url(self, url: str, baseurl: str) -> None:
+        # A refresh whose URL cannot be parsed is not followed, but a later
+        # one is.
+        body = f'<meta http-equiv="refresh" content="5;url={url}">'
+        assert get_meta_refresh(body, baseurl) == (None, None)
+        body += '<meta http-equiv="refresh" content="3;url=https://example.com/">'
+        assert get_meta_refresh(body, baseurl) == (3, "https://example.com/")
 
     def test_no_meta(self):
         assert get_meta_refresh("<html><body>no meta here</body></html>") == (
