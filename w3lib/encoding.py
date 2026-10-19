@@ -226,31 +226,44 @@ def _c18n_encoding(encoding: str) -> str:
     return encodings.aliases.aliases.get(normed, normed)
 
 
+_UNSUITABLE_TEXT_CODECS = frozenset(
+    {"idna", "punycode", "raw-unicode-escape", "undefined", "unicode-escape"}
+)
+
+
 @lru_cache(maxsize=256)
 def resolve_encoding(encoding_alias: str) -> str | None:
     """Return the encoding that `encoding_alias` maps to, or ``None``
-    if the encoding cannot be interpreted
+    if the encoding cannot be interpreted.
 
     >>> import w3lib.encoding
     >>> w3lib.encoding.resolve_encoding('latin1')
     'cp1252'
     >>> w3lib.encoding.resolve_encoding('gb_2312-80')
     'gb18030'
+    >>> w3lib.encoding.resolve_encoding('base64')
     >>>
 
     """
     c18n_encoding = _c18n_encoding(encoding_alias)
     translated = DEFAULT_ENCODING_TRANSLATION.get(c18n_encoding, c18n_encoding)
     try:
-        name = codecs.lookup(translated).name
+        codec = codecs.lookup(translated)
     except LookupError:
         return None
+    name = codec.name
     # UTF-7 has no label in the WHATWG Encoding Standard this module follows and
     # browsers dropped it. It re-spells "<", ">" and "&" using only ASCII bytes
     # (e.g. "+ADw-" for "<"), so a response that declares charset=utf-7 lets a
     # byte sequence a browser shows as inert text decode into live markup. Refuse
     # it so callers fall back to a safe default instead of the smuggled encoding.
     if name == "utf-7":
+        return None
+    # Not all registered codecs are useful to us at all.
+    if (
+        not codec._is_text_encoding  # pylint: disable=protected-access
+        or name in _UNSUITABLE_TEXT_CODECS
+    ):
         return None
     return name
 
