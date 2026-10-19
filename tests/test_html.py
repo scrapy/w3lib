@@ -445,14 +445,29 @@ class TestRemoveTagsWithContent:
         )
         assert time.process_time() - start < 2
 
-    @pytest.mark.xfail(reason="the close-tag scan restarts at every opening tag")
     def test_no_catastrophic_backtracking_unclosed_tags(self) -> None:
         # Many *complete* opening tags with no closing tag: the close-tag scan
-        # runs to end-of-input from every one of them.
-        evil = "<script>" * 10000  # increase when fixing
+        # must not run to end-of-input from every one of them.
+        evil = "<script>" * 200000
         start = time.process_time()
         assert remove_tags_with_content(evil, which_ones=("script",)) == evil
-        assert time.process_time() - start < 1
+        # a self-closing tag after them is still removed, and so is the
+        # element that the first opening tag forms with a closing tag
+        assert (
+            remove_tags_with_content(evil + "<script/>x", which_ones=("script",))
+            == evil + "x"
+        )
+        assert (
+            remove_tags_with_content(
+                evil + "<script>x</script>y", which_ones=("script",)
+            )
+            == "y"
+        )
+        # the same with a "<" in a quoted attribute value, which the plain
+        # reading of the opening tag cannot take in
+        evil = '<script a="<">' * 100000
+        assert remove_tags_with_content(evil, which_ones=("script",)) == evil
+        assert time.process_time() - start < 2
 
     def test_end_tag_with_whitespace_or_attrs(self):
         # Browsers end an element on the tag name followed by whitespace, "/"

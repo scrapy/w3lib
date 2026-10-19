@@ -364,7 +364,14 @@ def remove_tags(
 
 
 @functools.lru_cache(maxsize=256)
-def _build_remove_tags_pattern(tags_tuple: tuple[str, ...]) -> re.Pattern[str]:
+def _build_remove_tags_patterns(
+    tags_tuple: tuple[str, ...],
+) -> tuple[
+    re.Pattern[str], re.Pattern[str], re.Pattern[str], dict[str, re.Pattern[str]]
+]:
+    """Return the patterns of an element, of a start tag, of a self-closing
+    tag and, by lowercase tag name, of an end tag, for the tags in
+    *tags_tuple*."""
     tags = "|".join(re.escape(tag) for tag in tags_tuple)
     # The end tag closes on the tag name followed by whitespace, "/" or ">",
     # so `</script >`, `</script\n>`, `</script/>` and `</script foo>` all end
@@ -378,7 +385,53 @@ def _build_remove_tags_pattern(tags_tuple: tuple[str, ...]) -> re.Pattern[str]:
         |
         <(?P<tag2>{tags})(?=[\s/>])(?:{_TAG_BODY}/>|[^<>]*/>)
     """
-    return re.compile(pattern, re.IGNORECASE | re.DOTALL | re.VERBOSE | re.ASCII)
+    element = re.compile(pattern, re.IGNORECASE | re.DOTALL | re.VERBOSE | re.ASCII)
+    flags = re.IGNORECASE | re.ASCII
+    start_tag = re.compile(rf"<(?P<tag>{tags})(?=[\s/>])", flags)
+    self_closing_tag = re.compile(
+        rf"<(?:{tags})(?=[\s/>])(?:{_TAG_BODY}/>|[^<>]*/>)", flags
+    )
+    end_tags = {
+        tag.lower(): re.compile(rf"</{re.escape(tag)}(?=[\s/>])[^<>]*>", flags)
+        for tag in tags_tuple
+    }
+    return element, start_tag, self_closing_tag, end_tags
+
+
+def _remove_elements(utext: str, tags_tuple: tuple[str, ...]) -> str:
+    """Return *utext* without the elements of the tags in *tags_tuple*."""
+    element, start_tag, self_closing_tag, end_tags = _build_remove_tags_patterns(
+        tags_tuple
+    )
+    # The element pattern scans for an end tag from every start tag, to the
+    # end of the text when there is none, so a text of many unclosed tags
+    # would cost a scan of the rest of the text per tag. Once that scan has
+    # failed from a start tag and no end tag of its name follows, no later
+    # start tag of that name has one either, so from then on only their
+    # self-closing form, all that the element pattern could still match, is
+    # tried. The end tag found after a start tag that formed no element is
+    # kept, so that the start tags before it do not search for it again.
+    output: list[str] = []
+    last = pos = 0
+    next_end_tag: dict[str, re.Match[str] | None] = {}
+    while (start := start_tag.search(utext, pos)) is not None:
+        pos = start.start()
+        tag = start.group("tag").lower()
+        if tag in next_end_tag and next_end_tag[tag] is None:
+            match = self_closing_tag.match(utext, pos)
+        else:
+            match = element.match(utext, pos)
+            if match is None:
+                end_tag = next_end_tag.get(tag)
+                if end_tag is None or end_tag.start() < pos:
+                    next_end_tag[tag] = end_tags[tag].search(utext, pos)
+        if match is None:
+            pos += 1
+            continue
+        output.append(utext[last:pos])
+        last = pos = match.end()
+    output.append(utext[last:])
+    return "".join(output)
 
 
 def remove_tags_with_content(
@@ -402,8 +455,7 @@ def remove_tags_with_content(
     if not which_ones:
         return utext
 
-    pattern = _build_remove_tags_pattern(tuple(sorted(set(which_ones))))
-    return pattern.sub("", utext)
+    return _remove_elements(utext, tuple(sorted(set(which_ones))))
 
 
 def replace_escape_chars(
