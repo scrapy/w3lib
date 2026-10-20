@@ -406,10 +406,11 @@ def _remove_elements(utext: str, tags_tuple: tuple[str, ...]) -> str:
     # The element pattern scans for an end tag from every start tag, to the
     # end of the text when there is none, so a text of many unclosed tags
     # would cost a scan of the rest of the text per tag. Once that scan has
-    # failed from a start tag and no end tag of its name follows, no later
-    # start tag of that name has one either, so from then on only their
-    # self-closing form, all that the element pattern could still match, is
-    # tried. The end tag found after a start tag that formed no element is
+    # failed from a start tag (whether or not its self-closing form matched
+    # after it) and no end tag of its name follows, no later start tag of
+    # that name has one either, so from then on only their self-closing
+    # form, all that the element pattern could still match, is tried. The
+    # end tag found after a start tag that formed no element with one is
     # kept, so that the start tags before it do not search for it again.
     output: list[str] = []
     last = pos = 0
@@ -421,7 +422,7 @@ def _remove_elements(utext: str, tags_tuple: tuple[str, ...]) -> str:
             match = self_closing_tag.match(utext, pos)
         else:
             match = element.match(utext, pos)
-            if match is None:
+            if match is None or match.group("tag2") is not None:
                 end_tag = next_end_tag.get(tag)
                 if end_tag is None or end_tag.start() < pos:
                     next_end_tag[tag] = end_tags[tag].search(utext, pos)

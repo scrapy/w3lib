@@ -467,6 +467,9 @@ class TestRemoveTagsWithContent:
         # reading of the opening tag cannot take in
         evil = '<script a="<">' * 100000
         assert remove_tags_with_content(evil, which_ones=("script",)) == evil
+        # self-closing tags with no closing tag after them
+        evil = "<script/>" * 100000
+        assert remove_tags_with_content(evil, which_ones=("script",)) == ""
         assert time.process_time() - start < 2
 
     def test_end_tag_with_whitespace_or_attrs(self):
