@@ -289,6 +289,17 @@ SAFE_URL_URL_CASES = (
     ("http://1.2.3.08/", ValueError),
     ("http://foo.0x4/", ValueError),
     ("http://www.0xyz.example/", "http://www.0xyz.example/"),
+    # The host of a special URL is percent-decoded before IDNA and IPv4
+    # parsing, and must not then contain a forbidden domain code point.
+    ("http://%31%32%37%2e%30%2e%30%2e%31/", "http://127.0.0.1/"),
+    ("http://%30x7f.1/", "http://127.0.0.1/"),
+    ("http://ex%61mple.COM/", "http://example.com/"),
+    ("http://EX%41MPLE.com/", "http://example.com/"),
+    ("http://%E4%BE%8B%E3%81%88.jp/", "http://xn--r8jz45g.jp/"),
+    ("http://good.example%2F.evil.example/", ValueError),
+    ("http://evil.example%40good.example/", ValueError),
+    ("http://ho%25st/", ValueError),
+    ("http://a<b/", ValueError),
     ("http://[2a01:5cc0:1:2::4]", "http://[2a01:5cc0:1:2::4]/"),
     ("http://[2a01:5cc0:1:2:3:4]", ValueError),
     ("https://[2402:4e00:40:40::2:3b6]", "https://[2402:4e00:40:40::2:3b6]/"),
@@ -547,7 +558,6 @@ KNOWN_SAFE_URL_STRING_URL_ISSUES = {
     # are not escaped.
     "https://@\\example.com",  # Invalid URL
     "https://\x80.example",  # Invalid domain name (non-visible character)
-    "https://%80.example",  # Invalid domain name (non-visible character)
     "https://example.com:",  # Removes the :
     # Some path characters that RFC 2396 and RFC 3986 require escaping (%)
     # are not escaped.
@@ -1945,6 +1955,7 @@ class TestCanonicalizeUrl:
             "http://127.1/a",
             "http://2130706433/a",
             "http://0X7F000001/a",
+            "http://%31%32%37.0.0.1/a",
         ):
             assert canonicalize_url(url) == "http://127.0.0.1/a"
 
