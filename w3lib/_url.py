@@ -60,6 +60,8 @@ _NETLOC_DELIMS_RE = re.compile(r"[/?#@:\\]")
 _NETLOC_STRIP_CHARS = str.maketrans("", "", "@:#?")
 # https://url.spec.whatwg.org/#forbidden-host-code-point
 _FORBIDDEN_HOST_CODE_POINT_RE = re.compile(r"[\x00\t\n\r #/:<>?@[\\\]^|]")
+# https://url.spec.whatwg.org/#forbidden-domain-code-point
+_FORBIDDEN_DOMAIN_CODE_POINT_RE = re.compile(r"[\x00-\x20#%/:<>?@[\\\]^|\x7f]")
 _OPAQUE_HOST_SAFE_CHARS = RFC3986_SUB_DELIMS + b"%"
 
 
@@ -809,6 +811,26 @@ def _opaque_host(host: str) -> bytes:
     if _FORBIDDEN_HOST_CODE_POINT_RE.search(host):
         raise ValueError(f"{host!r} contains a forbidden host code point")
     return _quote(host.encode(), _OPAQUE_HOST_SAFE_CHARS)
+
+
+def _domain(host: str) -> str:
+    """Return *host*, the host of a special URL, percent-decoded and
+    lowercased, as the URL living standard does before IDNA and IPv4 parsing,
+    e.g. "%31%32%37.0.0.1" as "127.0.0.1"."""
+    if "%" not in host:
+        return host
+    return _unquote(host).decode("utf-8", "replace").lower()
+
+
+def _check_domain(host: str) -> None:
+    """Raise ValueError if *host*, the IDNA-encoded host of a special URL,
+    contains a forbidden domain code point.
+
+    A percent-decoded host can contain delimiters such as "/" or "@" that would
+    change where the authority ends if serialized as is.
+    """
+    if _FORBIDDEN_DOMAIN_CODE_POINT_RE.search(host):
+        raise ValueError(f"{host!r} contains a forbidden domain code point")
 
 
 # https://url.spec.whatwg.org/#ipv4-number-parser
