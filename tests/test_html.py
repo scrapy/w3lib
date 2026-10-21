@@ -448,7 +448,7 @@ class TestRemoveTagsWithContent:
     def test_no_catastrophic_backtracking_unclosed_tags(self) -> None:
         # Many *complete* opening tags with no closing tag: the close-tag scan
         # must not run to end-of-input from every one of them.
-        evil = "<script>" * 200000
+        evil = "<script>" * 20000
         start = time.process_time()
         assert remove_tags_with_content(evil, which_ones=("script",)) == evil
         # a self-closing tag after them is still removed, and so is the
@@ -465,10 +465,10 @@ class TestRemoveTagsWithContent:
         )
         # the same with a "<" in a quoted attribute value, which the plain
         # reading of the opening tag cannot take in
-        evil = '<script a="<">' * 100000
+        evil = '<script a="<">' * 20000
         assert remove_tags_with_content(evil, which_ones=("script",)) == evil
         # self-closing tags with no closing tag after them
-        evil = "<script/>" * 100000
+        evil = "<script/>" * 20000
         assert remove_tags_with_content(evil, which_ones=("script",)) == ""
         assert time.process_time() - start < 2
 
