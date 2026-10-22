@@ -1,4 +1,7 @@
+import base64
 from collections import OrderedDict
+
+import pytest
 
 from w3lib.http import (
     HeadersDictInput,
@@ -9,6 +12,38 @@ from w3lib.http import (
 
 
 class TestHttp:
+    @pytest.mark.parametrize(
+        ("username", "password", "encoding"),
+        [
+            ("somæusèr", "sømepäss", "latin1"),
+            ("пользователь", "пароль", "cp1251"),
+            ("例", "密碼", "utf8"),
+        ],
+    )
+    @pytest.mark.parametrize(
+        ("user_bytes", "password_bytes"),
+        [(False, False), (True, False), (False, True), (True, True)],
+    )
+    def test_basic_auth_header_encoded_inputs(
+        self, username, password, encoding, user_bytes, password_bytes
+    ):
+        encoded_user = username.encode(encoding)
+        encoded_password = password.encode(encoding)
+        expected = b"Basic " + base64.b64encode(encoded_user + b":" + encoded_password)
+        assert (
+            basic_auth_header(
+                encoded_user if user_bytes else username,
+                encoded_password if password_bytes else password,
+                encoding=encoding,
+            )
+            == expected
+        )
+
+    @pytest.mark.parametrize("username", [b"\xff", "somæusèr".encode()])
+    def test_basic_auth_header_keeps_preencoded_bytes(self, username):
+        expected = b"Basic " + base64.b64encode(username + b":password")
+        assert basic_auth_header(username, b"password") == expected
+
     def test_basic_auth_header(self):
         assert (
             basic_auth_header("someuser", "somepass")
