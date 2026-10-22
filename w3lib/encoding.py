@@ -4,18 +4,21 @@ Functions for handling encoding of web pages
 
 from __future__ import annotations
 
-import codecs
-import encodings
 import re
+import warnings
 from functools import lru_cache
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
-from w3lib._util import _COMMENT, iter_tag_attributes
+from frostwork.encoding import (
+    bom_encoding,
+    codec_name,
+    declared_encoding,
+    decode,
+    detect_encoding,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-
-    from w3lib._types import AnyUnicodeError
 
 # The value ends at whitespace, ";", "," or the end of the header. Comma is
 # not parameter syntax; stopping the value at "," approximates Fetch's
@@ -75,72 +78,6 @@ def http_content_type_encoding(content_type: str | None) -> str | None:
     return None
 
 
-# Scan for the first meta tag or xml declaration, and stop the search if a
-# body tag is encountered.
-# Comments are skipped by the WHATWG prescan before it looks for a meta
-# charset, so a declaration written inside one is not honored (and a commented
-# body tag does not stop the scan): they are consumed as an alternative of the
-# scan itself, as get_base_url() does, rather than stripped out beforehand, so
-# the text on either side of a comment is never spliced into a tag.
-# A meta tag is consumed with its quoted attribute values whole, so a quoted
-# ">" does not end it and a quoted "<!--" does not start a comment.
-# Each alternative consumes every character at most once, so the scan stays
-# linear.
-_BODY_SCAN_RE = re.compile(
-    rf"""
-      {_COMMENT}  # comment
-    | <\s*meta(?=[\s/])(?P<meta>(?:[^<>=]|=\s*(?:"[^"]*"|'[^']*')?)*)  # meta tag
-    | <\?xml\s(?P<xml>[^<>]*)  # XML declaration
-    | <\s*(?P<body>body)  # start of the body tag
-    """,
-    re.IGNORECASE | re.DOTALL | re.VERBOSE,
-)
-# The pragma attribute, however spelled (e.g. #155 has httpequiv="ContentType").
-_HTTP_EQUIV_NAMES = frozenset({"http-equiv", "http_equiv", "httpequiv"})
-# Its value must name the content-type pragma, also however spelled.
-_CONTENT_TYPE_PRAGMA_RE = re.compile(r"content[-_ ]?type", re.IGNORECASE)
-# A "charset=" wherever it occurs in a content attribute value, as in the
-# WHATWG "extract a character encoding from a meta element" algorithm.
-_CONTENT_CHARSET_RE = re.compile(
-    r"""charset\s*=\s*["']?\s*(?P<label>[\w-]+)""", re.IGNORECASE
-)
-
-
-def _leading_label(value: str) -> str | None:
-    match = _ENCODING_LABEL_RE.match(value.lstrip())
-    return match.group() if match else None
-
-
-def _meta_charset_label(attrs: str) -> str | None:
-    """Return the encoding label the meta tag with attribute text `attrs`
-    declares, or ``None``.
-
-    The WHATWG prescan only honors a real charset attribute, or a "charset="
-    inside a content attribute value when the tag also carries the
-    http-equiv=content-type pragma. Both the name and the value of that pragma
-    are matched loosely.
-    """
-    has_pragma = False
-    content_label = None
-    for name, value in iter_tag_attributes(attrs):
-        if name == "charset":
-            if label := _leading_label(value):
-                return label
-        elif name == "content":
-            if content_label is None and (match := _CONTENT_CHARSET_RE.search(value)):
-                content_label = match.group("label")
-        elif name in _HTTP_EQUIV_NAMES and _CONTENT_TYPE_PRAGMA_RE.search(value):
-            has_pragma = True
-    return content_label if has_pragma else None
-
-
-def _xml_encoding_label(attrs: str) -> str | None:
-    for name, value in iter_tag_attributes(attrs):
-        if name == "encoding" and (label := _leading_label(value)):
-            return label
-    return None
-
-
 def html_body_declared_encoding(html_body_str: str | bytes) -> str | None:
     '''Return the encoding specified in meta tags in the html body,
     or ``None`` if no suitable encoding was found
@@ -163,37 +100,13 @@ def html_body_declared_encoding(html_body_str: str | bytes) -> str | None:
 
     '''
 
-    # html5 suggests the first 1024 bytes are sufficient, we allow for more
-    chunk = html_body_str[:4096]
-    if isinstance(chunk, bytes):
-        # A declaration is ASCII markup and an encoding label is ASCII text.
-        chunk = chunk.decode("latin-1")
-    for match in _BODY_SCAN_RE.finditer(chunk):
-        if match.group("body") is not None:
-            break
-        if (attrs := match.group("meta")) is not None:
-            # A meta tag can only declare an encoding by spelling "charset",
-            # as an attribute name or inside a content attribute value, so the
-            # tags that cannot need no attribute walk.
-            if "charset" not in attrs.lower():
-                continue
-            label = _meta_charset_label(attrs)
-        elif match.group("xml") is not None:
-            label = _xml_encoding_label(match.group("xml"))
-        else:  # a comment
-            continue
-        if label is not None:
-            return resolve_encoding(label)
-
-    return None
+    if isinstance(html_body_str, str):
+        html_body_str = html_body_str.encode("utf-8", "replace")
+    name = declared_encoding(html_body_str)
+    return None if name is None else codec_name(name)
 
 
-# Default encoding translation
-# this maps cannonicalized encodings to target encodings
-# see http://www.whatwg.org/specs/web-apps/current-work/multipage/parsing.html#character-encodings-0
-# in addition, gb18030 supercedes gb2312 & gbk
-# the keys are converted using _c18n_encoding and in sorted order
-DEFAULT_ENCODING_TRANSLATION = {
+_DEPRECATED_ENCODING_TRANSLATION = {
     "ascii": "cp1252",
     "big5": "big5hkscs",
     "euc_kr": "cp949",
@@ -216,66 +129,35 @@ DEFAULT_ENCODING_TRANSLATION = {
 }
 
 
-def _c18n_encoding(encoding: str) -> str:
-    """Canonicalize an encoding name
-
-    This performs normalization and translates aliases using python's
-    encoding aliases
-    """
-    normed = encodings.normalize_encoding(encoding).lower()
-    return encodings.aliases.aliases.get(normed, normed)
-
-
-_UNSUITABLE_TEXT_CODECS = frozenset(
-    {"idna", "punycode", "raw-unicode-escape", "undefined", "unicode-escape"}
-)
+def __getattr__(name: str) -> Any:
+    if name == "DEFAULT_ENCODING_TRANSLATION":
+        warnings.warn(
+            "w3lib.encoding.DEFAULT_ENCODING_TRANSLATION is deprecated.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return _DEPRECATED_ENCODING_TRANSLATION
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 @lru_cache(maxsize=256)
 def resolve_encoding(encoding_alias: str) -> str | None:
-    """Return the encoding that `encoding_alias` maps to, or ``None``
-    if the encoding cannot be interpreted.
+    """Return the Python codec name of the encoding of the `Encoding
+    Standard`_ that `encoding_alias` maps to, or ``None`` if there is none,
+    e.g. for ``utf-32``.
+
+    .. _Encoding Standard: https://encoding.spec.whatwg.org/
 
     >>> import w3lib.encoding
     >>> w3lib.encoding.resolve_encoding('latin1')
     'cp1252'
     >>> w3lib.encoding.resolve_encoding('gb_2312-80')
-    'gb18030'
+    'gbk'
     >>> w3lib.encoding.resolve_encoding('base64')
     >>>
 
     """
-    c18n_encoding = _c18n_encoding(encoding_alias)
-    translated = DEFAULT_ENCODING_TRANSLATION.get(c18n_encoding, c18n_encoding)
-    try:
-        codec = codecs.lookup(translated)
-    except LookupError:
-        return None
-    name = codec.name
-    # UTF-7 has no label in the WHATWG Encoding Standard this module follows and
-    # browsers dropped it. It re-spells "<", ">" and "&" using only ASCII bytes
-    # (e.g. "+ADw-" for "<"), so a response that declares charset=utf-7 lets a
-    # byte sequence a browser shows as inert text decode into live markup. Refuse
-    # it so callers fall back to a safe default instead of the smuggled encoding.
-    if name == "utf-7":
-        return None
-    # Not all registered codecs are useful to us at all.
-    if (
-        not codec._is_text_encoding  # pylint: disable=protected-access
-        or name in _UNSUITABLE_TEXT_CODECS
-    ):
-        return None
-    return name
-
-
-_BOM_TABLE = [
-    (codecs.BOM_UTF32_BE, "utf-32-be"),
-    (codecs.BOM_UTF32_LE, "utf-32-le"),
-    (codecs.BOM_UTF16_BE, "utf-16-be"),
-    (codecs.BOM_UTF16_LE, "utf-16-le"),
-    (codecs.BOM_UTF8, "utf-8"),
-]
-_FIRST_CHARS = {c[0] for (c, _) in _BOM_TABLE}
+    return codec_name(encoding_alias)
 
 
 def read_bom(data: bytes) -> tuple[None, None] | tuple[str, bytes]:
@@ -284,96 +166,61 @@ def read_bom(data: bytes) -> tuple[None, None] | tuple[str, bytes]:
 
     If no BOM can be detected, ``(None, None)`` is returned.
 
+    As in browsers, a UTF-32LE BOM reads as a UTF-16LE one, and a UTF-16 body
+    that starts with an XML declaration and no BOM gives an empty BOM.
+
     >>> import w3lib.encoding
     >>> w3lib.encoding.read_bom(b'\xfe\xff\x6c\x34')
     ('utf-16-be', b'\xfe\xff')
     >>> w3lib.encoding.read_bom(b'\xff\xfe\x34\x6c')
     ('utf-16-le', b'\xff\xfe')
-    >>> w3lib.encoding.read_bom(b'\x00\x00\xfe\xff\x00\x00\x6c\x34')
-    ('utf-32-be', b'\x00\x00\xfe\xff')
-    >>> w3lib.encoding.read_bom(b'\xff\xfe\x00\x00\x34\x6c\x00\x00')
-    ('utf-32-le', b'\xff\xfe\x00\x00')
     >>> w3lib.encoding.read_bom(b'\x01\x02\x03\x04')
     (None, None)
     >>>
 
     """
-
-    # common case is no BOM, so this is fast
-    if data and data[0] in _FIRST_CHARS:
-        for bom, encoding in _BOM_TABLE:
-            if data.startswith(bom):
-                return encoding, bom
-    return None, None
-
-
-def _gb18030_replace(exc: UnicodeError) -> tuple[str, int]:
-    error = cast("AnyUnicodeError", exc)
-    if error.object[error.start] == 0x80:
-        return "\u20ac", error.start + 1
-    return "\ufffd", error.end
-
-
-# The GB18030 decoder of the Encoding Standard decodes a lead 0x80 as the euro
-# sign, for GBK compatibility, while the Python codec rejects it.
-# https://encoding.spec.whatwg.org/#gb18030-decoder
-codecs.register_error("w3lib_gb18030_replace", _gb18030_replace)
+    bom = bom_encoding(data)
+    if bom is None:
+        return None, None
+    name, length = bom
+    return cast("str", codec_name(name)), data[:length]
 
 
 def to_unicode(data_str: bytes, encoding: str) -> str:
     r"""Convert a str object to unicode using the encoding given
 
+    If *encoding* names an encoding of the `Encoding Standard`_, *data_str* is
+    decoded the way browsers decode it, e.g. ``utf-16`` is UTF-16LE.
+
     Characters that cannot be converted will be converted to ``\ufffd`` (the
     unicode replacement character).
+
+    .. _Encoding Standard: https://encoding.spec.whatwg.org/
     """
-    # Every name that resolves to gb18030 contains "18030", so the substring
-    # check keeps the codec lookup out of the common case.
-    errors = (
-        "w3lib_gb18030_replace"
-        if "18030" in encoding and codecs.lookup(encoding).name == "gb18030"
-        else "replace"
-    )
-    return data_str.decode(encoding, errors)
+    try:
+        return decode(data_str, encoding)
+    except LookupError:
+        return data_str.decode(encoding, "replace")
 
 
 def html_to_unicode(
     content_type_header: str | None,
     html_body_str: bytes,
-    default_encoding: str = "utf8",
+    default_encoding: str | None = None,
     auto_detect_fun: Callable[[bytes], str | None] | None = None,
 ) -> tuple[str, str]:
     r'''Convert raw html bytes to unicode
 
-    This attempts to make a reasonable guess at the content encoding of the
-    html body, following a similar process to a web browser.
-
-    It will try in order:
+    This finds the encoding of the html body the way a web browser does,
+    trying in order:
 
     * BOM (byte-order mark)
     * http content type header
     * meta or xml tag declarations
-    * auto-detection, if the `auto_detect_fun` keyword argument is not ``None``
-    * default encoding in keyword arg (which defaults to utf8)
+    * UTF-8, if the body is valid UTF-8
+    * the encoding guessed from the bytes of the body, as Firefox does
 
-    If an encoding other than the auto-detected or default encoding is used,
-    overrides will be applied, converting some character encodings to more
-    suitable alternatives.
-
-    If a BOM is found matching the encoding, it will be stripped.
-
-    The `auto_detect_fun` argument can be used to pass a function that will
-    sniff the encoding of the text. This function must take the raw text as an
-    argument and return the name of an encoding that python can process, or
-    None.  To use chardet, for example, you can define the function as::
-
-        auto_detect_fun=lambda x: chardet.detect(x).get('encoding')
-
-    or to use UnicodeDammit (shipped with the BeautifulSoup library)::
-
-        auto_detect_fun=lambda x: UnicodeDammit(x).originalEncoding
-
-    If the locale of the website or user language preference is known, then a
-    better default encoding can be supplied.
+    If a BOM is found, it will be stripped.
 
     If `content_type_header` is not present, ``None`` can be passed signifying
     that the header was not present.
@@ -403,17 +250,24 @@ def html_to_unicode(
     >>>
 
     '''
-    bom_enc, bom = read_bom(html_body_str)
-    if bom_enc is not None and bom is not None:
-        return bom_enc, to_unicode(html_body_str[len(bom) :], bom_enc)
-
+    bom = bom_encoding(html_body_str)
+    if bom is not None:
+        name, length = bom
+        return cast("str", codec_name(name)), decode(html_body_str[length:], name)
     enc = http_content_type_encoding(content_type_header)
+    if auto_detect_fun is None and default_encoding is None:
+        name = detect_encoding(html_body_str, enc)
+        return cast("str", codec_name(name)), decode(html_body_str, name)
+    warnings.warn(
+        "The default_encoding and auto_detect_fun parameters of "
+        "w3lib.encoding.html_to_unicode() are deprecated.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     if enc is None:
         enc = html_body_declared_encoding(html_body_str)
     if enc is None and auto_detect_fun is not None:
         enc = auto_detect_fun(html_body_str)
     if enc is None:
-        enc = default_encoding
-    elif enc in {"utf-16", "utf-32"}:
-        enc += "-be"
+        enc = default_encoding or "utf8"
     return enc, to_unicode(html_body_str, enc)

@@ -28,7 +28,6 @@ jobs:
                     - '3.13'
                     - '3.14'
                     - '3.15'
-                    - pypy3.11
                 os: [windows-latest, macos-latest, ubuntu-latest]
 
         steps:

@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 
+import w3lib.encoding
 from w3lib.encoding import (
     html_body_declared_encoding,
     html_to_unicode,
@@ -26,7 +27,6 @@ class TestRequestEncoding:
         b"""<meta http-equiv=Content-Type content="text/html" charset='utf-8'>""",
         b"""<meta http-equiv="Content-Type" content\t=\n"text/html" charset\t="utf-8">""",
         b"""<meta content="text/html; charset=utf-8"\n http-equiv='Content-Type'>""",
-        b""" bad html still supported < meta http-equiv='Content-Type'\n content="text/html; charset=utf-8">""",
         # html5 meta charset
         b"""<meta charset="utf-8">""",
         b"""<meta charset =\n"utf-8">""",
@@ -40,14 +40,24 @@ class TestRequestEncoding:
         # BOM + water character encoded
         utf16be = b"\xfe\xff\x6c\x34"
         utf16le = b"\xff\xfe\x34\x6c"
-        utf32be = b"\x00\x00\xfe\xff\x00\x00\x6c\x34"
-        utf32le = b"\xff\xfe\x00\x00\x34\x6c\x00\x00"
-        for string in (utf16be, utf16le, utf32be, utf32le):
+        for string in (utf16be, utf16le):
             bom_encoding, bom = read_bom(string)
             assert bom_encoding is not None
             assert bom is not None
             decoded = string[len(bom) :].decode(bom_encoding)
             assert water_unicode == decoded
+        # UTF-32 is not a web encoding, and the UTF-32LE BOM starts with the
+        # UTF-16LE one
+        assert read_bom(b"\x00\x00\xfe\xff\x00\x00\x6c\x34") == (None, None)
+        assert read_bom(b"\xff\xfe\x00\x00\x34\x6c\x00\x00") == (
+            "utf-16-le",
+            b"\xff\xfe",
+        )
+        # UTF-16 XML without BOM
+        assert read_bom('<?xml version="1.0"?>'.encode("utf-16-le")) == (
+            "utf-16-le",
+            b"",
+        )
         # Body without BOM
         enc, bom = read_bom(b"foo")
         assert enc is None
@@ -158,23 +168,22 @@ class TestRequestEncoding:
             html_body_declared_encoding(
                 b"""
             <head></head><body>
-            this isn't searched
             <meta charset="utf-8">
         """
-            )
-            is None
-        )
-        assert (
-            html_body_declared_encoding(
-                b"""<meta http-equiv="Fake-Content-Type-Header" content="text/html; charset=utf-8">"""
             )
             == "utf-8"
         )
         assert (
             html_body_declared_encoding(
+                b"""<meta http-equiv="Fake-Content-Type-Header" content="text/html; charset=utf-8">"""
+            )
+            is None
+        )
+        assert (
+            html_body_declared_encoding(
                 b"""<meta httpequiv="ContentType" content="text/html; charset=gbk" />"""
             )
-            == "gb18030"
+            is None
         )
         # a charset declared inside a comment is not honored, and a commented
         # body tag does not stop the scan
@@ -202,13 +211,13 @@ class TestRequestEncoding:
                 b'<meta property="og:description" content="How to set charset=windows-1251 on your site"><meta charset="utf-8">',
                 "utf-8",
             ),
-            # a charset inside a content attribute needs the http-equiv
-            # pragma, however the pragma is spelled, but with a value
+            # a charset inside a content attribute needs the
+            # http-equiv="content-type" pragma
             (b'<meta content="text/html; charset=gbk">', None),
             (b'<meta http-equiv content="text/html; charset=gbk">', None),
             (
                 b'<meta http_equiv="content-type" content="text/html; charset=gbk">',
-                "gb18030",
+                None,
             ),
             # another pragma is not the content-type one, however its own
             # content value spells "charset="
@@ -225,11 +234,11 @@ class TestRequestEncoding:
             # charset attribute does not hide it
             (
                 b'<meta http-equiv="content-type" content="text/html; charset=gbk" content="text/html; charset=big5">',
-                "gb18030",
+                "gbk",
             ),
             (
                 b'<meta http-equiv="content-type" charset="" content="text/html; charset=gbk">',
-                "gb18030",
+                "gbk",
             ),
             # a charset attribute wins over a content one, wherever it is
             (
@@ -284,17 +293,16 @@ class TestRequestEncoding:
             html_body_declared_encoding(
                 """
             <head></head><body>
-            this isn't searched
             <meta charset="utf-8">
         """
             )
-            is None
+            == "utf-8"
         )
         assert (
             html_body_declared_encoding(
                 """<meta http-equiv="Fake-Content-Type-Header" content="text/html; charset=utf-8">"""
             )
-            == "utf-8"
+            is None
         )
 
 
@@ -302,7 +310,7 @@ class TestCodecsEncoding:
     def test_resolve_encoding(self):
         assert resolve_encoding("latin1") == "cp1252"
         assert resolve_encoding(" Latin-1") == "cp1252"
-        assert resolve_encoding("gb_2312-80") == "gb18030"
+        assert resolve_encoding("gb_2312-80") == "gbk"
         assert resolve_encoding("unknown encoding") is None
         # utf-7 is not in the Encoding Standard and enables charset-smuggling,
         # so it must not resolve, however it is spelled.
@@ -353,7 +361,7 @@ class TestCodecsEncoding:
             (None, f'<?xml version="1.0" encoding="{alias}"?><a/>'.encode()),
         ):
             enc, text = html_to_unicode(content_type, body)
-            assert enc == "utf8"
+            assert enc == "utf-8"
             assert text.endswith(("abc", "<a/>"))
 
     def test_resolve_encoding_escape_codec_not_smuggled(self) -> None:
@@ -362,8 +370,12 @@ class TestCodecsEncoding:
             enc, body = html_to_unicode(
                 f"text/html; charset={alias}", rb"\x3cscript\x3e\u003cscript\u003e"
             )
-            assert enc == "utf8"
+            assert enc == "utf-8"
             assert "<script>" not in body
+
+    def test_default_encoding_translation(self) -> None:
+        with pytest.warns(DeprecationWarning, match="DEFAULT_ENCODING_TRANSLATION"):
+            assert w3lib.encoding.DEFAULT_ENCODING_TRANSLATION["latin_1"] == "cp1252"
 
 
 class TestUnicodeDecoding:
@@ -413,19 +425,14 @@ class TestHtmlConversion:
         content_type: str | None,
         body: bytes,
         expected_encoding: str,
-        expected_unicode: str | list[str],
+        expected_unicode: str,
     ) -> None:
         assert not isinstance(body, str)
         encoding, body_unicode = html_to_unicode(ct(content_type), body)
         assert isinstance(body_unicode, str)
         assert norm_encoding(encoding) == norm_encoding(expected_encoding)
 
-        if isinstance(expected_unicode, str):
-            assert body_unicode == expected_unicode
-        else:
-            assert body_unicode in expected_unicode, (
-                f"{body_unicode} is not in {expected_unicode}"
-            )
+        assert body_unicode == expected_unicode
 
     def test_content_type_and_conversion(self):
         """Test content type header is interpreted and text converted as
@@ -436,8 +443,8 @@ class TestHtmlConversion:
         self._assert_encoding("iso-8859-1", b"\xa3", "cp1252", "\xa3")
         self._assert_encoding("", b"\xc2\xa3", "utf-8", "\xa3")
         self._assert_encoding("none", b"\xc2\xa3", "utf-8", "\xa3")
-        self._assert_encoding("gb2312", b"\xa8D", "gb18030", "\u2015")
-        self._assert_encoding("gbk", b"\xa8D", "gb18030", "\u2015")
+        self._assert_encoding("gb2312", b"\xa8D", "gbk", "\u2015")
+        self._assert_encoding("gbk", b"\xa8D", "gbk", "\u2015")
         self._assert_encoding("big5", b"\xf9\xda", "big5hkscs", "\u6052")
 
     def test_invalid_utf8_encoded_body_with_valid_utf8_BOM(self):
@@ -450,24 +457,11 @@ class TestHtmlConversion:
         )
 
     def test_utf8_unexpected_end_of_data_with_valid_utf8_BOM(self):
-        # Python implementations handle unexpected end of UTF8 data
-        # differently (see https://bugs.pypy.org/issue1536).
-        # It is hard to fix this for PyPy in w3lib, so the test
-        # is permissive.
-
         # unlike scrapy, the BOM is stripped
         self._assert_encoding(
-            "utf-8",
-            b"\xef\xbb\xbfWORD\xe3\xab",
-            "utf-8",
-            ["WORD\ufffd\ufffd", "WORD\ufffd"],
+            "utf-8", b"\xef\xbb\xbfWORD\xe3\xab", "utf-8", "WORD\ufffd"
         )
-        self._assert_encoding(
-            None,
-            b"\xef\xbb\xbfWORD\xe3\xab",
-            "utf-8",
-            ["WORD\ufffd\ufffd", "WORD\ufffd"],
-        )
+        self._assert_encoding(None, b"\xef\xbb\xbfWORD\xe3\xab", "utf-8", "WORD\ufffd")
 
     def test_replace_wrong_encoding(self):
         """Test invalid chars are replaced properly"""
@@ -519,24 +513,17 @@ class TestHtmlConversion:
         self._assert_encoding("utf-16", bom_le_str, "utf-16-le", "hi")
         self._assert_encoding(None, bom_le_str, "utf-16-le", "hi")
 
-        bom_be_str = codecs.BOM_UTF32_BE + "hi".encode("utf-32-be")
-        self._assert_encoding("utf-32", bom_be_str, "utf-32-be", "hi")
-        self._assert_encoding(None, bom_be_str, "utf-32-be", "hi")
-
+        # UTF-32 is not a web encoding, and the UTF-32LE BOM starts with the
+        # UTF-16LE one
         bom_le_str = codecs.BOM_UTF32_LE + "hi".encode("utf-32-le")
-        self._assert_encoding("utf-32", bom_le_str, "utf-32-le", "hi")
-        self._assert_encoding(None, bom_le_str, "utf-32-le", "hi")
+        self._assert_encoding("utf-32", bom_le_str, "utf-16-le", "\x00h\x00i\x00")
 
-        # if there is no BOM,  big endian should be chosen
-        self._assert_encoding("utf-16", "hi".encode("utf-16-be"), "utf-16-be", "hi")
-        self._assert_encoding("utf-32", "hi".encode("utf-32-be"), "utf-32-be", "hi")
+        # if there is no BOM, utf-16 is little endian
+        self._assert_encoding("utf-16", "hi".encode("utf-16-le"), "utf-16-le", "hi")
 
-        # the same label from the body or from auto-detection decodes the same
-        # way as from the header
+        # a utf-16 declaration in the body could only be read as ASCII
         encoding, _ = html_to_unicode(None, b'<meta charset="utf-16">')
-        assert encoding == "utf-16-be"
-        encoding, _ = html_to_unicode(None, b"", auto_detect_fun=lambda x: "utf-16")
-        assert encoding == "utf-16-be"
+        assert encoding == "utf-8"
 
     def test_python_crash(self):
         random.seed(42)
@@ -550,7 +537,7 @@ class TestHtmlConversion:
 
     def test_html_encoding(self):
         # extracting the encoding from raw html is tested elsewhere
-        body = b"""blah blah < meta   http-equiv="Content-Type"
+        body = b"""blah blah <meta   http-equiv="Content-Type"
             content="text/html; charset=iso-8859-1"> other stuff"""
         self._assert_encoding_detected(None, "cp1252", body)
 
@@ -560,24 +547,52 @@ class TestHtmlConversion:
         self._assert_encoding_detected(None, "utf-8", codecs.BOM_UTF8 + body)
 
     def test_autodetect(self):
+        # an undeclared body is UTF-8 if valid, else guessed from its bytes
+        self._assert_encoding_detected(None, "utf-8", "日本語のテキスト".encode())
+        self._assert_encoding(
+            None,
+            "日本語のテキストです。".encode("shift_jis"),
+            "cp932",
+            "日本語のテキストです。",
+        )
+
+    def test_whatwg_decoders(self):
+        # EUC-JP as browsers decode it, which Python's codec does not
+        self._assert_encoding("euc-jp", b"\xa1\xc1 \xad\xa1", "euc_jp", "～ ①")
+        self._assert_encoding(
+            "x-user-defined", b"caf\xe9 ok", "x-user-defined", "caf\uf7e9 ok"
+        )
+        # in the body, x-user-defined declares windows-1252
+        self._assert_encoding(
+            None,
+            b"<meta charset=x-user-defined>caf\xe9 ok",
+            "cp1252",
+            "<meta charset=x-user-defined>caf\xe9 ok",
+        )
+        self._assert_encoding("iso-2022-kr", b"caf\xe9 ok", "replacement", "\ufffd")
+
+    def test_deprecated_autodetect(self):
         def asciif(x):
             return "ascii"
 
         body = b"""<meta charset="utf-8">"""
-        # body encoding takes precedence
-        self._assert_encoding_detected(None, "utf-8", body, auto_detect_fun=asciif)
-        # if no other encoding, the auto detect encoding is used.
-        self._assert_encoding_detected(
-            None, "ascii", b"no encoding info", auto_detect_fun=asciif
-        )
+        with pytest.warns(DeprecationWarning, match="auto_detect_fun"):
+            # body encoding takes precedence
+            self._assert_encoding_detected(None, "utf-8", body, auto_detect_fun=asciif)
+        with pytest.warns(DeprecationWarning, match="auto_detect_fun"):
+            # if no other encoding, the auto detect encoding is used.
+            self._assert_encoding_detected(
+                None, "ascii", b"no encoding info", auto_detect_fun=asciif
+            )
 
     def test_default_encoding(self):
         # if no other method available, the default encoding of utf-8 is used
         self._assert_encoding_detected(None, "utf-8", b"no encoding info")
         # this can be overridden
-        self._assert_encoding_detected(
-            None, "ascii", b"no encoding info", default_encoding="ascii"
-        )
+        with pytest.warns(DeprecationWarning, match="default_encoding"):
+            self._assert_encoding_detected(
+                None, "ascii", b"no encoding info", default_encoding="ascii"
+            )
 
     def test_empty_body(self):
         # if no other method available, the default encoding of utf-8 is used
