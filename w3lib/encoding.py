@@ -203,6 +203,20 @@ def to_unicode(data_str: bytes, encoding: str) -> str:
         return data_str.decode(encoding, "replace")
 
 
+def html_encoding(content_type_header: str | None, html_body_str: bytes) -> str:
+    """Return the encoding :func:`html_to_unicode` would decode
+    *html_body_str* with, without decoding it.
+
+    .. versionadded:: VERSION
+
+    >>> import w3lib.encoding
+    >>> w3lib.encoding.html_encoding(None, b'<meta charset="latin1">')
+    'cp1252'
+    """
+    enc = http_content_type_encoding(content_type_header)
+    return cast("str", codec_name(detect_encoding(html_body_str, enc)))
+
+
 def html_to_unicode(
     content_type_header: str | None,
     html_body_str: bytes,

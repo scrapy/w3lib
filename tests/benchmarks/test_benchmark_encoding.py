@@ -11,6 +11,7 @@ import pytest
 from tests.benchmarks import BENCHMARK_MARKS, CasesMapType
 from w3lib.encoding import (
     html_body_declared_encoding,
+    html_encoding,
     html_to_unicode,
     http_content_type_encoding,
     read_bom,
@@ -193,6 +194,7 @@ BENCHMARK_CASES: CasesMapType = {
         ((None, b""), {}),
     ],
 }
+BENCHMARK_CASES[html_encoding] = BENCHMARK_CASES[html_to_unicode]
 
 
 @pytest.mark.parametrize("func", BENCHMARK_CASES)
@@ -248,11 +250,15 @@ PAGE_CASES = {
 }
 
 
+@pytest.mark.parametrize("func", [html_to_unicode, html_encoding])
 @pytest.mark.parametrize(("content_type", "body"), PAGE_CASES.values(), ids=PAGE_CASES)
-def test_benchmark_html_to_unicode_page(
-    benchmark: BenchmarkFixture, content_type: str | None, body: bytes
+def test_benchmark_page(
+    benchmark: BenchmarkFixture,
+    func: Callable[..., Any],
+    content_type: str | None,
+    body: bytes,
 ) -> None:
-    benchmark(html_to_unicode, content_type, body)
+    benchmark(func, content_type, body)
 
 
 def test_benchmark_import(benchmark: BenchmarkFixture) -> None:

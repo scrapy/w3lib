@@ -10,6 +10,7 @@ import pytest
 import w3lib.encoding
 from w3lib.encoding import (
     html_body_declared_encoding,
+    html_encoding,
     html_to_unicode,
     http_content_type_encoding,
     read_bom,
@@ -431,6 +432,7 @@ class TestHtmlConversion:
         encoding, body_unicode = html_to_unicode(ct(content_type), body)
         assert isinstance(body_unicode, str)
         assert norm_encoding(encoding) == norm_encoding(expected_encoding)
+        assert html_encoding(ct(content_type), body) == encoding
 
         assert body_unicode == expected_unicode
 
@@ -487,6 +489,8 @@ class TestHtmlConversion:
         encoding, body_unicode = html_to_unicode(ct(content_type), body, **kwargs)
         assert isinstance(body_unicode, str)
         assert norm_encoding(encoding) == norm_encoding(expected_encoding)
+        if not kwargs:
+            assert html_encoding(ct(content_type), body) == encoding
 
     def test_BOM(self):
         # utf-16 cases already tested, as is the BOM detection function
