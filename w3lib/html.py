@@ -60,7 +60,8 @@ _tag_re = re.compile(
 
 def _ignored_tags_source(ignore_tags: tuple[str, ...]) -> str:
     tags = "|".join(re.escape(tag) for tag in ignore_tags)
-    # Only HTML whitespace, "/" or ">" after the name can close the element.
+    # Only HTML whitespace, "/" or ">" after the name can open or close the
+    # element; anything else continues the name, as in "<script-loader>".
     # Unlike _TAG_BODY, the end-tag body consumes "<" as attribute text. Quoted
     # values also consume ">", and an unfinished value runs to the end of input.
     space = r"[\t\n\f\r ]"
@@ -72,7 +73,7 @@ def _ignored_tags_source(ignore_tags: tuple[str, ...]) -> str:
     # split or read again as the scanner advances through a long end tag.
     end_body = rf"(?:{space}|/|{attribute})*+(?:>|$)"
     return (
-        rf"<(?P<t>{tags})\b{_TAG_BODY}>[^<]*"
+        rf"<(?P<t>{tags})(?=[\t\n\f\r />]){_TAG_BODY}>[^<]*"
         r"(?:<(?!/(?P=t)[\t\n\f\r />])[^<]*)*"
         rf"(?:</(?P=t){end_body}|$)"
     )
@@ -86,8 +87,8 @@ _base_bytes_re = re.compile(rb"<base", re.IGNORECASE)
 # match; unterminated regions swallow the rest of the document, as a browser
 # does. Their content is consumed in runs of characters that cannot start the
 # closing delimiter, so that the large inline scripts of real pages cost a
-# tight loop per run rather than a match attempt per character. The end tag
-# closes on the tag name followed by HTML whitespace, "/" or ">".
+# tight loop per run rather than a match attempt per character. The start and
+# end tags need the tag name followed by HTML whitespace, "/" or ">".
 #
 # The text of a <base> tag after its name is captured whole and its attributes
 # are then read one by one, as for <meta>.
@@ -140,8 +141,8 @@ def _meta_scan_source(ignore_tags: tuple[str, ...]) -> str:
     # swallow the rest of the document, as a browser does. Their content is
     # consumed in runs of characters that cannot start the closing delimiter,
     # so that the large inline scripts of real pages cost a tight loop per run
-    # rather than a match attempt per character. The end tag closes on the tag
-    # name followed by HTML whitespace, "/" or ">".
+    # rather than a match attempt per character. The start and end tags need the
+    # tag name followed by HTML whitespace, "/" or ">".
     #
     # The <meta> body is matched without the closing angle bracket, which is
     # not required: a tag left unterminated by the next "<" or by the end of
