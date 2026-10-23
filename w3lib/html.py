@@ -6,9 +6,13 @@ from __future__ import annotations
 
 import functools
 import re
+import warnings
 from html.entities import html5
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
+from frostwork import navigation
+
+from w3lib._url import _SCHEME_RE
 from w3lib._util import _COMMENT, _attr_re, _scannable, iter_tag_attributes, to_unicode
 from w3lib.url import _urljoin, safe_url_string
 
@@ -52,12 +56,6 @@ _tag_re = re.compile(
 # and case-insensitive matching pairs no "s" with "\u017f" nor "k" with
 # "\u212a". It is also what makes a pattern and its byte counterpart match the
 # same markup.
-# Any tag, up to where it ends or the text does. A quoted value left open by
-# the end of the text is taken to the next angle bracket, which is where the
-# tag it belongs to can no longer reach.
-_tag_extent_source = rf"""<[a-zA-Z!/]{_TAG_BODY}(?:=\s*["'][^"'<>]*)?>?"""
-_tag_extent_re = re.compile(_tag_extent_source, re.ASCII)
-_tag_extent_bytes_re = re.compile(_tag_extent_source.encode())
 
 
 def _ignored_tags_source(ignore_tags: tuple[str, ...]) -> str:
@@ -487,32 +485,15 @@ def unquote_markup(
     return "".join(ret)
 
 
-def _cut(text: str | bytes, max_scan: int | None) -> tuple[str | bytes, bool]:
-    """Return *text* cut to its first *max_scan* characters or bytes, extended
-    to the end of a tag the cut splits, and whether anything was left out."""
-    if max_scan is None:
-        return text, False
-    if max_scan < 0:
-        raise ValueError(f"max_scan must not be negative, got {max_scan!r}")
-    if max_scan >= len(text):
-        return text, False
-    is_str = isinstance(text, str)
-    extent: re.Pattern[Any] = _tag_extent_re if is_str else _tag_extent_bytes_re
-    lt: Any = "<" if is_str else b"<"
-    # Only a tag that reaches past the cut is split by it, and reading it to
-    # its end is what keeps it whole. Half a tag parses as a whole one, down to
-    # a truncated url, hence reading it whole or not at all. The search runs
-    # backwards from the cut because the tag that straddles it, if any, is the
-    # one that starts closest to it.
-    start = max_scan
-    while (start := text.rfind(lt, 0, start)) != -1:
-        tag = extent.match(text, start)
-        if tag is None:
-            continue
-        if tag.end() > max_scan:
-            return text[: tag.end()], tag.end() < len(text)
-        break
-    return text[:max_scan], True
+def _warn_relative_baseurl(function: str) -> None:
+    warnings.warn(
+        f"Passing a relative or empty baseurl to w3lib.html.{function}() is "
+        "deprecated, pass the absolute URL of the document instead. In a "
+        "future version, baseurl will be required, and a relative one will "
+        "raise ValueError.",
+        DeprecationWarning,
+        stacklevel=3,
+    )
 
 
 def get_base_url(
@@ -522,22 +503,30 @@ def get_base_url(
     *,
     max_scan: int | None = None,
 ) -> str:
-    """Return the base url if declared in the given HTML `text`,
-    relative to the given base url.
+    """Return the base URL of the HTML *text*, as a web browser finds it.
 
-    .. versionadded:: 2.5.0
-       The *max_scan* parameter.
-
-    If no base url is found, the given `baseurl` is returned.
-
-    *max_scan* is an upper bound on how much of *text* to look at, in
-    characters, or in bytes if *text* is a byte string, defaulting to ``None``,
-    i.e. no bound. It bounds work, not results: a tag that starts before the
-    limit is read to its end. ``0`` looks at nothing, and a negative value
-    raises :exc:`ValueError`.
+    *baseurl* is the absolute URL of the document, which is also the result
+    when *text* declares no usable base URL.
     """
-
-    text, cut = _cut(text, max_scan)
+    if max_scan is not None:
+        warnings.warn(
+            "The max_scan parameter of w3lib.html.get_base_url() is deprecated "
+            "and ignored.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+    url = to_unicode(baseurl, errors="percentencode")
+    if _SCHEME_RE.match(url):
+        nav = navigation(
+            text,
+            url,
+            encoding if isinstance(text, bytes) else None,
+            meta_refresh=False,
+        )
+        assert nav.base_url is not None
+        return nav.base_url
+    _warn_relative_baseurl("get_base_url")
+    document_url = safe_url_string(baseurl)
 
     # Most documents declare no base url, so ruling one out in the bytes saves
     # decoding them. A hit falls through to the scan below, which decides: a
@@ -548,10 +537,9 @@ def get_base_url(
         and _scannable(encoding)
         and not _base_bytes_re.search(text)
     ):
-        return safe_url_string(baseurl)
+        return document_url
 
-    # A cut through bytes can split a character, which is then replaced.
-    utext = to_unicode(text, encoding, errors="replace" if cut else "strict")
+    utext = to_unicode(text, encoding)
     if _base_re.search(utext):
         for m in _base_scan_re.finditer(utext):
             if (attrs := m.group("attrs")) is None:
@@ -567,17 +555,18 @@ def get_base_url(
                 # is not read either way.
                 # https://html.spec.whatwg.org/commit-snapshots/3e7b72c44ce144cee7db859cd0647af6646b6793/#set-the-frozen-base-url
                 value = attr["double"] or attr["single"] or attr["bare"] or ""
-                base = safe_url_string(baseurl)
                 if url := value.strip(HTML5_WHITESPACE):
                     # A URL that cannot be parsed also leaves the fallback in
                     # place, e.g. a relative URL against an opaque path such as
                     # "data:…", or a host with a forbidden code point.
                     try:
-                        return safe_url_string(_urljoin(base, url), encoding=encoding)
+                        return safe_url_string(
+                            _urljoin(document_url, url), encoding=encoding
+                        )
                     except ValueError:
                         pass
-                return base
-    return safe_url_string(baseurl)
+                return document_url
+    return document_url
 
 
 def _refresh(attrs: str, baseurl: str, encoding: str) -> tuple[float, str] | None:
@@ -611,6 +600,9 @@ def _refresh(attrs: str, baseurl: str, encoding: str) -> tuple[float, str] | Non
         return None
 
 
+_BROWSER_IGNORED_TAGS = frozenset(("script", "noscript", "template"))
+
+
 def get_meta_refresh(
     text: str | bytes,
     baseurl: str = "",
@@ -619,20 +611,47 @@ def get_meta_refresh(
     *,
     max_scan: int | None = None,
 ) -> tuple[None, None] | tuple[float, str]:
-    """Return the http-equiv parameter of the HTML meta element from the given
-    HTML text and return a tuple ``(interval, url)`` where interval is a float
-    containing the delay in seconds (or zero if not present) and url is a
-    string with the absolute url to redirect.
+    """Return ``(interval, url)`` for the meta refresh of the HTML *text*
+    that a web browser follows, or ``(None, None)`` if there is none.
 
-    .. versionadded:: 2.5.0
-       The *max_scan* parameter.
+    *interval* is the delay in seconds, and *url* is the absolute URL to load,
+    resolved against *baseurl*, the absolute URL of the document, and against
+    a ``<base>`` element of *text*.
 
-    If no meta redirect is found, ``(None, None)`` is returned.
-
-    *max_scan* works as in :func:`get_base_url`.
+    ``<noscript>`` content counts only if *ignore_tags* does not contain
+    ``"noscript"``, as in a browser with JavaScript disabled.
     """
+    if max_scan is not None:
+        warnings.warn(
+            "The max_scan parameter of w3lib.html.get_meta_refresh() is "
+            "deprecated and ignored.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
     ignored = tuple(sorted({tag.lower() for tag in ignore_tags}))
-    text, cut = _cut(text, max_scan)
+    browser_tags = _BROWSER_IGNORED_TAGS.issuperset(ignored)
+    if not browser_tags:
+        warnings.warn(
+            "Passing ignore_tags with tags other than 'script', 'noscript' and "
+            "'template' to w3lib.html.get_meta_refresh() is deprecated, and "
+            "will raise ValueError in a future version.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+    absolute = _SCHEME_RE.match(baseurl)
+    if not absolute:
+        _warn_relative_baseurl("get_meta_refresh")
+    if browser_tags and absolute:
+        nav = navigation(
+            text,
+            baseurl,
+            encoding if isinstance(text, bytes) else None,
+            base_url=False,
+            scripting="noscript" in ignored,
+        )
+        if nav.meta_refresh is None:
+            return None, None
+        return nav.meta_refresh.delay, nav.meta_refresh.url
 
     # Most documents declare no refresh, so ruling one out in the bytes saves
     # decoding them. A hit falls through to the scan of the decoded document,
@@ -646,8 +665,7 @@ def get_meta_refresh(
         ):
             return None, None
 
-    # A cut through bytes can split a character, which is then replaced.
-    utext = to_unicode(text, encoding, errors="replace" if cut else "strict")
+    utext = to_unicode(text, encoding)
     if not _meta_re.search(utext):
         return None, None
 

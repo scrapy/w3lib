@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import importlib
+import re
+import sys
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -7,6 +11,7 @@ import pytest
 from tests.benchmarks import BENCHMARK_MARKS, CasesMapType
 from w3lib.encoding import (
     html_body_declared_encoding,
+    html_encoding,
     html_to_unicode,
     http_content_type_encoding,
     read_bom,
@@ -185,13 +190,11 @@ BENCHMARK_CASES: CasesMapType = {
             {},
         ),
         ((None, b"\xef\xbb\xbfblah blah"), {}),
-        ((None, b"""<meta charset="utf-8">"""), {"auto_detect_fun": lambda x: "ascii"}),
-        ((None, b"no encoding info"), {"auto_detect_fun": lambda x: "ascii"}),
         ((None, b"no encoding info"), {}),
-        ((None, b"no encoding info"), {"default_encoding": "ascii"}),
         ((None, b""), {}),
     ],
 }
+BENCHMARK_CASES[html_encoding] = BENCHMARK_CASES[html_to_unicode]
 
 
 @pytest.mark.parametrize("func", BENCHMARK_CASES)
@@ -218,3 +221,56 @@ def test_benchmark_encoding_cold(
             func(*args, **kwargs)
 
     benchmark.pedantic(factory, setup=resolve_encoding.cache_clear, rounds=100)
+
+
+_PAGES = Path(__file__).parent / "pages"
+_UTF8_PAGE = (_PAGES / "no-base.html").read_bytes()
+# Real pages, one per legacy encoding, named after it. All declare it in a
+# <meta> tag except windows-1251, which declares it in its Content-Type header.
+_LEGACY_PAGES = {
+    path.stem: path.read_bytes()
+    for path in sorted((_PAGES / "encoding").glob("*.html"))
+}
+_META_CHARSET_RE = re.compile(rb"<meta[^>]*charset[^>]*>", re.IGNORECASE)
+PAGE_CASES = {
+    "utf-8": (None, _UTF8_PAGE),
+    "utf-8-header": ("text/html; charset=utf-8", _UTF8_PAGE),
+    "invalid-utf-8": (None, _UTF8_PAGE.replace(b"</div>", b"</div>\xff")),
+    **{
+        name: (
+            "text/html; charset=windows-1251" if name == "windows-1251" else None,
+            body,
+        )
+        for name, body in _LEGACY_PAGES.items()
+    },
+    **{
+        f"undeclared-{name}": (None, _META_CHARSET_RE.sub(b"", _LEGACY_PAGES[name]))
+        for name in ("shift_jis", "windows-1252")
+    },
+}
+
+
+@pytest.mark.parametrize("func", [html_to_unicode, html_encoding])
+@pytest.mark.parametrize(("content_type", "body"), PAGE_CASES.values(), ids=PAGE_CASES)
+def test_benchmark_page(
+    benchmark: BenchmarkFixture,
+    func: Callable[..., Any],
+    content_type: str | None,
+    body: bytes,
+) -> None:
+    benchmark(func, content_type, body)
+
+
+def test_benchmark_import(benchmark: BenchmarkFixture) -> None:
+    """Import w3lib.encoding and the Python modules of frostwork.
+
+    The frostwork extension module cannot be imported again, so it stays
+    loaded.
+    """
+
+    def setup() -> tuple[tuple[str], dict[str, Any]]:
+        for name in ("w3lib.encoding", "frostwork.encoding", "frostwork"):
+            sys.modules.pop(name, None)
+        return ("w3lib.encoding",), {}
+
+    benchmark.pedantic(importlib.import_module, setup=setup, rounds=20)
