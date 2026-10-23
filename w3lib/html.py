@@ -573,9 +573,12 @@ def get_base_url(
                     # place, e.g. a relative URL against an opaque path such as
                     # "data:…", or a host with a forbidden code point.
                     try:
-                        return safe_url_string(_urljoin(base, url), encoding=encoding)
+                        url = safe_url_string(_urljoin(base, url), encoding=encoding)
                     except ValueError:
-                        pass
+                        return base
+                    # So does a data: or javascript: URL.
+                    if not url.startswith(("data:", "javascript:")):
+                        return url
                 return base
     return safe_url_string(baseurl)
 
