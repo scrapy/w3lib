@@ -9,7 +9,15 @@ import re
 from html.entities import html5
 from typing import TYPE_CHECKING, Any
 
-from w3lib._util import _COMMENT, _attr_re, _scannable, iter_tag_attributes, to_unicode
+from w3lib._util import (
+    _COMMENT,
+    _OTHER_TAG,
+    _TAG_REST,
+    _attr_re,
+    _scannable,
+    iter_tag_attributes,
+    to_unicode,
+)
 from w3lib.url import _urljoin, safe_url_string
 
 if TYPE_CHECKING:
@@ -64,20 +72,10 @@ def _ignored_tags_source(ignore_tags: tuple[str, ...]) -> str:
     tags = "|".join(re.escape(tag) for tag in ignore_tags)
     # Only HTML whitespace, "/" or ">" after the name can open or close the
     # element; anything else continues the name, as in "<script-loader>".
-    # Unlike _TAG_BODY, the end-tag body consumes "<" as attribute text. Quoted
-    # values also consume ">", and an unfinished value runs to the end of input.
-    space = r"[\t\n\f\r ]"
-    attribute = (
-        rf"[^\t\n\f\r />][^\t\n\f\r />=]*+{space}*+"
-        rf"(?:={space}*+(?:\"[^\"]*(?:\"|$)|'[^']*(?:'|$)|[^\t\n\f\r >]*+))?+"
-    )
-    # Possessive repeats keep attribute names and unquoted values from being
-    # split or read again as the scanner advances through a long end tag.
-    end_body = rf"(?:{space}|/|{attribute})*+(?:>|$)"
     return (
         rf"<(?P<t>{tags})(?=[\t\n\f\r />]){_TAG_BODY}>[^<]*"
         r"(?:<(?!/(?P=t)[\t\n\f\r />])[^<]*)*"
-        rf"(?:</(?P=t){end_body}|$)"
+        rf"(?:</(?P=t){_TAG_REST}|$)"
     )
 
 
@@ -93,12 +91,14 @@ _base_bytes_re = re.compile(rb"<base", re.IGNORECASE)
 # end tags need the tag name followed by HTML whitespace, "/" or ">".
 #
 # The text of a <base> tag after its name is captured whole and its attributes
-# are then read one by one, as for <meta>.
+# are then read one by one, as for <meta>. Any other tag is consumed whole, so
+# that a <base> written inside one of its quoted attribute values is not read.
 _base_scan_re = re.compile(
     rf"""
       {_COMMENT}
     | {_ignored_tags_source(("script", "noscript"))}
     | <base\s(?P<attrs>{_TAG_BODY})
+    | {_OTHER_TAG}
     """,
     re.IGNORECASE | re.DOTALL | re.VERBOSE | re.ASCII,
 )
@@ -148,11 +148,14 @@ def _meta_scan_source(ignore_tags: tuple[str, ...]) -> str:
     #
     # The <meta> body is matched without the closing angle bracket, which is
     # not required: a tag left unterminated by the next "<" or by the end of
-    # the text is still parsed, as browsers do.
+    # the text is still parsed, as browsers do. Any other tag is consumed whole,
+    # so that a <meta> written inside one of its quoted attribute values is not
+    # read.
     alternatives = [_COMMENT]
     if ignore_tags:
         alternatives.append(_ignored_tags_source(ignore_tags))
     alternatives.append(rf"<meta\s(?P<attrs>{_TAG_BODY})")
+    alternatives.append(_OTHER_TAG)
     return "|".join(alternatives)
 
 
