@@ -403,10 +403,11 @@ def _remove_elements(utext: str, tags_tuple: tuple[str, ...]) -> str:
     element, start_tag, self_closing_tag, end_tags = _build_remove_tags_patterns(
         tags_tuple
     )
-    # A text with few "<" has few start tags, and the element pattern scans
-    # the text at most once from each, so it can run on its own there,
-    # without the overhead of the loop below on short texts.
-    if utext.count("<") <= 16:
+    # The element pattern scans a text at most once from each start tag, so
+    # on a short text it can run on its own at a bounded cost, without the
+    # overhead of the loop below. Checking the length, unlike counting the
+    # start tags, does not scan the text.
+    if len(utext) <= 256:
         return element.sub("", utext)
     # The element pattern scans for an end tag from every start tag, to the
     # end of the text when there is none, so a text of many unclosed tags
