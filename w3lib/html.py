@@ -93,12 +93,14 @@ _base_bytes_re = re.compile(rb"<base", re.IGNORECASE)
 # end tags need the tag name followed by HTML whitespace, "/" or ">".
 #
 # The text of a <base> tag after its name is captured whole and its attributes
-# are then read one by one, as for <meta>.
+# are then read one by one, as for <meta>. The name ends at HTML whitespace or
+# "/", e.g. <base/href="...">; "\s" would also take "\v", which continues the
+# name instead.
 _base_scan_re = re.compile(
     rf"""
       {_COMMENT}
     | {_ignored_tags_source(("script", "noscript"))}
-    | <base\s(?P<attrs>{_TAG_BODY})
+    | <base[\t\n\f\r /](?P<attrs>{_TAG_BODY})
     """,
     re.IGNORECASE | re.DOTALL | re.VERBOSE | re.ASCII,
 )
@@ -148,11 +150,12 @@ def _meta_scan_source(ignore_tags: tuple[str, ...]) -> str:
     #
     # The <meta> body is matched without the closing angle bracket, which is
     # not required: a tag left unterminated by the next "<" or by the end of
-    # the text is still parsed, as browsers do.
+    # the text is still parsed, as browsers do. As for <base>, the name ends at
+    # HTML whitespace or "/".
     alternatives = [_COMMENT]
     if ignore_tags:
         alternatives.append(_ignored_tags_source(ignore_tags))
-    alternatives.append(rf"<meta\s(?P<attrs>{_TAG_BODY})")
+    alternatives.append(rf"<meta[\t\n\f\r /](?P<attrs>{_TAG_BODY})")
     return "|".join(alternatives)
 
 

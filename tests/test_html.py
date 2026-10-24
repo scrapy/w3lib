@@ -956,6 +956,20 @@ class TestGetBaseUrl:
             get_base_url(text.encode(), "https://example.org") == "https://example.org/"
         )
 
+    @pytest.mark.parametrize(
+        ("text", "expected"),
+        [
+            # "/" and HTML whitespace end the tag name.
+            ("<base/href='/path'>", "https://example.org/path"),
+            ("<base\fhref='/path'>", "https://example.org/path"),
+            # "\v" is no HTML whitespace, so it continues the tag name.
+            ("<base\vhref='/path'>", "https://example.org/"),
+        ],
+    )
+    def test_get_base_url_tag_name_end(self, text: str, expected: str) -> None:
+        assert get_base_url(text, "https://example.org") == expected
+        assert get_base_url(text.encode(), "https://example.org") == expected
+
     def test_get_base_url_non_ascii_case_folding(self) -> None:
         # U+017F uppercases to "S", but it is no "s" in a tag name.
         text = "<ba\u017fe href='/path'>"
@@ -1416,6 +1430,28 @@ http://www.example.org/index.php" />
         body = "<meta\u3000http-equiv='refresh' content='3;url=/next'>"
         assert get_meta_refresh(body, "http://example.org") == (None, None)
         assert get_meta_refresh(body.encode(), "http://example.org") == (None, None)
+
+    @pytest.mark.parametrize(
+        ("body", "expected"),
+        [
+            # "/" and HTML whitespace end the tag name.
+            (
+                "<meta/http-equiv='refresh'/content='3;url=/next'>",
+                (3.0, "http://example.org/next"),
+            ),
+            (
+                "<meta\fhttp-equiv='refresh' content='3;url=/next'>",
+                (3.0, "http://example.org/next"),
+            ),
+            # "\v" is no HTML whitespace, so it continues the tag name.
+            ("<meta\vhttp-equiv='refresh' content='3;url=/next'>", (None, None)),
+        ],
+    )
+    def test_get_meta_refresh_tag_name_end(
+        self, body: str, expected: tuple[float, str] | tuple[None, None]
+    ) -> None:
+        assert get_meta_refresh(body, "http://example.org") == expected
+        assert get_meta_refresh(body.encode(), "http://example.org") == expected
 
     def test_get_meta_refresh_content_non_ascii_whitespace(self) -> None:
         # The refresh content is parsed with ASCII whitespace only, so U+00A0
