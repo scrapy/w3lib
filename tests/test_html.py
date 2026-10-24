@@ -691,6 +691,28 @@ class TestGetBaseUrl:
             == baseurl
         )
 
+    @pytest.mark.parametrize(
+        "href",
+        [
+            "javascript:alert(1)//",
+            "JavaScript:/a/-alert(1)///",
+            "java\tscript:alert(1)",
+            "data:text/html,x",
+            " DATA:,x",
+        ],
+    )
+    def test_get_base_url_data_or_javascript_href(self, href: str) -> None:
+        # A data: or javascript: base URL leaves the fallback in place, and a
+        # later <base> is not read either.
+        baseurl = "https://example.org/a/b"
+        assert get_base_url(f'<base href="{href}">', baseurl) == baseurl
+        assert (
+            get_base_url(
+                f'<base href="{href}"><base href="https://evil.example/">', baseurl
+            )
+            == baseurl
+        )
+
     def test_get_base_url_fragment_against_opaque_path(self) -> None:
         assert (
             get_base_url('<base href="#a">', "mailto:user@example.org")
