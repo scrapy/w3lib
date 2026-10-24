@@ -1609,6 +1609,50 @@ class TestIgnoredTagStart:
     ],
     ids=["base", "meta"],
 )
+class TestTagInsideOtherTag:
+    @pytest.mark.parametrize(
+        ("start", "end"),
+        [
+            ("<p title='", "'>"),
+            ('<p title="', '">'),
+            ("<p title = '", "'>"),
+            ("</p title='", "'>"),
+            ("<custom-element data-x='", "'>"),
+        ],
+    )
+    def test_quoted_attribute_value(self, func, tag, found, missing, start, end):
+        # A tag written inside a quoted attribute value of another tag is text.
+        tag = tag.replace('"', "'") if start[-1] == '"' else tag
+        text = f"{start}{tag}{end}"
+        assert func(text) == missing
+        assert func(text.encode()) == missing
+        text += tag
+        assert func(text) == found
+        assert func(text.encode()) == found
+
+    @pytest.mark.parametrize("start", ["<p title=", "<p ", "<p/", "<p title='"])
+    def test_rest_of_other_tag(self, func, tag, found, missing, start):
+        # An unquoted value or an attribute name runs past a "<", and a quoted
+        # value left open runs to the end of the input.
+        text = f"{start}{tag}"
+        assert func(text) == missing
+        assert func(text.encode()) == missing
+
+    @pytest.mark.parametrize("before", ["<p title='>'>", "a < b", "<p>", "</p>"])
+    def test_after_other_tag(self, func, tag, found, missing, before):
+        text = f"{before}{tag}"
+        assert func(text) == found
+        assert func(text.encode()) == found
+
+
+@pytest.mark.parametrize(
+    ("func", "tag", "found", "missing"),
+    [
+        (base, BASE_TAG, "http://example.org/found", "https://example.org/"),
+        (meta, META_TAG, (5, "http://example.org/found"), (None, None)),
+    ],
+    ids=["base", "meta"],
+)
 class TestMaxScan:
     def test_straddling_tag(self, func, tag, found, missing):
         # A tag that starts before the limit and ends after it is read whole,
