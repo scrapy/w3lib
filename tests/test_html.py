@@ -1609,6 +1609,61 @@ class TestIgnoredTagStart:
     ],
     ids=["base", "meta"],
 )
+class TestScriptEscapes:
+    @pytest.mark.parametrize(
+        "content",
+        [
+            "<!--<script></script>",
+            "<!--<SCRIPT\t></script ><script></script\n>",
+            "<!--<script/>x</script>-<script>--</script>",
+            "<!---<script>-->x<!--<script></script>",
+        ],
+    )
+    def test_double_escaped(self, func, tag, found, missing, content):
+        # Inside "<!--", a "<script" makes the script double escaped, where
+        # "</script>" does not end the element, so the tag is script text.
+        text = f"<script>{content}{tag}"
+        assert func(text) == missing
+        assert func(text.encode()) == missing
+        text += f"</script>{tag}"
+        assert func(text) == found
+        assert func(text.encode()) == found
+
+    @pytest.mark.parametrize(
+        "content",
+        [
+            "<!--",
+            "<!--<scriptx>",
+            "<!--><script>",
+            "<!--->",
+            "<!--<script>-->",
+            "<!--<script>--->",
+            "<!--<script></script>-->",
+        ],
+    )
+    def test_not_double_escaped(self, func, tag, found, missing, content):
+        text = f"<script>{content}</script>{tag}"
+        assert func(text) == found
+        assert func(text.encode()) == found
+
+    @pytest.mark.parametrize(
+        "content",
+        ["<!--<script>" * 50000, "<!--" + "-" * 100000, "<!--<script>" + "<" * 100000],
+    )
+    def test_linear(self, func, tag, found, missing, content):
+        start = time.process_time()
+        assert func(f"<script>{content}{tag}") == missing
+        assert time.process_time() - start < 2
+
+
+@pytest.mark.parametrize(
+    ("func", "tag", "found", "missing"),
+    [
+        (base, BASE_TAG, "http://example.org/found", "https://example.org/"),
+        (meta, META_TAG, (5, "http://example.org/found"), (None, None)),
+    ],
+    ids=["base", "meta"],
+)
 class TestMaxScan:
     def test_straddling_tag(self, func, tag, found, missing):
         # A tag that starts before the limit and ends after it is read whole,
