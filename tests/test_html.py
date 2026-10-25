@@ -174,6 +174,11 @@ class TestReplaceTags:
             == "This text is very im port ant"
         )
 
+    @pytest.mark.parametrize("text", ["a<b>x</b>z", b"a<b>x</b>z"])
+    @pytest.mark.parametrize("token", ["\\", r"\n", r"\g<missing>"])
+    def test_replace_tags_literal_token(self, text, token):
+        assert replace_tags(text, token) == f"a{token}x{token}z"
+
     def test_replace_tags_multiline(self):
         assert (
             replace_tags(b'Click <a class="one"\r\n href="url">here</a>')

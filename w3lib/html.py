@@ -273,7 +273,7 @@ def replace_tags(
 
     """
 
-    return _tag_re.sub(token, to_unicode(text, encoding))
+    return _tag_re.sub(token.replace("\\", r"\\"), to_unicode(text, encoding))
 
 
 _REMOVECOMMENTS_RE = re.compile(_COMMENT)
