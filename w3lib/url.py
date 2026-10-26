@@ -56,12 +56,18 @@ if TYPE_CHECKING:
     from ._types import AnyUnicodeError
 
 
-# error handling function for bytes-to-Unicode decoding errors with URLs
+# error handling function for bytes-to-Unicode decoding errors with URLs,
+# and for Unicode-to-bytes encoding errors (e.g. lone surrogates)
 def _quote_byte(error: UnicodeError) -> tuple[str, int]:
     error = cast("AnyUnicodeError", error)
     text = error.object[error.start : error.end]
-    if isinstance(text, str):  # pragma: no cover
-        text = text.encode()
+    if isinstance(text, str):
+        # The only characters that can reach here from a failed strict
+        # UTF-8 encode are lone (unpaired) surrogates, since UTF-8 can
+        # represent every other Unicode scalar value. surrogatepass lets
+        # us turn those into bytes so they can be percent-encoded instead
+        # of crashing.
+        text = text.encode("utf-8", errors="surrogatepass")
     return (to_unicode(_quote(text)), error.end)
 
 
@@ -179,7 +185,11 @@ def _safe_url_split(  # pylint: disable=too-many-statements
     tmp_buf.clear()
 
     if quote_path:
-        _quote_into(parts.path.encode(path_encoding), tmp_buf, _PATH_SAFEST_CHARS)
+        _quote_into(
+            parts.path.encode(path_encoding, errors="percentencode"),
+            tmp_buf,
+            _PATH_SAFEST_CHARS,
+        )
         path = tmp_buf.decode()
         tmp_buf.clear()
     else:
@@ -198,7 +208,7 @@ def _safe_url_split(  # pylint: disable=too-many-statements
             path = f"/.{path}"
 
     _quote_into(
-        parts.query.encode(encoding),
+        parts.query.encode(encoding, errors="percentencode"),
         tmp_buf,
         _SPECIAL_QUERY_SAFEST_CHARS
         if parts.scheme in _SPECIAL_SCHEMES
@@ -208,7 +218,11 @@ def _safe_url_split(  # pylint: disable=too-many-statements
     tmp_buf.clear()
 
     if parts.fragment:
-        _quote_into(parts.fragment.encode(encoding), tmp_buf, _FRAGMENT_SAFEST_CHARS)
+        _quote_into(
+            parts.fragment.encode(encoding, errors="percentencode"),
+            tmp_buf,
+            _FRAGMENT_SAFEST_CHARS,
+        )
         fragment = tmp_buf.decode()
         tmp_buf.clear()
     else:

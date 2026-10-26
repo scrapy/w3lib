@@ -667,6 +667,30 @@ class TestUrl:
 
         assert isinstance(safe_url_string(b"http://example.com/"), str)
 
+    def test_safe_url_string_lone_surrogates(self):
+        # Lone (unpaired) surrogates must not crash safe_url_string(); they
+        # should be percent-encoded like any other character that can't be
+        # represented in the target encoding.
+        high = "\ud800"
+        low = "\udc00"
+
+        for value, where in (
+            (f"http://example.com/{high}", "path"),
+            (f"http://example.com/{low}", "path"),
+            (f"http://example.com/?q={high}", "query"),
+            (f"http://example.com/#{low}", "fragment"),
+        ):
+            result = safe_url_string(value)
+            assert isinstance(result, str)
+            # Every character of a safe URL string should be printable ASCII.
+            result.encode("ascii")
+
+        # A genuine surrogate pair (a valid non-BMP character) must still
+        # work as before.
+        emoji = "\U0001f600"
+        safeurl = safe_url_string(f"http://example.com/{emoji}")
+        assert safeurl == "http://example.com/%F0%9F%98%80"
+
     def test_safe_url_string_remove_ascii_tab_and_newlines(self):
         assert (
             safe_url_string("http://example.com/test\n.html")
