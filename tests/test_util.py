@@ -75,6 +75,11 @@ class TestIterTagAttributes:
             ('a="b=1 c=2" d=3', [("a", "b=1 c=2"), ("d", "3")]),
             # repeated attributes are all yielded, in order
             ("a=1 a=2", [("a", "1"), ("a", "2")]),
+            # only HTML whitespace separates attributes: "\v" and non-ASCII
+            # spaces are part of a name or of an unquoted value
+            ("a=1\x0bb=2", [("a", "1\x0bb=2")]),
+            ("a=1\xa0b=2 c=3", [("a", "1\xa0b=2"), ("c", "3")]),
+            ("a\u3000=1 b=2", [("a\u3000", "1"), ("b", "2")]),
         ],
     )
     def test_all(self, attrs, expected):
