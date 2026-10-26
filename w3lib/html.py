@@ -43,8 +43,10 @@ _TAG_BODY = r"""[^<>=]*(?:(?:=\s*"[^"]*"|=\s*'[^']*'|=(?!\s*["']))[^<>=]*)*"""
 # Pairing quotes across a "<" that opens no tag, e.g. the one in "i<n" inside a
 # script, would take the tag to the far side of the next quote, and past every
 # tag in between. A name is pinned to its full length, as below, so that the
-# "<" of "n<arguments.length" is left to the plain reading.
-_TAG_NAME = r"""[a-zA-Z][a-zA-Z0-9]*(?![^ <>/])"""
+# "<" of "n<arguments.length" is left to the plain reading. As in the HTML
+# tokenizer, a tab, newline, form feed or carriage return ends a name just as a
+# space does.
+_TAG_NAME = r"""[a-zA-Z][a-zA-Z0-9]*(?![^\t\n\f\r <>/])"""
 # Anything else, a markup declaration or a tag named otherwise, keeps the plain
 # reading: an apostrophe in a comment is text, and pairing it with a later
 # quote would swallow the markup in between. A tag with no "=" before its
@@ -149,8 +151,9 @@ _tags_re = re.compile(
       {_TAG_BODY}>  # attribute values are read whole
     |
     </?             # opening angle bracket, optional slash for a closing tag
-    (?P<name>[^ <>/]++)
+    (?P<name>[^ <>/][^\t\n\f\r <>/]*+)
                     # tag name (captured): a run of non-space, non-bracket chars,
+                    # ended by any HTML whitespace after its first char,
                     # possessive so that it can't give characters back to the
                     # run below and backtrack quadratically on an unterminated
                     # tag (a "<" with a long run and no ">")

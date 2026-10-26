@@ -194,6 +194,12 @@ class TestReplaceTags:
         # browser; treating the quote as opening a value would swallow the ">".
         assert replace_tags('a<img alt= "x>KEEP">b') == 'aKEEP">b'
 
+    @pytest.mark.parametrize("space", ["\t", "\n", "\f", "\r"])
+    def test_html_whitespace_after_tag_name(self, space: str) -> None:
+        # Tab, LF, FF and CR end a tag name as a space does, so the quoted
+        # value that follows is read whole.
+        assert replace_tags(f'x<img{space}alt="a>b" src=x>y') == "xy"
+
     def test_replace_tags_no_catastrophic_backtracking(self):
         evil = "<a" * 50000
         start = time.process_time()
@@ -328,6 +334,20 @@ class TestRemoveTags:
         # U+00A0 does not separate "=" from a quoted value, so the tag ends at
         # the first ">", as in a browser, rather than swallowing it.
         assert remove_tags('a<img alt= "x>KEEP">b') == 'aKEEP">b'
+
+    @pytest.mark.parametrize("space", ["\t", "\n", "\f", "\r"])
+    def test_html_whitespace_after_tag_name(self, space: str) -> None:
+        # Tab, LF, FF and CR end a tag name as a space does, so the name is
+        # matched against which_ones and keep, and a quoted value is read whole.
+        assert (
+            remove_tags(f'<script{space}src="x.js"></script>', which_ones=("script",))
+            == ""
+        )
+        assert remove_tags(f'<p{space}class="a>b">txt</p>', which_ones=("p",)) == "txt"
+        assert remove_tags(f"<x-y{space}z>t</x-y>", which_ones=("x-y",)) == "t"
+        assert remove_tags(f"<b{space}z>t</b>", keep=("b",)) == f"<b{space}z>t</b>"
+        # "</" followed by whitespace is a bogus comment, removed as before.
+        assert remove_tags(f"a</{space}b>c") == "ac"
 
     @pytest.mark.parametrize(("tag", "text"), _QUOTE_OUTSIDE_VALUE_POSITION)
     def test_quote_outside_value_position(self, tag: str, text: str) -> None:
