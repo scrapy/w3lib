@@ -1074,6 +1074,30 @@ class TestGetMetaRefresh:
             "http://evil.example/",
         )
 
+    @pytest.mark.parametrize(
+        ("ignore_tags", "body", "expected"),
+        [
+            (("script",), "<script><!--<script></script>{meta}</script>", (None, None)),
+            (("script",), "<noscript>{meta}</noscript>", (0.0, "http://evil.example/")),
+            (("noscript",), "<noscript>{meta}</noscript>", (None, None)),
+            (("noscript",), "<script>{meta}</script>", (0.0, "http://evil.example/")),
+        ],
+        ids=["script-only", "script-only-noscript", "no-script", "no-script-script"],
+    )
+    def test_ignore_tags_with_or_without_script(self, ignore_tags, body, expected):
+        # Only "script" gets the script data states, so the ignored tags
+        # pattern has one alternative for it and one for the other tags, and
+        # either one stands on its own.
+        body = body.format(
+            meta='<meta http-equiv="refresh" content="0;url=http://evil.example/">'
+        )
+        kwargs = {"ignore_tags": ignore_tags}
+        assert get_meta_refresh(body, "http://good.example/", **kwargs) == expected
+        assert (
+            get_meta_refresh(body.encode(), "http://good.example/", **kwargs)
+            == expected
+        )
+
     @pytest.mark.parametrize("quote", ["<", ">"])
     def test_lt_gt_in_quoted_attribute_value(self, quote: str) -> None:
         body = f'<meta data-x="a{quote}b" http-equiv="refresh" content="3;url=/next">'
@@ -1671,6 +1695,7 @@ class TestScriptEscapes:
     @pytest.mark.parametrize(
         "content",
         ["<!--<script>" * 50000, "<!--" + "-" * 100000, "<!--<script>" + "<" * 100000],
+        ids=["double-escapes", "dashes", "less-thans"],
     )
     def test_linear(self, func, tag, found, missing, content):
         start = time.process_time()
