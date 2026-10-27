@@ -10,7 +10,7 @@ import re
 from functools import lru_cache
 from typing import TYPE_CHECKING, cast
 
-from w3lib._util import _COMMENT, iter_tag_attributes
+from w3lib._util import _COMMENT, _OTHER_TAG, iter_tag_attributes
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -84,6 +84,8 @@ def http_content_type_encoding(content_type: str | None) -> str | None:
 # the text on either side of a comment is never spliced into a tag.
 # A meta tag is consumed with its quoted attribute values whole, so a quoted
 # ">" does not end it and a quoted "<!--" does not start a comment.
+# Any other tag is consumed with its attributes, as the prescan does, so a
+# meta tag written inside one of their quoted values is not read.
 # Each alternative consumes every character at most once, so the scan stays
 # linear.
 _BODY_SCAN_RE = re.compile(
@@ -92,6 +94,7 @@ _BODY_SCAN_RE = re.compile(
     | <\s*meta(?=[\s/])(?P<meta>(?:[^<>=]|=\s*(?:"[^"]*"|'[^']*')?)*)  # meta tag
     | <\?xml\s(?P<xml>[^<>]*)  # XML declaration
     | <\s*(?P<body>body)  # start of the body tag
+    | {_OTHER_TAG}  # any other tag
     """,
     re.IGNORECASE | re.DOTALL | re.VERBOSE,
 )

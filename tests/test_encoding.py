@@ -245,6 +245,11 @@ class TestRequestEncoding:
             (b'<meta charset=""><meta charset="utf-8">', "utf-8"),
             # a quoted "<!--" does not start a comment
             (b'<meta name="a" content="<!--"><meta charset="utf-8">', "utf-8"),
+            # a meta tag inside an attribute value of another tag is not one
+            (b'<img alt="<meta charset=big5>">', None),
+            (b'<img alt="<meta charset=big5>"><meta charset="utf-8">', "utf-8"),
+            (b"</p title='<meta charset=big5>'>", None),
+            (b'<p title=<meta charset="big5">', None),
             # the text around a comment is not spliced into a tag
             (b'<met<!-- -->a charset="big5">', None),
             (b'<meta charset="big5"<!-- -->>', "big5hkscs"),
