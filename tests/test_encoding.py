@@ -536,12 +536,36 @@ class TestHtmlConversion:
         self._assert_encoding("utf-16", "hi".encode("utf-16-be"), "utf-16-be", "hi")
         self._assert_encoding("utf-32", "hi".encode("utf-32-be"), "utf-32-be", "hi")
 
-        # the same label from the body or from auto-detection decodes the same
-        # way as from the header
-        encoding, _ = html_to_unicode(None, b'<meta charset="utf-16">')
-        assert encoding == "utf-16-be"
+        # the same label from auto-detection decodes the same way as from the
+        # header
         encoding, _ = html_to_unicode(None, b"", auto_detect_fun=lambda x: "utf-16")
         assert encoding == "utf-16-be"
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            b'<meta charset="utf-16">',
+            b'<meta charset="utf-16le">',
+            b'<meta charset="UTF-16BE">',
+            b'<meta http-equiv="content-type" content="text/html; charset=utf-16">',
+            b'<?xml version="1.0" encoding="utf-16"?>',
+        ],
+    )
+    def test_utf16_declared_in_body(self, body: bytes) -> None:
+        # a declaration the prescan can read is ASCII, so a UTF-16 label in it
+        # is taken as UTF-8, as browsers do
+        assert html_body_declared_encoding(body) == "utf-8"
+        assert html_to_unicode(None, body) == ("utf-8", body.decode())
+        # the header still applies the label as is
+        assert html_to_unicode("text/html; charset=utf-16", body)[0] == "utf-16-be"
+
+    def test_utf16_declared_in_body_not_smuggled(self) -> None:
+        # read as UTF-8, the UTF-16 payload is "<" followed by a NUL, which
+        # opens no tag
+        body = b'<meta charset="utf-16le"> ' + "<script>".encode("utf-16-le")
+        encoding, text = html_to_unicode(None, body)
+        assert encoding == "utf-8"
+        assert "<script>" not in text
 
     def test_python_crash(self):
         random.seed(42)

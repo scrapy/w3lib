@@ -109,6 +109,13 @@ _CONTENT_CHARSET_RE = re.compile(
 )
 
 
+# A declaration found by the prescan is written in ASCII bytes, so the document
+# it is in cannot be UTF-16, and the HTML prescan, for meta tags and XML
+# declarations alike, takes a UTF-16 label as UTF-8.
+# https://html.spec.whatwg.org/multipage/parsing.html#prescan-a-byte-stream-to-determine-its-encoding
+_UTF_16_ENCODINGS = frozenset({"utf-16", "utf-16-be", "utf-16-le"})
+
+
 def _leading_label(value: str) -> str | None:
     match = _ENCODING_LABEL_RE.match(value.lstrip())
     return match.group() if match else None
@@ -186,7 +193,8 @@ def html_body_declared_encoding(html_body_str: str | bytes) -> str | None:
         else:  # a comment
             continue
         if label is not None:
-            return resolve_encoding(label)
+            encoding = resolve_encoding(label)
+            return "utf-8" if encoding in _UTF_16_ENCODINGS else encoding
 
     return None
 
