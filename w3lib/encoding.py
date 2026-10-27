@@ -10,7 +10,7 @@ import re
 from functools import lru_cache
 from typing import TYPE_CHECKING, cast
 
-from w3lib._util import _COMMENT, _OTHER_TAG, iter_tag_attributes
+from w3lib._util import _COMMENT, _OTHER_TAG, _TAG_SPACE, iter_tag_attributes
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -88,12 +88,15 @@ def http_content_type_encoding(content_type: str | None) -> str | None:
 # meta tag written inside one of their quoted values is not read.
 # Each alternative consumes every character at most once, so the scan stays
 # linear.
+# Whitespace is the prescan's: tab, LF, FF, CR and space, not "\v" or the
+# non-ASCII spaces of "\s", which bytes decoded as Latin-1 can spell.
 _BODY_SCAN_RE = re.compile(
     rf"""
       {_COMMENT}  # comment
-    | <\s*meta(?=[\s/])(?P<meta>(?:[^<>=]|=\s*(?:"[^"]*"|'[^']*')?)*)  # meta tag
+    | <{_TAG_SPACE}*meta(?=[\t\n\f\r /])
+      (?P<meta>(?:[^<>=]|={_TAG_SPACE}*(?:"[^"]*"|'[^']*')?)*)  # meta tag
     | <\?xml\s(?P<xml>[^<>]*)  # XML declaration
-    | <\s*(?P<body>body)  # start of the body tag
+    | <{_TAG_SPACE}*(?P<body>body)  # start of the body tag
     | {_OTHER_TAG}  # any other tag
     """,
     re.IGNORECASE | re.DOTALL | re.VERBOSE,
@@ -105,7 +108,8 @@ _CONTENT_TYPE_PRAGMA_RE = re.compile(r"content[-_ ]?type", re.IGNORECASE)
 # A "charset=" wherever it occurs in a content attribute value, as in the
 # WHATWG "extract a character encoding from a meta element" algorithm.
 _CONTENT_CHARSET_RE = re.compile(
-    r"""charset\s*=\s*["']?\s*(?P<label>[\w-]+)""", re.IGNORECASE
+    rf"""charset{_TAG_SPACE}*={_TAG_SPACE}*["']?{_TAG_SPACE}*(?P<label>[\w-]+)""",
+    re.IGNORECASE,
 )
 
 

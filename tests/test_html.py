@@ -978,6 +978,21 @@ class TestGetBaseUrl:
             get_base_url(text.encode(), "https://example.org") == "https://example.org/"
         )
 
+    def test_get_base_url_attribute_non_html_whitespace(self) -> None:
+        # Only HTML whitespace separates attributes, so after "\v" or U+00A0
+        # the href is part of the data-x value, and U+00A0 before "=" is part
+        # of the attribute name; a browser sees no href attribute in either.
+        for text in (
+            "<base data-x=a\x0bhref='https://other.example/'>",
+            "<base data-x=a\xa0href='https://other.example/'>",
+            "<base href\xa0='https://other.example/'>",
+        ):
+            assert get_base_url(text, "https://example.org") == "https://example.org/"
+            assert (
+                get_base_url(text.encode(), "https://example.org")
+                == "https://example.org/"
+            )
+
     def test_get_base_url_non_ascii_case_folding(self) -> None:
         # U+017F uppercases to "S", but it is no "s" in a tag name.
         text = "<ba\u017fe href='/path'>"
@@ -1450,6 +1465,17 @@ http://www.example.org/index.php" />
         assert get_meta_refresh(
             "<meta http-equiv='refresh' content='0; url=/next'>", "http://example.org"
         ) == (0.0, "http://example.org/next")
+
+    def test_get_meta_refresh_attribute_non_html_whitespace(self) -> None:
+        # Only HTML whitespace separates attributes, so the content attribute
+        # is part of the http-equiv value and the tag declares no refresh.
+        for sep in ("\x0b", "\xa0", "\u3000"):
+            body = f"<meta http-equiv=refresh{sep}content='0;url=/next'>"
+            assert get_meta_refresh(body, "http://example.org") == (None, None)
+            assert get_meta_refresh(body.encode(), "http://example.org") == (
+                None,
+                None,
+            )
 
     def test_get_meta_refresh_non_ascii_case_folding(self) -> None:
         # U+017F uppercases to "S", but it is no "s" in a tag name, so this is

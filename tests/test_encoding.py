@@ -302,6 +302,24 @@ class TestRequestEncoding:
             == "utf-8"
         )
 
+    @pytest.mark.parametrize(
+        "body",
+        [
+            # The prescan separates a tag name and attributes with tab, LF, FF,
+            # CR and space only, so these bytes leave the charset attribute
+            # part of the tag name or of another attribute's value.
+            b"<meta\xa0charset=iso-2022-jp>",
+            b"<meta\x0bcharset=iso-2022-jp>",
+            b"<meta data-x=a\xa0charset=iso-2022-jp>",
+            b"<meta data-x=a\x85charset=iso-2022-jp>",
+            b"<meta data-x=a\x0bcharset=iso-2022-jp>",
+            b"<meta charset\xa0=iso-2022-jp>",
+            b'<meta http-equiv=content-type content="text/html;charset\xa0=iso-2022-jp">',
+        ],
+    )
+    def test_html_body_declared_encoding_non_html_whitespace(self, body: bytes) -> None:
+        assert html_body_declared_encoding(body) is None
+
 
 class TestCodecsEncoding:
     def test_resolve_encoding(self):
