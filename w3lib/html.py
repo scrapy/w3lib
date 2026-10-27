@@ -105,7 +105,7 @@ def _tag_text_has(
 
 
 _base_bytes_re = re.compile(rb"<base", re.IGNORECASE)
-_base_start_re = re.compile(r"<base\s", re.IGNORECASE | re.ASCII)
+_base_start_re = re.compile(r"<base[\t\n\f\r /]", re.IGNORECASE | re.ASCII)
 _href_re = re.compile("href", re.IGNORECASE | re.ASCII)
 # Scan for <base> tags, consuming comments and <script>/<noscript> content
 # (where a browser never parses tags) along the way. Ignorable regions come
@@ -117,13 +117,15 @@ _href_re = re.compile("href", re.IGNORECASE | re.ASCII)
 # end tags need the tag name followed by HTML whitespace, "/" or ">".
 #
 # The text of a <base> tag after its name is captured whole and its attributes
-# are then read one by one, as for <meta>. Any other tag is consumed whole, so
-# that a <base> written inside one of its quoted attribute values is not read.
+# are then read one by one, as for <meta>. The name ends at HTML whitespace or
+# "/", e.g. <base/href="...">; "\s" would also take "\v", which continues the
+# name instead. Any other tag is consumed whole, so that a <base> written
+# inside one of its quoted attribute values is not read.
 _base_scan_re = re.compile(
     rf"""
       {_COMMENT}
     | {_ignored_tags_source(("script", "noscript"))}
-    | <base\s(?P<attrs>{_TAG_BODY})
+    | <base[\t\n\f\r /](?P<attrs>{_TAG_BODY})
     | {_OTHER_TAG}
     """,
     re.IGNORECASE | re.DOTALL | re.VERBOSE | re.ASCII,
@@ -159,8 +161,8 @@ _tags_re = re.compile(
     """,
     re.IGNORECASE | re.VERBOSE | re.ASCII,
 )
-_meta_start_re = re.compile(r"<meta\s", re.IGNORECASE | re.ASCII)
-_meta_start_bytes_re = re.compile(rb"<meta\s", re.IGNORECASE)
+_meta_start_re = re.compile(r"<meta[\t\n\f\r /]", re.IGNORECASE | re.ASCII)
+_meta_start_bytes_re = re.compile(rb"<meta[\t\n\f\r /]", re.IGNORECASE)
 _refresh_re = re.compile("refresh", re.IGNORECASE | re.ASCII)
 _refresh_bytes_re = re.compile(b"refresh", re.IGNORECASE)
 
@@ -177,13 +179,13 @@ def _meta_scan_source(ignore_tags: tuple[str, ...]) -> str:
     #
     # The <meta> body is matched without the closing angle bracket, which is
     # not required: a tag left unterminated by the next "<" or by the end of
-    # the text is still parsed, as browsers do. Any other tag is consumed whole,
-    # so that a <meta> written inside one of its quoted attribute values is not
-    # read.
+    # the text is still parsed, as browsers do. As for <base>, the name ends at
+    # HTML whitespace or "/". Any other tag is consumed whole, so that a <meta>
+    # written inside one of its quoted attribute values is not read.
     alternatives = [_COMMENT]
     if ignore_tags:
         alternatives.append(_ignored_tags_source(ignore_tags))
-    alternatives.append(rf"<meta\s(?P<attrs>{_TAG_BODY})")
+    alternatives.append(rf"<meta[\t\n\f\r /](?P<attrs>{_TAG_BODY})")
     alternatives.append(_OTHER_TAG)
     return "|".join(alternatives)
 
