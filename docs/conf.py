@@ -26,10 +26,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
     "notfound.extension",
-    "sphinx.ext.autodoc",
     "sphinx.ext.doctest",
-    "sphinx.ext.intersphinx",
-    "sphinx.ext.viewcode",
+    "sphinx_scrapy",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -247,13 +245,12 @@ texinfo_documents = [
 # texinfo_show_urls = 'footnote'
 
 
-# Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {
-    "pytest": ("https://docs.pytest.org/en/latest", None),
-    "python": ("https://docs.python.org/3", None),
-    "scrapy": ("https://docs.scrapy.org/en/latest", None),
-    "tox": ("https://tox.wiki/en/latest", None),
-}
+# -- sphinx-scrapy -------------------------------------------------------------
+
+scrapy_intersphinx_enable = [
+    "pytest",
+    "tox",
+]
 
 
 # -- Nitpicking options -------------------------------------------------------

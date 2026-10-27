@@ -68,6 +68,10 @@ search = "\\(unreleased\\)$"
 replace = "({now:%Y-%m-%d})"
 regex = true
 
+[tool.sphinx-scrapy]
+# Keep in sync with .github/workflows/checks.yml
+python-version = "3.14"
+
 [tool.coverage.run]
 branch = true
 
