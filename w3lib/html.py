@@ -68,15 +68,45 @@ _tag_extent_re = re.compile(_tag_extent_source, re.ASCII)
 _tag_extent_bytes_re = re.compile(_tag_extent_source.encode())
 
 
+# The content of a script element, up to its end tag. The tokenizer reads it in
+# the script data states: "<!--" makes it escaped and "-->" plain again, and an
+# escaped "<script" makes it double escaped, where "</script" only goes back to
+# escaped and does not end the element.
+# https://html.spec.whatwg.org/commit-snapshots/3e7b72c44ce144cee7db859cd0647af6646b6793/#script-data-escaped-state
+# The "--" of "<!--" counts towards its "-->", so "<!-->" escapes nothing.
+# Every token below starts on a different character or lookahead, and the
+# repeats are possessive, so a script has a single parse and nothing to
+# backtrack into.
+_SCRIPT_END = r"script(?=[\t\n\f\r />])"
+_SCRIPT_DASHES = r"-(?!-)|--++(?!>)"
+_SCRIPT_DOUBLE_ESCAPED = (
+    rf"<{_SCRIPT_END}(?:[^<-]++|{_SCRIPT_DASHES}|<(?!/{_SCRIPT_END}))*+"
+    rf"(?:</{_SCRIPT_END}|(?=-)|$)"
+)
+_SCRIPT_ESCAPED = (
+    rf"<!--(?:-*+>|(?:[^<-]++|{_SCRIPT_DASHES}|<(?!/?{_SCRIPT_END})"
+    rf"|{_SCRIPT_DOUBLE_ESCAPED})*+(?:--++>|(?=<)|$))"
+)
+_SCRIPT_PLAIN = rf"(?:[^<]++|<(?!/{_SCRIPT_END}|!--))*+"
+_SCRIPT_DATA = rf"{_SCRIPT_PLAIN}(?:{_SCRIPT_ESCAPED}{_SCRIPT_PLAIN})*+"
+
+
 def _ignored_tags_source(ignore_tags: tuple[str, ...]) -> str:
-    tags = "|".join(re.escape(tag) for tag in ignore_tags)
     # Only HTML whitespace, "/" or ">" after the name can open or close the
     # element; anything else continues the name, as in "<script-loader>".
-    return (
-        rf"<(?P<t>{tags})(?=[\t\n\f\r />]){_TAG_BODY}>[^<]*"
-        r"(?:<(?!/(?P=t)[\t\n\f\r />])[^<]*)*"
-        rf"(?:</(?P=t){_TAG_REST}|$)"
-    )
+    alternatives = []
+    if "script" in ignore_tags:
+        alternatives.append(
+            rf"<{_SCRIPT_END}{_TAG_BODY}>{_SCRIPT_DATA}(?:</script{_TAG_REST}|$)"
+        )
+    if other_tags := [tag for tag in ignore_tags if tag != "script"]:
+        tags = "|".join(re.escape(tag) for tag in other_tags)
+        alternatives.append(
+            rf"<(?P<t>{tags})(?=[\t\n\f\r />]){_TAG_BODY}>[^<]*"
+            r"(?:<(?!/(?P=t)[\t\n\f\r />])[^<]*)*"
+            rf"(?:</(?P=t){_TAG_REST}|$)"
+        )
+    return "|".join(alternatives)
 
 
 _tag_body_re = re.compile(_TAG_BODY, re.ASCII)
