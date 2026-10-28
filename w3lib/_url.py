@@ -7,6 +7,7 @@ import ipaddress
 import os
 import re
 import string
+import stringprep
 import sys
 import unicodedata
 from typing import TYPE_CHECKING
@@ -785,30 +786,21 @@ def _url2pathname(url: str) -> str:
 
 
 @functools.lru_cache
-def _idna(input_string: str) -> tuple[bytes, str]:
-    """Cached IDNA encoding using Python's built-in 'idna' codec.
-
-    IDNA processing in CPython is implemented in pure Python (not C), which
-    makes it relatively slow and allocation-heavy. The only lower-level
-    optimisation involved is Unicode normalization (NFKC), which may use
-    optimized internal paths, but IDNA itself remains Python-level logic.
-    """
+def _idna(input_string: str) -> bytes:
+    """Cached IDNA encoding, preserving URL-standard deviation characters."""
     if input_string.isascii():
-        return input_string.encode(), input_string
+        return input_string.encode()
 
     _, normalized = _nfkc_netloc(input_string)
 
-    if "ß" not in normalized and "ς" not in normalized:
-        encoded = normalized.encode("idna")
-    else:
-        labels = encodings.idna.dots.split(normalized)
-        trailing_dot = len(labels) > 1 and not labels[-1]
-        if trailing_dot:
-            labels.pop()
-        encoded = b".".join(_idna_label(label) for label in labels)
-        if trailing_dot:
-            encoded += b"."
-    return encoded, encoded.decode()
+    labels = encodings.idna.dots.split(normalized)
+    trailing_dot = len(labels) > 1 and not labels[-1]
+    if trailing_dot:
+        labels.pop()
+    encoded = b".".join(_idna_label(label) for label in labels)
+    if trailing_dot:
+        encoded += b"."
+    return encoded
 
 
 # The deviation characters "ß" and "ς" are mapped to "ss" and "σ" by IDNA 2003,
@@ -819,21 +811,45 @@ def _idna(input_string: str) -> tuple[bytes, str]:
 _IDNA_DEVIATION_RE = re.compile("([ßς])")
 
 
+def _idna_nameprep(label: str) -> str:
+    if len(label) > 63:
+        # Nameprep can shrink a long label. Normalize its mapped text before
+        # handing a bounded value to the stdlib's validation and bidi checks.
+        label = _normalize_nfkc(
+            "".join(
+                stringprep.map_table_b2(char)
+                for char in label
+                if not stringprep.in_table_b1(char)
+            ),
+            unicodedata.ucd_3_2_0,
+        )
+        if len(label) > 63:
+            raise UnicodeError("label too long")
+    return encodings.idna.nameprep(label)
+
+
 def _idna_label(label: str) -> bytes:
-    if "ß" not in label and "ς" not in label:
+    if label.isascii():
         return encodings.idna.ToASCII(label)
-    label = "".join(
-        piece if piece in {"ß", "ς"} else encodings.idna.nameprep(piece)
-        for piece in _IDNA_DEVIATION_RE.split(label)
-    )
+    if "ß" not in label and "ς" not in label:
+        label = _idna_nameprep(label)
+        if label.isascii():
+            return encodings.idna.ToASCII(label)
+        if label.startswith("xn--"):
+            raise UnicodeError("Label starts with ACE prefix")
+    else:
+        label = "".join(
+            piece if piece in {"ß", "ς"} else _idna_nameprep(piece)
+            for piece in _IDNA_DEVIATION_RE.split(label)
+        )
+    # Each code point needs at least one Punycode byte, plus the ACE prefix.
+    # Bound the encoder's work before checking its actual output length.
+    if len(label) > 59:
+        raise UnicodeError("label too long")
     encoded = b"xn--" + label.encode("punycode")
     if len(encoded) > 63:
         raise UnicodeError("label too long")
     return encoded
-
-
-def _idna_bytes(input_string: str) -> bytes:
-    return _idna(input_string)[0]
 
 
 @functools.lru_cache
@@ -932,5 +948,34 @@ def _ipv4_host(host: str) -> str:
 @functools.lru_cache
 def _nfkc_netloc(netloc: str) -> tuple[str, str]:
     cleaned = netloc.translate(_NETLOC_STRIP_CHARS)
-    normalized = unicodedata.normalize("NFKC", cleaned)
+    normalized = _normalize_nfkc(cleaned)
     return cleaned, normalized
+
+
+def _normalize_nfkc(text: str, ucd: unicodedata.UCD | None = None) -> str:
+    """Normalize without quadratic reordering of long combining-mark runs."""
+    if text.isascii():
+        return text
+    normalize = unicodedata.normalize if ucd is None else ucd.normalize
+    # Keep the C fast path for ordinary hosts while bounding its insertion sort.
+    if len(text) <= 256:
+        return normalize("NFKC", text)
+
+    combining = unicodedata.combining if ucd is None else ucd.combining
+    ordered: list[str] = []
+    marks: list[str] = []
+    for char in text:
+        for decomposed in normalize("NFKD", char):
+            if combining(decomposed):
+                marks.append(decomposed)
+            else:
+                if marks:
+                    marks.sort(key=combining)
+                    ordered.extend(marks)
+                    marks.clear()
+                ordered.append(decomposed)
+    marks.sort(key=combining)
+    ordered.extend(marks)
+    # NFKD followed by NFC is NFKC. The decomposed text is already ordered,
+    # so the final normalization has no long run to reorder.
+    return normalize("NFC", "".join(ordered))
