@@ -883,6 +883,12 @@ class TestUrl:
             == "http://.éxamplé.com:80/?q%00=%00a%00"
         )
 
+    @pytest.mark.parametrize("label", ["xn--é", "\u00ad"])
+    def test_safe_url_idna_invalid_prepared_label(self, label):
+        # A non-ASCII ACE label and a label removed by nameprep both fail IDNA.
+        url = f"http://{label}.example/"
+        assert safe_url_string(url) == url
+
     @pytest.mark.parametrize("label", ["a" * 63, "é" * 57, "ß" * 57, "ς" * 57])
     def test_safe_url_idna_long_label_before_nameprep(self, label):
         # Mapped-away characters do not count towards the prepared label limit.

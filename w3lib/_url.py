@@ -833,12 +833,8 @@ def _idna_label(label: str) -> bytes:
         return encodings.idna.ToASCII(label)
     if "ß" not in label and "ς" not in label:
         label = _idna_nameprep(label)
-        if not label:
-            raise UnicodeError("label empty")
         if label.isascii():
-            if len(label) > 63:
-                raise UnicodeError("label too long")
-            return label.encode()
+            return encodings.idna.ToASCII(label)
         if label.startswith("xn--"):
             raise UnicodeError("Label starts with ACE prefix")
     else:
