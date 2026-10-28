@@ -66,6 +66,7 @@ _tag_re = re.compile(
 _tag_extent_source = rf"""<[a-zA-Z!/]{_TAG_BODY}(?:=\s*["'][^"'<>]*)?>?"""
 _tag_extent_re = re.compile(_tag_extent_source, re.ASCII)
 _tag_extent_bytes_re = re.compile(_tag_extent_source.encode())
+del _tag_extent_source
 
 
 def _ignored_tags_source(ignore_tags: tuple[str, ...]) -> str:

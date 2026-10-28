@@ -31,7 +31,7 @@ from ._url import (
     RFC3986_USERINFO_SAFE_CHARS as RFC3986_USERINFO_SAFE_CHARS,
     _check_domain,
     _domain,
-    _idna_bytes,
+    _idna,
     _ipv4_host,
     _opaque_host,
     _parse_qs,
@@ -119,8 +119,9 @@ def _safe_url_split(  # pylint: disable=too-many-statements
     #     encoded with the supplied encoding (or UTF8 by default)
     #   - if the supplied (or default) encoding chokes,
     #     percent-encode offending bytes
-    url = _strip(to_unicode(url, encoding=encoding, errors="percentencode"))
-    url = _skip_special_authority_slashes(url)
+    url = _skip_special_authority_slashes(
+        _strip(to_unicode(url, encoding=encoding, errors="percentencode"))
+    )
     parts = _urlsplit(url)
     tmp_buf = bytearray()  # utf-8 bytes
 
@@ -163,7 +164,7 @@ def _safe_url_split(  # pylint: disable=too-many-statements
             host = parts.netloc.rpartition("@")[2]
             host = _domain(parts.hostname if "[" in host else host.partition(":")[0])
             try:
-                host = _idna_bytes(host).decode()
+                host = _idna(host).decode()
             except UnicodeError:
                 # IDNA encoding can fail for too long labels (>63 characters) or
                 # missing labels (e.g. http://.example.com).
@@ -687,21 +688,23 @@ def parse_data_uri(uri: str | bytes) -> ParseDataURIResult:
     media_type = "text/plain"
     media_type_params = {}
 
+    pos = 0
     m = _mediatype_pattern.match(uri)
     if m:
         media_type = m.group().decode()
-        uri = uri[m.end() :]
+        pos = m.end()
     else:
         media_type_params["charset"] = "US-ASCII"
 
-    while m := _mediatype_parameter_pattern.match(uri):
+    while m := _mediatype_parameter_pattern.match(uri, pos):
         attribute, value, value_quoted = m.groups()
         if value_quoted is not None:
             value = re.sub(rb"\\(.)", rb"\1", value_quoted)
         media_type_params[attribute.decode()] = value.decode()
-        uri = uri[m.end() :]
+        pos = m.end()
 
-    is_base64, comma, data = uri.partition(b",")
+    is_base64, comma, data = uri[pos:].partition(b",")
+
     if not comma:
         raise ValueError("invalid data URI")
     if is_base64:
@@ -731,16 +734,6 @@ __all__ = [
 ]
 
 
-_DOT_SEGMENTS = {
-    ".": ".",
-    "%2e": ".",
-    "..": "..",
-    ".%2e": "..",
-    "%2e.": "..",
-    "%2e%2e": "..",
-}
-
-
 def _remove_dot_segments(path: str) -> str:
     """Resolve dot segments in *path*, which starts with "/" (RFC 3986,
     section 5.2.4), including their percent-encoded spellings."""
@@ -751,15 +744,15 @@ def _remove_dot_segments(path: str) -> str:
     segments = path[1:].split("/")
     output: list[str] = []
     for segment in segments[:-1]:
-        dots = _DOT_SEGMENTS.get(segment.lower())
+        dots = _encoded_dot_segments.get(segment.lower(), segment)
         if dots == "..":
             if output:
                 output.pop()
-        elif dots is None:
+        elif dots != ".":
             output.append(segment)
     # A trailing dot segment leaves the path ending in "/".
     last = segments[-1]
-    dots = _DOT_SEGMENTS.get(last.lower())
+    dots = _encoded_dot_segments.get(last.lower(), last)
     if dots == "..":
         if output:
             output.pop()

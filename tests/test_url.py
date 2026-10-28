@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+import time
+import unicodedata
 from inspect import isclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -28,6 +30,7 @@ from w3lib._infra import (
 )
 from w3lib._url import (
     _SPECIAL_SCHEMES,
+    _normalize_nfkc,
     _parse_qs,
     _parse_qsl,
     _quote,
@@ -878,6 +881,56 @@ class TestUrl:
         assert (
             safe_url_string("http://.éxamplé.com:80/?q=a", encoding="utf-16-le")
             == "http://.éxamplé.com:80/?q%00=%00a%00"
+        )
+
+    @pytest.mark.parametrize("label", ["a" * 63, "é" * 57, "ß" * 57, "ς" * 57])
+    def test_safe_url_idna_long_label_before_nameprep(self, label):
+        # Mapped-away characters do not count towards the prepared label limit.
+        raw_label = "\u00ad" * 10000 + label
+        expected = (
+            label if label.isascii() else "xn--" + label.encode("punycode").decode()
+        )
+        assert safe_url_string(f"http://{raw_label}.example/") == (
+            f"http://{expected}.example/"
+        )
+
+    @pytest.mark.parametrize("label", ["é" * 57, "ß" * 57, "ς" * 57])
+    @pytest.mark.parametrize("dot", [".", "\u3002", "\uff0e", "\uff61"])
+    def test_safe_url_idna_encoded_label_boundary_and_dots(self, label, dot):
+        encoded = "xn--" + label.encode("punycode").decode()
+        assert safe_url_string(f"http://{label}{dot}example{dot}/") == (
+            f"http://{encoded}.example./"
+        )
+
+    @pytest.mark.parametrize("label", ["é" * 58, "ß" * 58, "ς" * 58])
+    def test_safe_url_idna_encoded_label_too_long(self, label):
+        url = f"http://{label}.example/"
+        assert safe_url_string(url) == url
+
+    @pytest.mark.parametrize("deviation", ["", "ß", "ς"])
+    def test_safe_url_idna_oversized_distinct_label(self, deviation):
+        # Punycode searches the full input for every distinct code point. An
+        # already oversized prepared label should take the fallback directly.
+        label = deviation + "".join(chr(0x4E00 + i) for i in range(4096))
+        url = f"http://{label}.example/"
+        start = time.process_time()
+        assert safe_url_string(url) == url
+        assert time.process_time() - start < 2
+
+    @pytest.mark.parametrize("separator", ["", "\u034f"])
+    def test_safe_url_idna_descending_combining_runs(self, separator):
+        # Nameprep removes CGJ, joining runs that NFKC originally kept apart.
+        label = "a" + "\u0315" * 24000 + separator + "\u0300" * 24000
+        url = f"http://{label}.example/"
+        start = time.process_time()
+        assert safe_url_string(url) == url
+        assert time.process_time() - start < 2
+
+    def test_safe_url_idna_nameprep_joins_combining_runs(self):
+        label = "a" + "\u0315" * 6 + "\u034f" + "\u0300" * 6
+        expected = label.encode("idna").decode()
+        assert safe_url_string(f"http://{label}.example/") == (
+            f"http://{expected}.example/"
         )
 
     def test_safe_url_port_number(self):
@@ -2307,6 +2360,14 @@ class TestDataURI:
         assert result.media_type_parameters == {"foo": ""}
         assert result.data == b"AAA"
 
+    def test_many_mediatype_parameters_with_quoted_delimiters(self):
+        params = {f"p{i}": f"value,{i};suffix" for i in range(1000)}
+        header = ";".join(f'{name}="{value}"' for name, value in params.items())
+        result = parse_data_uri(f"data:text/plain;{header};base64,SGVsbG8=")
+        assert result.media_type == "text/plain"
+        assert result.media_type_parameters == params
+        assert result.data == b"Hello"
+
     def test_base64(self):
         result = parse_data_uri("data:text/plain;base64,SGVsbG8sIHdvcmxkLg%3D%3D")
         assert result.media_type == "text/plain"
@@ -2455,6 +2516,34 @@ class TestPrivateHelpers:
     def test_urlsplit(self, url: str, expected: tuple[str, str, str, str, str]) -> None:
         assert tuple(_urlsplit(url)) == expected
 
+    def test_urlsplit_preserves_combining_netloc(self):
+        netloc = "user:a" + "\u0315" * 192 + "\u0300" * 192 + "@example.com:80"
+        assert _urlsplit(f"http://{netloc}/path").netloc == netloc
+
+    @pytest.mark.parametrize("delimiter", ["／", "？", "＃", "＠", "：", "＼"])
+    def test_urlsplit_rejects_normalized_delimiter_after_combining_run(self, delimiter):
+        netloc = "a" + "\u0315" * 192 + "\u0300" * 192 + delimiter + "example.com"
+        with pytest.raises(ValueError, match="NFKC normalization"):
+            _urlsplit(f"http://{netloc}/path")
+
+    @pytest.mark.parametrize(
+        "ucd", [None, unicodedata.ucd_3_2_0], ids=["current", "3.2"]
+    )
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "a" + "\u0315" * 192 + "\u0300" * 192,
+            "a" + "\u0315" * 192 + "\u034f" + "\u0300" * 192,
+            "\u1100\u1161\u11a8" * 128,
+            "\uac00\u11a8" * 192,
+            "\U0002f868\U0002f874\U0002f91f" * 128,
+        ],
+        ids=["reorder", "cgj", "hangul-jamo", "hangul-syllable", "corrections"],
+    )
+    def test_normalize_nfkc_matches_stdlib(self, ucd, text):
+        expected = (ucd or unicodedata).normalize("NFKC", text)
+        assert _normalize_nfkc(text, ucd) == expected
+
     @pytest.mark.parametrize(
         ("components", "expected"),
         [
@@ -2534,6 +2623,15 @@ class TestPrivateHelpers:
 
 
 class TestPrivateHelpersProperties:
+    @pytest.mark.parametrize(
+        "ucd", [None, unicodedata.ucd_3_2_0], ids=["current", "3.2"]
+    )
+    @given(st.text(min_size=257, max_size=400))
+    def test_normalize_nfkc_matches_stdlib(self, ucd, text):
+        assert _normalize_nfkc(text, ucd) == (ucd or unicodedata).normalize(
+            "NFKC", text
+        )
+
     @example("/")
     @given(st.text())
     def test_quote_matches_stdlib(self, data: str) -> None:
