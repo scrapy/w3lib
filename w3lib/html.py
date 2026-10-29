@@ -7,9 +7,17 @@ from __future__ import annotations
 import functools
 import re
 from html.entities import html5
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, AnyStr
 
-from w3lib._util import _COMMENT, _attr_re, _scannable, iter_tag_attributes, to_unicode
+from w3lib._util import (
+    _COMMENT,
+    _OTHER_TAG,
+    _TAG_REST,
+    _attr_re,
+    _scannable,
+    iter_tag_attributes,
+    to_unicode,
+)
 from w3lib.url import _urljoin, safe_url_string
 
 if TYPE_CHECKING:
@@ -62,42 +70,61 @@ _tag_extent_bytes_re = re.compile(_tag_extent_source.encode())
 
 def _ignored_tags_source(ignore_tags: tuple[str, ...]) -> str:
     tags = "|".join(re.escape(tag) for tag in ignore_tags)
-    # Only HTML whitespace, "/" or ">" after the name can close the element.
-    # Unlike _TAG_BODY, the end-tag body consumes "<" as attribute text. Quoted
-    # values also consume ">", and an unfinished value runs to the end of input.
-    space = r"[\t\n\f\r ]"
-    attribute = (
-        rf"[^\t\n\f\r />][^\t\n\f\r />=]*+{space}*+"
-        rf"(?:={space}*+(?:\"[^\"]*(?:\"|$)|'[^']*(?:'|$)|[^\t\n\f\r >]*+))?+"
-    )
-    # Possessive repeats keep attribute names and unquoted values from being
-    # split or read again as the scanner advances through a long end tag.
-    end_body = rf"(?:{space}|/|{attribute})*+(?:>|$)"
+    # Only HTML whitespace, "/" or ">" after the name can open or close the
+    # element; anything else continues the name, as in "<script-loader>".
     return (
-        rf"<(?P<t>{tags})\b{_TAG_BODY}>[^<]*"
+        rf"<(?P<t>{tags})(?=[\t\n\f\r />]){_TAG_BODY}>[^<]*"
         r"(?:<(?!/(?P=t)[\t\n\f\r />])[^<]*)*"
-        rf"(?:</(?P=t){end_body}|$)"
+        rf"(?:</(?P=t){_TAG_REST}|$)"
     )
 
 
-_base_re = re.compile("<base", re.IGNORECASE | re.ASCII)
+_tag_body_re = re.compile(_TAG_BODY, re.ASCII)
+_tag_body_bytes_re = re.compile(_TAG_BODY.encode())
+
+
+def _tag_text_has(
+    text: AnyStr, tag: re.Pattern[AnyStr], word: re.Pattern[AnyStr]
+) -> bool:
+    """Return whether the text after the name of some *tag* in *text*, read as
+    the scans below read a <base> or <meta>, has a match of *word*.
+
+    The scans walk the attributes of every tag, so that a <base> or <meta>
+    written inside one is not read, which costs several times a search for the
+    tag name. They only act on a tag whose own text spells *word*, wherever the
+    tag sits, so a document with none can skip them at the cost of that search.
+    """
+    body: re.Pattern[Any] = (
+        _tag_body_re if isinstance(text, str) else _tag_body_bytes_re
+    )
+    # The body pattern matches the empty string, so match() always succeeds.
+    return any(
+        word.search(body.match(text, m.end()).group())  # type: ignore[union-attr]
+        for m in tag.finditer(text)
+    )
+
+
 _base_bytes_re = re.compile(rb"<base", re.IGNORECASE)
+_base_start_re = re.compile(r"<base\s", re.IGNORECASE | re.ASCII)
+_href_re = re.compile("href", re.IGNORECASE | re.ASCII)
 # Scan for <base> tags, consuming comments and <script>/<noscript> content
 # (where a browser never parses tags) along the way. Ignorable regions come
 # first in the alternation, so a <base> inside one is consumed before it can
 # match; unterminated regions swallow the rest of the document, as a browser
 # does. Their content is consumed in runs of characters that cannot start the
 # closing delimiter, so that the large inline scripts of real pages cost a
-# tight loop per run rather than a match attempt per character. The end tag
-# closes on the tag name followed by HTML whitespace, "/" or ">".
+# tight loop per run rather than a match attempt per character. The start and
+# end tags need the tag name followed by HTML whitespace, "/" or ">".
 #
 # The text of a <base> tag after its name is captured whole and its attributes
-# are then read one by one, as for <meta>.
+# are then read one by one, as for <meta>. Any other tag is consumed whole, so
+# that a <base> written inside one of its quoted attribute values is not read.
 _base_scan_re = re.compile(
     rf"""
       {_COMMENT}
     | {_ignored_tags_source(("script", "noscript"))}
     | <base\s(?P<attrs>{_TAG_BODY})
+    | {_OTHER_TAG}
     """,
     re.IGNORECASE | re.DOTALL | re.VERBOSE | re.ASCII,
 )
@@ -132,7 +159,10 @@ _tags_re = re.compile(
     """,
     re.IGNORECASE | re.VERBOSE | re.ASCII,
 )
-_meta_re = re.compile("<meta", re.IGNORECASE | re.ASCII)
+_meta_start_re = re.compile(r"<meta\s", re.IGNORECASE | re.ASCII)
+_meta_start_bytes_re = re.compile(rb"<meta\s", re.IGNORECASE)
+_refresh_re = re.compile("refresh", re.IGNORECASE | re.ASCII)
+_refresh_bytes_re = re.compile(b"refresh", re.IGNORECASE)
 
 
 def _meta_scan_source(ignore_tags: tuple[str, ...]) -> str:
@@ -142,27 +172,25 @@ def _meta_scan_source(ignore_tags: tuple[str, ...]) -> str:
     # swallow the rest of the document, as a browser does. Their content is
     # consumed in runs of characters that cannot start the closing delimiter,
     # so that the large inline scripts of real pages cost a tight loop per run
-    # rather than a match attempt per character. The end tag closes on the tag
-    # name followed by HTML whitespace, "/" or ">".
+    # rather than a match attempt per character. The start and end tags need the
+    # tag name followed by HTML whitespace, "/" or ">".
     #
     # The <meta> body is matched without the closing angle bracket, which is
     # not required: a tag left unterminated by the next "<" or by the end of
-    # the text is still parsed, as browsers do.
+    # the text is still parsed, as browsers do. Any other tag is consumed whole,
+    # so that a <meta> written inside one of its quoted attribute values is not
+    # read.
     alternatives = [_COMMENT]
     if ignore_tags:
         alternatives.append(_ignored_tags_source(ignore_tags))
     alternatives.append(rf"<meta\s(?P<attrs>{_TAG_BODY})")
+    alternatives.append(_OTHER_TAG)
     return "|".join(alternatives)
 
 
 @functools.lru_cache(maxsize=256)
 def _build_meta_scan_pattern(ignore_tags: tuple[str, ...]) -> re.Pattern[str]:
     return re.compile(_meta_scan_source(ignore_tags), re.IGNORECASE | re.ASCII)
-
-
-@functools.lru_cache(maxsize=256)
-def _build_meta_scan_bytes_pattern(ignore_tags: tuple[str, ...]) -> re.Pattern[bytes]:
-    return re.compile(_meta_scan_source(ignore_tags).encode(), re.IGNORECASE)
 
 
 HTML5_WHITESPACE = " \t\n\r\x0c"
@@ -551,7 +579,7 @@ def get_base_url(
 
     # A cut through bytes can split a character, which is then replaced.
     utext = to_unicode(text, encoding, errors="replace" if cut else "strict")
-    if _base_re.search(utext):
+    if _tag_text_has(utext, _base_start_re, _href_re):
         for m in _base_scan_re.finditer(utext):
             if (attrs := m.group("attrs")) is None:
                 continue
@@ -572,9 +600,12 @@ def get_base_url(
                     # place, e.g. a relative URL against an opaque path such as
                     # "data:…", or a host with a forbidden code point.
                     try:
-                        return safe_url_string(_urljoin(base, url), encoding=encoding)
+                        url = safe_url_string(_urljoin(base, url), encoding=encoding)
                     except ValueError:
-                        pass
+                        return base
+                    # So does a data: or javascript: URL.
+                    if not url.startswith(("data:", "javascript:")):
+                        return url
                 return base
     return safe_url_string(baseurl)
 
@@ -637,17 +668,16 @@ def get_meta_refresh(
     # decoding them. A hit falls through to the scan of the decoded document,
     # which decides: a byte sequence that spells a tag is not necessarily one,
     # e.g. in a multi-byte encoding it can be part of a character.
-    if isinstance(text, bytes) and _scannable(encoding):
-        matches = _build_meta_scan_bytes_pattern(ignored).finditer(text)
-        if not any(
-            (attrs := match.group("attrs")) and b"refresh" in attrs.lower()
-            for match in matches
-        ):
-            return None, None
+    if (
+        isinstance(text, bytes)
+        and _scannable(encoding)
+        and not _tag_text_has(text, _meta_start_bytes_re, _refresh_bytes_re)
+    ):
+        return None, None
 
     # A cut through bytes can split a character, which is then replaced.
     utext = to_unicode(text, encoding, errors="replace" if cut else "strict")
-    if not _meta_re.search(utext):
+    if not _tag_text_has(utext, _meta_start_re, _refresh_re):
         return None, None
 
     for tag in _build_meta_scan_pattern(ignored).finditer(utext):

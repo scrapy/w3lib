@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import encodings.idna
 import functools
 import ipaddress
 import os
@@ -62,6 +63,8 @@ _NETLOC_DELIMS_RE = re.compile(r"[/?#@:\\]")
 _NETLOC_STRIP_CHARS = str.maketrans("", "", "@:#?")
 # https://url.spec.whatwg.org/#forbidden-host-code-point
 _FORBIDDEN_HOST_CODE_POINT_RE = re.compile(r"[\x00\t\n\r #/:<>?@[\\\]^|]")
+# https://url.spec.whatwg.org/#forbidden-domain-code-point
+_FORBIDDEN_DOMAIN_CODE_POINT_RE = re.compile(r"[\x00-\x20#%/:<>?@[\\\]^|\x7f]")
 _OPAQUE_HOST_SAFE_CHARS = RFC3986_SUB_DELIMS + b"%"
 
 
@@ -870,8 +873,38 @@ def _idna(input_string: str) -> tuple[bytes, str]:
 
     _, normalized = _nfkc_netloc(input_string)
 
-    encoded = normalized.encode("idna")
+    if "ß" not in normalized and "ς" not in normalized:
+        encoded = normalized.encode("idna")
+    else:
+        labels = encodings.idna.dots.split(normalized)
+        trailing_dot = len(labels) > 1 and not labels[-1]
+        if trailing_dot:
+            labels.pop()
+        encoded = b".".join(_idna_label(label) for label in labels)
+        if trailing_dot:
+            encoded += b"."
     return encoded, encoded.decode()
+
+
+# The deviation characters "ß" and "ς" are mapped to "ss" and "σ" by IDNA 2003,
+# i.e. by Python's idna codec, but kept by the nontransitional UTS #46
+# processing of the URL living standard, so "faß.example" is "xn--fa-hia.example"
+# in browsers, not the different domain "fass.example".
+# https://www.unicode.org/reports/tr46/#Deviations
+_IDNA_DEVIATION_RE = re.compile("([ßς])")
+
+
+def _idna_label(label: str) -> bytes:
+    if "ß" not in label and "ς" not in label:
+        return encodings.idna.ToASCII(label)
+    label = "".join(
+        piece if piece in {"ß", "ς"} else encodings.idna.nameprep(piece)
+        for piece in _IDNA_DEVIATION_RE.split(label)
+    )
+    encoded = b"xn--" + label.encode("punycode")
+    if len(encoded) > 63:
+        raise UnicodeError("label too long")
+    return encoded
 
 
 def _idna_bytes(input_string: str) -> bytes:
@@ -884,6 +917,30 @@ def _opaque_host(host: str) -> bytes:
     if _FORBIDDEN_HOST_CODE_POINT_RE.search(host):
         raise ValueError(f"{host!r} contains a forbidden host code point")
     return _quote(host.encode(), _OPAQUE_HOST_SAFE_CHARS)
+
+
+def _domain(host: str) -> str:
+    """Return *host*, the host of a special URL, percent-decoded and
+    lowercased, as the URL living standard does before IDNA and IPv4 parsing,
+    e.g. "%31%32%37.0.0.1" as "127.0.0.1"."""
+    if "%" in host:
+        host = _unquote(host).decode("utf-8", "replace")
+    if host.isascii():
+        return host.lower()
+    # str.lower() turns a final "Σ" into "ς", which _idna() keeps, while
+    # UTS #46 maps "Σ" to "σ".
+    return host.replace("Σ", "σ").lower()
+
+
+def _check_domain(host: str) -> None:
+    """Raise ValueError if *host*, the IDNA-encoded host of a special URL,
+    contains a forbidden domain code point.
+
+    A percent-decoded host can contain delimiters such as "/" or "@" that would
+    change where the authority ends if serialized as is.
+    """
+    if _FORBIDDEN_DOMAIN_CODE_POINT_RE.search(host):
+        raise ValueError(f"{host!r} contains a forbidden domain code point")
 
 
 # https://url.spec.whatwg.org/#ipv4-number-parser

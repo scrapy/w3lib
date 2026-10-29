@@ -31,6 +31,8 @@ from ._url import (
     RFC3986_SUB_DELIMS as RFC3986_SUB_DELIMS,
     RFC3986_UNRESERVED as RFC3986_UNRESERVED,
     RFC3986_USERINFO_SAFE_CHARS as RFC3986_USERINFO_SAFE_CHARS,
+    _check_domain,
+    _domain,
     _idna_bytes,
     _ipv4_host,
     _opaque_host,
@@ -191,12 +193,18 @@ def _safe_url_split(  # pylint: disable=too-many-statements
                 raise ValueError(f"{url!r} has userinfo or a port but no host")
             tmp_buf += _opaque_host(host)
         else:
+            # parts.hostname is lowercased with str.lower(), which turns a
+            # final "Σ" into "ς", so take the host from the netloc and let
+            # _domain() lowercase it.
+            host = parts.netloc.rpartition("@")[2]
+            host = _domain(parts.hostname if "[" in host else host.partition(":")[0])
             try:
-                host = _idna_bytes(parts.hostname).decode()
+                host = _idna_bytes(host).decode()
             except UnicodeError:
                 # IDNA encoding can fail for too long labels (>63 characters) or
                 # missing labels (e.g. http://.example.com).
                 host = parts.hostname
+            _check_domain(host)
             tmp_buf += _ipv4_host(host).encode()
 
     if parts.port is not None:
