@@ -665,6 +665,57 @@ class TestGetBaseUrl:
             "https://example.com/"
         )
 
+    @pytest.mark.parametrize("as_bytes", [False, True])
+    @pytest.mark.parametrize(
+        ("href", "expected"),
+        [
+            ("/search?a=1&amp;b=2", "/search?a=1&b=2"),
+            ("/docs&#47;guide/", "/docs/guide/"),
+            ("/docs&#x2f;guide/", "/docs/guide/"),
+            ("/docs&#47guide/", "/docs/guide/"),
+            ("/caf&eacute;/", "/caf%C3%A9/"),
+            ("/docs/&#34;quoted&#34;/", "/docs/%22quoted%22/"),
+            ("&#32;/docs/&#9;", "/docs/"),
+            ("/docs/&amp;copy;/", "/docs/&copy;/"),
+            ("/docs/&unknown;/", "/docs/&unknown;/"),
+            ("/search?x=1&copy=2&amp;y=3", "/search?x=1&copy=2&y=3"),
+            ("/search?x=1&copy=2", "/search?x=1&copy=2"),
+            ("/docs/&copy/", "/docs/%C2%A9/"),
+            ("/docs/&copy\u212a/", "/docs/%C2%A9%E2%84%AA/"),
+            ("/docs%2Fguide/", "/docs%2Fguide/"),
+        ],
+    )
+    def test_get_base_url_character_references(
+        self, href: str, expected: str, as_bytes: bool
+    ) -> None:
+        text = f'<base href="{href}">'
+        assert (
+            get_base_url(text.encode() if as_bytes else text, "https://example.org/")
+            == f"https://example.org{expected}"
+        )
+
+    def test_get_base_url_character_references_stay_in_attribute_value(self) -> None:
+        baseurl = "https://example.org/"
+        assert (
+            get_base_url(
+                '<base data-x="&#34; href=&#34;https://other.example/">', baseurl
+            )
+            == baseurl
+        )
+        assert (
+            get_base_url(
+                '<base href="&#32;&#x09;"><base href="https://other.example/">',
+                baseurl,
+            )
+            == baseurl
+        )
+
+    def test_get_base_url_oversized_character_reference(self) -> None:
+        href = f"/docs/&#{'9' * 5000};"
+        assert get_base_url(f'<base href="{href}">', "https://example.org/") == (
+            f"https://example.org{href}"
+        )
+
     @pytest.mark.parametrize(
         ("href", "baseurl"),
         [

@@ -30,6 +30,7 @@ _ent_re = re.compile(
     r"&((?P<named>[a-z0-9]+)|#(?P<dec>[0-9]+)|#x(?P<hex>[a-f0-9]+))(?P<semicolon>;?)",
     re.IGNORECASE,
 )
+_attribute_ent_re = re.compile(_ent_re.pattern, re.IGNORECASE | re.ASCII)
 # The text of a tag after its name, up to the angle bracket that ends the tag.
 # A quoted attribute value is consumed whole, so that an angle bracket in it
 # does not end the tag. A quote opens a value only right after the "=" of an
@@ -276,6 +277,27 @@ def replace_entities(
 
 def has_entities(text: str | bytes, encoding: str | None = None) -> bool:
     return bool(_ent_re.search(to_unicode(text, encoding)))
+
+
+def _replace_entities_in_attribute(value: str) -> str:
+    def convert_entity(match: re.Match[str]) -> str:
+        # In an attribute, a named reference without a semicolon followed by
+        # "=" or an ASCII alphanumeric is literal. The pattern already consumes
+        # the full alphanumeric run, so only "=" needs an extra check.
+        if (
+            match["named"]
+            and not match["semicolon"]
+            and value.startswith("=", match.end())
+        ):
+            return match[0]
+        try:
+            return replace_entities(match[0], remove_illegal=False)
+        except ValueError:
+            # A decimal reference can exceed Python's integer string limit.
+            # Leave it literal, like other unconvertible references.
+            return match[0]
+
+    return _attribute_ent_re.sub(convert_entity, value)
 
 
 def replace_tags(
@@ -594,6 +616,8 @@ def get_base_url(
                 # is not read either way.
                 # https://html.spec.whatwg.org/commit-snapshots/3e7b72c44ce144cee7db859cd0647af6646b6793/#set-the-frozen-base-url
                 value = attr["double"] or attr["single"] or attr["bare"] or ""
+                if "&" in value:
+                    value = _replace_entities_in_attribute(value)
                 base = safe_url_string(baseurl)
                 if url := value.strip(HTML5_WHITESPACE):
                     # A URL that cannot be parsed also leaves the fallback in
