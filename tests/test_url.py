@@ -867,6 +867,10 @@ class TestUrl:
             safe_url_string(f"http://{'ß' * 64}.de/") == f"http://xn--zc{'a' * 64}.de/"
         )
         assert safe_url_string("http://a..straße.de/") == "http://a..xn--strae-oqa.de/"
+        # can_ada rejects "א" followed by a left-to-right character
+        assert safe_url_string("http://אß.de/") == "http://xn--zca34w.de/"
+        assert safe_url_string("http://אß.de./") == "http://xn--zca34w.de./"
+        assert safe_url_string(f"http://א{'ß' * 64}.de/") == f"http://א{'ß' * 64}.de/"
 
         # the fallback works when a non-UTF-8 page encoding is given
         assert (
