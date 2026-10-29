@@ -274,6 +274,30 @@ def replace_entities(
     return _ent_re.sub(convert_entity, to_unicode(text, encoding))
 
 
+def _attribute_value(value: str) -> str:
+    """Return *value*, an attribute value as written, with its character
+    references decoded the way the HTML tokenizer decodes them in an attribute
+    value."""
+    if "&" not in value:
+        return value
+
+    def convert(m: re.Match[str]) -> str:
+        # In an attribute value, a named reference without a semicolon that is
+        # followed by "=" is not decoded, e.g. the "&not" of "?a=1&not=2", and
+        # a named reference that does not resolve is kept as written.
+        # https://html.spec.whatwg.org/commit-snapshots/3e7b72c44ce144cee7db859cd0647af6646b6793/#named-character-reference-state
+        if m["named"]:
+            if not m["semicolon"] and value[m.end() : m.end() + 1] == "=":
+                return m.group(0)
+            return replace_entities(m.group(0), remove_illegal=False)
+        # A numeric reference always decodes, to U+FFFD if out of range.
+        # https://html.spec.whatwg.org/commit-snapshots/3e7b72c44ce144cee7db859cd0647af6646b6793/#numeric-character-reference-end-state
+        decoded = replace_entities(m.group(0), remove_illegal=False)
+        return "\ufffd" if decoded == m.group(0) else decoded
+
+    return _ent_re.sub(convert, value)
+
+
 def has_entities(text: str | bytes, encoding: str | None = None) -> bool:
     return bool(_ent_re.search(to_unicode(text, encoding)))
 
@@ -595,7 +619,7 @@ def get_base_url(
                 # https://html.spec.whatwg.org/commit-snapshots/3e7b72c44ce144cee7db859cd0647af6646b6793/#set-the-frozen-base-url
                 value = attr["double"] or attr["single"] or attr["bare"] or ""
                 base = safe_url_string(baseurl)
-                if url := value.strip(HTML5_WHITESPACE):
+                if url := _attribute_value(value).strip(HTML5_WHITESPACE):
                     # A URL that cannot be parsed also leaves the fallback in
                     # place, e.g. a relative URL against an opaque path such as
                     # "data:…", or a host with a forbidden code point.
@@ -620,7 +644,7 @@ def _refresh(attrs: str, baseurl: str, encoding: str) -> tuple[float, str] | Non
         # a reference is decoded into the value of its own attribute, so a
         # decoded quote or "=" is data, and a name is not decoded at all
         # https://html.spec.whatwg.org/commit-snapshots/3e7b72c44ce144cee7db859cd0647af6646b6793/#flush-code-points-consumed-as-a-character-reference
-        value = replace_entities(raw_value) if "&" in raw_value else raw_value
+        value = _attribute_value(raw_value)
         match name:
             case "http-equiv":
                 if "refresh" in value.lower():
