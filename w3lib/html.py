@@ -290,12 +290,22 @@ def _replace_entities_in_attribute(value: str) -> str:
             and value.startswith("=", match.end())
         ):
             return match[0]
-        try:
-            return replace_entities(match[0], remove_illegal=False)
-        except ValueError:
-            # A decimal reference can exceed Python's integer string limit.
-            # Leave it literal, like other unconvertible references.
-            return match[0]
+        reference = match[0]
+        if digits := match["dec"] or match["hex"]:
+            # Strip leading zeros before bounding the conversion: even a
+            # 5000-digit reference can denote an ordinary code point.
+            digits = digits.lstrip("0") or "0"
+            base = 10 if match["dec"] else 16
+            # Unicode code points need at most seven decimal or six hex digits.
+            if len(digits) > (7 if base == 10 else 6):
+                return "\ufffd"
+            number = int(digits, base)
+            if number > 0x10FFFF:
+                return "\ufffd"
+            reference = f"&#{number}{match['semicolon']}"
+        replacement = replace_entities(reference, remove_illegal=False)
+        # Preserve the original spelling when no conversion is available.
+        return match[0] if replacement == reference else replacement
 
     return _attribute_ent_re.sub(convert_entity, value)
 
@@ -644,7 +654,9 @@ def _refresh(attrs: str, baseurl: str, encoding: str) -> tuple[float, str] | Non
         # a reference is decoded into the value of its own attribute, so a
         # decoded quote or "=" is data, and a name is not decoded at all
         # https://html.spec.whatwg.org/commit-snapshots/3e7b72c44ce144cee7db859cd0647af6646b6793/#flush-code-points-consumed-as-a-character-reference
-        value = replace_entities(raw_value) if "&" in raw_value else raw_value
+        value = (
+            _replace_entities_in_attribute(raw_value) if "&" in raw_value else raw_value
+        )
         match name:
             case "http-equiv":
                 if "refresh" in value.lower():

@@ -595,6 +595,24 @@ although this is inside a cdata! &amp; &quot;</node1><node2>blah&blahblahblahbla
         assert time.process_time() - start < 2
 
 
+_ATTRIBUTE_NUMERIC_REFERENCES = [
+    pytest.param("&#1114111;", "%F4%8F%BF%BF", id="decimal-maximum"),
+    pytest.param("&#x10FFFF;", "%F4%8F%BF%BF", id="hex-maximum"),
+    pytest.param("&#1114112;", "%EF%BF%BD", id="decimal-out-of-range"),
+    pytest.param("&#x110000;", "%EF%BF%BD", id="hex-out-of-range"),
+    pytest.param("&#1114112", "%EF%BF%BD", id="out-of-range-no-semicolon"),
+    pytest.param(f"&#{'9' * 5000};", "%EF%BF%BD", id="decimal-5000-digits"),
+    pytest.param(f"&#x{'f' * 5000};", "%EF%BF%BD", id="hex-5000-digits"),
+    pytest.param(f"&#{'0' * 5000}65;", "A", id="decimal-leading-zeros"),
+    pytest.param(f"&#X{'0' * 5000}41;", "A", id="hex-leading-zeros"),
+    pytest.param(f"&#{'0' * 5000};", "%EF%BF%BD", id="all-zeros"),
+    pytest.param(f"&#{'0' * 5000}1114112;", "%EF%BF%BD", id="padded-out-of-range"),
+    pytest.param("&#0;", "%EF%BF%BD", id="null"),
+    pytest.param("&#xD800;", "%EF%BF%BD", id="surrogate"),
+    pytest.param("&#128;", "%E2%82%AC", id="windows-1252-mapping"),
+]
+
+
 class TestGetBaseUrl:
     def test_get_base_url(self):
         baseurl = "https://example.org"
@@ -710,11 +728,15 @@ class TestGetBaseUrl:
             == baseurl
         )
 
-    def test_get_base_url_oversized_character_reference(self) -> None:
-        href = f"/docs/&#{'9' * 5000};"
-        assert get_base_url(f'<base href="{href}">', "https://example.org/") == (
-            f"https://example.org{href}"
-        )
+    @pytest.mark.parametrize("as_bytes", [False, True])
+    @pytest.mark.parametrize(("reference", "expected"), _ATTRIBUTE_NUMERIC_REFERENCES)
+    def test_get_base_url_numeric_character_references(
+        self, reference: str, expected: str, as_bytes: bool
+    ) -> None:
+        body = f'<base href="/docs/{reference}/">'
+        assert get_base_url(
+            body.encode() if as_bytes else body, "https://example.org/"
+        ) == (f"https://example.org/docs/{expected}/")
 
     @pytest.mark.parametrize(
         ("href", "baseurl"),
@@ -1200,6 +1222,42 @@ class TestGetMetaRefresh:
         baseurl = "http://example.org"
         body = """<meta http-equiv="refresh" content="3; url=&#39;http://www.example.com/other&#39;">"""
         assert get_meta_refresh(body, baseurl) == (3, "http://www.example.com/other")
+
+    @pytest.mark.parametrize("as_bytes", [False, True])
+    @pytest.mark.parametrize(
+        ("url", "expected"),
+        [
+            ("/search?x=1&copy=2&amp;y=3", "/search?x=1&copy=2&y=3"),
+            ("/docs/&copy/", "/docs/%C2%A9/"),
+            ("/docs/&unknown;/", "/docs/&unknown;/"),
+            ("/docs/&amp;copy;/", "/docs/&copy;/"),
+            ("/docs%2Fguide/", "/docs%2Fguide/"),
+            ("/docs/&#34;quoted&#34;/", "/docs/%22quoted%22/"),
+        ],
+    )
+    def test_get_meta_refresh_character_references(
+        self, url: str, expected: str, as_bytes: bool
+    ) -> None:
+        body = f'<meta http-equiv="refresh" content="3;url={url}">'
+        assert get_meta_refresh(
+            body.encode() if as_bytes else body, "https://example.org/"
+        ) == (
+            3,
+            f"https://example.org{expected}",
+        )
+
+    @pytest.mark.parametrize("as_bytes", [False, True])
+    @pytest.mark.parametrize(("reference", "expected"), _ATTRIBUTE_NUMERIC_REFERENCES)
+    def test_get_meta_refresh_numeric_character_references(
+        self, reference: str, expected: str, as_bytes: bool
+    ) -> None:
+        body = f'<meta http-equiv="refresh" content="3;url=/docs/{reference}/">'
+        assert get_meta_refresh(
+            body.encode() if as_bytes else body, "https://example.org/"
+        ) == (
+            3,
+            f"https://example.org/docs/{expected}/",
+        )
 
     def test_entities_do_not_spell_out_attributes(self) -> None:
         # a reference is decoded into the value of its own attribute, so
