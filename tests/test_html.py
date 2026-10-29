@@ -713,6 +713,24 @@ class TestGetBaseUrl:
             == baseurl
         )
 
+    @pytest.mark.parametrize(
+        ("href", "expected"),
+        [
+            ("https:&#47;&#47;other.example/", "https://other.example/"),
+            ("&sol;&sol;other.example/", "https://other.example/"),
+            ("/a?b=1&amp;c=2", "https://example.org/a?b=1&c=2"),
+            ("/a?b=1&not=2", "https://example.org/a?b=1&not=2"),
+            ("/a?b=&foo;", "https://example.org/a?b=&foo;"),
+            ("jav&#x61;script:alert(1)", "https://example.org/a/b"),
+        ],
+    )
+    def test_get_base_url_character_references(self, href: str, expected: str) -> None:
+        # Character references in the href value are decoded as in any
+        # attribute value, except a named one without a semicolon before "=",
+        # and one that does not resolve.
+        baseurl = "https://example.org/a/b"
+        assert get_base_url(f'<base href="{href}">', baseurl) == expected
+
     def test_get_base_url_fragment_against_opaque_path(self) -> None:
         assert (
             get_base_url('<base href="#a">', "mailto:user@example.org")
@@ -1149,6 +1167,22 @@ class TestGetMetaRefresh:
         baseurl = "http://example.org"
         body = """<meta http-equiv="refresh" content="3; url=&#39;http://www.example.com/other&#39;">"""
         assert get_meta_refresh(body, baseurl) == (3, "http://www.example.com/other")
+
+    @pytest.mark.parametrize(
+        ("url", "expected"),
+        [
+            ("/a?b=1&not=2", "http://example.org/a?b=1&not=2"),
+            ("/a?b=&foo;", "http://example.org/a?b=&foo;"),
+            ("/a?b=&#99999999;", "http://example.org/a?b=%EF%BF%BD"),
+        ],
+    )
+    def test_attribute_value_references_in_url(self, url: str, expected: str) -> None:
+        # A named reference without a semicolon before "=" and one that does
+        # not resolve stay as written in an attribute value, and an
+        # out-of-range numeric one is U+FFFD.
+        baseurl = "http://example.org"
+        body = f'<meta http-equiv="refresh" content="0;url={url}">'
+        assert get_meta_refresh(body, baseurl) == (0, expected)
 
     def test_entities_do_not_spell_out_attributes(self) -> None:
         # a reference is decoded into the value of its own attribute, so
