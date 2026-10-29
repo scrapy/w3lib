@@ -17,6 +17,8 @@ from typing import TYPE_CHECKING, NamedTuple, cast, overload
 from urllib.parse import ParseResult, urljoin
 from urllib.request import pathname2url
 
+import can_ada
+
 from ._infra import _ASCII_WHITESPACE
 from ._url import (
     _PATH_SAFE_CHARS,
@@ -82,6 +84,39 @@ _QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS
 _SPECIAL_QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS.translate(None, delete=b"'")
 _FRAGMENT_SAFEST_CHARS = _PATH_SAFEST_CHARS
 
+_SAFEST_URL_RE = re.compile(
+    r"[A-Za-z0-9!$%&'()*+,\-./:;=?@_~]*(?:#[A-Za-z0-9!$%&'()*+,\-./:;=?@_~]*)?"
+)
+_UTF8_NAMES = frozenset(("utf8", "utf-8", "UTF-8", "UTF8"))
+
+
+def _parse_safe_url(
+    url: str | bytes, encoding: str, path_encoding: str
+) -> can_ada.URL | None:
+    """Return *url* parsed by can_ada if its serialization is what
+    :func:`_safe_url_split` would produce for it, or ``None`` otherwise."""
+    url = to_unicode(url, encoding=encoding, errors="percentencode")
+    if "://" not in url or not (
+        url.isascii() or (encoding in _UTF8_NAMES and path_encoding in _UTF8_NAMES)
+    ):
+        return None
+    try:
+        parsed = can_ada.parse(url)
+    except ValueError:
+        return None
+    # _safe_url_split normalizes the percent-encoding of the userinfo and
+    # drops an empty query or fragment.
+    if (
+        parsed.protocol[:-1] not in _SPECIAL_SCHEMES
+        or parsed.username
+        or parsed.password
+    ):
+        return None
+    href = parsed.href
+    if href[-1] in "?#" or "?#" in href or _SAFEST_URL_RE.fullmatch(href) is None:
+        return None
+    return parsed
+
 
 def _skip_special_authority_slashes(url: str) -> str:
     """Return *url* with exactly two slashes before the host if its scheme is
@@ -124,12 +159,13 @@ def _safe_url_split(  # pylint: disable=too-many-statements
     parts = _urlsplit(url)
     tmp_buf = bytearray()  # utf-8 bytes
 
-    if parts.username is not None:
-        _quote_into(
-            _unquote(parts.username),
-            tmp_buf,
-            _USERINFO_SAFEST_CHARS,
-        )
+    if parts.username is not None or parts.password is not None:
+        if parts.username is not None:
+            _quote_into(
+                _unquote(parts.username),
+                tmp_buf,
+                _USERINFO_SAFEST_CHARS,
+            )
 
         if parts.password is not None:
             tmp_buf.append(58)  # ord(":")
@@ -271,6 +307,10 @@ def safe_url_string(
 
     Calling this function on an already safe URL returns the URL unmodified.
     """
+    if quote_path:
+        parsed = _parse_safe_url(url, encoding, path_encoding)
+        if parsed is not None:
+            return parsed.href
     return _urlunsplit(*_safe_url_split(url, encoding, path_encoding, quote_path))
 
 
@@ -294,8 +334,15 @@ def safe_download_url(
         FutureWarning,
         stacklevel=2,
     )
-    safe_url = safe_url_string(url, encoding, path_encoding)
-    scheme, netloc, path, query, _ = _urlsplit(safe_url)
+    parsed = _parse_safe_url(url, encoding, path_encoding)
+    if parsed is not None:
+        scheme = parsed.protocol[:-1]
+        netloc = parsed.host
+        path = parsed.pathname
+        query = parsed.search[1:]
+    else:
+        safe_url = safe_url_string(url, encoding, path_encoding)
+        scheme, netloc, path, query, _ = _urlsplit(safe_url)
     if path:
         if "%" in path:
             path = "/".join(
@@ -890,12 +937,33 @@ def canonicalize_url(
     # if not for proper URL expected by remote website.
     if isinstance(url, ParseResult):
         url = _urlunparse(*url)
-    try:
-        scheme, netloc, path, query, fragment = _safe_url_split(
-            url, encoding=encoding or "utf8"
+    parsed = _parse_safe_url(url, encoding or "utf8", "utf8")
+    if parsed is not None:
+        path = parsed.pathname
+        query = parsed.search[1:]
+        if not query and "%" not in path and ";" not in path:
+            return parsed.href if keep_fragments else parsed.href.partition("#")[0]
+        scheme = parsed.protocol[:-1]
+        netloc = parsed.host
+        fragment = parsed.hash[1:]
+    else:
+        try:
+            scheme, netloc, path, query, fragment = _safe_url_split(
+                url, encoding=encoding or "utf8"
+            )
+        except UnicodeEncodeError:
+            scheme, netloc, path, query, fragment = _safe_url_split(
+                url, encoding="utf8"
+            )
+        # Apply lowercase to the domain, but not to the userinfo.
+        uinf_sep_idx = netloc.rfind("@")
+        host = (
+            (netloc[uinf_sep_idx + 1 :] if uinf_sep_idx != -1 else netloc)
+            .lower()
+            .removesuffix(":")
         )
-    except UnicodeEncodeError:
-        scheme, netloc, path, query, fragment = _safe_url_split(url, encoding="utf8")
+        netloc = (netloc[: uinf_sep_idx + 1] + host) if uinf_sep_idx != -1 else host
+        netloc = _normalize_ipv6_host(netloc)
     path, params = _split_params(scheme, path)
 
     # 1. decode query-string as UTF-8 (or keep raw bytes),
@@ -937,21 +1005,14 @@ def canonicalize_url(
         del keyvals
 
     # 2. decode percent-encoded sequences in path as UTF-8 (or keep raw bytes)
-    #    and percent-encode path again (this normalizes to upper-case %XX)
-    path = _quote(_unquotepath(path), _PATH_SAFE_CHARS).decode() if path else "/"
+    #    and percent-encode path again (this normalizes to upper-case %XX);
+    #    a path without "%" is already quoted.
+    if not path:
+        path = "/"
+    elif "%" in path:
+        path = _quote(_unquotepath(path), _PATH_SAFE_CHARS).decode()
 
     fragment = "" if not keep_fragments else fragment
-
-    # Apply lowercase to the domain, but not to the userinfo.
-    uinf_sep_idx = netloc.rfind("@")
-    host = (
-        (netloc[uinf_sep_idx + 1 :] if uinf_sep_idx != -1 else netloc)
-        .lower()
-        .removesuffix(":")
-    )
-    netloc = (netloc[: uinf_sep_idx + 1] + host) if uinf_sep_idx != -1 else host
-
-    netloc = _normalize_ipv6_host(netloc)
 
     # every part should be safe already
     return _urlunparse(scheme, netloc, path, params, query, fragment)
@@ -975,8 +1036,6 @@ def _normalize_ipv6_host(netloc: str) -> str:
 
 
 def _unquotepath(path: str) -> bytes:
-    if "%" not in path:
-        return path.encode()
     # standard lib's unquote() does not work for non-UTF-8
     # percent-escaped characters, they get lost.
     # e.g., '%a3' becomes 'REPLACEMENT CHARACTER' (U+FFFD)
