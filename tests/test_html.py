@@ -65,11 +65,57 @@ class TestRemoveEntities:
             == "a < b  c  six"
         )
         assert replace_entities("x&#x2264;y") == "x\u2264y"
-        assert replace_entities("x&#157;y") == "xy"
-        assert replace_entities("x&#157;y", remove_illegal=False) == "x&#157;y"
+        assert replace_entities("x&#157;y") == "x\x9dy"
+        assert replace_entities("x&#157;y", remove_illegal=False) == "x\x9dy"
         assert replace_entities("&#82179209091;") == ""
         assert (
             replace_entities("&#82179209091;", remove_illegal=False) == "&#82179209091;"
+        )
+
+    @pytest.mark.parametrize("number", [0x81, 0x8D, 0x8F, 0x90, 0x9D])
+    @pytest.mark.parametrize("remove_illegal", [False, True])
+    def test_undefined_c1_references(self, number: int, remove_illegal: bool) -> None:
+        for reference in (f"&#{number};", f"&#x{number:x}"):
+            assert replace_entities(reference, remove_illegal=remove_illegal) == chr(
+                number
+            )
+
+    @pytest.mark.parametrize("as_bytes", [False, True])
+    @pytest.mark.parametrize("remove_illegal", [False, True])
+    @pytest.mark.parametrize("semicolon", ["", ";"])
+    def test_long_numeric_references(
+        self, as_bytes: bool, remove_illegal: bool, semicolon: str
+    ) -> None:
+        for prefix, digits, expected in (
+            ("&#", "0" * 5000 + "65", "A"),
+            ("&#X", "0" * 5000 + "41", "A"),
+            ("&#", "0" * 5000, "\ufffd"),
+            ("&#x", "0" * 5000 + "D800", "\ufffd"),
+            ("&#", "1114111", "\U0010ffff"),
+            ("&#x", "10FFFF", "\U0010ffff"),
+        ):
+            reference = prefix + digits + semicolon
+            text = reference.encode() if as_bytes else reference
+            assert replace_entities(text, remove_illegal=remove_illegal) == expected
+        for prefix, digits in (
+            ("&#", "9" * 5000),
+            ("&#x", "f" * 5000),
+            ("&#", "0" * 5000 + "1114112"),
+            ("&#x", "0" * 5000 + "110000"),
+        ):
+            reference = prefix + digits + semicolon
+            text = reference.encode() if as_bytes else reference
+            expected = "" if remove_illegal and semicolon else reference
+            assert replace_entities(text, remove_illegal=remove_illegal) == expected
+
+    @pytest.mark.parametrize("suffix", ["\u212a", "\u017f", "\u0130", "\u0131"])
+    @pytest.mark.parametrize("remove_illegal", [False, True])
+    def test_non_ascii_named_reference_suffix(
+        self, suffix: str, remove_illegal: bool
+    ) -> None:
+        assert (
+            replace_entities("&copy" + suffix, remove_illegal=remove_illegal)
+            == "©" + suffix
         )
 
     def test_browser_hack(self):
@@ -610,6 +656,11 @@ _ATTRIBUTE_NUMERIC_REFERENCES = [
     pytest.param("&#0;", "%EF%BF%BD", id="null"),
     pytest.param("&#xD800;", "%EF%BF%BD", id="surrogate"),
     pytest.param("&#128;", "%E2%82%AC", id="windows-1252-mapping"),
+    *[
+        pytest.param(reference, f"%C2%{number:02X}", id=f"c1-{number}-{kind}")
+        for number in (0x81, 0x8D, 0x8F, 0x90, 0x9D)
+        for kind, reference in (("decimal", f"&#{number};"), ("hex", f"&#x{number:x}"))
+    ],
 ]
 
 

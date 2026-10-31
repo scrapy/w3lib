@@ -28,9 +28,8 @@ if TYPE_CHECKING:
 # decimal digits, which int() accepts but no HTML parser decodes.
 _ent_re = re.compile(
     r"&((?P<named>[a-z0-9]+)|#(?P<dec>[0-9]+)|#x(?P<hex>[a-f0-9]+))(?P<semicolon>;?)",
-    re.IGNORECASE,
+    re.IGNORECASE | re.ASCII,
 )
-_attribute_ent_re = re.compile(_ent_re.pattern, re.IGNORECASE | re.ASCII)
 # The text of a tag after its name, up to the angle bracket that ends the tag.
 # A quoted attribute value is consumed whole, so that an angle bracket in it
 # does not end the tag. A quote opens a value only right after the "=" of an
@@ -234,11 +233,10 @@ def replace_entities(
 
     def convert_entity(m: re.Match[str]) -> str:
         groups = m.groupdict()
-        number = None
-        if groups.get("dec"):
-            number = int(groups["dec"], 10)
-        elif groups.get("hex"):
-            number = int(groups["hex"], 16)
+        if groups.get("dec") or groups.get("hex"):
+            replacement = _convert_numeric_entity(m)
+            if replacement is not None:
+                return replacement
         else:
             # guaranteed to be named
             entity_name = groups["named"]
@@ -251,28 +249,33 @@ def replace_entities(
             replacement = html5.get(entity_name + groups["semicolon"])
             if replacement is not None:
                 return replacement
-        if number is not None:
-            # A null or surrogate reference is a parse error that the tokenizer
-            # resolves to U+FFFD; chr() would instead emit a NUL or a lone
-            # surrogate, which is not a Unicode scalar value and fails to
-            # encode. Out-of-range references keep the remove_illegal handling.
-            # https://html.spec.whatwg.org/commit-snapshots/3e7b72c44ce144cee7db859cd0647af6646b6793/#numeric-character-reference-end-state
-            if number == 0 or 0xD800 <= number <= 0xDFFF:
-                return "\ufffd"
-            # Numeric character references in the 80-9F range are typically
-            # interpreted by browsers as representing the characters mapped
-            # to bytes 80-9F in the Windows-1252 encoding. For more info
-            # see: http://en.wikipedia.org/wiki/Character_encodings_in_HTML
-            try:
-                if 0x80 <= number <= 0x9F:
-                    return bytes((number,)).decode("cp1252")
-                return chr(number)
-            except (ValueError, OverflowError):
-                pass
 
         return "" if remove_illegal and groups.get("semicolon") else m.group(0)
 
     return _ent_re.sub(convert_entity, to_unicode(text, encoding))
+
+
+def _convert_numeric_entity(match: re.Match[str]) -> str | None:
+    # Strip leading zeros before bounding conversion: even a 5000-digit
+    # reference can denote an ordinary code point. This also avoids Python's
+    # integer string limit for decimal references in replace_entities().
+    digits = (match["dec"] or match["hex"]).lstrip("0") or "0"
+    base = 10 if match["dec"] else 16
+    if len(digits) > (7 if base == 10 else 6):
+        return None
+    number = int(digits, base)
+    if number > 0x10FFFF:
+        return None
+    # https://html.spec.whatwg.org/multipage/parsing.html#numeric-character-reference-end-state
+    if number == 0 or 0xD800 <= number <= 0xDFFF:
+        return "\ufffd"
+    if 0x80 <= number <= 0x9F:
+        try:
+            return bytes((number,)).decode("cp1252")
+        except UnicodeDecodeError:
+            # C1 values without a Windows-1252 mapping keep their code point.
+            pass
+    return chr(number)
 
 
 def has_entities(text: str | bytes, encoding: str | None = None) -> bool:
@@ -290,24 +293,13 @@ def _replace_entities_in_attribute(value: str) -> str:
             and value.startswith("=", match.end())
         ):
             return match[0]
-        reference = match[0]
-        if digits := match["dec"] or match["hex"]:
-            # Strip leading zeros before bounding the conversion: even a
-            # 5000-digit reference can denote an ordinary code point.
-            digits = digits.lstrip("0") or "0"
-            base = 10 if match["dec"] else 16
-            # Unicode code points need at most seven decimal or six hex digits.
-            if len(digits) > (7 if base == 10 else 6):
-                return "\ufffd"
-            number = int(digits, base)
-            if number > 0x10FFFF:
-                return "\ufffd"
-            reference = f"&#{number}{match['semicolon']}"
-        replacement = replace_entities(reference, remove_illegal=False)
-        # Preserve the original spelling when no conversion is available.
-        return match[0] if replacement == reference else replacement
+        if match["dec"] or match["hex"]:
+            # Attribute parsing replaces out-of-range references, while the
+            # public replace_entities() keeps its remove_illegal policy.
+            return _convert_numeric_entity(match) or "\ufffd"
+        return replace_entities(match[0], remove_illegal=False)
 
-    return _attribute_ent_re.sub(convert_entity, value)
+    return _ent_re.sub(convert_entity, value)
 
 
 def replace_tags(
