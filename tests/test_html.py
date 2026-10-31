@@ -65,11 +65,57 @@ class TestRemoveEntities:
             == "a < b  c  six"
         )
         assert replace_entities("x&#x2264;y") == "x\u2264y"
-        assert replace_entities("x&#157;y") == "xy"
-        assert replace_entities("x&#157;y", remove_illegal=False) == "x&#157;y"
+        assert replace_entities("x&#157;y") == "x\x9dy"
+        assert replace_entities("x&#157;y", remove_illegal=False) == "x\x9dy"
         assert replace_entities("&#82179209091;") == ""
         assert (
             replace_entities("&#82179209091;", remove_illegal=False) == "&#82179209091;"
+        )
+
+    @pytest.mark.parametrize("number", [0x81, 0x8D, 0x8F, 0x90, 0x9D])
+    @pytest.mark.parametrize("remove_illegal", [False, True])
+    def test_undefined_c1_references(self, number: int, remove_illegal: bool) -> None:
+        for reference in (f"&#{number};", f"&#x{number:x}"):
+            assert replace_entities(reference, remove_illegal=remove_illegal) == chr(
+                number
+            )
+
+    @pytest.mark.parametrize("as_bytes", [False, True])
+    @pytest.mark.parametrize("remove_illegal", [False, True])
+    @pytest.mark.parametrize("semicolon", ["", ";"])
+    def test_long_numeric_references(
+        self, as_bytes: bool, remove_illegal: bool, semicolon: str
+    ) -> None:
+        for prefix, digits, expected in (
+            ("&#", "0" * 5000 + "65", "A"),
+            ("&#X", "0" * 5000 + "41", "A"),
+            ("&#", "0" * 5000, "\ufffd"),
+            ("&#x", "0" * 5000 + "D800", "\ufffd"),
+            ("&#", "1114111", "\U0010ffff"),
+            ("&#x", "10FFFF", "\U0010ffff"),
+        ):
+            reference = prefix + digits + semicolon
+            text = reference.encode() if as_bytes else reference
+            assert replace_entities(text, remove_illegal=remove_illegal) == expected
+        for prefix, digits in (
+            ("&#", "9" * 5000),
+            ("&#x", "f" * 5000),
+            ("&#", "0" * 5000 + "1114112"),
+            ("&#x", "0" * 5000 + "110000"),
+        ):
+            reference = prefix + digits + semicolon
+            text = reference.encode() if as_bytes else reference
+            expected = "" if remove_illegal and semicolon else reference
+            assert replace_entities(text, remove_illegal=remove_illegal) == expected
+
+    @pytest.mark.parametrize("suffix", ["\u212a", "\u017f", "\u0130", "\u0131"])
+    @pytest.mark.parametrize("remove_illegal", [False, True])
+    def test_non_ascii_named_reference_suffix(
+        self, suffix: str, remove_illegal: bool
+    ) -> None:
+        assert (
+            replace_entities("&copy" + suffix, remove_illegal=remove_illegal)
+            == "©" + suffix
         )
 
     def test_browser_hack(self):
@@ -595,6 +641,29 @@ although this is inside a cdata! &amp; &quot;</node1><node2>blah&blahblahblahbla
         assert time.process_time() - start < 2
 
 
+_ATTRIBUTE_NUMERIC_REFERENCES = [
+    pytest.param("&#1114111;", "%F4%8F%BF%BF", id="decimal-maximum"),
+    pytest.param("&#x10FFFF;", "%F4%8F%BF%BF", id="hex-maximum"),
+    pytest.param("&#1114112;", "%EF%BF%BD", id="decimal-out-of-range"),
+    pytest.param("&#x110000;", "%EF%BF%BD", id="hex-out-of-range"),
+    pytest.param("&#1114112", "%EF%BF%BD", id="out-of-range-no-semicolon"),
+    pytest.param(f"&#{'9' * 5000};", "%EF%BF%BD", id="decimal-5000-digits"),
+    pytest.param(f"&#x{'f' * 5000};", "%EF%BF%BD", id="hex-5000-digits"),
+    pytest.param(f"&#{'0' * 5000}65;", "A", id="decimal-leading-zeros"),
+    pytest.param(f"&#X{'0' * 5000}41;", "A", id="hex-leading-zeros"),
+    pytest.param(f"&#{'0' * 5000};", "%EF%BF%BD", id="all-zeros"),
+    pytest.param(f"&#{'0' * 5000}1114112;", "%EF%BF%BD", id="padded-out-of-range"),
+    pytest.param("&#0;", "%EF%BF%BD", id="null"),
+    pytest.param("&#xD800;", "%EF%BF%BD", id="surrogate"),
+    pytest.param("&#128;", "%E2%82%AC", id="windows-1252-mapping"),
+    *[
+        pytest.param(reference, f"%C2%{number:02X}", id=f"c1-{number}-{kind}")
+        for number in (0x81, 0x8D, 0x8F, 0x90, 0x9D)
+        for kind, reference in (("decimal", f"&#{number};"), ("hex", f"&#x{number:x}"))
+    ],
+]
+
+
 class TestGetBaseUrl:
     def test_get_base_url(self):
         baseurl = "https://example.org"
@@ -664,6 +733,61 @@ class TestGetBaseUrl:
         assert get_base_url('<base href="///example.com">', baseurl) == (
             "https://example.com/"
         )
+
+    @pytest.mark.parametrize("as_bytes", [False, True])
+    @pytest.mark.parametrize(
+        ("href", "expected"),
+        [
+            ("/search?a=1&amp;b=2", "/search?a=1&b=2"),
+            ("/docs&#47;guide/", "/docs/guide/"),
+            ("/docs&#x2f;guide/", "/docs/guide/"),
+            ("/docs&#47guide/", "/docs/guide/"),
+            ("/caf&eacute;/", "/caf%C3%A9/"),
+            ("/docs/&#34;quoted&#34;/", "/docs/%22quoted%22/"),
+            ("&#32;/docs/&#9;", "/docs/"),
+            ("/docs/&amp;copy;/", "/docs/&copy;/"),
+            ("/docs/&unknown;/", "/docs/&unknown;/"),
+            ("/search?x=1&copy=2&amp;y=3", "/search?x=1&copy=2&y=3"),
+            ("/search?x=1&copy=2", "/search?x=1&copy=2"),
+            ("/docs/&copy/", "/docs/%C2%A9/"),
+            ("/docs/&copy\u212a/", "/docs/%C2%A9%E2%84%AA/"),
+            ("/docs%2Fguide/", "/docs%2Fguide/"),
+        ],
+    )
+    def test_get_base_url_character_references(
+        self, href: str, expected: str, as_bytes: bool
+    ) -> None:
+        text = f'<base href="{href}">'
+        assert (
+            get_base_url(text.encode() if as_bytes else text, "https://example.org/")
+            == f"https://example.org{expected}"
+        )
+
+    def test_get_base_url_character_references_stay_in_attribute_value(self) -> None:
+        baseurl = "https://example.org/"
+        assert (
+            get_base_url(
+                '<base data-x="&#34; href=&#34;https://other.example/">', baseurl
+            )
+            == baseurl
+        )
+        assert (
+            get_base_url(
+                '<base href="&#32;&#x09;"><base href="https://other.example/">',
+                baseurl,
+            )
+            == baseurl
+        )
+
+    @pytest.mark.parametrize("as_bytes", [False, True])
+    @pytest.mark.parametrize(("reference", "expected"), _ATTRIBUTE_NUMERIC_REFERENCES)
+    def test_get_base_url_numeric_character_references(
+        self, reference: str, expected: str, as_bytes: bool
+    ) -> None:
+        body = f'<base href="/docs/{reference}/">'
+        assert get_base_url(
+            body.encode() if as_bytes else body, "https://example.org/"
+        ) == (f"https://example.org/docs/{expected}/")
 
     @pytest.mark.parametrize(
         ("href", "baseurl"),
@@ -1149,6 +1273,42 @@ class TestGetMetaRefresh:
         baseurl = "http://example.org"
         body = """<meta http-equiv="refresh" content="3; url=&#39;http://www.example.com/other&#39;">"""
         assert get_meta_refresh(body, baseurl) == (3, "http://www.example.com/other")
+
+    @pytest.mark.parametrize("as_bytes", [False, True])
+    @pytest.mark.parametrize(
+        ("url", "expected"),
+        [
+            ("/search?x=1&copy=2&amp;y=3", "/search?x=1&copy=2&y=3"),
+            ("/docs/&copy/", "/docs/%C2%A9/"),
+            ("/docs/&unknown;/", "/docs/&unknown;/"),
+            ("/docs/&amp;copy;/", "/docs/&copy;/"),
+            ("/docs%2Fguide/", "/docs%2Fguide/"),
+            ("/docs/&#34;quoted&#34;/", "/docs/%22quoted%22/"),
+        ],
+    )
+    def test_get_meta_refresh_character_references(
+        self, url: str, expected: str, as_bytes: bool
+    ) -> None:
+        body = f'<meta http-equiv="refresh" content="3;url={url}">'
+        assert get_meta_refresh(
+            body.encode() if as_bytes else body, "https://example.org/"
+        ) == (
+            3,
+            f"https://example.org{expected}",
+        )
+
+    @pytest.mark.parametrize("as_bytes", [False, True])
+    @pytest.mark.parametrize(("reference", "expected"), _ATTRIBUTE_NUMERIC_REFERENCES)
+    def test_get_meta_refresh_numeric_character_references(
+        self, reference: str, expected: str, as_bytes: bool
+    ) -> None:
+        body = f'<meta http-equiv="refresh" content="3;url=/docs/{reference}/">'
+        assert get_meta_refresh(
+            body.encode() if as_bytes else body, "https://example.org/"
+        ) == (
+            3,
+            f"https://example.org/docs/{expected}/",
+        )
 
     def test_entities_do_not_spell_out_attributes(self) -> None:
         # a reference is decoded into the value of its own attribute, so
