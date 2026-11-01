@@ -310,7 +310,8 @@ def safe_download_url(
 
 
 def is_url(text: str) -> bool:
-    return text.partition("://")[0] in {"file", "http", "https"}
+    scheme, separator, _ = text.partition("://")
+    return bool(separator) and scheme.lower() in {"file", "http", "https"}
 
 
 @overload

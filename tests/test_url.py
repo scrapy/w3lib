@@ -1077,6 +1077,33 @@ class TestUrl:
         assert not is_url("foo://bar")
         assert not is_url("foo--bar")
 
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "HTTP://example.org",
+            "Https://example.org",
+            "hTtPs://example.org",
+            "FILE:///some/path",
+        ],
+    )
+    def test_is_url_case_insensitive_scheme(self, url):
+        assert is_url(url)
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "http",
+            "https",
+            "file",
+            "HTTP",
+            "https:",
+            "http:/example.org",
+            "file:/some/path",
+        ],
+    )
+    def test_is_url_requires_scheme_separator(self, text):
+        assert not is_url(text)
+
     def test_add_http_if_no_scheme(self):
         assert add_http_if_no_scheme("www.example.com") == "http://www.example.com"
         assert add_http_if_no_scheme("//www.example.com") == "http://www.example.com"
