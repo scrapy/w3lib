@@ -1077,6 +1077,21 @@ class TestUrl:
         assert not is_url("foo://bar")
         assert not is_url("foo--bar")
 
+    def test_is_url_scheme_case_insensitive(self):
+        assert is_url("HTTP://www.example.org")
+        assert is_url("HTTPS://www.example.org")
+        assert is_url("Https://www.example.org")
+        assert is_url("FILE:///some/path")
+        assert not is_url("FOO://bar")
+
+    def test_is_url_requires_delimiter(self):
+        assert not is_url("http")
+        assert not is_url("https")
+        assert not is_url("file")
+        assert not is_url("HTTP")
+        assert not is_url("HTTPS")
+        assert not is_url("FILE")
+
     def test_add_http_if_no_scheme(self):
         assert add_http_if_no_scheme("www.example.com") == "http://www.example.com"
         assert add_http_if_no_scheme("//www.example.com") == "http://www.example.com"
