@@ -20,7 +20,7 @@ jobs:
             fail-fast: false
             matrix:
                 include:
-                    # Keep in sync with .readthedocs.yml
+                    # Keep in sync with [tool.sphinx-scrapy] in pyproject.toml
                     - python-version: '3.14'
                       env:
                           TOXENV: docs
