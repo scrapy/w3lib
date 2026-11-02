@@ -310,8 +310,9 @@ def safe_download_url(
 
 
 def is_url(text: str) -> bool:
-    scheme, delimiter, _ = text.partition("://")
-    return bool(delimiter) and scheme.lower() in {"file", "http", "https"}
+    prefixes = ("file://", "http://", "https://")
+    # Only lowercase the first 8 characters (len("https://")) when needed.
+    return text.startswith(prefixes) or text[:8].lower().startswith(prefixes)
 
 
 @overload
