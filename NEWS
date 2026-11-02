@@ -1,6 +1,13 @@
 w3lib release notes
 ===================
 
+Unreleased
+----------
+
+- :func:`~w3lib.http.basic_auth_header` now uses ``bytes`` credentials as-is
+  instead of decoding them as UTF-8 (#390).
+
+
 2.5.0 (2026-09-30)
 ------------------
 

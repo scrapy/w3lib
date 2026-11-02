@@ -31,6 +31,37 @@ class TestHttp:
             == b"Basic c29t5nVz6HI6c/htZXDkc3M="
         )
 
+    def test_basic_auth_header_bytes(self):
+        # Latin-1 bytes case
+        user_latin1 = "somæusèr".encode("latin1")
+        pass_latin1 = "sømepäss".encode("latin1")
+        assert (
+            basic_auth_header(user_latin1, pass_latin1, encoding="latin1")
+            == b"Basic c29t5nVz6HI6c/htZXDkc3M="
+        )
+        assert (
+            basic_auth_header(user_latin1, pass_latin1)
+            == b"Basic c29t5nVz6HI6c/htZXDkc3M="
+        )
+
+        # UTF-8 bytes that must not be transcoded when encoding='latin1'
+        user_utf8 = "somæusèr".encode()
+        pass_utf8 = "sømepäss".encode()
+        assert (
+            basic_auth_header(user_utf8, pass_utf8, encoding="latin1")
+            == b"Basic c29tw6Z1c8Oocjpzw7htZXDDpHNz"
+        )
+
+        # Mixture of text and bytes
+        assert (
+            basic_auth_header("somæusèr", pass_latin1, encoding="latin1")
+            == b"Basic c29t5nVz6HI6c/htZXDkc3M="
+        )
+        assert (
+            basic_auth_header(user_latin1, "sømepäss", encoding="latin1")
+            == b"Basic c29t5nVz6HI6c/htZXDkc3M="
+        )
+
     def test_headers_raw_dict_none(self):
         assert headers_raw_to_dict(None) is None
         assert headers_dict_to_raw(None) is None

@@ -24,6 +24,22 @@ def to_unicode(
     return text.decode(encoding, errors)
 
 
+def to_bytes(
+    text: str | bytes, encoding: str | None = None, errors: str = "strict"
+) -> bytes:
+    """Return the binary representation of `text`. If `text`
+    is already a bytes object, return it as-is."""
+    if isinstance(text, bytes):
+        return text
+    if not isinstance(text, str):
+        raise TypeError(
+            f"to_bytes must receive str or bytes, got {type(text).__name__}"
+        )
+    if encoding is None:
+        encoding = "utf-8"
+    return text.encode(encoding, errors)
+
+
 # An HTML comment, up to where it ends or the text does. As in the HTML
 # tokenizer, it ends at the first "-->" or "--!>" after its "<!--", or right
 # away at "<!-->" or "<!--->". Dashes are consumed one at a time only where no

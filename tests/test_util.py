@@ -1,12 +1,12 @@
 import pytest
 
-from w3lib._util import iter_tag_attributes, to_unicode
+from w3lib._util import iter_tag_attributes, to_bytes, to_unicode
 
 with pytest.warns(DeprecationWarning, match="The w3lib.util module is deprecated."):
-    from w3lib.util import to_bytes
+    from w3lib.util import to_bytes as deprecated_to_bytes
 
 
-class TestToBytesDeprecated:
+class TestToBytes:
     def test_type_error(self):
         with pytest.raises(TypeError):
             to_bytes(True)  # type: ignore[arg-type]
@@ -25,6 +25,29 @@ class TestToBytesDeprecated:
         with pytest.raises(UnicodeEncodeError):
             to_bytes("café", encoding="ascii")
         assert to_bytes("café", encoding="ascii", errors="replace") == b"caf?"
+
+
+class TestToBytesDeprecated:
+    def test_type_error(self):
+        with pytest.raises(TypeError):
+            deprecated_to_bytes(True)  # type: ignore[arg-type]
+
+    def test_bytes_passthrough(self):
+        data = b"caf\xe9"
+        assert deprecated_to_bytes(data) is data
+
+    def test_str(self):
+        assert deprecated_to_bytes("café") == b"caf\xc3\xa9"
+
+    def test_encoding(self):
+        assert deprecated_to_bytes("café", encoding="latin1") == b"caf\xe9"
+
+    def test_errors(self):
+        with pytest.raises(UnicodeEncodeError):
+            deprecated_to_bytes("café", encoding="ascii")
+        assert (
+            deprecated_to_bytes("café", encoding="ascii", errors="replace") == b"caf?"
+        )
 
 
 class TestToUnicode:
