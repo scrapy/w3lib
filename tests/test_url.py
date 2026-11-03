@@ -1104,6 +1104,24 @@ class TestUrl:
             == "HTTPS://www.example.com"
         )
 
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "git+https://example.org/repo",
+            "chrome-extension://extension/page",
+            "org.example://host/path",
+            "GIT+SSH://example.org/repo?ref=main#readme",
+        ],
+    )
+    def test_add_http_if_no_scheme_preserves_existing_schemes(self, url):
+        assert add_http_if_no_scheme(url) == url
+
+    def test_add_http_if_no_scheme_with_port(self):
+        assert (
+            add_http_if_no_scheme("example.org:8080/path")
+            == "http://example.org:8080/path"
+        )
+
     def test_url_query_parameter(self):
         assert url_query_parameter("product.html?id=200&foo=bar", "id") == "200"
         assert (

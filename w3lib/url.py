@@ -586,7 +586,7 @@ def any_to_uri(uri_or_path: str) -> str:
 
 def add_http_if_no_scheme(url: str) -> str:
     """Add ``http`` as the default scheme if it is missing from *url*."""
-    if not re.match(r"^\w+://", url, flags=re.IGNORECASE):
+    if not re.match(r"^\w[\w+.-]*://", url, flags=re.IGNORECASE):
         scheme = "http:" if _urlparse(url).netloc else "http://"
         url = scheme + url
     return url
