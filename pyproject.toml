@@ -27,7 +27,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 requires-python = ">=3.11"
-dependencies = ["frostwork>=0.1.7"]
+dependencies = ["frostwork>=0.2.0"]
 dynamic = ["version"]
 
 [project.urls]
