@@ -1371,12 +1371,51 @@ http://www.example.org/index.php" />
 
     def test_http_equiv_without_refresh(self) -> None:
         # "refresh" elsewhere in the tag gets it scanned, but the pragma is
-        # only the http-equiv attribute with refresh in its value
+        # only the http-equiv attribute with refresh as its value
         baseurl = "http://example.org"
         body = '<meta http-equiv="content-type" content="3; url=/refresh">'
         assert get_meta_refresh(body, baseurl) == (None, None)
         body = '<meta http-equiv="content-type" http-equiv="refresh" content="3; url=/next">'
         assert get_meta_refresh(body, baseurl) == (3.0, "http://example.org/next")
+
+    @pytest.mark.parametrize(
+        "pragma",
+        [
+            "x-refresh",
+            "refreshing",
+            "refresh refresh",
+            " refresh",
+            "refresh ",
+            "\trefresh",
+            "refresh\xa0",
+        ],
+    )
+    @pytest.mark.parametrize("as_bytes", [False, True])
+    def test_http_equiv_requires_exact_refresh(
+        self, pragma: str, as_bytes: bool
+    ) -> None:
+        body = f'<meta http-equiv="{pragma}" content="0;url=/wrong">'
+        text = body.encode() if as_bytes else body
+        assert get_meta_refresh(text, "https://example.org/") == (None, None)
+
+        body += '<meta http-equiv="refresh" content="3;url=/next">'
+        text = body.encode() if as_bytes else body
+        assert get_meta_refresh(text, "https://example.org/") == (
+            3.0,
+            "https://example.org/next",
+        )
+
+    @pytest.mark.parametrize("pragma", ["refresh", "Refresh", "REFRESH", "rEfReSh"])
+    @pytest.mark.parametrize("as_bytes", [False, True])
+    def test_http_equiv_refresh_case_insensitive(
+        self, pragma: str, as_bytes: bool
+    ) -> None:
+        body = f'<meta http-equiv="{pragma}" content="3;url=/next">'
+        text = body.encode() if as_bytes else body
+        assert get_meta_refresh(text, "https://example.org/") == (
+            3.0,
+            "https://example.org/next",
+        )
 
     def test_unquoted_whitespace(self) -> None:
         body = "<meta http-equiv=refresh content=3; url=/next>"

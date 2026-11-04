@@ -628,7 +628,7 @@ def _refresh(attrs: str, baseurl: str, encoding: str) -> tuple[float, str] | Non
         value = replace_entities(raw_value) if "&" in raw_value else raw_value
         match name:
             case "http-equiv":
-                if "refresh" in value.lower():
+                if value.lower() == "refresh":
                     has_refresh_pragma = True
             case "content":
                 if interval is None and (m := _meta_refresh_content_re.match(value)):
