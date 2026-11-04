@@ -565,6 +565,19 @@ class TestHtmlConversion:
             "日本語のテキストです。",
         )
 
+    @pytest.mark.parametrize(
+        ("url", "encoding", "text"),
+        [
+            (None, "cp866", "\u0412\u0430"),
+            ("https://example.com/", "cp866", "\u0412\u0430"),
+            ("https://example.jp/", "cp932", "あ"),
+        ],
+    )
+    def test_autodetect_url(self, url, encoding, text):
+        body = b"\x82\xa0"
+        assert html_encoding(None, body, url=url) == encoding
+        assert html_to_unicode(None, body, url=url) == (encoding, text)
+
     def test_whatwg_decoders(self):
         # EUC-JP as browsers decode it, which Python's codec does not
         self._assert_encoding("euc-jp", b"\xa1\xc1 \xad\xa1", "euc_jp", "～ ①")

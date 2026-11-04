@@ -203,9 +203,11 @@ def to_unicode(data_str: bytes, encoding: str) -> str:
         return data_str.decode(encoding, "replace")
 
 
-def html_encoding(content_type_header: str | None, html_body_str: bytes) -> str:
+def html_encoding(
+    content_type_header: str | None, html_body_str: bytes, *, url: str | None = None
+) -> str:
     """Return the encoding :func:`html_to_unicode` would decode
-    *html_body_str* with, without decoding it.
+    *html_body_str* with, given the same *url*, without decoding it.
 
     .. versionadded:: VERSION
 
@@ -214,7 +216,7 @@ def html_encoding(content_type_header: str | None, html_body_str: bytes) -> str:
     'cp1252'
     """
     enc = http_content_type_encoding(content_type_header)
-    return cast("str", codec_name(detect_encoding(html_body_str, enc)))
+    return cast("str", codec_name(detect_encoding(html_body_str, enc, url=url)))
 
 
 def html_to_unicode(
@@ -222,8 +224,13 @@ def html_to_unicode(
     html_body_str: bytes,
     default_encoding: str | None = None,
     auto_detect_fun: Callable[[bytes], str | None] | None = None,
+    *,
+    url: str | None = None,
 ) -> tuple[str, str]:
     r'''Convert raw html bytes to unicode
+
+    .. versionadded:: VERSION
+       The *url* parameter.
 
     This finds the encoding of the html body the way a web browser does,
     trying in order:
@@ -232,7 +239,8 @@ def html_to_unicode(
     * http content type header
     * meta or xml tag declarations
     * UTF-8, if the body is valid UTF-8
-    * the encoding guessed from the bytes of the body, as Firefox does
+    * the encoding guessed from the bytes of the body and the top-level domain
+      of *url*, the URL of the body, as Firefox does
 
     If a BOM is found, it will be stripped.
 
@@ -270,7 +278,7 @@ def html_to_unicode(
         return cast("str", codec_name(name)), decode(html_body_str[length:], name)
     enc = http_content_type_encoding(content_type_header)
     if auto_detect_fun is None and default_encoding is None:
-        name = detect_encoding(html_body_str, enc)
+        name = detect_encoding(html_body_str, enc, url=url)
         return cast("str", codec_name(name)), decode(html_body_str, name)
     warnings.warn(
         "The default_encoding and auto_detect_fun parameters of "
