@@ -272,6 +272,18 @@ SAFE_URL_URL_CASES = (
         f"https://{'a' * 63}.{'a' * 63}.{'a' * 63}.{'a' * 54}.example/",
     ),
     ("https://ñ.example", "https://xn--ida.example/"),
+    # The deviation characters ß and ς are kept, as browsers do, instead of
+    # being mapped to ss and σ, which would make a different domain.
+    ("https://straße.de/", "https://xn--strae-oqa.de/"),
+    ("https://STRASSE.de/", "https://strasse.de/"),
+    ("https://STRAẞE.de/", "https://xn--strae-oqa.de/"),
+    ("https://stra%C3%9Fe.de/", "https://xn--strae-oqa.de/"),
+    ("https://user@straße.de:8080/", "https://user@xn--strae-oqa.de:8080/"),
+    ("https://www.straße.de./", "https://www.xn--strae-oqa.de./"),
+    ("https://www.straße\u3002de/", "https://www.xn--strae-oqa.de/"),
+    ("http://ς.example/", "http://xn--3xa.example/"),
+    ("http://ας.example/", "http://xn--mxa8a.example/"),
+    ("http://ΑΣ.example/", "http://xn--mxa0b.example/"),
     ("http://192.168.0.0", "http://192.168.0.0/"),
     ("http://192.168.0.256", ValueError),
     ("http://192.168.0.0.0", ValueError),
@@ -855,6 +867,8 @@ class TestUrl:
             safe_url_string(f"http://www.{'éxamplé' * 11}.com/résumé?q=résumé")
             == f"http://www.{'éxamplé' * 11}.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9"
         )
+        assert safe_url_string(f"http://{'ß' * 64}.de/") == f"http://{'ß' * 64}.de/"
+        assert safe_url_string("http://a..straße.de/") == "http://a..straße.de/"
 
         # the fallback works when a non-UTF-8 page encoding is given
         assert (
@@ -1857,6 +1871,10 @@ class TestCanonicalizeUrl:
 
     def test_domains_are_case_insensitive(self):
         assert canonicalize_url("http://www.EXAMPLE.com/") == "http://www.example.com/"
+
+    def test_idna_deviation_characters(self):
+        assert canonicalize_url("http://straße.de/") == "http://xn--strae-oqa.de/"
+        assert canonicalize_url("http://strasse.de/") == "http://strasse.de/"
 
     def test_userinfo_is_case_sensitive(self):
         assert (

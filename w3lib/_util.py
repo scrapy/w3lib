@@ -31,6 +31,23 @@ def to_unicode(
 # into.
 _COMMENT = r"<!--(?:-?>|[^-]*(?:-(?!-!?>)[^-]*)*(?:--!?>|$))"
 
+# The text of a tag after its name, up to where it ends or the text does, read
+# attribute by attribute as the HTML tokenizer reads it. Unlike _TAG_BODY in
+# w3lib.html, it consumes "<" as attribute text. Quoted values also consume
+# ">", and an unfinished value runs to the end of input.
+_TAG_SPACE = r"[\t\n\f\r ]"
+_TAG_ATTRIBUTE = (
+    rf"[^\t\n\f\r />][^\t\n\f\r />=]*+{_TAG_SPACE}*+"
+    rf"(?:={_TAG_SPACE}*+(?:\"[^\"]*(?:\"|$)|'[^']*(?:'|$)|[^\t\n\f\r >]*+))?+"
+)
+# Possessive repeats keep attribute names and unquoted values from being split
+# or read again as the scanner advances through a long tag.
+_TAG_REST = rf"(?:{_TAG_SPACE}|/|{_TAG_ATTRIBUTE})*+(?:>|$)"
+# Any start or end tag, whole. A scanner that consumes the tags it does not
+# look for does not read markup written inside them, e.g. the <base> in
+# <a title="<base href=...>">, which is an attribute value to a browser.
+_OTHER_TAG = rf"</?[a-zA-Z][^\t\n\f\r />]*+{_TAG_REST}"
+
 
 _ASCII = bytes(range(128))
 _ASCII_TEXT = _ASCII.decode()

@@ -43,7 +43,6 @@ _KNOWN_FAILURES: set[tuple[str | None, str]] = {
     (None, "http://:@www.example.com"),
     (None, "file:."),
     (None, "https://�"),
-    (None, "https://faß.ExAmPlE/"),
     (None, "file:\\\\localhost//"),
     (None, "file://localhost//a//../..//"),
     (None, "file:/C|/"),
