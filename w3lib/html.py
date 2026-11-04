@@ -73,9 +73,14 @@ _tag_extent_bytes_re = re.compile(_tag_extent_source.encode())
 def _ignored_tags_source(ignore_tags: tuple[str, ...]) -> str:
     tags = "|".join(re.escape(tag) for tag in ignore_tags)
     # Only HTML whitespace, "/" or ">" after the name can open or close the
-    # element; anything else continues the name, as in "<script-loader>".
+    # element; anything else continues the name, as in "<script-loader>". The
+    # start tag is read with the attribute grammar of the end tag and of the
+    # other tags, in which a "<" in an attribute name or unquoted value is
+    # attribute text, e.g. "<script a<b>". _TAG_BODY ends a tag there, and the
+    # start tag would then be consumed as some other tag, with the content of
+    # the element read as markup.
     return (
-        rf"<(?P<t>{tags})(?=[\t\n\f\r />]){_TAG_BODY}>[^<]*"
+        rf"<(?P<t>{tags})(?=[\t\n\f\r />]){_TAG_REST}[^<]*"
         r"(?:<(?!/(?P=t)[\t\n\f\r />])[^<]*)*"
         rf"(?:</(?P=t){_TAG_REST}|$)"
     )

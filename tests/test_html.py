@@ -1667,6 +1667,29 @@ class TestIgnoredTagStart:
         assert func(text) == missing
         assert func(text.encode()) == missing
 
+    @pytest.mark.parametrize(
+        "start", [" <>", "/<>", " a<b>", " data-x=<>", ' "<">', " data-x='<'<>"]
+    )
+    def test_markup_inside_start_tag(self, func, tag, found, missing, ignored, start):
+        # A "<" in an attribute name or unquoted value is attribute text, so
+        # the tag still starts the element and its content is not parsed.
+        text = f"<{ignored}{start}{tag}</{ignored}>"
+        assert func(text) == missing
+        assert func(text.encode()) == missing
+        text += tag
+        assert func(text) == found
+        assert func(text.encode()) == found
+
+    @pytest.mark.parametrize(
+        "start", [" a<b" * 20000, " <" * 20000], ids=["unquoted", "name"]
+    )
+    def test_long_start_tag(self, func, tag, found, missing, ignored, start):
+        text = f"<{ignored}{start}>{tag}</{ignored}>"
+        start_time = time.process_time()
+        assert func(text) == missing
+        assert func(text.encode()) == missing
+        assert time.process_time() - start_time < 2
+
     @pytest.mark.parametrize("rest", ["-x", ".x", "x", "ä", "\v"])
     def test_longer_name(self, func, tag, found, missing, ignored, rest):
         # Only HTML whitespace, "/" or ">" ends the tag name, so this is a
