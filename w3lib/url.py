@@ -41,6 +41,7 @@ from ._url import (
     _split_params,
     _strip,
     _unquote,
+    _unquote_plus,
     _url2pathname,
     _urlencode,
     _urlparse,
@@ -438,7 +439,13 @@ def url_query_cleaner(
     if not query or (not parameterlist and not remove):
         return base if not (keep_fragments and fragment) else f"{base}#{fragment}"
 
-    param_lookup = frozenset(parameterlist)
+    # Match parameter names after percent-decoding, so that an encoded
+    # spelling such as ``%69d`` is recognized as ``id``. The original
+    # spelling is still preserved in the returned URL.
+    param_lookup = frozenset(
+        _unquote_plus(str(p).encode("utf-8")).decode("utf-8", errors="replace")
+        for p in parameterlist
+    )
 
     seen: set[str] | None = set() if unique else None
     result: list[str] = []
@@ -449,15 +456,19 @@ def url_query_cleaner(
 
         k, _, _ = ksv.partition(kvsep)
 
+        k_decoded = _unquote_plus(k.encode("utf-8")).decode(
+            "utf-8", errors="replace"
+        )
+
         if seen is not None:
             if k in seen:
                 continue
             seen.add(k)
 
         if remove:
-            if k in param_lookup:
+            if k_decoded in param_lookup:
                 continue
-        elif k not in param_lookup:
+        elif k_decoded not in param_lookup:
             continue
 
         result.append(ksv)
