@@ -194,6 +194,12 @@ class TestReplaceTags:
         # browser; treating the quote as opening a value would swallow the ">".
         assert replace_tags('a<img alt= "x>KEEP">b') == 'aKEEP">b'
 
+    @pytest.mark.parametrize("space", ["\t", "\n", "\f", "\r"])
+    def test_html_whitespace_after_tag_name(self, space: str) -> None:
+        # Tab, LF, FF and CR end a tag name as a space does, so the quoted
+        # value that follows is read whole.
+        assert replace_tags(f'x<img{space}alt="a>b" src=x>y') == "xy"
+
     def test_replace_tags_no_catastrophic_backtracking(self):
         evil = "<a" * 50000
         start = time.process_time()
@@ -328,6 +334,20 @@ class TestRemoveTags:
         # U+00A0 does not separate "=" from a quoted value, so the tag ends at
         # the first ">", as in a browser, rather than swallowing it.
         assert remove_tags('a<img alt= "x>KEEP">b') == 'aKEEP">b'
+
+    @pytest.mark.parametrize("space", ["\t", "\n", "\f", "\r"])
+    def test_html_whitespace_after_tag_name(self, space: str) -> None:
+        # Tab, LF, FF and CR end a tag name as a space does, so the name is
+        # matched against which_ones and keep, and a quoted value is read whole.
+        assert (
+            remove_tags(f'<script{space}src="x.js"></script>', which_ones=("script",))
+            == ""
+        )
+        assert remove_tags(f'<p{space}class="a>b">txt</p>', which_ones=("p",)) == "txt"
+        assert remove_tags(f"<x-y{space}z>t</x-y>", which_ones=("x-y",)) == "t"
+        assert remove_tags(f"<b{space}z>t</b>", keep=("b",)) == f"<b{space}z>t</b>"
+        # "</" followed by whitespace is a bogus comment, removed as before.
+        assert remove_tags(f"a</{space}b>c") == "ac"
 
     @pytest.mark.parametrize(("tag", "text"), _QUOTE_OUTSIDE_VALUE_POSITION)
     def test_quote_outside_value_position(self, tag: str, text: str) -> None:
@@ -990,6 +1010,20 @@ class TestGetBaseUrl:
             get_base_url(text.encode(), "https://example.org") == "https://example.org/"
         )
 
+    @pytest.mark.parametrize(
+        ("text", "expected"),
+        [
+            # "/" and HTML whitespace end the tag name.
+            ("<base/href='/path'>", "https://example.org/path"),
+            ("<base\fhref='/path'>", "https://example.org/path"),
+            # "\v" is no HTML whitespace, so it continues the tag name.
+            ("<base\vhref='/path'>", "https://example.org/"),
+        ],
+    )
+    def test_get_base_url_tag_name_end(self, text: str, expected: str) -> None:
+        assert get_base_url(text, "https://example.org") == expected
+        assert get_base_url(text.encode(), "https://example.org") == expected
+
     def test_get_base_url_non_ascii_case_folding(self) -> None:
         # U+017F uppercases to "S", but it is no "s" in a tag name.
         text = "<ba\u017fe href='/path'>"
@@ -1456,6 +1490,28 @@ http://www.example.org/index.php" />
         body = "<meta\u3000http-equiv='refresh' content='3;url=/next'>"
         assert get_meta_refresh(body, "http://example.org") == (None, None)
         assert get_meta_refresh(body.encode(), "http://example.org") == (None, None)
+
+    @pytest.mark.parametrize(
+        ("body", "expected"),
+        [
+            # "/" and HTML whitespace end the tag name.
+            (
+                "<meta/http-equiv='refresh'/content='3;url=/next'>",
+                (3.0, "http://example.org/next"),
+            ),
+            (
+                "<meta\fhttp-equiv='refresh' content='3;url=/next'>",
+                (3.0, "http://example.org/next"),
+            ),
+            # "\v" is no HTML whitespace, so it continues the tag name.
+            ("<meta\vhttp-equiv='refresh' content='3;url=/next'>", (None, None)),
+        ],
+    )
+    def test_get_meta_refresh_tag_name_end(
+        self, body: str, expected: tuple[float, str] | tuple[None, None]
+    ) -> None:
+        assert get_meta_refresh(body, "http://example.org") == expected
+        assert get_meta_refresh(body.encode(), "http://example.org") == expected
 
     def test_get_meta_refresh_content_non_ascii_whitespace(self) -> None:
         # The refresh content is parsed with ASCII whitespace only, so U+00A0
