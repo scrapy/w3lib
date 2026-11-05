@@ -23,7 +23,7 @@ Backwards incompatible changes:
   :func:`~w3lib.encoding.html_to_unicode`,
   :func:`~w3lib.encoding.html_body_declared_encoding`,
   :func:`~w3lib.encoding.resolve_encoding`, :func:`~w3lib.encoding.read_bom`
-  and :func:`~w3lib.encoding.to_unicode` (#392, #393). In particular:
+  and :func:`~w3lib.encoding.to_unicode` (#392). In particular:
 
     - UTF-32 is no longer supported: :func:`~w3lib.encoding.resolve_encoding`
       returns ``None`` for it, and a UTF-32LE BOM reads as a UTF-16LE one.
@@ -161,6 +161,9 @@ Security and correctness fixes:
 - :func:`~w3lib.url.parse_data_uri` now decodes base64 data the way browsers
   do, ignoring ASCII whitespace and allowing missing ``=`` padding, and
   raises :exc:`ValueError` for a data URI without a comma (#376).
+
+- ``w3lib.url.safe_download_url()`` no longer adds a ``/`` path to
+  non-special URLs, e.g. ``foo://example.org`` stays as is (#361).
 
 - ``w3lib.url.is_url()`` now accepts uppercase schemes, and no longer accepts
   a scheme without ``://`` (#412).

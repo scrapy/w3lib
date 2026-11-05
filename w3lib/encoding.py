@@ -209,7 +209,7 @@ def html_encoding(
     """Return the encoding :func:`html_to_unicode` would decode
     *html_body_str* with, given the same *url*, without decoding it.
 
-    .. versionadded:: VERSION
+    .. versionadded:: 2.6.0
 
     >>> import w3lib.encoding
     >>> w3lib.encoding.html_encoding(None, b'<meta charset="latin1">')
@@ -229,7 +229,7 @@ def html_to_unicode(
 ) -> tuple[str, str]:
     r'''Convert raw html bytes to unicode
 
-    .. versionadded:: VERSION
+    .. versionadded:: 2.6.0
        The *url* parameter.
 
     This finds the encoding of the html body the way a web browser does,
