@@ -1580,6 +1580,63 @@ http://www.example.org/index.php" />
             ) == (3.0, "/a/b")
 
 
+@pytest.mark.filterwarnings("ignore:Passing a relative:DeprecationWarning")
+class TestRelativeBaseurl:
+    @pytest.mark.parametrize(
+        ("text", "encoding", "expected"),
+        [
+            (b"<p>", "utf-8", "/a/"),
+            ("<p>".encode("utf-16"), "utf-16", "/a/"),
+            ("<!-- <base href=/c> -->", "utf-8", "/a/"),
+            ("<base><base target=x><base href=/c>", "utf-8", "/c"),
+            ("<base href=javascript:x>", "utf-8", "/a/"),
+            ('<base href="https://example.com:80x/">', "utf-8", "/a/"),
+            ("<base href=' '><base href=/c>", "utf-8", "/a/"),
+        ],
+    )
+    def test_get_base_url(
+        self, text: str | bytes, encoding: str, expected: str
+    ) -> None:
+        assert get_base_url(text, "/a/", encoding) == expected
+
+    @pytest.mark.parametrize(
+        ("text", "encoding", "expected"),
+        [
+            (b"<p>", "utf-8", (None, None)),
+            ("<p>".encode("utf-16"), "utf-16", (None, None)),
+            (
+                "<meta http-equiv=content-type content='3;url=/refresh'>",
+                "utf-8",
+                (None, None),
+            ),
+            ("<meta name=x http-equiv=refresh content=junk>", "utf-8", (None, None)),
+            (
+                "<meta http-equiv=refresh content='3;url=https://example.com:80x/'>",
+                "utf-8",
+                (None, None),
+            ),
+            (
+                "<meta name=x http-equiv=refresh content='3;url=b'>",
+                "utf-8",
+                (3.0, "/a/b"),
+            ),
+        ],
+    )
+    def test_get_meta_refresh(
+        self,
+        text: str | bytes,
+        encoding: str,
+        expected: tuple[float, str] | tuple[None, None],
+    ) -> None:
+        assert get_meta_refresh(text, "/a/", encoding) == expected
+
+    def test_unknown_encoding(self) -> None:
+        with pytest.raises(LookupError):
+            get_base_url(b"<base href=/c>", "/a/", "not-an-encoding")
+        with pytest.raises(LookupError):
+            get_meta_refresh(b"<meta>", "/a/", "not-an-encoding")
+
+
 class TestHasEntities:
     def test_no_entities(self):
         assert not has_entities("plain text")

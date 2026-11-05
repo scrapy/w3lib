@@ -599,7 +599,12 @@ class TestHtmlConversion:
 
         body = b"""<meta charset="utf-8">"""
         with pytest.warns(DeprecationWarning, match="auto_detect_fun"):
-            # body encoding takes precedence
+            # header encoding takes precedence
+            self._assert_encoding_detected(
+                "koi8-r", "koi8-r", body, auto_detect_fun=asciif
+            )
+        with pytest.warns(DeprecationWarning, match="auto_detect_fun"):
+            # then body encoding
             self._assert_encoding_detected(None, "utf-8", body, auto_detect_fun=asciif)
         with pytest.warns(DeprecationWarning, match="auto_detect_fun"):
             # if no other encoding, the auto detect encoding is used.
