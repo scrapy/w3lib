@@ -28,8 +28,12 @@ jobs:
                     - '3.13'
                     - '3.14'
                     - '3.15'
-                    - pypy3.11
                 os: [windows-latest, macos-latest, ubuntu-latest]
+                tox-env: [py]
+                include:
+                    - python-version: '3.11'
+                      os: ubuntu-latest
+                      tox-env: min
 
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -43,10 +47,12 @@ jobs:
                   allow-prereleases: true
 
             - name: Run tests
+              env:
+                  TOXENV: ${{ matrix.tox-env }}
               run: |
                   pip install --upgrade pip
                   pip install --upgrade tox
-                  tox -e py
+                  tox
 
             - name: Upload coverage report
               uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
