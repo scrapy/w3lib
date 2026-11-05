@@ -1,6 +1,183 @@
 w3lib release notes
 ===================
 
+2.6.0 (unreleased)
+------------------
+
+Backwards incompatible changes:
+
+- Dropped support for Python 3.10 (#368) and PyPy (#392).
+
+- w3lib now depends on `frostwork <https://github.com/scrapy/frostwork>`__,
+  which it uses to detect encodings and to read the base URL and meta refresh
+  of HTML documents the way browsers do (#392).
+
+- :func:`~w3lib.encoding.html_to_unicode` now detects the encoding of a body
+  that has no BOM and declares no encoding the way Firefox does: as UTF-8 if
+  the body is valid UTF-8, and otherwise guessed from its bytes and from the
+  top-level domain of the new *url* parameter, instead of assuming UTF-8.
+  UTF-8 is now reported as ``utf-8`` instead of ``utf8`` (#392).
+
+- Encoding labels now resolve to the encodings of the `Encoding Standard`_,
+  decoded the way browsers decode them, in
+  :func:`~w3lib.encoding.html_to_unicode`,
+  :func:`~w3lib.encoding.html_body_declared_encoding`,
+  :func:`~w3lib.encoding.resolve_encoding`, :func:`~w3lib.encoding.read_bom`
+  and :func:`~w3lib.encoding.to_unicode` (#392). In particular:
+
+    - UTF-32 is no longer supported: :func:`~w3lib.encoding.resolve_encoding`
+      returns ``None`` for it, and a UTF-32LE BOM reads as a UTF-16LE one.
+
+    - ``utf-16`` without a BOM is now little-endian, and a ``utf-16`` label
+      declared in the body now means UTF-8.
+
+    - ``gb2312`` and ``gbk`` now resolve to ``gbk`` instead of ``gb18030``.
+
+    - ``x-user-defined`` and ``replacement`` are new possible encoding names,
+      for which importing :mod:`w3lib.encoding` registers Python codecs.
+
+- :func:`~w3lib.encoding.html_body_declared_encoding` now follows the HTML
+  prescan: it no longer stops at the ``<body>`` tag, and it no longer honors
+  misspelled ``http-equiv`` pragmas, such as ``httpequiv="ContentType"``, or
+  a ``<`` followed by whitespace before ``meta`` (#392).
+
+- With an absolute *baseurl*, :func:`~w3lib.html.get_meta_refresh` now
+  returns the meta refresh that a browser follows (#392):
+
+    - The URL is resolved against the ``<base>`` element of the document, and
+      its query is encoded as UTF-8.
+
+    - A refresh without a URL now reloads the document, i.e. returns
+      *baseurl*, instead of returning ``(None, None)``.
+
+    - The fraction of the interval is dropped, e.g. ``0.5`` is ``0.0``.
+
+    - The first of duplicate attributes wins, ``<template>`` content is
+      ignored, and a tag cut by the end of the document is dropped.
+
+- :func:`~w3lib.url.safe_url_string` now parses URLs the way browsers do in
+  more cases (see below), e.g. it serializes ``https://example.com`` as
+  ``https://example.com/`` (#356), which changes the output of
+  :func:`~w3lib.url.canonicalize_url` for some URLs. If you use that output
+  to generate URL fingerprints, new fingerprints might differ from those
+  created with previous w3lib versions.
+
+New features:
+
+- Added :func:`~w3lib.encoding.html_encoding`, which returns the encoding
+  :func:`~w3lib.encoding.html_to_unicode` would use, without decoding the
+  body (#392).
+
+Deprecations and removals:
+
+- ``w3lib.url.safe_download_url()`` is deprecated (#362).
+
+- The *default_encoding* and *auto_detect_fun* parameters of
+  :func:`~w3lib.encoding.html_to_unicode`, and
+  ``w3lib.encoding.DEFAULT_ENCODING_TRANSLATION``, are deprecated (#392).
+
+- The *max_scan* parameter of :func:`~w3lib.html.get_base_url` and
+  :func:`~w3lib.html.get_meta_refresh`, added in 2.5.0, is deprecated and
+  ignored (#392).
+
+- Passing a relative or empty *baseurl* to :func:`~w3lib.html.get_base_url`
+  or :func:`~w3lib.html.get_meta_refresh` is deprecated; pass the absolute URL
+  of the document instead. So is passing *ignore_tags* with tags other than
+  ``script``, ``noscript`` and ``template`` to
+  :func:`~w3lib.html.get_meta_refresh` (#392).
+
+Security and correctness fixes:
+
+- :func:`~w3lib.url.safe_url_string`, and with it
+  :func:`~w3lib.url.canonicalize_url`, no longer disagree with how browsers
+  read a URL in the following cases, which could let a URL resolve to a
+  different host or path than the one these functions reported:
+
+    - Missing or extra slashes after a special scheme are ignored, e.g.
+      ``https:example.com`` is ``https://example.com/`` (#381).
+
+    - The host of a special URL is percent-decoded before IDNA encoding, and a
+      host that then contains a forbidden domain code point, such as ``/``,
+      raises :exc:`ValueError` (#389).
+
+    - A host that ends in a number is serialized as an IPv4 address, e.g.
+      ``0x7f.1`` as ``127.0.0.1``, and raises :exc:`ValueError` if it is not
+      a valid one (#382).
+
+    - The IDNA deviation characters ``ß`` and ``ς`` are kept, e.g.
+      ``faß.de`` is ``xn--fa-hia.de`` instead of ``fass.de`` (#394).
+
+    - The host of a non-special URL is opaque: its case is kept, and it is
+      percent-encoded instead of IDNA-encoded (#364).
+
+    - Brackets in the userinfo are accepted, and a stray ``]`` in the host is
+      rejected (#380, #384).
+
+  Additionally, :func:`~w3lib.url.safe_url_string` now resolves dot segments
+  in the path, including percent-encoded ones such as ``%2e%2e`` (#371), and
+  serializes the empty path of a special URL as ``/``, e.g.
+  ``https://example.com`` as ``https://example.com/`` (#356).
+
+- :func:`~w3lib.html.get_base_url` and :func:`~w3lib.html.get_meta_refresh`
+  now find the base URL and the meta refresh the way browsers do (#392). For
+  the same reason, they now:
+
+    - resolve URLs following the URL living standard (#358);
+
+    - ignore a URL they cannot parse, instead of raising (#385), and
+      :func:`~w3lib.html.get_base_url` ignores ``data:`` and ``javascript:``
+      base URLs (#396);
+
+    - close comments at ``--!>``, ``<!-->`` and ``<!--->`` (#360);
+
+    - do not read ``<base>`` or ``<meta>`` tags written inside an attribute
+      value of another tag (#395), and end their tag names at any HTML
+      whitespace or ``/`` (#397);
+
+    - end ``<script>`` and ``<noscript>`` content at a closing tag that has
+      attributes, and do not treat custom elements such as ``<script-loader>``
+      as ``<script>`` (#379, #388);
+
+    - accept a comma or whitespace as the separator after the refresh
+      interval (#354), and decode character references in each attribute
+      value separately (#359);
+
+    - detect the encoding of a byte string when *encoding* is unknown,
+      instead of raising :exc:`LookupError` (#392).
+
+- :func:`~w3lib.html.remove_comments` now closes comments at ``--!>``,
+  ``<!-->`` and ``<!--->`` (#360), and :func:`~w3lib.html.remove_tags` and
+  :func:`~w3lib.html.replace_tags` now end tag names at any HTML whitespace
+  (#404).
+
+- :func:`~w3lib.html.replace_entities` now looks up named character
+  references in the HTML5 table, case-sensitively, and resolves only legacy
+  ones without a trailing semicolon, as browsers do (#365).
+
+- :func:`~w3lib.encoding.resolve_encoding` no longer resolves non-text and
+  escape codecs, such as ``base64`` or ``unicode-escape``, which let a
+  response turn escaped text into markup (#386).
+
+- :func:`~w3lib.url.parse_data_uri` now decodes base64 data the way browsers
+  do, ignoring ASCII whitespace and allowing missing ``=`` padding, and
+  raises :exc:`ValueError` for a data URI without a comma (#376).
+
+- ``w3lib.url.safe_download_url()`` no longer adds a ``/`` path to
+  non-special URLs, e.g. ``foo://example.org`` stays as is (#361).
+
+- ``w3lib.url.is_url()`` now accepts uppercase schemes, and no longer accepts
+  a scheme without ``://`` (#412).
+
+- Clarified in the documentation when to use
+  :func:`~w3lib.url.safe_url_string` and when
+  :func:`~w3lib.url.canonicalize_url` (#362), and fixed ``VERSION``
+  placeholders left in the 2.5.0 documentation (#377).
+
+- Tests, benchmarking and CI improvements (#355, #357, #369, #374, #378,
+  #400, #410).
+
+.. _Encoding Standard: https://encoding.spec.whatwg.org/
+
 2.5.0 (2026-09-30)
 ------------------
 
