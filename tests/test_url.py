@@ -1454,6 +1454,19 @@ class TestUrl:
     def test_file_uri_to_path_localhost(self, host):
         assert file_uri_to_path(f"file://{host}/foo/bar") == f"{os.sep}foo{os.sep}bar"
 
+    @pytest.mark.skipif(os.name == "nt", reason="Windows UNC paths")
+    @pytest.mark.parametrize(
+        "uri",
+        [
+            "file://example.com/etc/passwd",
+            "file://localhost.example.com/etc/passwd",
+            "//example.com/etc/passwd",
+        ],
+    )
+    def test_file_uri_to_path_non_local_host(self, uri):
+        with pytest.raises(OSError, match="non-local host"):
+            file_uri_to_path(uri)
+
     def test_file_uri_to_path(self):
         if os.name == "nt":
             assert (

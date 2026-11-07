@@ -567,10 +567,16 @@ def path_to_file_uri(path: str | os.PathLike[str]) -> str:
 def file_uri_to_path(uri: str) -> str:
     """Convert File URI to local filesystem path according to:
     http://en.wikipedia.org/wiki/File_URI_scheme
+
+    A host other than ``localhost`` names a file on that host: on Windows the
+    result is a UNC path, and elsewhere :exc:`OSError` is raised, as
+    :func:`urllib.request.url2pathname` does since Python 3.14.
     """
     parsed = _urlparse(uri)
     path = parsed.path
-    if os.name == "nt" and parsed.netloc and parsed.netloc.lower() != "localhost":
+    if parsed.netloc and parsed.netloc.lower() != "localhost":
+        if os.name != "nt":
+            raise OSError(f"Bad URL: {uri} has a non-local host")
         path = f"//{parsed.netloc}{path}"
     return _url2pathname(path)
 
