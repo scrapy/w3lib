@@ -85,6 +85,19 @@ SAFE_URL_ENCODING_CASES: list[tuple[str | None, str | bytes, str | type[Exceptio
     ),
     # Fragments are always UTF-8-encoded.
     ("iso-8859-1", "https://example.com#©", "https://example.com#%C2%A9"),
+    # UTF-16 and UTF-32 are replaced with UTF-8, since they would add a byte
+    # order mark and null bytes.
+    *(
+        (encoding, "https://example.com?©#©", "https://example.com/?%C2%A9#%C2%A9")
+        for encoding in (
+            "utf-16",
+            "utf-16-le",
+            "utf-16-be",
+            "utf-32",
+            "utf-32-le",
+            "utf-32-be",
+        )
+    ),
 ]
 
 INVALID_SCHEME_FOLLOW_UPS = "".join(
@@ -877,7 +890,7 @@ class TestUrl:
         )
         assert (
             safe_url_string("http://.éxamplé.com:80/?q=a", encoding="utf-16-le")
-            == "http://.éxamplé.com:80/?q%00=%00a%00"
+            == "http://.éxamplé.com:80/?q=a"
         )
 
     def test_safe_url_port_number(self):
@@ -1718,6 +1731,14 @@ class TestCanonicalizeUrl:
                 "http://www.example.com/résumé?country=Россия", encoding="cp1251"
             )
             == "http://www.example.com/r%C3%A9sum%C3%A9?country=%D0%EE%F1%F1%E8%FF"
+        )
+
+        # UTF-16 and UTF-32 are replaced with UTF-8
+        assert (
+            canonicalize_url(
+                "http://www.example.com/résumé?q=résumé", encoding="utf-16"
+            )
+            == "http://www.example.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9"
         )
 
     def test_canonicalize_url_unicode_query_string_wrong_encoding(self):

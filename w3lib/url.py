@@ -11,6 +11,7 @@ import os
 import posixpath
 import re
 import warnings
+from functools import lru_cache
 from ipaddress import IPv6Address, ip_address
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple, cast, overload
@@ -83,6 +84,19 @@ _SPECIAL_QUERY_SAFEST_CHARS = _PATH_SAFEST_CHARS.translate(None, delete=b"'")
 _FRAGMENT_SAFEST_CHARS = _PATH_SAFEST_CHARS
 
 
+@lru_cache(maxsize=64)
+def _output_encoding(encoding: str) -> str:
+    """Return the encoding to percent-encode the query and fragment with.
+
+    UTF-16 and UTF-32 would add a byte order mark and null bytes, so, as in the
+    URL living standard, UTF-8 is used instead.
+    https://encoding.spec.whatwg.org/#get-an-output-encoding
+    """
+    if codecs.lookup(encoding).name.startswith(("utf-16", "utf-32")):
+        return "utf-8"
+    return encoding
+
+
 def _skip_special_authority_slashes(url: str) -> str:
     """Return *url* with exactly two slashes before the host if its scheme is
     special and not file."""
@@ -120,6 +134,7 @@ def _safe_url_split(  # pylint: disable=too-many-statements
     #   - if the supplied (or default) encoding chokes,
     #     percent-encode offending bytes
     url = _strip(to_unicode(url, encoding=encoding, errors="percentencode"))
+    encoding = _output_encoding(encoding)
     url = _skip_special_authority_slashes(url)
     parts = _urlsplit(url)
     tmp_buf = bytearray()  # utf-8 bytes
@@ -265,9 +280,10 @@ def safe_url_string(
 
     If *url* is :class:`bytes`, it is decoded with *encoding*. *encoding* is
     also used to percent-encode the query and the fragment, so it should be the
-    encoding of the page where *url* was found. *path_encoding* is used to
-    percent-encode the path, unless *quote_path* is ``False``, in which case
-    the path is left as is.
+    encoding of the page where *url* was found, except that UTF-8 is used
+    instead of UTF-16 and UTF-32. *path_encoding* is used to percent-encode the
+    path, unless *quote_path* is ``False``, in which case the path is left as
+    is.
 
     Calling this function on an already safe URL returns the URL unmodified.
     """
