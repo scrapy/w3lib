@@ -315,7 +315,7 @@ SAFE_URL_URL_CASES = (
     ("http://[2a01:5cc0:1:2::4]", "http://[2a01:5cc0:1:2::4]/"),
     ("http://[2a01:5cc0:1:2:3:4]", ValueError),
     ("https://[2402:4e00:40:40::2:3b6]", "https://[2402:4e00:40:40::2:3b6]/"),
-    ("https://[2402:4e00:40:40::2:3b6]:443", "https://[2402:4e00:40:40::2:3b6]:443/"),
+    ("https://[2402:4e00:40:40::2:3b6]:443", "https://[2402:4e00:40:40::2:3b6]/"),
     ("http://[::1]", "http://[::1]/"),
     ("http://[::1]:8080/path?q=1", "http://[::1]:8080/path?q=1"),
     # checknetloc, the most of the cases are copied from
@@ -386,9 +386,9 @@ SAFE_URL_URL_CASES = (
     ("scheme://prefix]v6a.ip", ValueError),
     ("scheme://v6a.ip[suffix", ValueError),
     # Port
-    ("https://example.com:", "https://example.com:"),
+    ("https://example.com:", "https://example.com/"),
     ("https://example.com:1", "https://example.com:1/"),
-    ("https://example.com:443", "https://example.com:443/"),
+    ("https://example.com:443", "https://example.com/"),
     ("https://example.com:bad_port", ValueError),
     ("https://example.com:-1", ValueError),
     ("https://example.com:66000", ValueError),
@@ -570,7 +570,6 @@ KNOWN_SAFE_URL_STRING_URL_ISSUES = {
     # are not escaped.
     "https://@\\example.com",  # Invalid URL
     "https://\x80.example",  # Invalid domain name (non-visible character)
-    "https://example.com:",  # Removes the :
     # Some path characters that RFC 2396 and RFC 3986 require escaping (%)
     # are not escaped.
     f"https://example.com/{PATH_TO_ENCODE}",
@@ -877,13 +876,13 @@ class TestUrl:
         )
         assert (
             safe_url_string("http://.éxamplé.com:80/?q=a", encoding="utf-16-le")
-            == "http://.éxamplé.com:80/?q%00=%00a%00"
+            == "http://.éxamplé.com/?q%00=%00a%00"
         )
 
     def test_safe_url_port_number(self):
         assert (
             safe_url_string("http://www.example.com:80/résumé?q=résumé")
-            == "http://www.example.com:80/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9"
+            == "http://www.example.com/r%C3%A9sum%C3%A9?q=r%C3%A9sum%C3%A9"
         )
         assert (
             safe_url_string("http://www.example.com:/résumé?q=résumé")
@@ -916,7 +915,7 @@ class TestUrl:
     def test_safe_url_string_encode_idna_domain_with_port(self):
         assert (
             safe_url_string("http://新华网.中国:80")
-            == "http://xn--xkrr14bows.xn--fiqs8s:80/"
+            == "http://xn--xkrr14bows.xn--fiqs8s/"
         )
 
     def test_safe_url_string_encode_idna_domain_with_username_password_and_port_number(
@@ -924,7 +923,7 @@ class TestUrl:
     ):
         assert (
             safe_url_string("ftp://admin:admin@新华网.中国:21")
-            == "ftp://admin:admin@xn--xkrr14bows.xn--fiqs8s:21/"
+            == "ftp://admin:admin@xn--xkrr14bows.xn--fiqs8s/"
         )
         assert (
             safe_url_string("http://Åsa:abc123@➡.ws:81/admin")
@@ -940,11 +939,11 @@ class TestUrl:
     ):
         assert (
             safe_url_string("ftp://admin:@新华网.中国:21")
-            == "ftp://admin:@xn--xkrr14bows.xn--fiqs8s:21/"
+            == "ftp://admin:@xn--xkrr14bows.xn--fiqs8s/"
         )
         assert (
             safe_url_string("ftp://admin@新华网.中国:21")
-            == "ftp://admin@xn--xkrr14bows.xn--fiqs8s:21/"
+            == "ftp://admin@xn--xkrr14bows.xn--fiqs8s/"
         )
 
     def test_safe_url_string_userinfo_unsafe_chars(
