@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from tests.benchmarks import BENCHMARK_MARKS, CasesMapType
+from tests.benchmarks import BENCHMARK_MARKS, PAGES, CasesMapType
 from w3lib.encoding import (
     html_body_declared_encoding,
     html_encoding,
@@ -224,7 +224,7 @@ def test_benchmark_encoding_cold(
 
 
 _PAGES = Path(__file__).parent / "pages"
-_UTF8_PAGE = (_PAGES / "no-base.html").read_bytes()
+_UTF8_PAGE = PAGES["no-base"]
 # Real pages, one per legacy encoding, named after it. All declare it in a
 # <meta> tag except windows-1251, which declares it in its Content-Type header.
 _LEGACY_PAGES = {
@@ -259,6 +259,17 @@ def test_benchmark_page(
     body: bytes,
 ) -> None:
     benchmark(func, content_type, body)
+
+
+_DECLARED_ENCODING_PAGES = {**PAGES, **_LEGACY_PAGES}
+
+
+@pytest.mark.parametrize("page", _DECLARED_ENCODING_PAGES)
+def test_benchmark_page_declared_encoding(
+    benchmark: BenchmarkFixture,
+    page: str,
+) -> None:
+    benchmark(html_body_declared_encoding, _DECLARED_ENCODING_PAGES[page])
 
 
 def test_benchmark_import(benchmark: BenchmarkFixture) -> None:
