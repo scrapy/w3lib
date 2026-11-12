@@ -19,6 +19,7 @@ from urllib.request import pathname2url
 
 from ._infra import _ASCII_WHITESPACE
 from ._url import (
+    _DEFAULT_PORTS,
     _PATH_SAFE_CHARS,
     _SAFE_CHARS,
     _SCHEME_RE,
@@ -171,7 +172,9 @@ def _safe_url_split(  # pylint: disable=too-many-statements
             _check_domain(host)
             tmp_buf += _ipv4_host(host).encode()
 
-    if parts.port is not None:
+    # The default port of a special scheme is dropped.
+    # https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#port-state
+    if parts.port is not None and parts.port != _DEFAULT_PORTS.get(parts.scheme):
         tmp_buf.append(58)  # ord(":")
         tmp_buf += str(parts.port).encode("ascii")
 
