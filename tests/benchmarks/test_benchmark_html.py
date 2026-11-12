@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from tests.benchmarks import BENCHMARK_MARKS, CasesMapType
+from tests.benchmarks import BENCHMARK_MARKS, PAGES, CasesMapType
 from w3lib.html import (
     get_base_url,
     get_meta_refresh,
@@ -26,16 +25,6 @@ if TYPE_CHECKING:
 
 
 pytestmark = BENCHMARK_MARKS
-
-# Real pages, one per way a document can shape the cost of a <base> lookup. In
-# a sample of 246 pages from 96 popular sites (September 2026), 235 had no
-# <base> at all, 3 had a <base> without href, and 1 had a <base href> in the
-# head, so the no-base page is the representative workload and the others are
-# the edge cases worth watching.
-PAGES = {
-    path.stem: path.read_bytes()
-    for path in sorted((Path(__file__).parent / "pages").glob("*.html"))
-}
 
 BENCHMARK_CASES: CasesMapType = {
     replace_entities: [
@@ -251,10 +240,25 @@ def test_benchmark_html(
             func(*args, **kwargs)
 
 
+# The keyword arguments of each function that takes a whole document, for its
+# runs on the pages.
+PAGE_KWARGS: dict[Callable[..., Any], dict[str, Any]] = {
+    get_base_url: {"baseurl": "https://example.com/"},
+    get_meta_refresh: {"baseurl": "https://example.com/"},
+    remove_tags: {},
+    remove_tags_with_content: {"which_ones": ("script", "style")},
+    replace_tags: {},
+    remove_comments: {},
+    replace_entities: {},
+    has_entities: {},
+    replace_escape_chars: {},
+    unquote_markup: {},
+}
+
 # One case per page and function, under the same identifiers for the decoded
 # document, so that its measurements stay comparable across runs.
 _by_function = pytest.mark.parametrize(
-    "func", [get_base_url, get_meta_refresh], ids=lambda func: func.__name__
+    "func", PAGE_KWARGS, ids=lambda func: func.__name__
 )
 _by_page = pytest.mark.parametrize("page", PAGES)
 
@@ -266,7 +270,7 @@ def test_benchmark_html_page(
     func: Callable[..., Any],
     page: str,
 ) -> None:
-    benchmark(func, PAGES[page].decode("utf-8"), "https://example.com/")
+    benchmark(func, PAGES[page].decode("utf-8"), **PAGE_KWARGS[func])
 
 
 @_by_function
@@ -276,4 +280,4 @@ def test_benchmark_html_page_bytes(
     func: Callable[..., Any],
     page: str,
 ) -> None:
-    benchmark(func, PAGES[page], "https://example.com/")
+    benchmark(func, PAGES[page], **PAGE_KWARGS[func])
