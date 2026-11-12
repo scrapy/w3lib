@@ -143,6 +143,11 @@ def _safe_url_split(  # pylint: disable=too-many-statements
         tmp_buf.append(64)  # ord("@")
 
     if parts.hostname is not None:
+        # The URL living standard has no IPvFuture: a host in brackets is an
+        # IPv6 address, and _urlsplit() accepts more only to match urlsplit().
+        # Without its brackets, such a host would be read as a domain below.
+        if parts.hostname[:1] == "v" and parts.netloc.rpartition("@")[2][:1] == "[":
+            raise ValueError(f"{url!r} has a host that is not an IPv6 address")
         if ":" in parts.hostname:
             # IPv6 address: urlsplit() strips the brackets from the hostname,
             # but they are required in the netloc when rebuilding the URL.
@@ -161,8 +166,7 @@ def _safe_url_split(  # pylint: disable=too-many-statements
             # parts.hostname is lowercased with str.lower(), which turns a
             # final "Σ" into "ς", so take the host from the netloc and let
             # _domain() lowercase it.
-            host = parts.netloc.rpartition("@")[2]
-            host = _domain(parts.hostname if "[" in host else host.partition(":")[0])
+            host = _domain(parts.netloc.rpartition("@")[2].partition(":")[0])
             try:
                 host = _idna_bytes(host).decode()
             except UnicodeError:

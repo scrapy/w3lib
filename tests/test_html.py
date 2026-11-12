@@ -719,6 +719,9 @@ class TestGetBaseUrl:
             ("foo://user@/a", "https://example.org/"),
             ("foo://:80/a", "https://example.org/"),
             ("https://example.com:80x/", "https://example.org/"),
+            # an IPvFuture host, which is not a domain name without its brackets
+            ("https://[v1.example.com]/", "https://example.org/"),
+            ("http://[v1.example.com]/", "https://example.org/"),
         ],
     )
     def test_get_base_url_unparsable_href(self, href: str, baseurl: str) -> None:
@@ -1095,6 +1098,9 @@ class TestGetMetaRefresh:
             ("foo://user@/a", "https://example.org/"),
             ("foo://:80/a", "https://example.org/"),
             ("https://example.com:80x/", "https://example.org/"),
+            # an IPvFuture host, which is not a domain name without its brackets
+            ("https://[v1.example.com]/", "https://example.org/"),
+            ("http://[v1.example.com]/", "https://example.org/"),
         ],
     )
     def test_get_meta_refresh_unparsable_url(self, url: str, baseurl: str) -> None:

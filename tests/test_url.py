@@ -320,7 +320,15 @@ SAFE_URL_URL_CASES = (
     ("http://[::1]:8080/path?q=1", "http://[::1]:8080/path?q=1"),
     # checknetloc, the most of the cases are copied from
     # https://github.com/python/cpython/blob/main/Lib/test/test_urlparse.py
-    ("http://[v6a.ip]", "http://v6a.ip/"),
+    ("http://[v6a.ip]", ValueError),
+    # IPvFuture is not in the URL living standard, and is not a domain name
+    ("http://[v1.example.org]/", ValueError),
+    ("https://user@[v1.example.org]:8080/", ValueError),
+    ("http://[v1.a:b]/", ValueError),
+    ("scheme://[v1.a:b]/", ValueError),
+    ("http://v1.example.org/", "http://v1.example.org/"),
+    ("http://user@v1.example.org:8080/", "http://user@v1.example.org:8080/"),
+    ("http://[a]@v1.example.org/", "http://%5Ba%5D@v1.example.org/"),
     # IPv4-in-brackets / invalid host syntax
     ("Scheme://user@[192.0.2.146]/Path?Query", ValueError),
     ("Scheme://user@[important.com:8000]/Path?Query", ValueError),
