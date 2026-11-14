@@ -2385,6 +2385,16 @@ class TestDataURI:
         with pytest.raises(ValueError, match="invalid data URI"):
             parse_data_uri(uri)
 
+    @pytest.mark.parametrize(
+        "uri",
+        [
+            "data:;BASE64,SGVsbG8=",
+            "data:text/plain;Base64,SGVsbG8=",
+        ],
+    )
+    def test_base64_case_insensitive(self, uri):
+        assert parse_data_uri(uri).data == b"Hello"
+
     def test_wrong_base64_param(self):
         with pytest.raises(ValueError, match="invalid data URI"):
             parse_data_uri("data:text/plain;baes64,SGVsbG8sIHdvcmxkLg%3D%3D")

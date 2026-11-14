@@ -720,7 +720,7 @@ def parse_data_uri(uri: str | bytes) -> ParseDataURIResult:
     if not comma:
         raise ValueError("invalid data URI")
     if is_base64:
-        if is_base64 != b";base64":
+        if is_base64.lower() != b";base64":
             raise ValueError("invalid data URI")
         try:
             data = _forgiving_base64_decode(data)
