@@ -16,7 +16,9 @@ from w3lib._url import _SCHEME_RE
 from w3lib._util import (
     _COMMENT,
     _OTHER_TAG,
+    _TAG_ATTRIBUTE,
     _TAG_REST,
+    _TAG_SPACE,
     _attr_re,
     _scannable,
     iter_tag_attributes,
@@ -59,6 +61,20 @@ _TAG_NAME = r"""[a-zA-Z][a-zA-Z0-9]*(?![^\t\n\f\r <>/])"""
 # the case of most tags.
 _tag_re = re.compile(
     rf"""<[a-zA-Z/!][^<>=]*>|</?{_TAG_NAME}{_TAG_BODY}>|<[a-zA-Z/!][^<>]*>""",
+    re.ASCII,
+)
+# replace_tags() and remove_tags() read a tag whose name starts with a letter
+# as the HTML tokenizer does, attribute by attribute up to the first ">"
+# outside a quoted value, with a "<" in the name or in an attribute read as
+# part of the tag. In '<img src=x onerror="f()" <b>', "<b" is an attribute
+# name of the <img>, so ending the tag at that "<" would leave the <img> in the
+# text. When the text ends inside such a tag, "unclosed" matches, and the rest
+# of the text is read as _tag_re and _tags_re read it, with tags ending at the
+# next "<". Reading the unclosed tag to the end of the text once, instead of
+# from every "<" in it, keeps the scan linear.
+_ELEMENT_TAG_REST = rf"(?:{_TAG_SPACE}|/|{_TAG_ATTRIBUTE})*+(?:>|(?P<unclosed>\Z))"
+_tag_scan_re = re.compile(
+    rf"</?[a-zA-Z][^\t\n\f\r />]*+{_ELEMENT_TAG_REST}|<[/!][^<>]*>",
     re.ASCII,
 )
 # Tag syntax is ASCII, and re.ASCII holds the scan patterns of this module to
@@ -166,6 +182,11 @@ _tags_re = re.compile(
     >               # closing angle bracket
     """,
     re.IGNORECASE | re.VERBOSE | re.ASCII,
+)
+_tags_scan_re = re.compile(
+    rf"</?(?P<named>[a-zA-Z][^\t\n\f\r />]*+){_ELEMENT_TAG_REST}"
+    r"|</?(?P<name>[^ <>/][^\t\n\f\r <>/]*+)[^<>]*>",
+    re.IGNORECASE | re.ASCII,
 )
 _meta_start_re = re.compile(r"<meta[\t\n\f\r /]", re.IGNORECASE | re.ASCII)
 _meta_start_bytes_re = re.compile(rb"<meta[\t\n\f\r /]", re.IGNORECASE)
@@ -308,7 +329,16 @@ def replace_tags(
 
     """
 
-    return _tag_re.sub(token, to_unicode(text, encoding))
+    # A token is a replacement template, as with re.sub(), but only a backslash
+    # makes it anything other than literal text.
+    literal = "\\" not in token
+
+    def replace(m: re.Match[str]) -> str:
+        if m.lastgroup == "unclosed":
+            return _tag_re.sub(token, m.group(0))
+        return token if literal else m.expand(token)
+
+    return _tag_scan_re.sub(replace, to_unicode(text, encoding))
 
 
 _REMOVECOMMENTS_RE = re.compile(_COMMENT)
@@ -331,6 +361,11 @@ def remove_comments(text: str | bytes, encoding: str | None = None) -> str:
 def _remove_tag(
     m: re.Match[str], which_ones: set[str] | tuple[()], keep: set[str] | tuple[()]
 ) -> str:
+    if m.lastgroup == "unclosed":
+        return _tags_re.sub(
+            functools.partial(_remove_tag, which_ones=which_ones, keep=keep),
+            m.group(0),
+        )
     tag = (m.group("named") or m.group("name")).lower()
 
     should_remove = tag in which_ones if which_ones else tag not in keep
@@ -393,7 +428,7 @@ def remove_tags(
     if tags and kept:
         raise ValueError("Cannot use both which_ones and keep")
 
-    return _tags_re.sub(
+    return _tags_scan_re.sub(
         functools.partial(_remove_tag, which_ones=tags, keep=kept),
         to_unicode(text, encoding),
     )
