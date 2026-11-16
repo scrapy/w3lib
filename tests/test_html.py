@@ -200,6 +200,10 @@ class TestReplaceTags:
         # value that follows is read whole.
         assert replace_tags(f'x<img{space}alt="a>b" src=x>y') == "xy"
 
+    @pytest.mark.parametrize("token", ["\\", "\\1", "\\g<0>", "C:\\new"])
+    def test_token_inserted_literally(self, token: str) -> None:
+        assert replace_tags("a<b>c", token) == f"a{token}c"
+
     def test_replace_tags_no_catastrophic_backtracking(self):
         evil = "<a" * 50000
         start = time.process_time()
