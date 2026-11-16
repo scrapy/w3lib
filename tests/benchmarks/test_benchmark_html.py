@@ -250,7 +250,6 @@ PAGE_KWARGS: dict[Callable[..., Any], dict[str, Any]] = {
     replace_tags: {},
     remove_comments: {},
     replace_entities: {},
-    has_entities: {},
     replace_escape_chars: {},
     unquote_markup: {},
 }
@@ -273,7 +272,11 @@ def test_benchmark_html_page(
     benchmark(func, PAGES[page].decode("utf-8"), **PAGE_KWARGS[func])
 
 
-@_by_function
+# Only the functions that scan bytes before decoding them; the others start
+# with to_unicode(), so their bytes runs would only add the decoding time.
+@pytest.mark.parametrize(
+    "func", [get_base_url, get_meta_refresh], ids=lambda func: func.__name__
+)
 @_by_page
 def test_benchmark_html_page_bytes(
     benchmark: BenchmarkFixture,
