@@ -291,7 +291,7 @@ def replace_tags(
 ) -> str:
     r"""Replace all markup tags found in the given `text` by the given token.
     By default `token` is an empty string so it just removes all tags.
-    `token` is inserted as is: backslashes in it are not processed as escapes.
+    `token` is inserted literally.
 
     `text` can be a unicode string or a regular string encoded as `encoding`
     (or ``'utf-8'`` if `encoding` is not given.)
@@ -310,8 +310,7 @@ def replace_tags(
     """
 
     # re.sub() processes backslash escapes in a string replacement, so double
-    # them to insert the token literally. A function returning the token would
-    # do the same, but it would be called once per tag, which is slower.
+    # them to insert the token literally.
     return _tag_re.sub(token.replace("\\", r"\\"), to_unicode(text, encoding))
 
 
