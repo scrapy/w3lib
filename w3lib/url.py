@@ -431,6 +431,12 @@ def url_query_cleaner(
     >>> w3lib.url.url_query_cleaner('http://domain.tld/?bla=123#123123', ['bla'], remove=True, keep_fragments=True)
     'http://domain.tld/#123123'
 
+    Parameter names are percent-decoded before being compared with
+    *parameterlist*, but their original spelling is kept in the output.
+
+    >>> w3lib.url.url_query_cleaner("product.html?%69d=200&foo=bar", ['id'])
+    'product.html?%69d=200'
+
     """
 
     if parameterlist and isinstance(parameterlist, (str, bytes)):
@@ -455,6 +461,10 @@ def url_query_cleaner(
             continue
 
         k, _, _ = ksv.partition(kvsep)
+        if "%" in k:
+            # Match percent-encoded names against their decoded form, but keep
+            # the original spelling in the output.
+            k = _unquote(k).decode(errors="replace")
 
         if seen is not None:
             if k in seen:

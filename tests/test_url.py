@@ -1309,6 +1309,30 @@ class TestUrl:
         add_or_replace_parameters(url, input_param)
         assert input_param == {"arg": "value"}
 
+    def test_url_query_cleaner_percent_encoded_names(self):
+        url = "https://example.org/?%69d=123&other=4"
+        assert url_query_cleaner(url, ["id"]) == "https://example.org/?%69d=123"
+        assert (
+            url_query_cleaner(url, ["id"], remove=True)
+            == "https://example.org/?other=4"
+        )
+        # Encoded and unencoded spellings are the same parameter.
+        url = "https://example.org/?%69d=1&id=2&other=4"
+        assert url_query_cleaner(url, ["id"]) == "https://example.org/?%69d=1"
+        assert (
+            url_query_cleaner(url, ["id"], unique=False)
+            == "https://example.org/?%69d=1&id=2"
+        )
+        assert (
+            url_query_cleaner(url, ["id"], remove=True)
+            == "https://example.org/?other=4"
+        )
+        # Invalid escapes are left as is.
+        assert (
+            url_query_cleaner("https://example.org/?%zz=1&a=2", ["a"])
+            == "https://example.org/?a=2"
+        )
+
     def test_url_query_cleaner(self):
         assert url_query_cleaner("product.html?") == "product.html"
         assert url_query_cleaner(b"product.html?") == "product.html"
