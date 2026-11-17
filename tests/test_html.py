@@ -157,6 +157,14 @@ _QUOTE_OUTSIDE_VALUE_POSITION = [
     pytest.param('<b/"a', 'b">', id="after-slash"),
 ]
 
+# A "<" in a tag name or an attribute is part of the tag, so a browser reads
+# each of these as a single tag with an onerror attribute, ending at its ">".
+_LT_IN_TAG = [
+    pytest.param("<img src=x onerror=f() <b>", id="attribute-name"),
+    pytest.param("<img src=x<b onerror=f()>", id="unquoted-value"),
+    pytest.param("<img<b src=x onerror=f()>", id="tag-name"),
+]
+
 
 class TestReplaceTags:
     def test_returns_unicode(self):
@@ -200,11 +208,21 @@ class TestReplaceTags:
         # value that follows is read whole.
         assert replace_tags(f'x<img{space}alt="a>b" src=x>y') == "xy"
 
+    @pytest.mark.parametrize("tag", _LT_IN_TAG)
+    def test_lt_in_tag(self, tag: str) -> None:
+        assert replace_tags(f"a{tag}c") == "ac"
+
+    def test_text_ends_inside_tag(self) -> None:
+        # A tag that the text ends inside is left in place, and the tags after
+        # its "<" are read as before.
+        assert replace_tags('a<i x="<b>c</b>') == 'a<i x="c'
+
     def test_replace_tags_no_catastrophic_backtracking(self):
         evil = "<a" * 50000
         start = time.process_time()
         assert replace_tags(evil) == evil  # incomplete tags (no ">") are untouched
-        assert replace_tags(evil + "<b>x</b>") == evil + "x"
+        # every "<a" is an attribute name of the first one, up to the ">"
+        assert replace_tags(evil + "<b>x</b>") == "x"
         assert time.process_time() - start < 2
 
 
@@ -355,6 +373,17 @@ class TestRemoveTags:
         # instead of being swallowed into it.
         assert remove_tags(f"{tag}><i>{text}", keep=("b",)) == f"{tag}>{text}"
 
+    @pytest.mark.parametrize("tag", _LT_IN_TAG)
+    def test_lt_in_tag(self, tag: str) -> None:
+        # The tag ends at its own ">", not at the "<", so it is removed whole
+        # instead of leaving the <img> and its onerror attribute in the text.
+        assert remove_tags(f"a{tag}c</b>", keep=("b",)) == "ac</b>"
+        assert remove_tags(f"a{tag}c") == "ac"
+
+    def test_text_ends_inside_tag(self) -> None:
+        assert remove_tags('a<i x="<b>c</b>') == 'a<i x="c'
+        assert remove_tags('a<i x="<b>c</b>', keep=("b",)) == 'a<i x="<b>c</b>'
+
     @pytest.mark.parametrize(
         "evil",
         [
@@ -365,7 +394,7 @@ class TestRemoveTags:
     def test_remove_tags_no_catastrophic_backtracking(self, evil: str) -> None:
         start = time.process_time()
         assert remove_tags(evil) == evil
-        assert remove_tags(evil + "<b>x</b>") == evil + "x"
+        assert remove_tags(evil + "<b>x</b>") == "x"
         assert time.process_time() - start < 2
 
 
