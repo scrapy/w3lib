@@ -665,9 +665,11 @@ def _forgiving_base64_decode(data: bytes) -> bytes:
 class ParseDataURIResult(NamedTuple):
     """Named tuple returned by :func:`parse_data_uri`."""
 
-    #: MIME type type and subtype, separated by / (e.g. ``"text/plain"``).
+    #: MIME type type and subtype, separated by / (e.g. ``"text/plain"``),
+    #: in lowercase.
     media_type: str
-    #: MIME type parameters (e.g. ``{"charset": "US-ASCII"}``).
+    #: MIME type parameters (e.g. ``{"charset": "US-ASCII"}``), with
+    #: lowercase names. Values keep their case.
     media_type_parameters: dict[str, str]
     #: Data, decoded if it was encoded in base64 format.
     data: bytes
@@ -678,6 +680,10 @@ def parse_data_uri(uri: str | bytes) -> ParseDataURIResult:
 
     Base64 data is decoded the way browsers do it, i.e. ignoring ASCII
     whitespace and allowing missing ``=`` padding.
+
+    The media type, the parameter names and the ``;base64`` marker are
+    case-insensitive (RFC 2045, section 5.1). The media type and the
+    parameter names are returned in lowercase.
 
     Raise :exc:`ValueError` for invalid data URIs.
     """
@@ -704,7 +710,7 @@ def parse_data_uri(uri: str | bytes) -> ParseDataURIResult:
 
     m = _mediatype_pattern.match(uri)
     if m:
-        media_type = m.group().decode()
+        media_type = m.group().decode().lower()
         uri = uri[m.end() :]
     else:
         media_type_params["charset"] = "US-ASCII"
@@ -713,14 +719,14 @@ def parse_data_uri(uri: str | bytes) -> ParseDataURIResult:
         attribute, value, value_quoted = m.groups()
         if value_quoted is not None:
             value = re.sub(rb"\\(.)", rb"\1", value_quoted)
-        media_type_params[attribute.decode()] = value.decode()
+        media_type_params[attribute.decode().lower()] = value.decode()
         uri = uri[m.end() :]
 
     is_base64, comma, data = uri.partition(b",")
     if not comma:
         raise ValueError("invalid data URI")
     if is_base64:
-        if is_base64 != b";base64":
+        if is_base64.lower() != b";base64":
             raise ValueError("invalid data URI")
         try:
             data = _forgiving_base64_decode(data)

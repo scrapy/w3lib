@@ -2414,6 +2414,31 @@ class TestDataURI:
         result = parse_data_uri("DaTa:,A%20brief%20note")
         assert result.data == b"A brief note"
 
+    @pytest.mark.parametrize(
+        "uri",
+        [
+            "data:;BASE64,SGVsbG8=",
+            "data:text/plain;Base64,SGVsbG8=",
+            "data:text/plain;charset=utf-8;bAsE64,SGVsbG8=",
+        ],
+    )
+    def test_base64_case_insensitive(self, uri):
+        assert parse_data_uri(uri).data == b"Hello"
+
+    def test_mediatype_case_insensitive(self):
+        result = parse_data_uri("data:TEXT/HTML,A%20brief%20note")
+        assert result.media_type == "text/html"
+        assert result.data == b"A brief note"
+
+    def test_mediatype_parameter_names_case_insensitive(self):
+        result = parse_data_uri("data:Text/Plain;CHARSET=ISO-8859-7;Foo=Bar,%be")
+        assert result.media_type == "text/plain"
+        assert result.media_type_parameters == {
+            "charset": "ISO-8859-7",
+            "foo": "Bar",
+        }
+        assert result.data == b"\xbe"
+
 
 class TestParseQsl:
     """Cases are copied from https://github.com/python/cpython/blob/main/Lib/test/test_urlparse.py"""
