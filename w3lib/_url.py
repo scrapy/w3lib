@@ -796,7 +796,9 @@ def _idna(input_string: str) -> tuple[bytes, str]:
     if input_string.isascii():
         return input_string.encode(), input_string
 
-    _, normalized = _nfkc_netloc(input_string)
+    # Not _nfkc_netloc(), which deletes "@", ":", "#" and "?": a percent-decoded
+    # host can contain them, and _check_domain() must see them.
+    normalized = unicodedata.normalize("NFKC", input_string)
 
     if "ß" not in normalized and "ς" not in normalized:
         encoded = normalized.encode("idna")
