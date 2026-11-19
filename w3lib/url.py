@@ -166,7 +166,13 @@ def _safe_url_split(  # pylint: disable=too-many-statements
             # parts.hostname is lowercased with str.lower(), which turns a
             # final "Σ" into "ς", so take the host from the netloc and let
             # _domain() lowercase it.
-            host = _domain(parts.netloc.rpartition("@")[2].partition(":")[0])
+            host = parts.netloc.rpartition("@")[2].partition(":")[0]
+            # A special URL with an authority must have a host. Without one,
+            # "http://:/evil.example/" would serialize as
+            # "http:///evil.example/", which has the host evil.example.
+            if not host and parts.netloc:
+                raise ValueError(f"{url!r} has userinfo or a port but no host")
+            host = _domain(host)
             try:
                 host = _idna_bytes(host).decode()
             except UnicodeError:
