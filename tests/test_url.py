@@ -247,8 +247,6 @@ SAFE_URL_URL_CASES = (
         f"https://{USERNAME_ENCODED}:{PASSWORD_ENCODED}@example.com/",
     ),
     ("https://@\\example.com", ValueError),
-    # A special URL with an authority must have a host. Without it, "///"
-    # would be left before the path, which then reparses as the host.
     ("http://:/evil.example/", ValueError),
     ("https://:443/evil.example/", ValueError),
     ("ws://:80/evil.example/", ValueError),
