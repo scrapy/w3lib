@@ -1327,10 +1327,21 @@ class TestUrl:
             url_query_cleaner(url, ["id"], remove=True)
             == "https://example.org/?other=4"
         )
+        # Names in parameterlist may be passed already encoded.
+        url = "https://e.org/?filter%5Bcolor%5D=red&x=1"
+        assert url_query_cleaner(url, ["filter%5Bcolor%5D"]) == (
+            "https://e.org/?filter%5Bcolor%5D=red"
+        )
+        assert url_query_cleaner(url, ["filter%5Bcolor%5D"], remove=True) == (
+            "https://e.org/?x=1"
+        )
+        assert url_query_cleaner(url, ["filter[color]"]) == (
+            "https://e.org/?filter%5Bcolor%5D=red"
+        )
         # Invalid escapes are left as is.
         assert (
-            url_query_cleaner("https://example.org/?%zz=1&a=2", ["a"])
-            == "https://example.org/?a=2"
+            url_query_cleaner("https://example.org/?%zz=1&a=2", ["%zz"])
+            == "https://example.org/?%zz=1"
         )
 
     def test_url_query_cleaner(self):
