@@ -1156,6 +1156,28 @@ class TestGetMetaRefresh:
         body = """<script><meta http-equiv="refresh" content="0;url=http://evil.example/">"""
         assert get_meta_refresh(body, "http://good.example/") == (None, None)
 
+    @pytest.mark.filterwarnings("ignore:Passing a relative:DeprecationWarning")
+    @pytest.mark.parametrize(
+        ("ignore_tags", "body", "expected"),
+        [
+            (("script",), "<script><!--<script></script>{meta}</script>", (None, None)),
+            (("script",), "<noscript>{meta}</noscript>", (0.0, "http://evil.example/")),
+            (("noscript",), "<noscript>{meta}</noscript>", (None, None)),
+            (("noscript",), "<script>{meta}</script>", (0.0, "http://evil.example/")),
+        ],
+        ids=["script-only", "script-only-noscript", "no-script", "no-script-script"],
+    )
+    def test_ignore_tags_with_or_without_script(self, ignore_tags, body, expected):
+        # Only "script" gets the script data states, so the ignored tags
+        # pattern has one alternative for it and one for the other tags, and
+        # either one stands on its own.
+        body = body.format(
+            meta='<meta http-equiv="refresh" content="0;url=http://evil.example/">'
+        )
+        kwargs = {"ignore_tags": ignore_tags}
+        assert get_meta_refresh(body, "/a/", **kwargs) == expected
+        assert get_meta_refresh(body.encode(), "/a/", **kwargs) == expected
+
     @pytest.mark.parametrize("quote", ["<", ">"])
     def test_lt_gt_in_quoted_attribute_value(self, quote: str) -> None:
         body = f'<meta data-x="a{quote}b" http-equiv="refresh" content="3;url=/next">'
@@ -1738,6 +1760,16 @@ def meta(text: str | bytes, **kwargs: object) -> object:
     return get_meta_refresh(text, "https://example.org", **kwargs)  # type: ignore[arg-type]
 
 
+# A relative baseurl keeps these functions on the scans of this module instead
+# of frostwork.
+def base_scan(text: str | bytes, **kwargs: object) -> object:
+    return get_base_url(text, "/a/", **kwargs)  # type: ignore[arg-type]
+
+
+def meta_scan(text: str | bytes, **kwargs: object) -> object:
+    return get_meta_refresh(text, "/a/", **kwargs)  # type: ignore[arg-type]
+
+
 @pytest.mark.parametrize(
     ("func", "tag", "found", "missing"),
     [
@@ -1837,6 +1869,63 @@ class TestIgnoredTagStart:
         text = f"<{ignored}{rest}>{tag}</{ignored}{rest}>"
         assert func(text) == found
         assert func(text.encode()) == found
+
+
+@pytest.mark.filterwarnings("ignore:Passing a relative:DeprecationWarning")
+@pytest.mark.parametrize(
+    ("func", "tag", "found", "missing"),
+    [
+        (base_scan, BASE_TAG, "http://example.org/found", "/a/"),
+        (meta_scan, META_TAG, (5, "http://example.org/found"), (None, None)),
+    ],
+    ids=["base", "meta"],
+)
+class TestScriptEscapes:
+    @pytest.mark.parametrize(
+        "content",
+        [
+            "<!--<script></script>",
+            "<!--<SCRIPT\t></script ><script></script\n>",
+            "<!--<script/>x</script>-<script>--</script>",
+            "<!---<script>-->x<!--<script></script>",
+        ],
+    )
+    def test_double_escaped(self, func, tag, found, missing, content):
+        # Inside "<!--", a "<script" makes the script double escaped, where
+        # "</script>" does not end the element, so the tag is script text.
+        text = f"<script>{content}{tag}"
+        assert func(text) == missing
+        assert func(text.encode()) == missing
+        text += f"</script>{tag}"
+        assert func(text) == found
+        assert func(text.encode()) == found
+
+    @pytest.mark.parametrize(
+        "content",
+        [
+            "<!--",
+            "<!--<scriptx>",
+            "<!--><script>",
+            "<!--->",
+            "<!--<script>-->",
+            "<!--<script>--->",
+            "<!--<script></script>-->",
+        ],
+    )
+    def test_not_double_escaped(self, func, tag, found, missing, content):
+        text = f"<script>{content}</script>{tag}"
+        assert func(text) == found
+        assert func(text.encode()) == found
+
+    @pytest.mark.parametrize(
+        "content",
+        ["<!--<script>" * 50000, "<!--" + "-" * 100000, "<!--<script>" + "<" * 100000],
+        ids=["double-escapes", "dashes", "less-thans"],
+    )
+    def test_linear(self, func, tag, found, missing, content):
+        start = time.process_time()
+        assert func(f"<script>{content}{tag}") == missing
+        assert time.process_time() - start < 2
 
 
 @pytest.mark.parametrize(
