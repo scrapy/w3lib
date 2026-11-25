@@ -1156,6 +1156,7 @@ class TestGetMetaRefresh:
         body = """<script><meta http-equiv="refresh" content="0;url=http://evil.example/">"""
         assert get_meta_refresh(body, "http://good.example/") == (None, None)
 
+    @pytest.mark.filterwarnings("ignore:Passing a relative:DeprecationWarning")
     @pytest.mark.parametrize(
         ("ignore_tags", "body", "expected"),
         [
@@ -1174,11 +1175,8 @@ class TestGetMetaRefresh:
             meta='<meta http-equiv="refresh" content="0;url=http://evil.example/">'
         )
         kwargs = {"ignore_tags": ignore_tags}
-        assert get_meta_refresh(body, "http://good.example/", **kwargs) == expected
-        assert (
-            get_meta_refresh(body.encode(), "http://good.example/", **kwargs)
-            == expected
-        )
+        assert get_meta_refresh(body, "/a/", **kwargs) == expected
+        assert get_meta_refresh(body.encode(), "/a/", **kwargs) == expected
 
     @pytest.mark.parametrize("quote", ["<", ">"])
     def test_lt_gt_in_quoted_attribute_value(self, quote: str) -> None:
@@ -1762,6 +1760,16 @@ def meta(text: str | bytes, **kwargs: object) -> object:
     return get_meta_refresh(text, "https://example.org", **kwargs)  # type: ignore[arg-type]
 
 
+# A relative baseurl keeps these functions on the scans of this module instead
+# of frostwork.
+def base_scan(text: str | bytes, **kwargs: object) -> object:
+    return get_base_url(text, "/a/", **kwargs)  # type: ignore[arg-type]
+
+
+def meta_scan(text: str | bytes, **kwargs: object) -> object:
+    return get_meta_refresh(text, "/a/", **kwargs)  # type: ignore[arg-type]
+
+
 @pytest.mark.parametrize(
     ("func", "tag", "found", "missing"),
     [
@@ -1863,11 +1871,12 @@ class TestIgnoredTagStart:
         assert func(text.encode()) == found
 
 
+@pytest.mark.filterwarnings("ignore:Passing a relative:DeprecationWarning")
 @pytest.mark.parametrize(
     ("func", "tag", "found", "missing"),
     [
-        (base, BASE_TAG, "http://example.org/found", "https://example.org/"),
-        (meta, META_TAG, (5, "http://example.org/found"), (None, None)),
+        (base_scan, BASE_TAG, "http://example.org/found", "/a/"),
+        (meta_scan, META_TAG, (5, "http://example.org/found"), (None, None)),
     ],
     ids=["base", "meta"],
 )
