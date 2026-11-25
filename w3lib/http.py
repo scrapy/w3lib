@@ -5,8 +5,6 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from io import BytesIO
 from typing import Any, TypeAlias, overload
 
-from w3lib._util import to_unicode
-
 HeadersDictInput: TypeAlias = Mapping[bytes, Any | Sequence[bytes]]
 HeadersDictOutput: TypeAlias = MutableMapping[bytes, list[bytes]]
 
@@ -129,10 +127,14 @@ def basic_auth_header(
 
     .. _HTTP Basic Access Authentication (RFC 2617): http://www.ietf.org/rfc/rfc2617.txt
 
+    ``username`` and ``password`` may be given as text or as bytes. Text is
+    encoded with ``encoding``; bytes are treated as already-encoded octets
+    and are used unchanged.
     """
 
-    auth = f"{to_unicode(username)}:{to_unicode(password)}"
     # RFC 2617 doesn't define encoding, but ISO-8859-1 seems to be the
     # most widely used encoding here. See also:
     # http://greenbytes.de/tech/webdav/draft-ietf-httpauth-basicauth-enc-latest.html
-    return b"Basic " + b64encode(auth.encode(encoding=encoding))
+    user = username if isinstance(username, bytes) else username.encode(encoding)
+    passwd = password if isinstance(password, bytes) else password.encode(encoding)
+    return b"Basic " + b64encode(user + b":" + passwd)

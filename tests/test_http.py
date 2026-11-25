@@ -31,6 +31,33 @@ class TestHttp:
             == b"Basic c29t5nVz6HI6c/htZXDkc3M="
         )
 
+    def test_basic_auth_header_bytes(self):
+        # Byte credentials are already-encoded octets and must be used as-is,
+        # without being decoded as UTF-8 first. Latin-1 bytes that are not
+        # valid UTF-8 previously raised UnicodeDecodeError.
+        assert (
+            basic_auth_header(
+                "somæusèr".encode("latin1"),
+                "sømepäss".encode("latin1"),
+                encoding="latin1",
+            )
+            == b"Basic c29t5nVz6HI6c/htZXDkc3M="
+        )
+
+    def test_basic_auth_header_bytes_not_transcoded(self):
+        # Byte credentials must be preserved verbatim; the encoding argument
+        # applies to text credentials only and must not transcode bytes.
+        assert (
+            basic_auth_header("ä".encode(), b"x", encoding="latin1")
+            == b"Basic w6Q6eA=="
+        )
+
+    def test_basic_auth_header_mixed_text_and_bytes(self):
+        assert (
+            basic_auth_header("user", "pæss".encode("latin1"), encoding="latin1")
+            == b"Basic dXNlcjpw5nNz"
+        )
+
     def test_headers_raw_dict_none(self):
         assert headers_raw_to_dict(None) is None
         assert headers_dict_to_raw(None) is None
