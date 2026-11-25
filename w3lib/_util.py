@@ -42,7 +42,8 @@ _TAG_ATTRIBUTE = (
 )
 # Possessive repeats keep attribute names and unquoted values from being split
 # or read again as the scanner advances through a long tag.
-_TAG_REST = rf"(?:{_TAG_SPACE}|/|{_TAG_ATTRIBUTE})*+(?:>|$)"
+_TAG_ATTRIBUTES = rf"(?:{_TAG_SPACE}|/|{_TAG_ATTRIBUTE})*+"
+_TAG_REST = rf"{_TAG_ATTRIBUTES}(?:>|$)"
 # Any start or end tag, whole. A scanner that consumes the tags it does not
 # look for does not read markup written inside them, e.g. the <base> in
 # <a title="<base href=...>">, which is an attribute value to a browser.
