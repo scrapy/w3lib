@@ -19,6 +19,7 @@ from urllib.request import pathname2url
 
 from ._infra import _ASCII_WHITESPACE
 from ._url import (
+    _DEFAULT_PORTS,
     _PATH_SAFE_CHARS,
     _SAFE_CHARS,
     _SCHEME_RE,
@@ -142,6 +143,11 @@ def _safe_url_split(  # pylint: disable=too-many-statements
         tmp_buf.append(64)  # ord("@")
 
     if parts.hostname is not None:
+        # The URL living standard has no IPvFuture: a host in brackets is an
+        # IPv6 address, and _urlsplit() accepts more only to match urlsplit().
+        # Without its brackets, such a host would be read as a domain below.
+        if parts.hostname[:1] == "v" and parts.netloc.rpartition("@")[2][:1] == "[":
+            raise ValueError(f"{url!r} has a host that is not an IPv6 address")
         if ":" in parts.hostname:
             # IPv6 address: urlsplit() strips the brackets from the hostname,
             # but they are required in the netloc when rebuilding the URL.
@@ -160,8 +166,7 @@ def _safe_url_split(  # pylint: disable=too-many-statements
             # parts.hostname is lowercased with str.lower(), which turns a
             # final "Σ" into "ς", so take the host from the netloc and let
             # _domain() lowercase it.
-            host = parts.netloc.rpartition("@")[2]
-            host = _domain(parts.hostname if "[" in host else host.partition(":")[0])
+            host = _domain(parts.netloc.rpartition("@")[2].partition(":")[0])
             try:
                 host = _idna_bytes(host).decode()
             except UnicodeError:
@@ -171,7 +176,9 @@ def _safe_url_split(  # pylint: disable=too-many-statements
             _check_domain(host)
             tmp_buf += _ipv4_host(host).encode()
 
-    if parts.port is not None:
+    # The default port of a special scheme is dropped.
+    # https://url.spec.whatwg.org/commit-snapshots/a46cb9188a48c2c9d80ba32a9b1891652d6b4900/#port-state
+    if parts.port is not None and parts.port != _DEFAULT_PORTS.get(parts.scheme):
         tmp_buf.append(58)  # ord(":")
         tmp_buf += str(parts.port).encode("ascii")
 
@@ -310,7 +317,9 @@ def safe_download_url(
 
 
 def is_url(text: str) -> bool:
-    return text.partition("://")[0] in {"file", "http", "https"}
+    prefixes = ("file://", "http://", "https://")
+    # Only lowercase the first 8 characters (len("https://")) when needed.
+    return text.startswith(prefixes) or text[:8].lower().startswith(prefixes)
 
 
 @overload
@@ -565,10 +574,16 @@ def path_to_file_uri(path: str | os.PathLike[str]) -> str:
 def file_uri_to_path(uri: str) -> str:
     """Convert File URI to local filesystem path according to:
     http://en.wikipedia.org/wiki/File_URI_scheme
+
+    A host other than ``localhost`` names a file on that host: on Windows the
+    result is a UNC path, and elsewhere :exc:`OSError` is raised, as
+    :func:`urllib.request.url2pathname` does since Python 3.14.
     """
     parsed = _urlparse(uri)
     path = parsed.path
-    if os.name == "nt" and parsed.netloc and parsed.netloc.lower() != "localhost":
+    if parsed.netloc and parsed.netloc.lower() != "localhost":
+        if os.name != "nt":
+            raise OSError(f"Bad URL: {uri} has a non-local host")
         path = f"//{parsed.netloc}{path}"
     return _url2pathname(path)
 

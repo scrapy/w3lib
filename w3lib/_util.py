@@ -92,9 +92,13 @@ def _scannable(encoding: str | None) -> bool:
 
 # One attribute: a name and, optionally, a value, quoted or not. Each quoting
 # style captures its own group, so a matched value needs no quote stripping.
+# Only HTML whitespace separates attributes; "\s" would also match "\v" and
+# non-ASCII spaces such as U+00A0, which are part of a name or value to a
+# browser.
 _attr_re = re.compile(
-    r"""(?P<name>[^\s<>/=]+)  # name
-    (?:\s*=\s*(?:"(?P<double>[^"]*)"|'(?P<single>[^']*)'|(?P<bare>[^\s"'>]*)))?""",
+    rf"""(?P<name>[^\t\n\f\r <>/=]+)  # name
+    (?:{_TAG_SPACE}*={_TAG_SPACE}*
+    (?:"(?P<double>[^"]*)"|'(?P<single>[^']*)'|(?P<bare>[^\t\n\f\r "'>]*)))?""",
     re.VERBOSE,
 )
 
