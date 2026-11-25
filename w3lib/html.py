@@ -242,10 +242,15 @@ def replace_entities(
     def convert_entity(m: re.Match[str]) -> str:
         groups = m.groupdict()
         number = None
-        if groups.get("dec"):
-            number = int(groups["dec"], 10)
-        elif groups.get("hex"):
-            number = int(groups["hex"], 16)
+        # Unicode code points are at most 0x10FFFF (7 decimal or 6 hex digits).
+        if dec := groups["dec"]:
+            digits = dec.lstrip("0")
+            if len(digits) <= 7:
+                number = int(digits or "0", 10)
+        elif hex_digits := groups["hex"]:
+            digits = hex_digits.lstrip("0")
+            if len(digits) <= 6:
+                number = int(digits or "0", 16)
         else:
             # guaranteed to be named
             entity_name = groups["named"]
@@ -274,7 +279,7 @@ def replace_entities(
                 if 0x80 <= number <= 0x9F:
                     return bytes((number,)).decode("cp1252")
                 return chr(number)
-            except (ValueError, OverflowError):
+            except ValueError:
                 pass
 
         return "" if remove_illegal and groups.get("semicolon") else m.group(0)

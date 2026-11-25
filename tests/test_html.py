@@ -144,6 +144,58 @@ class TestRemoveEntities:
             == "x\u2122\u2122\u2122y"
         )
 
+    @pytest.mark.parametrize(
+        ("text", "remove_illegal", "expected"),
+        [
+            pytest.param("&#" + "9" * 5000 + ";", True, "", id="dec-over-limit"),
+            pytest.param(
+                "&#" + "9" * 5000 + ";",
+                False,
+                "&#" + "9" * 5000 + ";",
+                id="dec-over-limit-keep",
+            ),
+            pytest.param(
+                "&#" + "9" * 5000,
+                True,
+                "&#" + "9" * 5000,
+                id="dec-over-limit-no-semicolon",
+            ),
+            pytest.param(
+                "&#" + "0" * 5000 + ";", True, "\ufffd", id="dec-leading-zeros-zero"
+            ),
+            pytest.param(
+                "&#" + "0" * 5000 + "65;", True, "A", id="dec-leading-zeros-valid"
+            ),
+            pytest.param("&#x" + "f" * 5000 + ";", True, "", id="hex-over-limit"),
+            pytest.param(
+                "&#x" + "f" * 5000 + ";",
+                False,
+                "&#x" + "f" * 5000 + ";",
+                id="hex-over-limit-keep",
+            ),
+            pytest.param(
+                "&#x" + "f" * 5000,
+                True,
+                "&#x" + "f" * 5000,
+                id="hex-over-limit-no-semicolon",
+            ),
+            pytest.param(
+                "&#x" + "0" * 5000 + ";", True, "\ufffd", id="hex-leading-zeros-zero"
+            ),
+            pytest.param(
+                "&#x" + "0" * 5000 + "41;", True, "A", id="hex-leading-zeros-valid"
+            ),
+            pytest.param("&#1114111;", True, "\U0010ffff", id="dec-max-codepoint"),
+            pytest.param("&#1114112;", True, "", id="dec-above-max-codepoint"),
+            pytest.param("&#x10ffff;", True, "\U0010ffff", id="hex-max-codepoint"),
+            pytest.param("&#x110000;", True, "", id="hex-above-max-codepoint"),
+        ],
+    )
+    def test_long_numeric_references(
+        self, text: str, remove_illegal: bool, expected: str
+    ) -> None:
+        assert replace_entities(text, remove_illegal=remove_illegal) == expected
+
 
 # A quote opens an attribute value only right after "=". Anywhere else in a
 # tag it is part of an attribute name or of an unquoted value, so it pairs with
