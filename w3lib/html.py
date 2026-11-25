@@ -419,30 +419,26 @@ def _build_remove_tags_patterns(
     # Both tags are read with the attribute grammar of the HTML tokenizer, in
     # which a "<" in an attribute name or unquoted value is attribute text, so
     # that `<script a<b>` and `</script a<b>` are tags, as in a browser. The
-    # plain readings of the start tag remain for a tag that this grammar
-    # leaves unclosed. A start tag that begins no element is consumed whole
-    # and kept: a browser reads the text up to its end as attributes, not as
-    # tags, and consuming it keeps the scan from reading that text again from
-    # every "<" in it.
+    # attribute run of a start tag ends at a ">" or at the end of the text. A
+    # tag that the text ends inside takes the rest of the text with it, as a
+    # browser reads all of it as that tag. A tag that ends at a ">" and begins
+    # no element is consumed whole and kept, so that the markup a browser
+    # reads as its attributes is not read again as tags.
     attributes = rf"(?:{_TAG_SPACE}|/|{_TAG_ATTRIBUTE})*+"
-    self_closing = rf"(?P<self_closing>(?:{attributes}(?<=/)|{_TAG_BODY}/|[^<>]*/)>)"
-    kept = rf"(?P<kept>{_TAG_REST})"
+    no_element = r"(?P<self_closing>(?<=/)>)|(?P<kept>>)|(?P<unterminated>$)"
     pattern = rf"""
-        <(?P<tag>{tags})(?=[\s/>])
+        <(?P<tag>{tags})(?=[\s/>]){attributes}
         (?:
-            (?:{attributes}>|{_TAG_BODY}>|[^<>]*>)
-            .*?</(?P=tag)(?=[\s/>]){_TAG_REST}
+            >.*?</(?P=tag)(?=[\s/>]){_TAG_REST}
         |
-            {self_closing}
-        |
-            {kept}
+            {no_element}
         )
     """
     flags = re.IGNORECASE | re.ASCII
     element = re.compile(pattern, flags | re.DOTALL | re.VERBOSE)
     start_tag = re.compile(rf"<(?P<tag>{tags})(?=[\s/>])", flags)
     self_closing_tag = re.compile(
-        rf"<(?:{tags})(?=[\s/>])(?:{self_closing}|{kept})", flags
+        rf"<(?:{tags})(?=[\s/>]){attributes}(?:{no_element})", flags
     )
     end_tags = {
         tag.lower(): re.compile(rf"</{re.escape(tag)}(?=[\s/>])", flags)
@@ -474,9 +470,8 @@ def _remove_elements(utext: str, tags_tuple: tuple[str, ...]) -> str:
     # that name has one either, so from then on only their self-closing
     # form, all that the element pattern could still match, is tried. An end
     # tag that does follow a start tag that formed no element is within the
-    # text that the self-closing or kept tag consumes, as the element pattern
-    # would otherwise have matched, so the search for it costs no more than
-    # that text.
+    # text that tag consumes, as the element pattern would otherwise have
+    # matched, so the search for it costs no more than that text.
     output: list[str] = []
     last = pos = 0
     no_end_tag: set[str] = set()
@@ -494,8 +489,8 @@ def _remove_elements(utext: str, tags_tuple: tuple[str, ...]) -> str:
                 and end_tags[tag].search(utext, pos) is None
             ):
                 no_end_tag.add(tag)
-        # A start tag always matches, as an element, a self-closing tag or a
-        # kept tag.
+        # A start tag always matches, as an element or as a self-closing,
+        # kept or unterminated tag.
         assert match is not None
         if match.group("kept") is not None:
             pos = match.end()

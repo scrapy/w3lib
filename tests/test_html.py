@@ -478,11 +478,11 @@ class TestRemoveTagsWithContent:
         )
 
     def test_no_catastrophic_backtracking(self) -> None:
-        # "<script " has no ">", so it never completes an opening tag and the
-        # close-tag scan is never entered
+        # The text ends inside the opening tag, which a browser reads to the
+        # end of the text, so all of it goes with the tag.
         evil = "<script " * 50000
         start = time.process_time()
-        assert remove_tags_with_content(evil, which_ones=("script",)) == evil
+        assert remove_tags_with_content(evil, which_ones=("script",)) == ""
         # a browser reads every "<script" after the first as an attribute of
         # one opening tag, which the ">" of the last one ends
         assert (
@@ -492,11 +492,17 @@ class TestRemoveTagsWithContent:
             == ""
         )
         evil = "<script a<b " * 30000
-        assert remove_tags_with_content(evil, which_ones=("script",)) == evil
+        assert remove_tags_with_content(evil, which_ones=("script",)) == ""
         assert (
             remove_tags_with_content(evil + ">x</script>y", which_ones=("script",))
             == "y"
         )
+        # the quoted attribute values take in the "/>" and the "</script>" at
+        # which a plain reading of the opening tag would have stopped
+        evil = '<script a="/>"' * 30000
+        assert remove_tags_with_content(evil, which_ones=("script",)) == ""
+        evil = "<script a='>' b=\"</script>\"" * 30000
+        assert remove_tags_with_content(evil, which_ones=("script",)) == ""
         assert time.process_time() - start < 2
 
     def test_no_catastrophic_backtracking_unclosed_tags(self) -> None:
