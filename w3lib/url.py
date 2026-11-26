@@ -452,7 +452,9 @@ def url_query_cleaner(
         return base if not (keep_fragments and fragment) else f"{base}#{fragment}"
 
     param_lookup = frozenset(
-        _unquote(p).decode(errors="replace") if isinstance(p, str) and "%" in p else p
+        _unquote(p).decode(errors="surrogateescape")
+        if isinstance(p, str) and "%" in p
+        else p
         for p in parameterlist
     )
 
@@ -467,7 +469,7 @@ def url_query_cleaner(
         if "%" in k:
             # Match percent-encoded names against their decoded form, but keep
             # the original spelling in the output.
-            k = _unquote(k).decode(errors="replace")
+            k = _unquote(k).decode(errors="surrogateescape")
 
         if seen is not None:
             if k in seen:
