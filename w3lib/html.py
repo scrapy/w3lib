@@ -16,7 +16,9 @@ from w3lib._url import _SCHEME_RE
 from w3lib._util import (
     _COMMENT,
     _OTHER_TAG,
+    _TAG_ATTRIBUTE,
     _TAG_REST,
+    _TAG_SPACE,
     _attr_re,
     _scannable,
     iter_tag_attributes,
@@ -415,26 +417,41 @@ def _build_remove_tags_patterns(
     # The end tag closes on the tag name followed by whitespace, "/" or ">",
     # so `</script >`, `</script\n>`, `</script/>` and `</script foo>` all end
     # the element, as browsers treat them. Requiring a bare `</tag>` left the
-    # content (and anything it hides, e.g. a <meta refresh>) in place. The
-    # trailing run stays [^<>]* so it can't cross into the next tag and match
-    # super-linearly.
+    # content (and anything it hides, e.g. a <meta refresh>) in place.
+    #
+    # Both tags are read with the attribute grammar of the HTML tokenizer, in
+    # which a "<" in an attribute name or unquoted value is attribute text, so
+    # that `<script a<b>` and `</script a<b>` are tags, as in a browser. The
+    # attribute run of a start tag ends at a ">" or at the end of the text. A
+    # tag that the text ends inside takes the rest of the text with it, as a
+    # browser reads all of it as that tag. A tag that ends at a ">" and begins
+    # no element is consumed whole and kept, so that the markup a browser
+    # reads as its attributes is not read again as tags.
+    attributes = rf"(?:{_TAG_SPACE}|/|{_TAG_ATTRIBUTE})*+"
+    no_element = r"(?P<self_closing>(?<=/)>)|(?P<kept>>)|(?P<unterminated>$)"
     pattern = rf"""
-        <(?P<tag>{tags})(?=[\s/>])(?:{_TAG_BODY}>|[^<>]*>)
-        .*?</(?P=tag)(?=[\s/>])[^<>]*>
+        <(?P<tag>{tags})(?=[\s/>]){attributes}
+        (?:
+            >.*?</(?P=tag)(?=[\s/>]){_TAG_REST}
         |
-        <(?P<tag2>{tags})(?=[\s/>])(?:{_TAG_BODY}/>|[^<>]*/>)
+            {no_element}
+        )
     """
-    element = re.compile(pattern, re.IGNORECASE | re.DOTALL | re.VERBOSE | re.ASCII)
     flags = re.IGNORECASE | re.ASCII
+    element = re.compile(pattern, flags | re.DOTALL | re.VERBOSE)
     start_tag = re.compile(rf"<(?P<tag>{tags})(?=[\s/>])", flags)
     self_closing_tag = re.compile(
-        rf"<(?:{tags})(?=[\s/>])(?:{_TAG_BODY}/>|[^<>]*/>)", flags
+        rf"<(?:{tags})(?=[\s/>]){attributes}(?:{no_element})", flags
     )
     end_tags = {
-        tag.lower(): re.compile(rf"</{re.escape(tag)}(?=[\s/>])[^<>]*>", flags)
+        tag.lower(): re.compile(rf"</{re.escape(tag)}(?=[\s/>])", flags)
         for tag in tags_tuple
     }
     return element, start_tag, self_closing_tag, end_tags
+
+
+def _kept_or_removed(match: re.Match[str]) -> str:
+    return match.group() if match.group("kept") is not None else ""
 
 
 def _remove_elements(utext: str, tags_tuple: tuple[str, ...]) -> str:
@@ -447,32 +464,39 @@ def _remove_elements(utext: str, tags_tuple: tuple[str, ...]) -> str:
     # overhead of the loop below. Checking the length, unlike counting the
     # start tags, does not scan the text.
     if len(utext) <= 256:
-        return element.sub("", utext)
+        return element.sub(_kept_or_removed, utext)
     # The element pattern scans for an end tag from every start tag, to the
     # end of the text when there is none, so a text of many unclosed tags
     # would cost a scan of the rest of the text per tag. Once that scan has
     # failed from a start tag (whether or not its self-closing form matched
     # after it) and no end tag of its name follows, no later start tag of
     # that name has one either, so from then on only their self-closing
-    # form, all that the element pattern could still match, is tried. The
-    # end tag found after a start tag that formed no element with one is
-    # kept, so that the start tags before it do not search for it again.
+    # form, all that the element pattern could still match, is tried. An end
+    # tag that does follow a start tag that formed no element is within the
+    # text that tag consumes, as the element pattern would otherwise have
+    # matched, so the search for it costs no more than that text.
     output: list[str] = []
     last = pos = 0
-    next_end_tag: dict[str, re.Match[str] | None] = {}
+    no_end_tag: set[str] = set()
     while (start := start_tag.search(utext, pos)) is not None:
         pos = start.start()
         tag = start.group("tag").lower()
-        if tag in next_end_tag and next_end_tag[tag] is None:
+        if tag in no_end_tag:
             match = self_closing_tag.match(utext, pos)
         else:
             match = element.match(utext, pos)
-            if match is None or match.group("tag2") is not None:
-                end_tag = next_end_tag.get(tag)
-                if end_tag is None or end_tag.start() < pos:
-                    next_end_tag[tag] = end_tags[tag].search(utext, pos)
-        if match is None:
-            pos += 1
+            # An element matches no group after "tag".
+            if (
+                match is not None
+                and match.lastgroup != "tag"
+                and end_tags[tag].search(utext, pos) is None
+            ):
+                no_end_tag.add(tag)
+        # A start tag always matches, as an element or as a self-closing,
+        # kept or unterminated tag.
+        assert match is not None
+        if match.group("kept") is not None:
+            pos = match.end()
             continue
         output.append(utext[last:pos])
         last = pos = match.end()

@@ -437,6 +437,32 @@ class TestRemoveTagsWithContent:
             == "headtail"
         )
 
+    @pytest.mark.parametrize(
+        ("text", "expected"),
+        [
+            ("<script a<b>alert(1)</script>tail", "tail"),
+            ("<script src=x<y>alert(1)</script>tail", "tail"),
+            ("<script <>alert(1)</script>tail", "tail"),
+            ("<script>alert(1)</script a<b>tail", "tail"),
+            ("<script>x</script a<b>tail</script>", "tail</script>"),
+            ("<script a<b/>tail", "tail"),
+            # the "<script" inside the attribute value is not a tag
+            (
+                '<script a<b x="<script>y</script>">',
+                '<script a<b x="<script>y</script>">',
+            ),
+        ],
+    )
+    def test_lt_in_tag(self, text: str, expected: str) -> None:
+        # A "<" in an attribute name or unquoted value is attribute text to
+        # the HTML tokenizer, in a start tag and in an end tag.
+        assert remove_tags_with_content(text, which_ones=("script",)) == expected
+        padding = " " * 300
+        assert (
+            remove_tags_with_content(text + padding, which_ones=("script",))
+            == expected + padding
+        )
+
     def test_gt_in_quoted_attribute_value_self_closing(self) -> None:
         assert (
             remove_tags_with_content('<div data-x="a>b"/>tail', which_ones=("div",))
@@ -456,17 +482,31 @@ class TestRemoveTagsWithContent:
         )
 
     def test_no_catastrophic_backtracking(self) -> None:
-        # "<script " has no ">", so it never completes an opening tag and the
-        # close-tag scan is never entered
+        # The text ends inside the opening tag, which a browser reads to the
+        # end of the text, so all of it goes with the tag.
         evil = "<script " * 50000
         start = time.process_time()
-        assert remove_tags_with_content(evil, which_ones=("script",)) == evil
+        assert remove_tags_with_content(evil, which_ones=("script",)) == ""
+        # a browser reads every "<script" after the first as an attribute of
+        # one opening tag, which the ">" of the last one ends
         assert (
             remove_tags_with_content(
                 evil + "<script>x</script>", which_ones=("script",)
             )
-            == evil
+            == ""
         )
+        evil = "<script a<b " * 30000
+        assert remove_tags_with_content(evil, which_ones=("script",)) == ""
+        assert (
+            remove_tags_with_content(evil + ">x</script>y", which_ones=("script",))
+            == "y"
+        )
+        # the quoted attribute values take in the "/>" and the "</script>" at
+        # which a plain reading of the opening tag would have stopped
+        evil = '<script a="/>"' * 30000
+        assert remove_tags_with_content(evil, which_ones=("script",)) == ""
+        evil = "<script a='>' b=\"</script>\"" * 30000
+        assert remove_tags_with_content(evil, which_ones=("script",)) == ""
         assert time.process_time() - start < 2
 
     def test_no_catastrophic_backtracking_unclosed_tags(self) -> None:
