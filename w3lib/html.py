@@ -16,6 +16,7 @@ from w3lib._url import _SCHEME_RE
 from w3lib._util import (
     _COMMENT,
     _OTHER_TAG,
+    _TAG_ATTRIBUTES,
     _TAG_REST,
     _attr_re,
     _scannable,
@@ -43,7 +44,11 @@ _ent_re = re.compile(
 # value, a single-quoted value or neither, which gives a tag body a single
 # parse and hence nothing to backtrack into.
 _TAG_BODY = r"""[^<>=]*(?:(?:=\s*"[^"]*"|=\s*'[^']*'|=(?!\s*["']))[^<>=]*)*"""
-# Only a tag named the way an HTML element is gets its body read that way.
+# _TAG_NAME, _tag_re and _tags_re are the fallback reading of replace_tags()
+# and remove_tags(), for the text from the "<" of a tag that the text ends
+# inside, where a tag ends at the next "<" or ">" instead of at the end of the
+# text. Only a tag named the way an HTML element is gets its body read that
+# way.
 # Pairing quotes across a "<" that opens no tag, e.g. the one in "i<n" inside a
 # script, would take the tag to the far side of the next quote, and past every
 # tag in between. A name is pinned to its full length, as below, so that the
@@ -59,6 +64,22 @@ _TAG_NAME = r"""[a-zA-Z][a-zA-Z0-9]*(?![^\t\n\f\r <>/])"""
 # the case of most tags.
 _tag_re = re.compile(
     rf"""<[a-zA-Z/!][^<>=]*>|</?{_TAG_NAME}{_TAG_BODY}>|<[a-zA-Z/!][^<>]*>""",
+    re.ASCII,
+)
+# replace_tags() and remove_tags() read a tag whose name starts with a letter
+# as the HTML tokenizer does: the name, then the attributes, up to the first
+# ">" outside a quoted value, with a "<" in the name or in an attribute read as
+# part of the tag. In '<img src=x onerror="f()" <b>', "<b" is an attribute name
+# of the <img>, so ending the tag at that "<" would leave the <img> in the
+# text. A tag that the text ends inside matches the last alternative, which
+# captures it, and the text from its "<" on is read with the fallback patterns
+# above. Reading that tag to the end of the text once, instead of from every
+# "<" in it, keeps the scan linear.
+_ELEMENT_TAG = rf"/?[a-zA-Z][^\t\n\f\r />]*+{_TAG_ATTRIBUTES}"
+# A captured tag can only be the last separator of a split(), so the text
+# around every other tag is joined with the token in C.
+_tag_scan_re = re.compile(
+    rf"<(?:{_ELEMENT_TAG}>|[/!][^<>]*>|({_ELEMENT_TAG}\Z))",
     re.ASCII,
 )
 # Tag syntax is ASCII, and re.ASCII holds the scan patterns of this module to
@@ -166,6 +187,12 @@ _tags_re = re.compile(
     >               # closing angle bracket
     """,
     re.IGNORECASE | re.VERBOSE | re.ASCII,
+)
+_tags_scan_re = re.compile(
+    rf"<(?:/?(?P<named>[a-zA-Z][^\t\n\f\r />]*+){_TAG_ATTRIBUTES}"
+    r"(?:>|(?P<unclosed>\Z))"
+    r"|/?(?P<name>[^ <>/][^\t\n\f\r <>/]*+)[^<>]*>)",
+    re.IGNORECASE | re.ASCII,
 )
 _meta_start_re = re.compile(r"<meta[\t\n\f\r /]", re.IGNORECASE | re.ASCII)
 _meta_start_bytes_re = re.compile(rb"<meta[\t\n\f\r /]", re.IGNORECASE)
@@ -308,7 +335,14 @@ def replace_tags(
 
     """
 
-    return _tag_re.sub(token, to_unicode(text, encoding))
+    parts = _tag_scan_re.split(to_unicode(text, encoding))
+    if len(parts) == 1 or parts[-2] is None:
+        return token.join(parts[::2])
+    # sub() takes the token as a replacement template, so its backslashes are
+    # doubled to insert it literally, as join() does.
+    return token.join(parts[:-2:2]) + _tag_re.sub(
+        token.replace("\\", r"\\"), "<" + parts[-2]
+    )
 
 
 _REMOVECOMMENTS_RE = re.compile(_COMMENT)
@@ -331,6 +365,11 @@ def remove_comments(text: str | bytes, encoding: str | None = None) -> str:
 def _remove_tag(
     m: re.Match[str], which_ones: set[str] | tuple[()], keep: set[str] | tuple[()]
 ) -> str:
+    if m.lastgroup == "unclosed":
+        return _tags_re.sub(
+            functools.partial(_remove_tag, which_ones=which_ones, keep=keep),
+            m.group(0),
+        )
     tag = (m.group("named") or m.group("name")).lower()
 
     should_remove = tag in which_ones if which_ones else tag not in keep
@@ -393,7 +432,7 @@ def remove_tags(
     if tags and kept:
         raise ValueError("Cannot use both which_ones and keep")
 
-    return _tags_re.sub(
+    return _tags_scan_re.sub(
         functools.partial(_remove_tag, which_ones=tags, keep=kept),
         to_unicode(text, encoding),
     )
