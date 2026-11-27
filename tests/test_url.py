@@ -247,6 +247,13 @@ SAFE_URL_URL_CASES = (
         f"https://{USERNAME_ENCODED}:{PASSWORD_ENCODED}@example.com/",
     ),
     ("https://@\\example.com", ValueError),
+    ("http://:/evil.example/", ValueError),
+    ("https://:443/evil.example/", ValueError),
+    ("ws://:80/evil.example/", ValueError),
+    ("http://@/evil.example/", ValueError),
+    ("http://user:pass@:8080/", ValueError),
+    ("file://:/etc/passwd", ValueError),
+    ("file:///etc/passwd", "file:///etc/passwd"),
     # "\" ends the authority of a special-scheme URL, so a "\" before "@" is
     # not a userinfo separator: the host is what precedes the "\".
     ("https://evil.com\\@good.com/", "https://evil.com/@good.com/"),
@@ -576,7 +583,6 @@ KNOWN_SAFE_URL_STRING_URL_ISSUES = {
     *(case[0] for case in SAFE_URL_URL_INVALID_SCHEME_CASES),
     # Userinfo characters that the URL living standard requires escaping (:;=)
     # are not escaped.
-    "https://@\\example.com",  # Invalid URL
     "https://\x80.example",  # Invalid domain name (non-visible character)
     # Some path characters that RFC 2396 and RFC 3986 require escaping (%)
     # are not escaped.

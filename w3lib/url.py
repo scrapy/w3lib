@@ -148,6 +148,9 @@ def _safe_url_split(  # pylint: disable=too-many-statements
         # Without its brackets, such a host would be read as a domain below.
         if parts.hostname[:1] == "v" and parts.netloc.rpartition("@")[2][:1] == "[":
             raise ValueError(f"{url!r} has a host that is not an IPv6 address")
+        host = parts.netloc.rpartition("@")[2].partition(":")[0]
+        if not host and parts.netloc:
+            raise ValueError(f"{url!r} has userinfo or a port but no host")
         if ":" in parts.hostname:
             # IPv6 address: urlsplit() strips the brackets from the hostname,
             # but they are required in the netloc when rebuilding the URL.
@@ -158,15 +161,12 @@ def _safe_url_split(  # pylint: disable=too-many-statements
             # The host of a non-special URL is opaque: case-sensitive and
             # percent-encoded instead of IDNA-encoded. parts.hostname is
             # lowercased, so take the host from the netloc.
-            host = parts.netloc.rpartition("@")[2].partition(":")[0]
-            if not host and parts.netloc:
-                raise ValueError(f"{url!r} has userinfo or a port but no host")
             tmp_buf += _opaque_host(host)
         else:
             # parts.hostname is lowercased with str.lower(), which turns a
             # final "Σ" into "ς", so take the host from the netloc and let
             # _domain() lowercase it.
-            host = _domain(parts.netloc.rpartition("@")[2].partition(":")[0])
+            host = _domain(host)
             try:
                 host = _idna_bytes(host).decode()
             except UnicodeError:
