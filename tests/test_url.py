@@ -1321,6 +1321,93 @@ class TestUrl:
         add_or_replace_parameters(url, input_param)
         assert input_param == {"arg": "value"}
 
+    @pytest.mark.parametrize(
+        ("url", "parameterlist", "kwargs", "expected"),
+        [
+            pytest.param(
+                "https://e.org/?%69d=123&other=4",
+                ["id"],
+                {},
+                "https://e.org/?%69d=123",
+                id="encoded-key-keep",
+            ),
+            pytest.param(
+                "https://e.org/?%69d=123&other=4",
+                ["id"],
+                {"remove": True},
+                "https://e.org/?other=4",
+                id="encoded-key-remove",
+            ),
+            pytest.param(
+                "https://e.org/?%69d=1&id=2&other=4",
+                ["id"],
+                {},
+                "https://e.org/?%69d=1",
+                id="encoded-and-plain-unique",
+            ),
+            pytest.param(
+                "https://e.org/?%69d=1&id=2&other=4",
+                ["id"],
+                {"unique": False},
+                "https://e.org/?%69d=1&id=2",
+                id="encoded-and-plain-not-unique",
+            ),
+            pytest.param(
+                "https://e.org/?%69d=1&id=2&other=4",
+                ["id"],
+                {"remove": True},
+                "https://e.org/?other=4",
+                id="encoded-and-plain-remove",
+            ),
+            pytest.param(
+                "https://e.org/?filter%5Bcolor%5D=red&x=1",
+                ["filter%5Bcolor%5D"],
+                {},
+                "https://e.org/?filter%5Bcolor%5D=red",
+                id="encoded-list-keep",
+            ),
+            pytest.param(
+                "https://e.org/?filter%5Bcolor%5D=red&x=1",
+                ["filter%5Bcolor%5D"],
+                {"remove": True},
+                "https://e.org/?x=1",
+                id="encoded-list-remove",
+            ),
+            pytest.param(
+                "https://e.org/?filter%5Bcolor%5D=red&x=1",
+                ["filter[color]"],
+                {},
+                "https://e.org/?filter%5Bcolor%5D=red",
+                id="decoded-list-keep",
+            ),
+            pytest.param(
+                "https://e.org/?%zz=1&a=2",
+                ["%zz"],
+                {},
+                "https://e.org/?%zz=1",
+                id="invalid-escape",
+            ),
+            pytest.param(
+                "https://e.org/?%ff=1&%fe=2",
+                [],
+                {"remove": True},
+                "https://e.org/?%ff=1&%fe=2",
+                id="invalid-utf8-unique",
+            ),
+            pytest.param(
+                "https://e.org/?%ff=1&%fe=2",
+                ["%ff"],
+                {"unique": False},
+                "https://e.org/?%ff=1",
+                id="invalid-utf8-list",
+            ),
+        ],
+    )
+    def test_url_query_cleaner_percent_encoded_names(
+        self, url, parameterlist, kwargs, expected
+    ):
+        assert url_query_cleaner(url, parameterlist, **kwargs) == expected
+
     def test_url_query_cleaner(self):
         assert url_query_cleaner("product.html?") == "product.html"
         assert url_query_cleaner(b"product.html?") == "product.html"
