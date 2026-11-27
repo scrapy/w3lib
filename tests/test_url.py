@@ -317,6 +317,12 @@ SAFE_URL_URL_CASES = (
     ("http://%E4%BE%8B%E3%81%88.jp/", "http://xn--r8jz45g.jp/"),
     ("http://good.example%2F.evil.example/", ValueError),
     ("http://evil.example%40good.example/", ValueError),
+    # Also when the host is not ASCII, e.g. with a soft hyphen that IDNA maps
+    # to nothing.
+    ("http://evil.example%40good.example%C2%AD/", ValueError),
+    ("http://127.0.0%3A.1%C2%AD/", ValueError),
+    ("http://127.0.0.1%23%C2%AD/", ValueError),
+    ("http://example.com%3F%E2%80%8B/", ValueError),
     ("http://ho%25st/", ValueError),
     ("http://a<b/", ValueError),
     ("http://[2a01:5cc0:1:2::4]", "http://[2a01:5cc0:1:2::4]/"),
